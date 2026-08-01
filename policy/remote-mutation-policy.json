@@ -1,0 +1,26 @@
+{
+  "schema": "issue-orchestration.remote-mutation-policy.v1",
+  "expectedMutationTypes": [
+    "completion-comment",
+    "label-change",
+    "state-reason",
+    "state-transition"
+  ],
+  "semanticMutationTypes": [
+    "admission-change",
+    "body-change",
+    "issue-added",
+    "issue-removed",
+    "milestone-change",
+    "semantic-facts-change",
+    "title-change"
+  ],
+  "projectionOnlyMutationTypes": [
+    "comment-added",
+    "completion-comment",
+    "label-change",
+    "state-reason",
+    "state-transition"
+  ],
+  "projectionOnlyUpdaterDispatchAllowed": false
+}

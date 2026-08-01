@@ -1,0 +1,14 @@
+{
+  "schema": "issue-orchestration.stage-permissions.v1",
+  "stages": {
+    "root-scheduler:scheduling": {"sandbox": "read-only", "writeScope": "none", "freshContext": false},
+    "dag-creator-updater:semantic-proposal": {"sandbox": "read-only", "writeScope": "none", "freshContext": true},
+    "test-owner:test-contract": {"sandbox": "workspace-write", "writeScope": "tests-only", "freshContext": false},
+    "test-owner:behavior-verification": {"sandbox": "read-only", "writeScope": "none", "freshContext": true},
+    "code-implementer:implementation": {"sandbox": "workspace-write", "writeScope": "implementation-only", "freshContext": false},
+    "ui-ux-implementer:implementation": {"sandbox": "workspace-write", "writeScope": "implementation-only", "freshContext": false},
+    "ui-system-adjudicator:adjudication": {"sandbox": "read-only", "writeScope": "none", "freshContext": true},
+    "ux-acceptance-verifier:ux-acceptance": {"sandbox": "read-only", "writeScope": "none", "freshContext": true},
+    "documentation-writer:documentation": {"sandbox": "workspace-write", "writeScope": "documentation-only", "freshContext": false}
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fsusblog.local/issue-orchestration/runtime-projection.schema.json",
+  "title": "Issue orchestration runtime projection",
+  "type": "object",
+  "required": ["schema", "projectorVersion", "projectorDigest", "semanticGraphDigest", "runtimeProjectionDigest"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.runtime-projection.v1"},
+    "projectorVersion": {"const": "issue-orchestration.runtime-projector.v1"},
+    "projectorDigest": {"$ref": "#/$defs/digest"},
+    "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+    "runtimeProjectionDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

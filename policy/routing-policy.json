@@ -1,0 +1,104 @@
+{
+  "schema": "issue-orchestration.routing-policy.v2",
+  "version": "stage-model-pool.v2",
+  "requiredClassificationFields": [
+    "domain",
+    "effectiveOwnerRepository",
+    "engineeringRiskClass",
+    "uiDecisionClass",
+    "contractState",
+    "verificationClass",
+    "modelRoutingEvidenceDigest",
+    "routingPolicyVersion"
+  ],
+  "classificationEnums": {
+    "domain": [
+      "generic-code",
+      "ui-ux",
+      "documentation",
+      "orchestration-core",
+      "deterministic-cleanup"
+    ],
+    "engineeringRiskClass": [
+      "bounded",
+      "complex",
+      "high-risk",
+      "frontier"
+    ],
+    "uiDecisionClass": [
+      "none",
+      "prescribed",
+      "bounded-composition",
+      "layout-judgment",
+      "interaction-judgment",
+      "system-design-dispute"
+    ],
+    "contractState": [
+      "frozen",
+      "disputed",
+      "owner-unresolved",
+      "authority-conflict"
+    ],
+    "verificationClass": [
+      "focused",
+      "cross-module",
+      "runtime",
+      "protocol",
+      "security",
+      "ux-local",
+      "ux-path",
+      "ux-system"
+    ]
+  },
+  "forbiddenInputs": [
+    "currentRootProfile",
+    "balance",
+    "subscription",
+    "failureCount",
+    "reworkCount",
+    "telemetryCost",
+    "humanPreference"
+  ],
+  "selectors": {
+    "dag-creator-updater:semantic-proposal": {
+      "default": "terra-max",
+      "frontierException": "sol-max",
+      "authorityOrTopologyConflict": "sol-xhigh"
+    },
+    "test-owner:test-contract": {
+      "focused": "sol-high",
+      "runtimeOrLifecycle": "terra-max",
+      "protocolSecurityOrAuthority": "sol-xhigh"
+    },
+    "test-owner:behavior-verification": {
+      "focused": "sol-high",
+      "runtimeOrLifecycle": "terra-max",
+      "protocolSecurityOrAuthority": "sol-xhigh"
+    },
+    "code-implementer:implementation": {
+      "bounded": "luna-max",
+      "complex": "sol-high",
+      "high-risk": "terra-max",
+      "frontier": "sol-xhigh"
+    },
+    "ui-ux-implementer:implementation": {
+      "prescribed": "sol-low",
+      "bounded-composition": "sol-low",
+      "layout-judgment": "sol-medium",
+      "interaction-judgment": "sol-medium"
+    },
+    "ui-system-adjudicator:adjudication": {
+      "system-design-dispute": "sol-high",
+      "authority-conflict": "sol-xhigh"
+    },
+    "ux-acceptance-verifier:ux-acceptance": {
+      "ux-local": "sol-medium",
+      "ux-path": "sol-high",
+      "ux-system": "sol-xhigh"
+    },
+    "documentation-writer:documentation": {
+      "bounded": "luna-high",
+      "complex": "luna-max"
+    }
+  }
+}

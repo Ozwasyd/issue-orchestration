@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fsusblog.local/issue-orchestration/graph-patch.schema.json",
+  "title": "Issue orchestration semantic graph patch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "baseSemanticGraphDigest", "operations", "evidenceDigests", "authoredBy", "resultSemanticGraphDigest", "graphPatchDigest"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.semantic-graph-patch.v1"},
+    "baseSemanticGraphDigest": {"$ref": "#/$defs/digest"},
+    "resultSemanticGraphDigest": {"$ref": "#/$defs/digest"},
+    "graphPatchDigest": {"$ref": "#/$defs/digest"},
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "enum": [
+              "add-node",
+              "remove-node",
+              "add-edge",
+              "remove-edge",
+              "change-owner",
+              "change-conflict-key",
+              "change-risk-class",
+              "change-ui-class",
+              "change-acceptance-group"
+            ]
+          }
+        }
+      }
+    },
+    "evidenceDigests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/digest"},
+      "uniqueItems": true
+    },
+    "authoredBy": {
+      "type": "object",
+      "required": ["actorRole", "actorId", "sandboxMode", "freshContext", "acceptedWithoutModification"],
+      "properties": {
+        "actorRole": {"const": "dag-creator-updater"},
+        "actorId": {"type": "string", "minLength": 1},
+        "sandboxMode": {"const": "read-only"},
+        "freshContext": {"const": true},
+        "acceptedWithoutModification": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

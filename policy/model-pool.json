@@ -1,0 +1,59 @@
+{
+  "schema": "issue-orchestration.stage-model-pool-policy.v2",
+  "version": "stage-model-pool.v2",
+  "routingAuthority": "deterministic-routing-compiler",
+  "profiles": {
+    "luna-low": {"model": "gpt-5.6-luna", "effort": "low"},
+    "luna-high": {"model": "gpt-5.6-luna", "effort": "high"},
+    "luna-max": {"model": "gpt-5.6-luna", "effort": "max"},
+    "terra-max": {"model": "gpt-5.6-terra", "effort": "max"},
+    "sol-low": {"model": "gpt-5.6-sol", "effort": "low"},
+    "sol-medium": {"model": "gpt-5.6-sol", "effort": "medium"},
+    "sol-high": {"model": "gpt-5.6-sol", "effort": "high"},
+    "sol-xhigh": {"model": "gpt-5.6-sol", "effort": "xhigh"},
+    "sol-max": {"model": "gpt-5.6-sol", "effort": "max"}
+  },
+  "stages": {
+    "root-scheduler:scheduling": {
+      "allowedProfiles": ["luna-low"],
+      "defaultProfile": "luna-low"
+    },
+    "dag-creator-updater:semantic-proposal": {
+      "allowedProfiles": ["terra-max", "sol-xhigh", "sol-max"],
+      "defaultProfile": "terra-max"
+    },
+    "test-owner:test-contract": {
+      "allowedProfiles": ["sol-high", "terra-max", "sol-xhigh"],
+      "defaultProfile": "sol-high"
+    },
+    "test-owner:behavior-verification": {
+      "allowedProfiles": ["sol-high", "terra-max", "sol-xhigh"],
+      "defaultProfile": "sol-high"
+    },
+    "code-implementer:implementation": {
+      "allowedProfiles": ["luna-max", "sol-high", "terra-max", "sol-xhigh"],
+      "defaultProfile": "luna-max"
+    },
+    "ui-ux-implementer:implementation": {
+      "allowedProfiles": ["sol-low", "sol-medium"],
+      "defaultProfile": "sol-low"
+    },
+    "ui-system-adjudicator:adjudication": {
+      "allowedProfiles": ["sol-high", "sol-xhigh"],
+      "defaultProfile": "sol-high"
+    },
+    "ux-acceptance-verifier:ux-acceptance": {
+      "allowedProfiles": ["sol-medium", "sol-high", "sol-xhigh"],
+      "defaultProfile": "sol-medium"
+    },
+    "documentation-writer:documentation": {
+      "allowedProfiles": ["luna-high", "luna-max"],
+      "defaultProfile": "luna-high"
+    }
+  },
+  "cleanup": {
+    "greenAuthority": "machine-resource-verifier",
+    "llmProfile": null,
+    "diagnosticProfiles": ["luna-low", "terra-max"]
+  }
+}
