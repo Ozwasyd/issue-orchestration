@@ -1,0 +1,146 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:execution-shape-classification:v1",
+    "title": "issue-orchestration.execution-shape-classification.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "sliceId",
+        "sliceDigest",
+        "stageRole",
+        "stagePhase",
+        "domain",
+        "engineeringRiskClass",
+        "uiDecisionClass",
+        "verificationClass",
+        "dominantWorkShape",
+        "secondaryShapes",
+        "expectedChangedFileCount",
+        "ownedModuleCount",
+        "commandLoopCount",
+        "runtimeProbeDepth",
+        "toolInteractionDepth",
+        "contextBreadth",
+        "statefulContinuationRequired",
+        "checkpointSupportRequired",
+        "firstActionDeterministic",
+        "unsplittableReason",
+        "classificationEvidenceDigest",
+        "classificationDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.execution-shape-classification.v1"
+        },
+        "sliceId": {
+            "type": "string",
+            "minLength": 1
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "stageRole": {
+            "type": "string",
+            "minLength": 1
+        },
+        "stagePhase": {
+            "type": "string",
+            "minLength": 1
+        },
+        "domain": {
+            "type": "string",
+            "minLength": 1
+        },
+        "engineeringRiskClass": {
+            "type": "string",
+            "minLength": 1
+        },
+        "uiDecisionClass": {
+            "type": "string",
+            "minLength": 1
+        },
+        "verificationClass": {
+            "type": "string",
+            "minLength": 1
+        },
+        "dominantWorkShape": {
+            "enum": [
+                "atomic-edit",
+                "bounded-multifile",
+                "iterative-debug",
+                "runtime-probe-heavy",
+                "context-heavy",
+                "high-tool-depth",
+                "long-horizon-cross-module",
+                "read-only-adjudication"
+            ]
+        },
+        "secondaryShapes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "uniqueItems": true
+        },
+        "expectedChangedFileCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "ownedModuleCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "commandLoopCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "runtimeProbeDepth": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "toolInteractionDepth": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "contextBreadth": {
+            "enum": [
+                "narrow",
+                "moderate",
+                "broad",
+                "very-broad"
+            ]
+        },
+        "statefulContinuationRequired": {
+            "type": "boolean"
+        },
+        "checkpointSupportRequired": {
+            "enum": [
+                "simple",
+                "resumable",
+                "durable"
+            ]
+        },
+        "firstActionDeterministic": {
+            "type": "boolean"
+        },
+        "unsplittableReason": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "classificationEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "classificationDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

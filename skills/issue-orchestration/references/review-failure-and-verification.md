@@ -52,6 +52,8 @@ Partial checkpoint、continuation receipt、单个 diff、命令成功或 agent 
 
 任何必需输出缺失，尤其“agent 已返回但没有产物”的 output-missing，都必须签发 `issue-orchestration.writer-stage-failure-receipt.v1`、进入 terminal 并打开 breaker。它既不计 implementation rework，也不触发 human decision；Root 不得把它改写成 verifier blocker、`reworkCount`、人工接管或直接重试。
 
+`writer-stage.output-missing` 本身不是 profile upgrade evidence。先在 `slice-not-executable`、`compiled-prompt-incomplete`、`runtime invocation/capability failure`、`sandbox/cwd/worktree/permission mismatch`、`agent-first-action-not-executed` 与 `profile-capability-mismatch` 中由机器分类。只有最后一类可进入 `compileExecutionReroute`，并且必须引用旧 route/failure/candidate receipt、breaker reset 和 retry authorization，证明 slice 已是最小合法粒度或有实质修订，且新 candidate identity 不复用旧 receipt。
+
 Breaker 的语义 identity 绑定 repository/issue/node/base/epoch、plan/slice/route、stage role/phase、event type 与 evidence，而不依赖可替换的 shell identity。改变 attempt id、agent id、prompt 措辞、worktree、slice id、等待时间或重复同一命令都不能清除 breaker。
 
 只有 `authorizeWriterStageRetry` 验证 `issue-orchestration.writer-stage-retry-authorization.v1` 后才能重派。授权必须引用 prior failure receipt 和 `semanticFailureDigest`，并包含 `slice-revision`、`compiled-prompt-revision`、`runtime-revision` 或 `capability-revision` 中至少一种实质修订：previous/current digest 必须不同，`changedRequirementIds` 非空且有可重算的 revision evidence digest。只改措辞或 identity 不是 material change；未变化失败保持 breaker open。

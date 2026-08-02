@@ -293,13 +293,12 @@ function selectProfile(input, key) {
     fail('routing-stage-role-phase')
 }
 
-export function compileStageRoute(input) {
+export function compileStageRoutingIdentity(input) {
     assertNoLegacyAuthority(input)
     validateRoutingClassification(input)
     const key = routeKey(input.stageRole, input.stagePhase)
     const definition = STAGES[key]
     if (!definition) fail('routing-stage-role-phase')
-    const [selectedProfile, selectedProfileReason] = selectProfile(input, key)
     const routingInput = {
         classification: Object.fromEntries(REQUIRED_ROUTING_FIELDS
             .map((field) => [field, input[field]])),
@@ -314,7 +313,6 @@ export function compileStageRoute(input) {
         ? input.capabilityDigest
         : digest({
                 policyVersion: ROUTING_POLICY_VERSION,
-                selectedProfile,
                 allowedProfiles: definition.allowedProfiles
             })
     return Object.freeze({
@@ -325,12 +323,22 @@ export function compileStageRoute(input) {
         defaultProfile: definition.defaultProfile,
         routingAuthority: STAGE_MODEL_POOL_POLICY.routingAuthority,
         routingInputDigest: digest(routingInput),
-        selectedProfile,
-        selectedProfileReason,
         sandbox: definition.sandbox,
         writeScope: definition.writeScope,
         requiredSkillDigests,
         capabilityDigest
+    })
+}
+
+export function compileStageRoute(input) {
+    const identity = compileStageRoutingIdentity(input)
+    const key = routeKey(input.stageRole, input.stagePhase)
+    const [selectedProfile, selectedProfileReason] =
+        selectProfile(input, key)
+    return Object.freeze({
+        ...identity,
+        selectedProfile,
+        selectedProfileReason
     })
 }
 

@@ -1,0 +1,251 @@
+{
+    "schema": "issue-orchestration.profile-capability-observations.v1",
+    "authority": "machine-runtime-fixture-observer",
+    "observations": [
+        {
+            "profileId": "luna-low",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 2,
+            "firstWriteLatency": 3,
+            "readOnlyOperationsBeforeArtifact": 2,
+            "successfulToolChainDepth": 3,
+            "checkpointProduced": true,
+            "continuationRecovered": false,
+            "visibleCommandLoopCount": 1,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 1,
+            "observedContextRetentionClass": 1,
+            "observedCheckpointReliability": 1,
+            "observedRuntimeProbeCapability": 1,
+            "observedCrossModuleReasoningClass": 1,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none"
+            ]
+        },
+        {
+            "profileId": "luna-high",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 2,
+            "firstWriteLatency": 4,
+            "readOnlyOperationsBeforeArtifact": 3,
+            "successfulToolChainDepth": 5,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 2,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 2,
+            "observedContextRetentionClass": 2,
+            "observedCheckpointReliability": 2,
+            "observedRuntimeProbeCapability": 1,
+            "observedCrossModuleReasoningClass": 1,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume"
+            ]
+        },
+        {
+            "profileId": "luna-max",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 3,
+            "firstWriteLatency": 5,
+            "readOnlyOperationsBeforeArtifact": 4,
+            "successfulToolChainDepth": 7,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 2,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 2,
+            "observedContextRetentionClass": 2,
+            "observedCheckpointReliability": 2,
+            "observedRuntimeProbeCapability": 2,
+            "observedCrossModuleReasoningClass": 2,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume"
+            ]
+        },
+        {
+            "profileId": "terra-max",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 4,
+            "firstWriteLatency": 6,
+            "readOnlyOperationsBeforeArtifact": 5,
+            "successfulToolChainDepth": 10,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 4,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 3,
+            "observedContextRetentionClass": 3,
+            "observedCheckpointReliability": 3,
+            "observedRuntimeProbeCapability": 4,
+            "observedCrossModuleReasoningClass": 3,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume"
+            ]
+        },
+        {
+            "profileId": "sol-low",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 2,
+            "firstWriteLatency": 3,
+            "readOnlyOperationsBeforeArtifact": 2,
+            "successfulToolChainDepth": 4,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 2,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 1,
+            "observedContextRetentionClass": 2,
+            "observedCheckpointReliability": 2,
+            "observedRuntimeProbeCapability": 1,
+            "observedCrossModuleReasoningClass": 2,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume"
+            ]
+        },
+        {
+            "profileId": "sol-medium",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 3,
+            "firstWriteLatency": 4,
+            "readOnlyOperationsBeforeArtifact": 3,
+            "successfulToolChainDepth": 7,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 3,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 2,
+            "observedContextRetentionClass": 2,
+            "observedCheckpointReliability": 2,
+            "observedRuntimeProbeCapability": 2,
+            "observedCrossModuleReasoningClass": 2,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume"
+            ]
+        },
+        {
+            "profileId": "sol-high",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 4,
+            "firstWriteLatency": 6,
+            "readOnlyOperationsBeforeArtifact": 5,
+            "successfulToolChainDepth": 13,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 5,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 4,
+            "observedContextRetentionClass": 4,
+            "observedCheckpointReliability": 4,
+            "observedRuntimeProbeCapability": 4,
+            "observedCrossModuleReasoningClass": 4,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume",
+                "durable-continuation"
+            ]
+        },
+        {
+            "profileId": "sol-xhigh",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 5,
+            "firstWriteLatency": 7,
+            "readOnlyOperationsBeforeArtifact": 6,
+            "successfulToolChainDepth": 18,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 7,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 5,
+            "observedContextRetentionClass": 5,
+            "observedCheckpointReliability": 5,
+            "observedRuntimeProbeCapability": 5,
+            "observedCrossModuleReasoningClass": 5,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume",
+                "durable-continuation"
+            ]
+        },
+        {
+            "profileId": "sol-max",
+            "source": "machine-runtime-observation",
+            "firstArtifactLatency": 6,
+            "firstWriteLatency": 8,
+            "readOnlyOperationsBeforeArtifact": 7,
+            "successfulToolChainDepth": 20,
+            "checkpointProduced": true,
+            "continuationRecovered": true,
+            "visibleCommandLoopCount": 8,
+            "sliceCompletionStatus": "complete",
+            "outputMissingClass": null,
+            "runtimeInvocationFailure": false,
+            "observedPlanningDepth": 5,
+            "observedContextRetentionClass": 5,
+            "observedCheckpointReliability": 5,
+            "observedRuntimeProbeCapability": 5,
+            "observedCrossModuleReasoningClass": 5,
+            "supportedSandboxes": [
+                "read-only",
+                "workspace-write"
+            ],
+            "supportedContinuationModes": [
+                "none",
+                "checkpoint-resume",
+                "durable-continuation"
+            ]
+        }
+    ]
+}

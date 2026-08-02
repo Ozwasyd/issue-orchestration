@@ -42,11 +42,12 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 1. **建立或刷新 DAG**：按 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md) 验证仓库外状态根，读取或重建当前范围 DAG，对照远端与仓库事实通过一致性门禁，再重算受影响节点。
 2. **选择 stage**：继续按同一 reference 的 ready、槽位、长任务、模型和 terminal 规则选择下一动作；完整 issue 不能成为 writer dispatch unit。
 3. **编译 work plan 与 slice**：读取 [`references/dispatch-and-runtime-probe.md`](references/dispatch-and-runtime-probe.md)，完成调查与必要的最小真实探针；由 canonical compiler覆盖全部 acceptance、生成有序 slices，并选择所有 prerequisite terminal receipt 已完成的下一 slice。
-4. **编译并派发 prompt**：从 verified plan/slice确定性生成 compiled prompt，先验证 prompt digest和route binding，再调用对应 writer role。保留的 task template只能呈现 compiler输出，不得由 Root手填、删减验收或修改 prompt。
-5. **收口 slice**：writer必须在阈值前返回机器可验证 checkpoint、合法 continuation或 terminal receipt。非最终 slice只进入`next-slice`；只有完整 plan的有序 terminal receipts全部通过，stage才可进入`candidate-green`。
-6. **分类与独立验证**：按 [`references/review-failure-and-verification.md`](references/review-failure-and-verification.md) 处理 writer failure/breaker/retry 和 verifier blocker。完整 stage candidate 稳定后，按 fresh read-only 条件调用 `test-owner` 的 behavior-verification phase；UI system dispute 先调用 `ui-system-adjudicator`，UX 路径再调用 `ux-acceptance-verifier`。
-7. **立即交付验收组**：一组全部通过后，读取 [`references/group-delivery.md`](references/group-delivery.md)，按其中的 CI evidence 分类与关闭门禁完成提交、主分支推送、远端核验和 issue 关闭；dry-run 时停在明确的首个有副作用动作之前。
-8. **回写运行态并继续**：由根代理在已验证的仓库外状态根追加 verified plan/slice/prompt/checkpoint/terminal/failure/retry事件，更新 DAG、证据键、槽位和恢复指纹，然后回到步骤 1；不得靠记忆补全尚未读取的阶段规则。
+4. **编译 execution route**：只对当前 verified slice 重算 `execution-shape-classification.v1 → stage-capability-requirement.v1 → execution-route-decision.v1`。Profile 必须来自唯一 capability matrix 的机器 fixture evidence；Root、成本、失败次数和 telemetry 都不能选模。
+5. **编译并派发 prompt**：从 verified plan/slice确定性生成 compiled prompt，先验证 prompt digest和route decision binding，再调用对应 writer role。保留的 task template只能呈现 compiler输出，不得由 Root手填、删减验收或修改 prompt。
+6. **收口 slice**：writer必须在阈值前返回机器可验证 checkpoint、合法 continuation或 terminal receipt。非最终 slice只进入`next-slice`；只有完整 plan的有序 terminal receipts全部通过，stage才可进入`candidate-green`。
+7. **分类与独立验证**：按 [`references/review-failure-and-verification.md`](references/review-failure-and-verification.md) 处理 writer failure/breaker/retry 和 verifier blocker。完整 stage candidate 稳定后，按 fresh read-only 条件调用 `test-owner` 的 behavior-verification phase；UI system dispute 先调用 `ui-system-adjudicator`，UX 路径再调用 `ux-acceptance-verifier`。
+8. **立即交付验收组**：一组全部通过后，读取 [`references/group-delivery.md`](references/group-delivery.md)，按其中的 CI evidence 分类与关闭门禁完成提交、主分支推送、远端核验和 issue 关闭；dry-run 时停在明确的首个有副作用动作之前。
+9. **回写运行态并继续**：由根代理在已验证的仓库外状态根追加 verified plan/slice/shape/capability/route/prompt/checkpoint/terminal/failure/retry事件，更新 DAG、证据键、槽位和恢复指纹，然后回到步骤 1；不得靠记忆补全尚未读取的阶段规则。
 
 ## 状态与停止
 

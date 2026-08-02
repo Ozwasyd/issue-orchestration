@@ -77,6 +77,6 @@ Writer 只接收当前 slice 投影，不接收状态根路径、完整 issue �
 
 ## 派发
 
-使用共享 package 中当前 stage 对应的 writer role，传入通过验证的 compiled prompt，并按 [`dag-and-scheduling.md`](dag-and-scheduling.md) 传递 routing compiler 生成的 stage assignment 与非 full-history fork。Dispatch request/receipt 必须绑定 plan、slice、compiled prompt 和 route digests；任何 identity 漂移都必须拒绝。角色文件只负责加载本合同，不拥有模型选择规则；实际 requested/effective profile 必须由 `stage-model-pool.v2` receipt 证明。
+使用共享 package 中当前 stage 对应的 writer role，传入通过验证的 compiled prompt，并按 [`dag-and-scheduling.md`](dag-and-scheduling.md) 先对 verified slice 调用 `execution-route-compiler.mjs`。Dispatch request/receipt 必须绑定 plan、slice、execution shape、capability requirement、capability matrix evidence、route decision、compiled prompt 和非 full-history fork；任何 identity 漂移都必须拒绝。角色文件只负责加载本合同，不拥有模型选择规则。实际 requested/effective model、effort、sandbox、cwd、checkpoint 与 continuation capability 必须由受信 runtime observation 证明；不可观察时 fail closed。
 
 Writer 返回后，Root 先调用机器 gate 校验 checkpoint、terminal receipt、实际 diff/产物和局部 evidence。非最终 slice 的合法结果只能是 `next-slice`；只有 final slice 及此前所有有序 `issue-orchestration.slice-terminal-receipt.v1` 全部有效，stage 才能进入 `candidate-green` 和 independent verification。失败语义、breaker 与 material retry 见 [`review-failure-and-verification.md`](review-failure-and-verification.md)。

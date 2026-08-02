@@ -1,0 +1,134 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:execution-route-decision:v1",
+    "title": "issue-orchestration.execution-route-decision.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "policyVersion",
+        "routingAuthority",
+        "sliceId",
+        "sliceDigest",
+        "stageRole",
+        "stagePhase",
+        "classificationDigest",
+        "capabilityDigest",
+        "matrixEvidenceDigest",
+        "allowedProfiles",
+        "selectedProfile",
+        "selectedProfileReason",
+        "requestedModel",
+        "requestedEffort",
+        "requiredSandbox",
+        "runtimeVerificationStatus",
+        "previousRouteDecisionDigest",
+        "previousFailureReceiptDigest",
+        "retryAuthorizationDigest",
+        "previousCandidateReceiptDigest",
+        "routeDecisionDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.execution-route-decision.v1"
+        },
+        "policyVersion": {
+            "const": "execution-capability-routing.v1"
+        },
+        "routingAuthority": {
+            "const": "deterministic-execution-capability-compiler"
+        },
+        "sliceId": {
+            "type": "string",
+            "minLength": 1
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "stageRole": {
+            "type": "string",
+            "minLength": 1
+        },
+        "stagePhase": {
+            "type": "string",
+            "minLength": 1
+        },
+        "classificationDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "capabilityDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "matrixEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "allowedProfiles": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+        },
+        "selectedProfile": {
+            "type": "string",
+            "minLength": 1
+        },
+        "selectedProfileReason": {
+            "type": "string",
+            "minLength": 1
+        },
+        "requestedModel": {
+            "type": "string",
+            "minLength": 1
+        },
+        "requestedEffort": {
+            "type": "string",
+            "minLength": 1
+        },
+        "requiredSandbox": {
+            "enum": [
+                "read-only",
+                "workspace-write"
+            ]
+        },
+        "runtimeVerificationStatus": {
+            "enum": [
+                "pending-observation",
+                "verified"
+            ]
+        },
+        "previousRouteDecisionDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "previousFailureReceiptDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "retryAuthorizationDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "previousCandidateReceiptDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "routeDecisionDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "nullableDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        }
+    }
+}

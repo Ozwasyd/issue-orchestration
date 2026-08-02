@@ -1,0 +1,86 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:stage-capability-requirement:v1",
+    "title": "issue-orchestration.stage-capability-requirement.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "sliceId",
+        "sliceDigest",
+        "classificationDigest",
+        "minimumPlanningDepth",
+        "minimumToolChainPersistence",
+        "minimumContextRetentionClass",
+        "minimumCheckpointReliability",
+        "runtimeProbeCapability",
+        "crossModuleReasoningClass",
+        "requiredFreshContext",
+        "requiredSandbox",
+        "allowedContinuationMode",
+        "capabilityDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.stage-capability-requirement.v1"
+        },
+        "sliceId": {
+            "type": "string",
+            "minLength": 1
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "classificationDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "minimumPlanningDepth": {
+            "$ref": "#/$defs/level"
+        },
+        "minimumToolChainPersistence": {
+            "$ref": "#/$defs/level"
+        },
+        "minimumContextRetentionClass": {
+            "$ref": "#/$defs/level"
+        },
+        "minimumCheckpointReliability": {
+            "$ref": "#/$defs/level"
+        },
+        "runtimeProbeCapability": {
+            "$ref": "#/$defs/level"
+        },
+        "crossModuleReasoningClass": {
+            "$ref": "#/$defs/level"
+        },
+        "requiredFreshContext": {
+            "type": "boolean"
+        },
+        "requiredSandbox": {
+            "enum": [
+                "read-only",
+                "workspace-write"
+            ]
+        },
+        "allowedContinuationMode": {
+            "enum": [
+                "none",
+                "checkpoint-resume",
+                "durable-continuation"
+            ]
+        },
+        "capabilityDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+        }
+    }
+}

@@ -1,0 +1,60 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:profile-capability-matrix:v1",
+    "title": "issue-orchestration.profile-capability-matrix.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "policyVersion",
+        "evidenceAuthority",
+        "evidenceFixture",
+        "evidenceDigest",
+        "modelSelfReportAccepted",
+        "profiles"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.profile-capability-matrix.v1"
+        },
+        "policyVersion": {
+            "const": "execution-capability-routing.v1"
+        },
+        "evidenceAuthority": {
+            "const": "recomputed-machine-runtime-observations"
+        },
+        "evidenceFixture": {
+            "const": "profile-capability-observations.json"
+        },
+        "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "modelSelfReportAccepted": {
+            "const": false
+        },
+        "profiles": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "planningDepth",
+                    "toolChainPersistence",
+                    "contextRetentionClass",
+                    "checkpointReliability",
+                    "runtimeProbeCapability",
+                    "crossModuleReasoningClass",
+                    "supportedSandboxes",
+                    "allowedContinuationModes",
+                    "evidenceDigest"
+                ]
+            }
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

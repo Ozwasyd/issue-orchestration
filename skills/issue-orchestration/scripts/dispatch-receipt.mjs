@@ -9,8 +9,13 @@ import {
     STAGE_MODEL_POOL_POLICY,
     STAGE_ROUTE_DEFINITIONS,
     compileStageRoute,
+    compileStageRoutingIdentity,
     splitProfile
 } from './stage-profile-policy.mjs'
+import {
+    EXECUTION_ROUTING_POLICY_DIGEST,
+    compileExecutionRoute
+} from './execution-route-compiler.mjs'
 import {
     compileExecutableSlice,
     validateCompiledDispatchPrompt
@@ -28,6 +33,12 @@ const V2_REQUEST_FIELDS = [
     'routingAuthority', 'routingInputDigest', 'selectedProfileReason',
     'selectedProfileId', 'routingClassification', 'routeTransitionFrom',
     'routeTransitionReason', 'requestedByRole', 'requestId', 'runId', 'nodeId',
+    'executionRoutingPolicyDigest', 'executionMetrics',
+    'machineClassificationEvidence', 'machinePartitionEvidence',
+    'machineFrontierEvidence', 'executionShapeClassification',
+    'stageCapabilityRequirement', 'executionRouteDecision',
+    'executionShapeClassificationDigest',
+    'stageCapabilityRequirementDigest', 'executionRouteDecisionDigest',
     'attemptId', 'promptDigest', 'sourceDagDigest', 'frontierDigest',
     'issueSnapshotFingerprint', 'repositoryFingerprint', 'scopeIdentityDigest',
     'dependencyIdentityDigest', 'repository', 'baseSha', 'epochId',
@@ -61,8 +72,8 @@ class ReceiptError extends Error {
     }
 }
 
-function fail(code) {
-    throw new ReceiptError(code)
+function fail(code, message = code) {
+    throw new ReceiptError(code, message)
 }
 
 function canonical(value) {
@@ -75,6 +86,11 @@ function digest(value) {
     return createHash('sha256')
         .update(typeof value === 'string' ? value : JSON.stringify(canonical(value)))
         .digest('hex')
+}
+
+function sameValues(left, right) {
+    return JSON.stringify(canonical(left)) ===
+        JSON.stringify(canonical(right))
 }
 
 function orderedCanonical(value) {
@@ -99,9 +115,16 @@ function unsignedDigest(value, digestField) {
 function containsSecret(value) {
     if (Array.isArray(value)) return value.some(containsSecret)
     if (!value || typeof value !== 'object') return false
-    return Object.entries(value).some(([key, child]) =>
-        /(?:secret|token|password|credential|api[-_]?key|authorization)/iu.test(key) ||
-        containsSecret(child))
+    return Object.entries(value).some(([key, child]) => {
+        const sensitive =
+            /(?:secret|token|password|credential|api[-_]?key|authorization)/iu
+                .test(key)
+        const sealedAuthorityReference =
+            /(?:authorization|authority).*digest/iu.test(key) &&
+            (child === null || HASH.test(child ?? ''))
+        return sensitive && !sealedAuthorityReference ||
+            containsSecret(child)
+    })
 }
 
 function unique(values) {
@@ -185,24 +208,85 @@ function expectedRoutingPolicyDigest() {
 
 function expectedV2Route(input) {
     try {
-        return compileStageRoute({
+        const routeInput = {
             ...input.routingClassification,
             stageRole: input.stageRole,
             stagePhase: input.stagePhase,
             requiredSkillDigests: input.requiredSkillDigests
+        }
+        const key = `${input.stageRole}:${input.stagePhase}`
+        if (!WRITER_STAGE_KEYS.has(key)) {
+            return compileStageRoute(routeInput)
+        }
+        const baseRoute = compileStageRoutingIdentity(routeInput)
+        const bundle = compileExecutionRoute({
+            stageWorkPlan: input.stageWorkPlan,
+            executableSlice: input.executableSlice,
+            routingClassification: input.routingClassification,
+            executionMetrics: input.executionMetrics,
+            machineClassificationEvidence:
+                input.machineClassificationEvidence,
+            machinePartitionEvidence: input.machinePartitionEvidence ??
+                undefined,
+            machineFrontierEvidence: input.machineFrontierEvidence ??
+                undefined,
+            frontierException: input.frontierException === true
         })
+        const shape = bundle.executionShapeClassification
+        const requirement = bundle.stageCapabilityRequirement
+        const decision = bundle.executionRouteDecision
+        if (!sameValues(input.executionShapeClassification, shape) ||
+            !sameValues(input.stageCapabilityRequirement, requirement) ||
+            !sameValues(input.executionRouteDecision, decision) ||
+            input.executionShapeClassificationDigest !==
+                shape.classificationDigest ||
+            input.stageCapabilityRequirementDigest !==
+                requirement.capabilityDigest ||
+            input.executionRouteDecisionDigest !==
+                decision.routeDecisionDigest) {
+            fail('dispatch-execution-route-binding')
+        }
+        return {
+            ...baseRoute,
+            allowedProfiles: decision.allowedProfiles,
+            routingAuthority: decision.routingAuthority,
+            selectedProfile: decision.selectedProfile,
+            selectedProfileReason: decision.selectedProfileReason,
+            executionRouteDecisionDigest:
+                decision.routeDecisionDigest
+        }
     } catch (error) {
+        if (error?.code === 'dispatch-execution-route-binding') {
+            throw error
+        }
         if (error?.code === 'routing-ui-adjudication-required') {
             fail('dispatch-ui-adjudication-required')
         }
-        fail('dispatch-routing-selection-mismatch')
+        if (error?.code ===
+                'execution-route-ui-reslice-or-adjudicate' &&
+            input.routingClassification?.uiDecisionClass ===
+                'system-design-dispute') {
+            fail('dispatch-ui-adjudication-required')
+        }
+        if (typeof error?.code === 'string' &&
+            error.code.startsWith('execution-route-')) {
+            fail(error.code)
+        }
+        fail(
+            'dispatch-routing-selection-mismatch',
+            `dispatch-routing-selection-mismatch:${error?.code ?? error?.message ?? 'unknown'}`
+        )
     }
 }
 
 function assertV2Hashes(input) {
     for (const field of [
         'routingPolicyDigest', 'stagePermissionsPolicyDigest',
+        'executionRoutingPolicyDigest',
         'allowedProfilesDigest', 'routingInputDigest',
+        'executionShapeClassificationDigest',
+        'stageCapabilityRequirementDigest',
+        'executionRouteDecisionDigest',
         'promptDigest', 'sourceDagDigest', 'frontierDigest',
         'issueSnapshotFingerprint', 'repositoryFingerprint',
         'scopeIdentityDigest', 'dependencyIdentityDigest', 'candidateDigest',
@@ -430,6 +514,10 @@ function validateV2DispatchRequest(input) {
     if (input.routingPolicyDigest !== expectedRoutingPolicyDigest()) {
         fail('dispatch-routing-policy-replay')
     }
+    if (input.executionRoutingPolicyDigest !==
+        EXECUTION_ROUTING_POLICY_DIGEST) {
+        fail('dispatch-execution-routing-policy-replay')
+    }
     if (input.stagePermissionsPolicyDigest !==
         STAGE_PERMISSIONS_POLICY_DIGEST) {
         fail('dispatch-stage-permissions-policy-replay')
@@ -458,6 +546,8 @@ function validateV2DispatchRequest(input) {
         input.defaultProfileId === route.defaultProfile &&
         input.routingAuthority === route.routingAuthority &&
         input.routingInputDigest === route.routingInputDigest &&
+        input.executionRouteDecisionDigest ===
+            route.executionRouteDecisionDigest &&
         input.requestedModel === selected.model &&
         input.requestedEffort === selected.effort &&
         input.requestedSandbox === route.sandbox &&
@@ -518,6 +608,8 @@ function observeRuntimeV2(request, rolloutRecords, machineObservations) {
         effectiveWorkingDirectory: context.cwd,
         effectiveProfileId: capability?.effectiveProfileId,
         routingInputDigest: dispatch?.routingInputDigest,
+        executionRouteDecisionDigest:
+            dispatch?.executionRouteDecisionDigest,
         stagePermissionsPolicyDigest:
             dispatch?.stagePermissionsPolicyDigest,
         planDigest: dispatch?.planDigest,
@@ -610,6 +702,9 @@ function compareRuntimeV2(request, observed, priorReceipts) {
             'runtime-stage-permissions-policy-digest-mismatch'],
         [observed.dispatch?.routingInputDigest, request.routingInputDigest,
             'runtime-routing-input-digest-mismatch'],
+        [observed.dispatch?.executionRouteDecisionDigest,
+            request.executionRouteDecisionDigest,
+            'runtime-execution-route-decision-mismatch'],
         [observed.dispatch?.testContractDigest, request.testContractDigest,
             'runtime-test-contract-digest-mismatch'],
         [observed.dispatch?.epochId, request.epochId, 'runtime-epoch-id-mismatch'],
@@ -757,6 +852,14 @@ function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
         stagePermissionsPolicyDigest:
             request.stagePermissionsPolicyDigest,
         routingInputDigest: request.routingInputDigest,
+        executionRoutingPolicyDigest:
+            request.executionRoutingPolicyDigest,
+        executionShapeClassificationDigest:
+            request.executionShapeClassificationDigest,
+        stageCapabilityRequirementDigest:
+            request.stageCapabilityRequirementDigest,
+        executionRouteDecisionDigest:
+            request.executionRouteDecisionDigest,
         selectedProfileId: request.selectedProfileId,
         selectedProfileReason: request.selectedProfileReason,
         baseSha: request.baseSha,
