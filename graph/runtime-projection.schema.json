@@ -1,17 +1,204 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fsusblog.local/issue-orchestration/runtime-projection.schema.json",
-  "title": "Issue orchestration runtime projection",
-  "type": "object",
-  "required": ["schema", "projectorVersion", "projectorDigest", "semanticGraphDigest", "runtimeProjectionDigest"],
-  "properties": {
-    "schema": {"const": "issue-orchestration.runtime-projection.v1"},
-    "projectorVersion": {"const": "issue-orchestration.runtime-projector.v1"},
-    "projectorDigest": {"$ref": "#/$defs/digest"},
-    "semanticGraphDigest": {"$ref": "#/$defs/digest"},
-    "runtimeProjectionDigest": {"$ref": "#/$defs/digest"}
-  },
-  "$defs": {
-    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
-  }
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://fsusblog.local/issue-orchestration/runtime-projection.schema.json",
+    "title": "Issue orchestration runtime projection",
+    "type": "object",
+    "required": [
+        "schema",
+        "projectorVersion",
+        "projectorDigest",
+        "semanticGraphDigest",
+        "writerStages",
+        "runtimeProjectionDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.runtime-projection.v1"
+        },
+        "projectorVersion": {
+            "const": "issue-orchestration.runtime-projector.v1"
+        },
+        "projectorDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "semanticGraphDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "writerStages": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/writerStage"
+            }
+        },
+        "runtimeProjectionDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "nullableDigest": {
+            "anyOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "writerStage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "runId",
+                "repository",
+                "issue",
+                "node",
+                "baseSha",
+                "epochId",
+                "worktreeIdentity",
+                "stageAttemptId",
+                "stageRole",
+                "stagePhase",
+                "completedSliceReceiptDigests",
+                "planDigest",
+                "sliceId",
+                "sliceDigest",
+                "compiledPromptDigest",
+                "checkpointDigest",
+                "continuationReceiptDigest",
+                "terminalReceiptDigest",
+                "failureReceiptDigest",
+                "semanticFailureDigest",
+                "retryAuthorizationDigest",
+                "expectedNextSliceId",
+                "expectedNextSliceDigest",
+                "breakerOpen",
+                "status"
+            ],
+            "properties": {
+                "runId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "repository": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "issue": {
+                    "anyOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "type": "string",
+                            "minLength": 1
+                        }
+                    ]
+                },
+                "node": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "baseSha": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{40}$"
+                },
+                "epochId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "worktreeIdentity": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "stageAttemptId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "stageRole": {
+                    "enum": [
+                        "test-owner",
+                        "code-implementer",
+                        "ui-ux-implementer",
+                        "documentation-writer"
+                    ]
+                },
+                "stagePhase": {
+                    "enum": [
+                        "test-contract",
+                        "implementation",
+                        "ui-implementation",
+                        "documentation",
+                        "landing-conflict-resolution"
+                    ]
+                },
+                "completedSliceReceiptDigests": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "uniqueItems": true
+                },
+                "planDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sliceId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "sliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "compiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "checkpointDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "continuationReceiptDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "terminalReceiptDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "failureReceiptDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "semanticFailureDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "retryAuthorizationDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "expectedNextSliceId": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "minLength": 1
+                },
+                "expectedNextSliceDigest": {
+                    "$ref": "#/$defs/nullableDigest"
+                },
+                "breakerOpen": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "enum": [
+                        "active",
+                        "checkpointed",
+                        "continuing",
+                        "terminal-failure",
+                        "retry-authorized",
+                        "next-slice",
+                        "completed"
+                    ]
+                }
+            }
+        }
+    }
 }

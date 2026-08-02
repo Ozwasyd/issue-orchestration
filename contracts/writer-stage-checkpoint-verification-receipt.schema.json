@@ -1,0 +1,243 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:writer-stage-checkpoint-verification-receipt:v1",
+    "title": "issue-orchestration.writer-stage-checkpoint-verification-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "verificationStatus",
+        "runId",
+        "node",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "checkpointDigest",
+        "checkpointOrdinal",
+        "previousCheckpointDigest",
+        "previousCheckpointVerificationReceiptDigest",
+        "previousMachineTracePrefixDigest",
+        "previousMachineTracePrefixByteLength",
+        "planDigest",
+        "sliceId",
+        "sliceDigest",
+        "compiledPromptDigest",
+        "routeDigest",
+        "stageAttemptId",
+        "activeWriteLeaseId",
+        "resourceRegistrySnapshotDigest",
+        "resourceLeaseReceiptDigest",
+        "typedEvidenceReceiptDigests",
+        "machineTraceSnapshotDigest",
+        "machineTracePrefixDigest",
+        "machineTracePrefixByteLength",
+        "runtimeProgressObservationDigest",
+        "operationsDigest",
+        "acceptedPriorChangedPathsDigest",
+        "completedSlicePrefixDigest",
+        "verifiedAt",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.writer-stage-checkpoint-verification-receipt.v1"
+        },
+        "verificationStatus": {
+            "const": "verified"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "checkpointDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointOrdinal": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "previousCheckpointDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousCheckpointVerificationReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousMachineTracePrefixDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousMachineTracePrefixByteLength": {
+            "oneOf": [
+                {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "planDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "compiledPromptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "routeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "stageAttemptId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "activeWriteLeaseId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "resourceRegistrySnapshotDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "resourceLeaseReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "typedEvidenceReceiptDigests": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/digest"
+            },
+            "uniqueItems": true
+        },
+        "machineTraceSnapshotDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "machineTracePrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "machineTracePrefixByteLength": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "runtimeProgressObservationDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "operationsDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "acceptedPriorChangedPathsDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "completedSlicePrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "verifiedAt": {
+            "$ref": "#/$defs/dateTime"
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/$defs/checkpointForkBinding"
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "dateTime": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "checkpointForkBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "const": 1
+                        },
+                        "previousCheckpointDigest": {
+                            "type": "null"
+                        },
+                        "previousCheckpointVerificationReceiptDigest": {
+                            "type": "null"
+                        },
+                        "previousMachineTracePrefixDigest": {
+                            "type": "null"
+                        },
+                        "previousMachineTracePrefixByteLength": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "type": "integer",
+                            "minimum": 2
+                        },
+                        "previousCheckpointDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousCheckpointVerificationReceiptDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousMachineTracePrefixDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousMachineTracePrefixByteLength": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

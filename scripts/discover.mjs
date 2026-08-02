@@ -32,9 +32,16 @@ function discover() {
         agentIds: Object.keys(manifest.agentDigests).sort(),
         modelPoolDigest: manifest.modelPoolDigest,
         routingPolicyDigest: manifest.routingPolicyDigest,
+        stagePermissionDigest: manifest.stagePermissionDigest,
         remoteMutationPolicyDigest: manifest.remoteMutationPolicyDigest,
         graphSchemaDigest: manifest.graphSchemaDigest,
         patchSchemaDigest: manifest.patchSchemaDigest,
+        runtimeProjectionSchemaDigest:
+            manifest.runtimeProjectionSchemaDigest,
+        writerStageContractDigests:
+            manifest.writerStageContractDigests,
+        writerStageRuntimeDigests:
+            manifest.writerStageRuntimeDigests,
         projectorDigest: manifest.projectorDigest
     })
 }

@@ -4,10 +4,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import {
+    collectArtifactDigests,
     digest,
-    fileDigest,
+    resolveSourceCommit,
     unsignedDigest,
-    walkFiles
+    WRITER_STAGE_CONTRACT_FILES,
+    WRITER_STAGE_RUNTIME_FILES
 } from './package-lib.mjs'
 
 const packageRoot = path.resolve(import.meta.dirname, '..')
@@ -21,18 +23,16 @@ const agentIds = [
     'ui-ux-implementer',
     'ux-acceptance-verifier'
 ]
-const artifactDigests = Object.fromEntries(walkFiles(packageRoot)
-    .filter((file) => file !== manifestPath)
-    .map((file) => [
-        path.relative(packageRoot, file),
-        fileDigest(file)
-    ]).sort(([left], [right]) => left.localeCompare(right)))
+const artifactDigests = collectArtifactDigests(packageRoot)
+const selectArtifactDigests = (files) => Object.fromEntries(
+    files.map((relative) => [relative, artifactDigests[relative]])
+)
 
 const manifest = {
     schema: 'issue-orchestration.shared-package-manifest.v1',
     packageIdentity: 'issue-orchestration',
     packageVersion: '1.0.0',
-    sourceCommit: 'd98bed01a76fcca5dc1657e63886b8da48ce346d',
+    sourceCommit: resolveSourceCommit(packageRoot),
     sourceTreeDigest: digest(artifactDigests),
     skillIdentity: 'issue-orchestration',
     skillDigest: artifactDigests['skills/issue-orchestration/SKILL.md'],
@@ -56,6 +56,10 @@ const manifest = {
     projectorDigest: artifactDigests[
         'skills/issue-orchestration/scripts/semantic-runtime-projection.mjs'
     ],
+    writerStageContractDigests:
+        selectArtifactDigests(WRITER_STAGE_CONTRACT_FILES),
+    writerStageRuntimeDigests:
+        selectArtifactDigests(WRITER_STAGE_RUNTIME_FILES),
     supportedRepositories: [
         'Ozwasyd/FsusBlog',
         'Ozwasyd/FsusUI'
@@ -76,6 +80,10 @@ const manifest = {
         {
             source: 'agents',
             target: '.codex/agents'
+        },
+        {
+            source: 'contracts',
+            target: '.agents/contracts'
         },
         {
             source: 'policy',
@@ -111,4 +119,4 @@ const manifest = {
     artifactDigests
 }
 manifest.manifestDigest = unsignedDigest(manifest, 'manifestDigest')
-fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`)

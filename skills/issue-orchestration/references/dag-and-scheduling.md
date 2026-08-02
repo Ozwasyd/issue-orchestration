@@ -96,7 +96,8 @@ DAG 至少记录：
 
 - run id、刷新时间、固定请求的 15 个 subagent 槽位、实际可用槽位及能力证据；
 - 两仓绝对路径、默认分支、HEAD、dirty state 与远端身份；
-- 每个节点的 issue URL/编号、当前标题、依赖、责任仓、验收组、状态、routing classification、实现者、独立 verifier、开始时间；
+- 每个节点的 issue URL/编号、当前标题、依赖、责任仓、验收组、状态、routing classification、writer、独立 verifier、开始时间；
+- 当前 writer stage 的 verified plan digest、有序 slice identities、compiled prompt/checkpoint/continuation/terminal receipt digests，以及 failure/breaker/retry authorization identity；
 - 状态根内运行态相对路径、已执行命令的 evidence key、产物 fingerprint、合法重跑原因；
 - terminal 类别、直接证据、恢复条件及恢复指纹。
 
@@ -117,18 +118,19 @@ DAG 至少记录：
 - 当前启动的状态根与 DAG 门禁已经输出 `dispatchEnabled=true`；
 - 所有前置依赖已交付，或已有直接证据证明与本节点独立；
 - 责任仓、base SHA、修改边界、验收组和难度已确定；
+- 当前 writer stage 已有覆盖全部 acceptance/required commands 的 verified work plan，且下一 executable slice 的前置 terminal receipts 完整；
 - 不处于未变化的 terminal 状态；
-- 没有同一修改正在被另一名实现者处理。
+- 没有同一 slice 正在被另一名 writer 处理。
 
 ## 工作守恒
 
-存在 `ready` 节点且有空闲槽位时，下一次调度动作必须派发；不得以等待、轮询或汇总代替派发。只在没有可执行节点、没有空闲槽位或需要完成一次不可并行的根代理交付动作时等待。
+存在 `ready` writer stage、已验证的下一 executable slice 且有空闲槽位时，下一次调度动作必须派发该 slice；不得以等待、轮询或汇总代替派发。完整 issue、完整 stage 或手写 prompt 不是 dispatch unit。只在没有可执行 slice、没有空闲槽位或需要完成一次不可并行的根代理交付动作时等待。
 
 预计超过 5 分钟的 build、Fresh、consumer、visual 或性能任务启动后，立即返回调度循环，为其他独立 `ready` 节点分配空闲槽位。长任务只占自己的槽位；不得让根线程只轮询它。
 
 Skill 的调度预算固定为 15 个 subagent 槽位，根调度线程不占用该预算。DAG 必须记录 `subagentSlotsConfigured=15`、实际运行时可提供的 subagent capacity 证据，以及 `subagentSlotsEffective`。
 
-`subagentSlotsEffective` 取 15、运行时实际 subagent capacity 和环境资源上限三者的最小值；调用者可为单次运行显式降低，但不得提高到 15 以上。每个 implementer、independent verifier/adjudicator 或仍运行的长任务各占一个 subagent 槽位。槽位满时才等待最早能改变 DAG 的事件。
+`subagentSlotsEffective` 取 15、运行时实际 subagent capacity 和环境资源上限三者的最小值；调用者可为单次运行显式降低，但不得提高到 15 以上。每个 active slice writer、independent verifier/adjudicator 或仍运行的长任务各占一个 subagent 槽位。槽位满时才等待最早能改变 DAG 的事件。
 
 ## 根调度模型
 
@@ -139,6 +141,8 @@ Skill 的调度预算固定为 15 个 subagent 槽位，根调度线程不占用
 唯一 authority 是 `issue-orchestration.stage-model-pool-policy.v2`。DAG semantic proposal 使用 `[terra-max, sol-xhigh, sol-max]`（默认 Terra/max，Sol/max 仅 frontier exception）；test-owner 的 test-contract 与 behavior-verification 使用 `[sol-high, terra-max, sol-xhigh]`，按 verification/lifecycle risk 确定性选择；code implementer 按 bounded/complex/high-risk/frontier 选择 `luna-max`/`sol-high`/`terra-max`/`sol-xhigh`；UI implementer 只能使用 `sol-low`/`sol-medium`，system-design-dispute 必须先交 fresh read-only `ui-system-adjudicator`；UX acceptance 使用 `sol-medium`/`sol-high`/`sol-xhigh`；documentation writer 仅 `luna-high`/`luna-max`。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是机器 resource verifier，异常可由诊断 profile 解释但不能签发 resources-clean。
 
 `reworkCount`、失败次数、余额、telemetry、当前 root profile 和人工偏好不是 routing input。只有冻结 policy 允许的结构化 blocker receipt 才能生成 route-reclassification；不可用 profile 返回 `runtime-capability-missing`，不得静默切换。Acceptance-group continuity 每个 member 独立分类、routing、lease 和 verifier context，不能继承上一 member 的 profile 或权限。每次派发使用非 full-history fork，并从实际 child rollout 或等价机器 metadata 核验 effective profile、role、sandbox、cwd、Skill 和 lease；无法核验即停止派发并记录 capability 缺口。
+
+共享 package 永久只拥有七个 agent role：`code-implementer`、`dag-creator-updater`、`documentation-writer`、`test-owner`、`ui-system-adjudicator`、`ui-ux-implementer` 和 `ux-acceptance-verifier`。Landing conflict resolution 复用 `code-implementer` 或 `ui-ux-implementer`，不创建 `landing-owner`。某个修复批次对 Sol Ultra 的直接实现授权是该批次的 delivery authority，不是永久 runtime profile、fallback 或 routing input；临时 bootstrap run 也只能保留作历史审计、冻结测试恢复和退役 evidence，不能成为 dispatcher 或兼容权威。
 
 ## Terminal
 
@@ -167,7 +171,7 @@ Skill 的调度预算固定为 15 个 subagent 槽位，根调度线程不占用
 - 经远端核验的 issue closure；
 - 有直接证据的 terminal blocker；
 
-则立即重裁 DAG，取消或释放无效工作，缩小过大的节点，重新计算依赖与验收组，并按资源调整并行度。不得增加评审层、重复原验收或保留没有进展路径的槽位占用。
+则立即重裁 DAG，取消或释放无效工作，把过大的 writer stage 重新编译为更小的 material-revised slices，重新计算依赖与验收组，并按资源调整并行度。存在合法 checkpoint 时必须从 continuation cursor 恢复，不能从 issue 正文重启调查、重做已 terminal 的 slice 或重建未漂移的 attempt。不得增加评审层、重复原验收或保留没有进展路径的槽位占用。
 
 ## 全局完成
 

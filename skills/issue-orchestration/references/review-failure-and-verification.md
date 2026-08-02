@@ -6,16 +6,16 @@
 
 ## 角色与只读边界
 
-每项修改最多一名实现者和一名独立 behavior verifier。不得为同一修改并行派发第二名实现者或增加评审层。
+每个 executable slice 同时最多一名 writer；完整 stage 达到 `candidate-green` 后最多一名独立 behavior verifier。不得为同一 slice 并行派发第二名 writer 或增加评审层。
 
-`test_owner` 的 `behavior-verification` phase 只审查指定 issue、已填充的闭环 prompt、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v2` 的 fresh read-only route，只报告会阻止当前验收组交付的 blocker；每条必须包含：
+`test-owner` 的 `behavior-verification` phase 只审查指定 issue、verified work plan、全部有序 slice terminal receipts、compiled prompt digests、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v2` 的 fresh read-only route，只报告会阻止当前验收组交付的 blocker；每条必须包含：
 
 - 准确路径或产物；
 - 可复核的事实依据；
 - 被违反的验收条件；
 - 最小必要修正。
 
-没有 blocker 时明确返回 `no delivery blocker`。不得修改代码、扩大范围、启动额外 agent、重复完整验收或提出纯偏好型风格意见。UI 的 `system-design-dispute` 由独立 `ui_system_adjudicator` 只读裁决；不得让 behavior verifier 或 implementer 代替该 authority。
+没有 blocker 时明确返回 `no delivery blocker`。不得修改代码、扩大范围、启动额外 agent、重复完整验收或提出纯偏好型风格意见。UI 的 `system-design-dispute` 由独立 `ui-system-adjudicator` 只读裁决；不得让 behavior verifier 或 implementer 代替该 authority。
 
 当前 Codex 会把父 turn 的实时 sandbox 重新应用到 child，因此 custom-agent 文件中的 `sandbox_mode = "read-only"` 只是默认值，不能单独证明只读。调用 behavior verifier、UX verifier 或 UI adjudicator 前必须把父 turn 设为 read-only，使用非 full-history fork，并在 child rollout 或等价元数据中核验实际 `sandbox_policy` 为 `read-only`。若当前 surface 不能建立并核验该边界，不运行 verifier/adjudicator，也不声称已独立只读验收。
 
@@ -25,7 +25,36 @@
 
 只有修复重新触及安全、公开契约或架构边界时，才允许再次全量 verification，并记录触发事实。普通修复不得增加第二 verifier 或重复整套验收。
 
-每次确认实现缺陷或 verifier blocker 并回派原实现者时，根代理递增 DAG 节点的 `reworkCount`。该计数不属于 routing input，也不得自动升档；只有冻结 policy 允许的结构化 blocker receipt 才能生成 route-reclassification。其他失败类别不得伪装成返工，也不得触发或重置该计数。
+每次独立 verifier 确认实现缺陷或 blocker 并回派原 writer 时，根代理递增 DAG 节点的 `reworkCount`。该计数不属于 routing input，也不得自动升档；只有冻结 policy 允许的结构化 blocker receipt 才能生成 route-reclassification。Writer 自身的 invocation、environment、runtime capability、first action、output、checkpoint、receipt 或 retry failure 都不是 verifier 返工，不得触发或重置该计数。
+
+## Slice terminal gate
+
+Writer 返回的自然语言说明不能改变 stage。Root 必须先校验 `issue-orchestration.stage-progress-checkpoint.v1` 和 `issue-orchestration.slice-terminal-receipt.v1`，再调用 `evaluateSliceTerminalGate` 对照 verified plan 重算：
+
+- receipt 必须绑定同一 run/repository/issue/node/base/epoch/worktree、plan/slice、compiled prompt、route、complete checkpoint、changed paths 和 command evidence；
+- receipts 必须按 `orderedSlices` 无遗漏、无重复、无乱序出现；
+- 非最终 slice 的唯一成功转换是 `writer-stage.slice-completed → next-slice`，且 `candidateEligible=false`、`stageComplete=false`；
+- 只有 final slice 与此前全部 terminal receipts 同时有效，才产生 `writer-stage.completed → candidate-green`。
+
+Partial checkpoint、continuation receipt、单个 diff、命令成功或 agent 自述都不能绕过该 gate。Continuation 必须从已封存 cursor 的 `nextRequiredAction` 继续；不能重读完整 issue、重启调查或用新 attempt 冒充进度恢复。
+
+## Stage-generic failure、breaker 与 material retry
+
+`evaluateWriterStageObservation` 对 `test-contract`、`implementation`、`ui-implementation`、`documentation` 和 `landing-conflict-resolution` 使用同一失败状态机。Writer observation 必须绑定 plan/slice/compiled prompt/route identity；机器按事实产生以下 stage-generic terminal event：
+
+- `writer-stage.invocation-failed`
+- `writer-stage.environment-failed`
+- `writer-stage.runtime-capability-missing`
+- `writer-stage.first-action-not-executed`
+- `writer-stage.output-missing`
+- `writer-stage.checkpoint-missing`
+- `writer-stage.receipt-rejected`
+
+任何必需输出缺失，尤其“agent 已返回但没有产物”的 output-missing，都必须签发 `issue-orchestration.writer-stage-failure-receipt.v1`、进入 terminal 并打开 breaker。它既不计 implementation rework，也不触发 human decision；Root 不得把它改写成 verifier blocker、`reworkCount`、人工接管或直接重试。
+
+Breaker 的语义 identity 绑定 repository/issue/node/base/epoch、plan/slice/route、stage role/phase、event type 与 evidence，而不依赖可替换的 shell identity。改变 attempt id、agent id、prompt 措辞、worktree、slice id、等待时间或重复同一命令都不能清除 breaker。
+
+只有 `authorizeWriterStageRetry` 验证 `issue-orchestration.writer-stage-retry-authorization.v1` 后才能重派。授权必须引用 prior failure receipt 和 `semanticFailureDigest`，并包含 `slice-revision`、`compiled-prompt-revision`、`runtime-revision` 或 `capability-revision` 中至少一种实质修订：previous/current digest 必须不同，`changedRequirementIds` 非空且有可重算的 revision evidence digest。只改措辞或 identity 不是 material change；未变化失败保持 breaker open。
 
 ## 先分类再修改
 

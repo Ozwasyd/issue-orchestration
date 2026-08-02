@@ -1,0 +1,318 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:slice-terminal-receipt:v1",
+    "title": "issue-orchestration.slice-terminal-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "runId",
+        "repository",
+        "issue",
+        "node",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "sliceId",
+        "sliceDigest",
+        "planDigest",
+        "compiledPromptDigest",
+        "routeDigest",
+        "stageRole",
+        "stagePhase",
+        "checkpointDigest",
+        "checkpointVerificationReceiptDigest",
+        "sliceOrdinal",
+        "planSliceCount",
+        "priorTerminalReceiptDigests",
+        "completedSlicePrefixDigest",
+        "acceptedPriorChangedPathsDigest",
+        "terminalChainDigest",
+        "outcome",
+        "stageComplete",
+        "candidateEligible",
+        "evidenceDigest",
+        "changedPaths",
+        "commandEvidenceDigests",
+        "nextSliceId",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.slice-terminal-receipt.v1"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "repository": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "issue": {
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            ]
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "planDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "compiledPromptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "routeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "stageRole": {
+            "$ref": "#/$defs/writerRole"
+        },
+        "stagePhase": {
+            "$ref": "#/$defs/writerPhase"
+        },
+        "checkpointDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointVerificationReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "sliceOrdinal": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+        },
+        "planSliceCount": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 16
+        },
+        "priorTerminalReceiptDigests": {
+            "type": "array",
+            "maxItems": 15,
+            "items": {
+                "$ref": "#/$defs/digest"
+            },
+            "uniqueItems": true
+        },
+        "completedSlicePrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "acceptedPriorChangedPathsDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "terminalChainDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "outcome": {
+            "const": "completed"
+        },
+        "stageComplete": {
+            "type": "boolean"
+        },
+        "candidateEligible": {
+            "type": "boolean"
+        },
+        "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "changedPaths": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "commandEvidenceDigests": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/digest"
+            },
+            "uniqueItems": true
+        },
+        "nextSliceId": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/$defs/writerBinding"
+        },
+        {
+            "oneOf": [
+                {
+                    "properties": {
+                        "sliceOrdinal": {
+                            "const": 1
+                        },
+                        "priorTerminalReceiptDigests": {
+                            "type": "array",
+                            "maxItems": 0
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "sliceOrdinal": {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 16
+                        },
+                        "priorTerminalReceiptDigests": {
+                            "type": "array",
+                            "minItems": 1
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageComplete": {
+                            "const": true
+                        },
+                        "candidateEligible": {
+                            "const": true
+                        },
+                        "nextSliceId": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageComplete": {
+                            "const": false
+                        },
+                        "candidateEligible": {
+                            "const": false
+                        },
+                        "nextSliceId": {
+                            "$ref": "#/$defs/nonEmpty"
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "writerRole": {
+            "enum": [
+                "test-owner",
+                "code-implementer",
+                "ui-ux-implementer",
+                "documentation-writer"
+            ]
+        },
+        "writerPhase": {
+            "enum": [
+                "test-contract",
+                "implementation",
+                "ui-implementation",
+                "documentation",
+                "landing-conflict-resolution"
+            ]
+        },
+        "writerBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "test-owner"
+                        },
+                        "stagePhase": {
+                            "const": "test-contract"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "code-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "ui-ux-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "ui-implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "documentation-writer"
+                        },
+                        "stagePhase": {
+                            "const": "documentation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "enum": [
+                                "code-implementer",
+                                "ui-ux-implementer"
+                            ]
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

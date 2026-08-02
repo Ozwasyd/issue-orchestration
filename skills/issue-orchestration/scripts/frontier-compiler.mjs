@@ -1,5 +1,9 @@
 import { createHash } from 'node:crypto'
 // Shared issue-orchestration package runtime.
+import {
+    compileExecutableSlice,
+    validateCompiledDispatchPrompt
+} from './executable-slice-compiler.mjs'
 
 const REASON_ORDER = [
     'dependency-unsatisfied',
@@ -9,6 +13,7 @@ const REASON_ORDER = [
     'scope-drift',
     'active-attempt',
     'terminal-unchanged',
+    'executable-slice-missing',
     'runtime-capability-missing',
     'delivery-frozen',
     'exclusive-lease-held',
@@ -24,6 +29,12 @@ const STAGES = [
     ['delivery', 'delivery-ready'],
     ['cleanup', 'cleanup-ready']
 ]
+const WRITER_READY_STAGES = new Set([
+    'test-contract-ready',
+    'implementation-ready',
+    'documentation-ready',
+    'landing-conflict-resolution-ready'
+])
 
 class FrontierError extends Error {
     constructor(code, message) {
@@ -57,13 +68,40 @@ function digest(value) {
         .digest('hex')
 }
 
+function orderedCanonical(value) {
+    if (Array.isArray(value)) return value.map(orderedCanonical)
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(
+        Object.keys(value).sort()
+            .map((key) => [key, orderedCanonical(value[key])])
+    )
+}
+
+function orderedDigest(value) {
+    return createHash('sha256')
+        .update(JSON.stringify(orderedCanonical(value)))
+        .digest('hex')
+}
+
 function evidence(identity, value) {
     return value === undefined
         ? { identity }
         : { identity, digest: digest(value) }
 }
 
-function stageFor(node, state) {
+function landingConflictFor(runtimeState, issueId) {
+    const records = runtimeState.landingConflictResolutions
+    if (!records || typeof records !== 'object' || Array.isArray(records) ||
+        !Object.prototype.hasOwnProperty.call(records, issueId)) {
+        return null
+    }
+    return records[issueId]
+}
+
+function stageFor(node, state, runtimeState) {
+    if (landingConflictFor(runtimeState, node.id) !== null) {
+        return 'landing-conflict-resolution-ready'
+    }
     const stages = node.surface === 'ui-ux'
         ? STAGES
         : STAGES.filter(([, stage]) => stage !== 'ux-acceptance-ready')
@@ -73,7 +111,7 @@ function stageFor(node, state) {
     return null
 }
 
-function expectedCandidate(node, stage) {
+function expectedCandidate(node, stage, landingConflict = null) {
     if (stage === 'test-contract-ready') {
         return {
             role: 'test-owner',
@@ -93,6 +131,15 @@ function expectedCandidate(node, stage) {
             mode: 'write-implementation-only',
             allowedPaths: node.allowedImplementationPaths,
             designAuthorityRequired: node.surface === 'ui-ux'
+        }
+    }
+    if (stage === 'landing-conflict-resolution-ready') {
+        const role = landingConflict?.memberWriterRole
+        return {
+            role,
+            mode: 'write-implementation-only',
+            allowedPaths: node.allowedImplementationPaths,
+            designAuthorityRequired: role === 'ui-ux-implementer'
         }
     }
     if (stage === 'behavior-verification-ready') {
@@ -138,11 +185,131 @@ function candidateFor(runtimeState, issueId, stage) {
     )
 }
 
-function candidateValid(node, candidate, stage) {
+function writerStageProjectionFor(runtimeState, issueId) {
+    const projection = runtimeState.writerStageProjection
+    if (!projection || typeof projection !== 'object' ||
+        Array.isArray(projection)) return null
+    return Object.prototype.hasOwnProperty.call(projection, issueId)
+        ? projection[issueId]
+        : null
+}
+
+function writerSequenceBinding({
+    candidate,
+    runtimeState,
+    stage
+}) {
+    if (!WRITER_READY_STAGES.has(stage)) return null
+    const plan = candidate?.stageWorkPlan
+    const slice = candidate?.executableSlice
+    if (!plan || !slice ||
+        plan.contractBindingStatus !== 'verified' ||
+        plan.plannerBindingStatus !== 'verified' ||
+        slice.contractBindingStatus !== 'verified' ||
+        slice.plannerBindingStatus !== 'verified' ||
+        !/^[a-f0-9]{64}$/u.test(plan.planDigest ?? '') ||
+        !/^[a-f0-9]{64}$/u.test(slice.sliceDigest ?? '') ||
+        typeof plan.stageAttemptId !== 'string' ||
+        !plan.stageAttemptId ||
+        !Array.isArray(plan.orderedSlices) ||
+        !Array.isArray(slice.prerequisiteSliceIds)) {
+        return null
+    }
+    const sliceIndex = plan.orderedSlices.findIndex(
+        ({ sliceId }) => sliceId === slice.sliceId
+    )
+    if (sliceIndex < 0 ||
+        JSON.stringify(slice.prerequisiteSliceIds) !== JSON.stringify(
+            plan.sliceDependencyGraph?.[slice.sliceId]
+        )) {
+        return null
+    }
+    const projection = writerStageProjectionFor(
+        runtimeState,
+        plan.node
+    )
+    const samePlan = projection?.planDigest === plan.planDigest
+    if (!samePlan) {
+        const priorStageComplete = projection !== null &&
+            projection?.status === 'completed' &&
+            projection.stagePhase !== plan.stagePhase
+        if (projection !== null && !priorStageComplete ||
+            sliceIndex !== 0 ||
+            slice.prerequisiteSliceIds.length !== 0) {
+            return null
+        }
+        const binding = {
+            schema:
+                'issue-orchestration.writer-slice-sequence-binding.v1',
+            source: 'initial-stage-plan',
+            projectionStatus: null,
+            planDigest: plan.planDigest,
+            stageAttemptId: plan.stageAttemptId,
+            stageRole: plan.stageRole,
+            stagePhase: plan.stagePhase,
+            sliceIndex,
+            expectedNextSliceId: slice.sliceId,
+            expectedNextSliceDigest: slice.sliceDigest,
+            prerequisiteSliceIds: [],
+            completedSliceReceiptDigests: [],
+            writerStageProjectionDigest: projection === null
+                ? null
+                : orderedDigest(projection)
+        }
+        return {
+            binding,
+            bindingDigest: orderedDigest(binding)
+        }
+    }
+    if (!projection || !['next-slice', 'retry-authorized'].includes(
+        projection.status
+    ) ||
+        projection.node !== plan.node ||
+        projection.runId !== plan.runId ||
+        projection.repository !== plan.repository ||
+        projection.issue !== plan.issue ||
+        projection.baseSha !== plan.baseSha ||
+        projection.epochId !== plan.epochId ||
+        projection.worktreeIdentity !== plan.worktreeIdentity ||
+        projection.stageRole !== plan.stageRole ||
+        projection.stagePhase !== plan.stagePhase ||
+        projection.stageAttemptId !== plan.stageAttemptId ||
+        projection.expectedNextSliceId !== slice.sliceId ||
+        projection.expectedNextSliceDigest !== slice.sliceDigest ||
+        !Array.isArray(projection.completedSliceReceiptDigests) ||
+        projection.completedSliceReceiptDigests.length !== sliceIndex ||
+        projection.completedSliceReceiptDigests.some((value) =>
+            !/^[a-f0-9]{64}$/u.test(value))) {
+        return null
+    }
+    const binding = {
+        schema: 'issue-orchestration.writer-slice-sequence-binding.v1',
+        source: 'semantic-runtime-projection',
+        projectionStatus: projection.status,
+        planDigest: plan.planDigest,
+        stageAttemptId: plan.stageAttemptId,
+        stageRole: plan.stageRole,
+        stagePhase: plan.stagePhase,
+        sliceIndex,
+        expectedNextSliceId: slice.sliceId,
+        expectedNextSliceDigest: slice.sliceDigest,
+        prerequisiteSliceIds: [...slice.prerequisiteSliceIds],
+        completedSliceReceiptDigests:
+            [...projection.completedSliceReceiptDigests],
+        writerStageProjectionDigest: orderedDigest(projection)
+    }
+    return {
+        binding,
+        bindingDigest: orderedDigest(binding)
+    }
+}
+
+function candidateValid(node, candidate, stage, landingConflict = null) {
     if (!candidate) return false
-    const expected = expectedCandidate(node, stage)
+    const expected = expectedCandidate(node, stage, landingConflict)
     for (const field of ['role', 'model', 'effort', 'mode']) {
-        if (candidate[field] !== expected[field]) return false
+        if (expected[field] !== undefined &&
+            candidate[field] !== expected[field]) return false
     }
     if (JSON.stringify(canonical(candidate.allowedPaths ?? []))
         !== JSON.stringify(canonical(expected.allowedPaths ?? []))) return false
@@ -155,6 +322,140 @@ function candidateValid(node, candidate, stage) {
             )) return false
     }
     return /^[a-f0-9]{64}$/u.test(candidate.capabilityReceiptDigest ?? '')
+}
+
+function pathAllowed(candidate, allowedPaths = []) {
+    return allowedPaths.some((pattern) => {
+        if (pattern.endsWith('/**')) {
+            const root = pattern.slice(0, -3)
+            return candidate === root ||
+                candidate.startsWith(`${root}/`)
+        }
+        return candidate === pattern ||
+            candidate.startsWith(`${pattern.replace(/\/$/u, '')}/`)
+    })
+}
+
+function landingConflictBindingValid(node, candidate, conflict) {
+    if (!conflict || typeof conflict !== 'object' ||
+        conflict.schema !==
+            'issue-orchestration.landing-conflict-resolution.v1' ||
+        conflict.status !== 'active' ||
+        conflict.node !== node.id ||
+        conflict.baseSha !== node.baseSha ||
+        conflict.conflictSource !== 'delivery-failure-receipt' ||
+        !/^[a-f0-9]{64}$/u.test(conflict.conflictSourceDigest ?? '') ||
+        !/^[a-f0-9]{64}$/u.test(
+            conflict.deliveryFailureReceiptDigest ?? ''
+        ) ||
+        !/^[a-f0-9]{64}$/u.test(conflict.conflictMappingDigest ?? '') ||
+        typeof conflict.epochId !== 'string' || !conflict.epochId ||
+        typeof conflict.worktreeIdentity !== 'string' ||
+        !conflict.worktreeIdentity ||
+        !Array.isArray(conflict.conflictPaths) ||
+        conflict.conflictPaths.length === 0 ||
+        conflict.conflictPaths.some((entry) =>
+            typeof entry !== 'string' || !entry ||
+            entry.startsWith('/') ||
+            /(^|\/)\.\.(\/|$)/u.test(entry) ||
+            entry.includes('\\')) ||
+        new Set(conflict.conflictPaths).size !==
+            conflict.conflictPaths.length ||
+        !['code-implementer', 'ui-ux-implementer'].includes(
+            conflict.memberWriterRole
+        ) ||
+        conflict.memberWriterRole !== (node.surface === 'ui-ux'
+            ? 'ui-ux-implementer'
+            : 'code-implementer') ||
+        conflict.resolutionDigest !== digest(
+            without(conflict, 'resolutionDigest')
+        )) {
+        return false
+    }
+    const plan = candidate?.stageWorkPlan
+    const slice = candidate?.executableSlice
+    const requiredEvidence = new Set(slice?.requiredEvidence ?? [])
+    return candidate?.landingConflictResolutionDigest ===
+            conflict.resolutionDigest &&
+        plan?.stageRole === conflict.memberWriterRole &&
+        plan?.epochId === conflict.epochId &&
+        plan?.worktreeIdentity === conflict.worktreeIdentity &&
+        conflict.conflictPaths.every((entry) =>
+            (slice?.firstReadTargets ?? []).includes(entry) &&
+            pathAllowed(entry, slice?.allowedPaths)) &&
+        requiredEvidence.has(
+            `landing-conflict-source:${conflict.conflictSourceDigest}`
+        ) &&
+        requiredEvidence.has(
+            `delivery-failure-receipt:${conflict.deliveryFailureReceiptDigest}`
+        ) &&
+        requiredEvidence.has(
+            `landing-conflict-mapping:${conflict.conflictMappingDigest}`
+        )
+}
+
+function writerSliceBindingValid(
+    node,
+    candidate,
+    stage,
+    landingConflict = null,
+    runtimeState = {}
+) {
+    if (!WRITER_READY_STAGES.has(stage)) return true
+    if (!candidate ||
+        !/^[a-f0-9]{64}$/u.test(candidate.planDigest ?? '') ||
+        !/^[a-f0-9]{64}$/u.test(candidate.sliceDigest ?? '') ||
+        !/^[a-f0-9]{64}$/u.test(candidate.compiledPromptDigest ?? '')) {
+        return false
+    }
+    const plan = candidate.stageWorkPlan
+    const slice = candidate.executableSlice
+    const compiled = candidate.compiledPrompt
+    try {
+        const expected = compileExecutableSlice({
+            plan,
+            sliceId: slice?.sliceId
+        })
+        const expectedPhase = stage === 'test-contract-ready'
+            ? 'test-contract'
+            : stage === 'documentation-ready'
+                ? 'documentation'
+                : stage === 'landing-conflict-resolution-ready'
+                    ? 'landing-conflict-resolution'
+                : node.surface === 'ui-ux'
+                    ? 'ui-implementation'
+                    : 'implementation'
+        return candidate.planDigest === plan.planDigest &&
+            candidate.sliceDigest === expected.sliceDigest &&
+            slice?.sliceDigest === expected.sliceDigest &&
+            candidate.compiledPromptDigest === compiled?.promptDigest &&
+            plan.contractBindingStatus === 'verified' &&
+            plan.plannerBindingStatus === 'verified' &&
+            slice.contractBindingStatus === 'verified' &&
+            slice.plannerBindingStatus === 'verified' &&
+            plan.node === node.id &&
+            plan.repository === node.repository &&
+            plan.baseSha === node.baseSha &&
+            plan.stagePhase === expectedPhase &&
+            (stage !== 'landing-conflict-resolution-ready' ||
+                landingConflictBindingValid(
+                    node,
+                    candidate,
+                    landingConflict
+                )) &&
+            writerSequenceBinding({
+                candidate,
+                runtimeState,
+                stage
+            }) !== null &&
+            validateCompiledDispatchPrompt({
+                plan,
+                slice: expected,
+                compiled
+            }).length === 0
+    } catch {
+        return false
+    }
 }
 
 function dependencySatisfied(dependency) {
@@ -365,7 +666,7 @@ export function computeNodeEligibility({
     investigationProjection
 }) {
     const state = runtimeState.nodeStates?.[node.id] ?? { receipts: {}, terminal: null }
-    const stage = stageFor(node, state)
+    const stage = stageFor(node, state, runtimeState)
     if (!stage) return { issueId: node.id, stage: null, ready: false, reasons: [] }
 
     const reasons = []
@@ -441,10 +742,31 @@ export function computeNodeEligibility({
         })
     }
     const candidate = candidateFor(runtimeState, node.id, stage)
-    if (!candidateValid(node, candidate, stage)) {
+    const landingConflict = landingConflictFor(runtimeState, node.id)
+    if (!writerSliceBindingValid(
+        node,
+        candidate,
+        stage,
+        landingConflict,
+        runtimeState
+    )) {
+        reasons.push({
+            code: 'executable-slice-missing',
+            evidence: evidence(`${node.id}@${stage}`, {
+                planDigest: candidate?.planDigest ?? null,
+                sliceDigest: candidate?.sliceDigest ?? null,
+                compiledPromptDigest:
+                    candidate?.compiledPromptDigest ?? null
+            })
+        })
+    }
+    if (!candidateValid(node, candidate, stage, landingConflict)) {
         reasons.push({
             code: 'runtime-capability-missing',
-            evidence: evidence(`${node.id}@${stage}`, { candidate, expected: expectedCandidate(node, stage) })
+            evidence: evidence(`${node.id}@${stage}`, {
+                candidate,
+                expected: expectedCandidate(node, stage, landingConflict)
+            })
         })
     }
     const freezes = (runtimeState.deliveryFreezes ?? []).filter(
@@ -535,12 +857,32 @@ export function compileReadyFrontier({
             .filter(({ reasons }) => reasons.length > 0)
             .map(({ issueId, reasons }) => [issueId, reasons])
     )
-    const executionProjection = readyFrontier.map(({ issueId, stage }) => ({
-        issueId,
-        stage,
-        candidateCapabilityReceiptDigest:
-            candidateFor(runtimeState, issueId, stage)?.capabilityReceiptDigest
-    }))
+    const executionProjection = readyFrontier.map(({ issueId, stage }) => {
+        const candidate = candidateFor(runtimeState, issueId, stage)
+        const sequence = writerSequenceBinding({
+            candidate,
+            runtimeState,
+            stage
+        })
+        return {
+            issueId,
+            stage,
+            candidateCapabilityReceiptDigest:
+                candidate?.capabilityReceiptDigest,
+            planDigest: candidate?.planDigest ?? null,
+            sliceDigest: candidate?.sliceDigest ?? null,
+            compiledPromptDigest:
+                candidate?.compiledPromptDigest ?? null,
+            writerSequenceBinding: sequence?.binding ?? null,
+            writerSequenceBindingDigest:
+                sequence?.bindingDigest ?? null,
+            landingConflictResolutionDigest:
+                stage === 'landing-conflict-resolution-ready'
+                    ? landingConflictFor(runtimeState, issueId)
+                        ?.resolutionDigest ?? null
+                    : null
+        }
+    })
     const eligibilityInputDigest = digest(
         eligibilityInputs({ dag, runtimeState, selectorReceipt, investigationProjection })
     )

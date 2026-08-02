@@ -1,4 +1,4 @@
 interface:
-  display_name: "Issue Orchestration"
-  short_description: "Coordinate dependent issue groups with evidence"
-  default_prompt: "Use $issue-orchestration to coordinate the selected open issues with the installed shared package."
+    display_name: "Issue Orchestration"
+    short_description: "Coordinate dependent issue groups with evidence"
+    default_prompt: "Use the installed $issue-orchestration package to compile selected open issues into verified stage plans and executable slices; dispatch writers only with the sealed deterministic prompt."

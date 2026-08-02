@@ -6,7 +6,7 @@
 
 ## 交付单位
 
-重合验收组是验证、提交、推送和关闭的单位；单独成组的 issue 使用相同流程。组内所有 issue 在全部必要验收通过前保持 open。
+重合验收组是验证、提交、推送和关闭的单位；单独成组的 issue 使用相同流程。组内每个 writer stage 必须先通过自己的 ordered slice terminal gate；非最终 slice、partial checkpoint 或 continuation 不能让 member 进入候选或交付。组内所有 issue 在全部必要验收通过前保持 open。
 
 跨仓验收组可包含按依赖排序的 FsusUI 与 FsusBlog 交付 leg。每个 leg 在责任仓形成独立 commit 并推该仓默认分支；只有全部 leg 的远端 commit 和验收仍有效后，才关闭组内 issues。
 
@@ -24,6 +24,12 @@
 不得等待无关 issue、全仓最终验收、其他分支、其他任务或长任务。不得用 draft PR、临时发布或“稍后统一交付”替代上述流程。
 
 dry-run 必须生成同样的逐步交付计划，但停在第一个 commit、push、评论或 close 动作之前，并明确标记未执行；不得伪造远端结果。
+
+## Landing conflict writer
+
+Landing 时出现的真实 conflict 仍是 writer work，必须编译 `issue-orchestration.stage-work-plan.v1 → issue-orchestration.executable-slice.v1 → issue-orchestration.compiled-dispatch-prompt.v1`，并用 checkpoint、continuation 与 ordered terminal receipts 收口。代码 conflict 由 `code-implementer` 执行；UI conflict 由 `ui-ux-implementer` 执行。Root 只编译、验证、路由与落地已经 terminal 的产出，不直接编辑冲突，也不得新增 `landing-owner` 或其它第八个角色。
+
+Landing conflict slice 必须绑定冲突 mapping、允许/禁止路径、base/epoch/worktree、required commands 和 material diff evidence。只有该 landing stage 的 final slice gate 通过后才可继续 commit/push；原 member 的旧 terminal receipt 不能替代新冲突基线上的 receipt。
 
 ## CI evidence 与关闭
 

@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto'
 // Shared issue-orchestration package runtime.
 import { STAGE_ROUTE_DEFINITIONS } from './stage-profile-policy.mjs'
+import {
+    compileExecutableSlice,
+    validateCompiledDispatchPrompt
+} from './executable-slice-compiler.mjs'
 
 export class DispatchBatchError extends Error {
     constructor(code, message, details = {}) {
@@ -34,11 +38,22 @@ const STAGE_ROLES = new Map([
     ['test-contract', new Set(['test-owner'])],
     ['code-implementation', new Set(['code-implementer'])],
     ['ui-ux-implementation', new Set(['ui-ux-implementer'])],
+    ['landing-conflict-resolution', new Set([
+        'code-implementer',
+        'ui-ux-implementer'
+    ])],
     ['ui-system-adjudication', new Set(['ui-system-adjudicator'])],
     ['behavior-verification', new Set(['test-owner'])],
     ['ux-acceptance', new Set(['ux-acceptance-verifier'])],
     ['documentation', new Set(['documentation-writer'])],
     ['delivery', new Set(['root-scheduler'])]
+])
+const WRITER_STAGE_KINDS = new Set([
+    'test-contract',
+    'code-implementation',
+    'ui-ux-implementation',
+    'landing-conflict-resolution',
+    'documentation'
 ])
 const POLICY = {
     schema: 'issue-orchestration.dispatch-ranking-policy.v1',
@@ -72,6 +87,19 @@ function canonical(value) {
 
 function digest(value) {
     return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex')
+}
+
+function orderedCanonical(value) {
+    if (Array.isArray(value)) return value.map(orderedCanonical)
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(Object.keys(value).sort()
+        .map((key) => [key, orderedCanonical(value[key])]))
+}
+
+function orderedDigest(value) {
+    return createHash('sha256')
+        .update(JSON.stringify(orderedCanonical(value)))
+        .digest('hex')
 }
 
 function bodyWithout(value, field) {
@@ -111,6 +139,94 @@ function validatePolicy(policy, selectorVersion) {
     }
 }
 
+function pathAllowed(candidate, allowedPaths = []) {
+    return allowedPaths.some((pattern) => {
+        if (pattern.endsWith('/**')) {
+            const root = pattern.slice(0, -3)
+            return candidate === root ||
+                candidate.startsWith(`${root}/`)
+        }
+        return candidate === pattern ||
+            candidate.startsWith(`${pattern.replace(/\/$/u, '')}/`)
+    })
+}
+
+const WRITER_SEQUENCE_FIELDS = Object.freeze([
+    'schema',
+    'source',
+    'projectionStatus',
+    'planDigest',
+    'stageAttemptId',
+    'stageRole',
+    'stagePhase',
+    'sliceIndex',
+    'expectedNextSliceId',
+    'expectedNextSliceDigest',
+    'prerequisiteSliceIds',
+    'completedSliceReceiptDigests',
+    'writerStageProjectionDigest'
+])
+
+function validateWriterSequenceBinding(task, expectedSlice) {
+    const binding = task.writerSequenceBinding
+    const plan = task.stageWorkPlan
+    const sliceIndex = plan.orderedSlices.findIndex(
+        ({ sliceId }) => sliceId === expectedSlice.sliceId
+    )
+    if (!binding || typeof binding !== 'object' ||
+        Array.isArray(binding) ||
+        JSON.stringify(Object.keys(binding).sort()) !== JSON.stringify(
+            [...WRITER_SEQUENCE_FIELDS].sort()
+        ) ||
+        !SHA256.test(task.writerSequenceBindingDigest ?? '') ||
+        orderedDigest(binding) !== task.writerSequenceBindingDigest ||
+        binding.schema !==
+            'issue-orchestration.writer-slice-sequence-binding.v1' ||
+        binding.planDigest !== plan.planDigest ||
+        binding.stageAttemptId !== plan.stageAttemptId ||
+        binding.stageRole !== plan.stageRole ||
+        binding.stagePhase !== plan.stagePhase ||
+        binding.sliceIndex !== sliceIndex ||
+        binding.expectedNextSliceId !== expectedSlice.sliceId ||
+        binding.expectedNextSliceDigest !== expectedSlice.sliceDigest ||
+        JSON.stringify(binding.prerequisiteSliceIds) !== JSON.stringify(
+            expectedSlice.prerequisiteSliceIds
+        ) ||
+        !Array.isArray(binding.completedSliceReceiptDigests) ||
+        binding.completedSliceReceiptDigests.length !== sliceIndex ||
+        binding.completedSliceReceiptDigests.some((value) =>
+            !SHA256.test(value))) {
+        fail(
+            'stage-task-writer-sequence',
+            `${task.taskId} lacks a verified writer sequence binding.`
+        )
+    }
+    if (binding.source === 'initial-stage-plan') {
+        if (binding.projectionStatus !== null ||
+            binding.sliceIndex !== 0 ||
+            binding.prerequisiteSliceIds.length !== 0 ||
+            binding.completedSliceReceiptDigests.length !== 0 ||
+            binding.writerStageProjectionDigest !== null &&
+                !SHA256.test(binding.writerStageProjectionDigest ?? '')) {
+            fail(
+                'stage-task-writer-sequence',
+                `${task.taskId} is not the initial writer slice.`
+            )
+        }
+        return
+    }
+    if (binding.source !== 'semantic-runtime-projection' ||
+        !['next-slice', 'retry-authorized'].includes(
+            binding.projectionStatus
+        ) ||
+        !SHA256.test(binding.writerStageProjectionDigest ?? '')) {
+        fail(
+            'stage-task-writer-sequence',
+            `${task.taskId} does not consume the runtime-owned next slice.`
+        )
+    }
+}
+
 function validateTask(task) {
     requireText(task?.taskId, 'stage-task-schema', 'stage task id')
     requireText(task.issueId, 'stage-task-schema', 'stage issue id')
@@ -145,6 +261,107 @@ function validateTask(task) {
     }
     if (!task.readOnly && task.candidateSha !== null) {
         fail('stage-task-schema', `${task.taskId} has an unexpected candidate SHA.`)
+    }
+    if (WRITER_STAGE_KINDS.has(task.stageKind)) {
+        let expectedSlice
+        try {
+            expectedSlice = compileExecutableSlice({
+                plan: task.stageWorkPlan,
+                sliceId: task.executableSlice?.sliceId
+            })
+        } catch {
+            fail(
+                'stage-task-executable-slice',
+                `${task.taskId} lacks a verified executable slice.`
+            )
+        }
+        if (!SHA256.test(task.planDigest ?? '') ||
+            !SHA256.test(task.sliceDigest ?? '') ||
+            !SHA256.test(task.compiledPromptDigest ?? '') ||
+            task.stageWorkPlan.contractBindingStatus !== 'verified' ||
+            task.stageWorkPlan.plannerBindingStatus !== 'verified' ||
+            task.executableSlice?.contractBindingStatus !== 'verified' ||
+            task.executableSlice?.plannerBindingStatus !== 'verified' ||
+            task.planDigest !== task.stageWorkPlan.planDigest ||
+            task.sliceDigest !== expectedSlice.sliceDigest ||
+            task.executableSlice?.sliceDigest !== expectedSlice.sliceDigest ||
+            task.compiledPromptDigest !== task.compiledPrompt?.promptDigest ||
+            task.stageWorkPlan.node !== task.issueId ||
+            task.stageWorkPlan.repository !== task.repository ||
+            validateCompiledDispatchPrompt({
+                plan: task.stageWorkPlan,
+                slice: expectedSlice,
+                compiled: task.compiledPrompt
+            }).length > 0) {
+            fail(
+                'stage-task-executable-slice',
+                `${task.taskId} has a stale or root-authored executable slice prompt.`
+            )
+        }
+        validateWriterSequenceBinding(task, expectedSlice)
+        if (task.stageKind === 'landing-conflict-resolution') {
+            const conflict = task.landingConflictResolution
+            const requiredEvidence = new Set(
+                task.executableSlice?.requiredEvidence ?? []
+            )
+            if (!conflict || typeof conflict !== 'object' ||
+                conflict.schema !==
+                    'issue-orchestration.landing-conflict-resolution.v1' ||
+                conflict.status !== 'active' ||
+                conflict.node !== task.issueId ||
+                conflict.baseSha !== task.stageWorkPlan.baseSha ||
+                conflict.epochId !== task.epochId ||
+                conflict.epochId !== task.stageWorkPlan.epochId ||
+                conflict.worktreeIdentity !== task.issueWorktreeId ||
+                conflict.worktreeIdentity !==
+                    task.stageWorkPlan.worktreeIdentity ||
+                conflict.memberWriterRole !== task.stageRole ||
+                !['code-implementer', 'ui-ux-implementer'].includes(
+                    conflict.memberWriterRole
+                ) ||
+                conflict.conflictSource !== 'delivery-failure-receipt' ||
+                !SHA256.test(conflict.conflictSourceDigest ?? '') ||
+                !SHA256.test(
+                    conflict.deliveryFailureReceiptDigest ?? ''
+                ) ||
+                !SHA256.test(conflict.conflictMappingDigest ?? '') ||
+                !Array.isArray(conflict.conflictPaths) ||
+                conflict.conflictPaths.length === 0 ||
+                conflict.conflictPaths.some((entry) =>
+                    typeof entry !== 'string' || !entry ||
+                    entry.startsWith('/') ||
+                    /(^|\/)\.\.(\/|$)/u.test(entry) ||
+                    entry.includes('\\')) ||
+                new Set(conflict.conflictPaths).size !==
+                    conflict.conflictPaths.length ||
+                conflict.resolutionDigest !== digest(
+                    bodyWithout(conflict, 'resolutionDigest')
+                ) ||
+                task.landingConflictResolutionDigest !==
+                    conflict.resolutionDigest ||
+                task.stageWorkPlan.stagePhase !==
+                    'landing-conflict-resolution' ||
+                conflict.conflictPaths.some((entry) =>
+                    !task.executableSlice.firstReadTargets.includes(entry) ||
+                    !pathAllowed(
+                        entry,
+                        task.executableSlice.allowedPaths
+                    )) ||
+                !requiredEvidence.has(
+                    `landing-conflict-source:${conflict.conflictSourceDigest}`
+                ) ||
+                !requiredEvidence.has(
+                    `delivery-failure-receipt:${conflict.deliveryFailureReceiptDigest}`
+                ) ||
+                !requiredEvidence.has(
+                    `landing-conflict-mapping:${conflict.conflictMappingDigest}`
+                )) {
+                fail(
+                    'stage-task-landing-conflict-binding',
+                    `${task.taskId} lacks verified landing conflict authority.`
+                )
+            }
+        }
     }
     if (task.stagePrerequisitesSatisfied !== true || task.dependencyStatus !== 'satisfied') {
         fail('stage-prerequisite-unsatisfied', `${task.taskId} has unmet prerequisites.`)
@@ -273,6 +490,7 @@ const READY_STAGE = new Map([
     ['test-contract', 'test-contract-ready'],
     ['code-implementation', 'implementation-ready'],
     ['ui-ux-implementation', 'implementation-ready'],
+    ['landing-conflict-resolution', 'landing-conflict-resolution-ready'],
     ['behavior-verification', 'behavior-verification-ready'],
     ['ux-acceptance', 'ux-acceptance-ready'],
     ['documentation', 'documentation-ready'],
@@ -285,7 +503,8 @@ export function validateDispatchFrontierBinding({
 }) {
     if (verifiedProjection?.schema !== 'issue-orchestration.frontier-projection.v1'
         || !SHA256.test(verifiedProjection.frontierDigest ?? '')
-        || !Array.isArray(verifiedProjection.readyFrontier)) {
+        || !Array.isArray(verifiedProjection.readyFrontier)
+        || !Array.isArray(verifiedProjection.executionProjection)) {
         fail('dispatch-frontier-binding', 'Verified ready frontier is missing.')
     }
     const actual = frontier.stageTasks.map((task) => ({
@@ -309,15 +528,65 @@ export function validateDispatchFrontierBinding({
         'requiredReceiptDigests', 'requiredSkillDigests', 'readOnly',
         'candidateSha', 'candidateFrozen', 'epochId'
     ]
+    const writerBoundFields = [
+        'planDigest', 'sliceDigest', 'compiledPromptDigest',
+        'stageWorkPlan', 'executableSlice', 'compiledPrompt'
+    ]
+    const executionByIdentity = new Map(
+        verifiedProjection.executionProjection.map((entry) => [
+            `${entry.issueId}@${entry.stage}`,
+            entry
+        ])
+    )
+    if (executionByIdentity.size !==
+        verifiedProjection.executionProjection.length) {
+        fail(
+            'dispatch-frontier-binding',
+            'Verified execution projection repeats a stage identity.'
+        )
+    }
     for (const task of frontier.stageTasks) {
         const node = nodes.get(task.issueId)
         if (!node) fail('dispatch-frontier-binding', `Dispatch task ${task.taskId} has no DAG node.`)
-        for (const field of boundFields) {
+        const taskBoundFields = WRITER_STAGE_KINDS.has(task.stageKind)
+            ? [...boundFields, ...writerBoundFields]
+            : boundFields
+        if (task.stageKind === 'landing-conflict-resolution') {
+            taskBoundFields.push(
+                'landingConflictResolution',
+                'landingConflictResolutionDigest'
+            )
+        }
+        for (const field of taskBoundFields) {
             if (node[field] === undefined
                 || JSON.stringify(canonical(task[field]))
                     !== JSON.stringify(canonical(node[field]))) {
                 fail('dispatch-frontier-binding', `${task.taskId}.${field} differs from the verified DAG node.`)
             }
+        }
+        const projected = executionByIdentity.get(
+            `${task.issueId}@${READY_STAGE.get(task.stageKind)}`
+        )
+        if (!projected ||
+            WRITER_STAGE_KINDS.has(task.stageKind) &&
+            (projected.planDigest !== task.planDigest ||
+                projected.sliceDigest !== task.sliceDigest ||
+                projected.compiledPromptDigest !==
+                    task.compiledPromptDigest ||
+                projected.writerSequenceBindingDigest !==
+                    task.writerSequenceBindingDigest ||
+                JSON.stringify(orderedCanonical(
+                    projected.writerSequenceBinding
+                )) !== JSON.stringify(orderedCanonical(
+                    task.writerSequenceBinding
+                ))) ||
+            task.stageKind === 'landing-conflict-resolution' &&
+            projected.landingConflictResolutionDigest !==
+                task.landingConflictResolutionDigest) {
+            fail(
+                'dispatch-frontier-binding',
+                `${task.taskId} differs from the verified execution projection.`
+            )
         }
     }
     return {

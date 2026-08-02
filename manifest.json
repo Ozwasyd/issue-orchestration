@@ -1,121 +1,153 @@
 {
-  "schema": "issue-orchestration.shared-package-manifest.v1",
-  "packageIdentity": "issue-orchestration",
-  "packageVersion": "1.0.0",
-  "sourceCommit": "d98bed01a76fcca5dc1657e63886b8da48ce346d",
-  "sourceTreeDigest": "bbd602f029c3fe0959a2728386fa19148f558761a122064a1a828707cd91876e",
-  "skillIdentity": "issue-orchestration",
-  "skillDigest": "68119002d3fdb1e58318500d3deb5065a424af3d97d62b11b49be38ccc52e16c",
-  "agentDigests": {
-    "code-implementer": "6b3b3ee2029c392f3eb2510523193d3e46633ff73b9bb396be33dc83bdfe0a31",
-    "dag-creator-updater": "45519067ef0173a6b6394b13b189915591cd9a7f4ec7f96151f13c40f0c6a7a7",
-    "documentation-writer": "a0d9f852dd6610273472f976258eff11439fb831557a8f0be72df0cfebd86463",
-    "test-owner": "3a38a5cd5b51c82d06369ad67d1cf4842b02ac5149484128130e5a35cc95395f",
-    "ui-system-adjudicator": "f22ddd301b427d116f06fe31f09f5b120440ea850467e1bc7fe717490e4594f7",
-    "ui-ux-implementer": "2afd816dd4154fb4dba04628fd212fb43e16e6d181cc0464873982e0da91241f",
-    "ux-acceptance-verifier": "ea2f8d11bac33d9cc4d8339b13f0b07760f85a337f9a1da82dd499b893b9518a"
-  },
-  "modelPoolPolicyVersion": "stage-model-pool.v2",
-  "modelPoolDigest": "5b6bd5166982fe0c1fdb86df94bf3d6fb6b0acc90a44d8c865b2a7fb67299fe9",
-  "routingPolicyDigest": "6cb23751e30123468a73091cfa05fe6d99be02420a6c45df5519dcd08a2ff147",
-  "stagePermissionDigest": "69eb3d324f8d3b379c84960e87189dc48b32c2a7ae261bc4b41feaf1141ba327",
-  "remoteMutationPolicyDigest": "c8358855c88cd727ec951e714b8e33352ca94e5149b8ba92fd04b94548fa7fcf",
-  "graphSchemaDigest": "c7a8e4d5e45b02a8024ca9d174a3c38b7793781364a1fd740cb0fec227653caa",
-  "patchSchemaDigest": "46aaec968f735eb5c70cd754f8c9a660c3440110f7b8338604c9f4ed735c6572",
-  "runtimeProjectionSchemaDigest": "3a5e507161ee81f350ac141e79d41beeecce9eb17708ca49dd10e28e944fc4b4",
-  "projectorDigest": "49ad086837e230c69c5c7650a4e0707f0b9bb07fddd101cf551d9a009a96bf8b",
-  "supportedRepositories": [
-    "Ozwasyd/FsusBlog",
-    "Ozwasyd/FsusUI"
-  ],
-  "requiredCapabilities": [
-    "external-runtime-state-root",
-    "fresh-context-routing",
-    "git-worktree-discovery",
-    "read-only-verification-sandbox",
-    "runtime-model-effort-observation",
-    "stage-scoped-write-lease"
-  ],
-  "installTargets": [
-    {
-      "source": "skills/issue-orchestration",
-      "target": ".agents/skills/issue-orchestration"
+    "schema": "issue-orchestration.shared-package-manifest.v1",
+    "packageIdentity": "issue-orchestration",
+    "packageVersion": "1.0.0",
+    "sourceCommit": "2499db9517ec4e340bb475443c6ec2984203323c",
+    "sourceTreeDigest": "96d2f18d473ccd10f6ee021ee5c31f43be4c12bb306c2d48541d3151eb1903cf",
+    "skillIdentity": "issue-orchestration",
+    "skillDigest": "487b7bc8488ee2d2f6dd2ad5258b576b4c5958e5f112fc85995031ed9c6ebc6b",
+    "agentDigests": {
+        "code-implementer": "0d327e9215c32a400e85d0b1967e2828c69cd218b513d3eca5b83ee704cdc797",
+        "dag-creator-updater": "45519067ef0173a6b6394b13b189915591cd9a7f4ec7f96151f13c40f0c6a7a7",
+        "documentation-writer": "7956db9dfc6cb7af8fb538ae96ab953b71843045f2917f8cfa244e389351b252",
+        "test-owner": "7f42f70f89ea64db0edb68aeed3779003c202d27fc46c08fcabe0f64f2a51939",
+        "ui-system-adjudicator": "f22ddd301b427d116f06fe31f09f5b120440ea850467e1bc7fe717490e4594f7",
+        "ui-ux-implementer": "133d6085b14aa826c8972ecaf1ed534fbae3122c0da76e2d5c1becac08e79374",
+        "ux-acceptance-verifier": "ea2f8d11bac33d9cc4d8339b13f0b07760f85a337f9a1da82dd499b893b9518a"
     },
-    {
-      "source": "agents",
-      "target": ".codex/agents"
+    "modelPoolPolicyVersion": "stage-model-pool.v2",
+    "modelPoolDigest": "f2f70595f6efa98a90dffed740f04489fccaea4a0af2453f44ece85e466ee410",
+    "routingPolicyDigest": "81cb6232d4cef89aabfcecde4724b84575e71e135a94b964cbae2064bb6ab9a1",
+    "stagePermissionDigest": "9b9413db7b1f14fd53ebf3b9049f5400bb28d407d2943814185fcf37f6002338",
+    "remoteMutationPolicyDigest": "c8358855c88cd727ec951e714b8e33352ca94e5149b8ba92fd04b94548fa7fcf",
+    "graphSchemaDigest": "c7a8e4d5e45b02a8024ca9d174a3c38b7793781364a1fd740cb0fec227653caa",
+    "patchSchemaDigest": "46aaec968f735eb5c70cd754f8c9a660c3440110f7b8338604c9f4ed735c6572",
+    "runtimeProjectionSchemaDigest": "d1e32acde272d59ac2cbde4531946b334ae9a135d2a9607af92d8c4ff0f0b3f3",
+    "projectorDigest": "9d438f5cc4f431abb93289aca942aa34a4c2538f29dd4c411abd7a9906bf3b8f",
+    "writerStageContractDigests": {
+        "contracts/compiled-dispatch-prompt.schema.json": "8fc15e918ab52aa3b76efeca29594dbb38bcf4a2ccd4a97d75ac79eaf7a3b8bd",
+        "contracts/executable-slice.schema.json": "d0debfb795a8787819a845a3bd70d2a2efa4d3dca73891733377cc8ec67f8b7d",
+        "contracts/slice-terminal-receipt.schema.json": "4e2c69b8dd4e1fd1525ad645499564e1cd948ccd3696790eddbf9fdbb80369c1",
+        "contracts/stage-continuation-receipt.schema.json": "74ff655b47dd71d80833270fab5bf10fe834382e2c24d6600f383697b6c6857a",
+        "contracts/stage-progress-checkpoint.schema.json": "3e6520f0b55b36772c6e6c42e2676d35bb5c775454913b939a750a6602745bf5",
+        "contracts/stage-work-plan.schema.json": "d73e6ea8e2a4e63a263849c9de8f4f2895c5dbf1d781c6028635611a8d1d9dd2",
+        "contracts/writer-stage-checkpoint-verification-receipt.schema.json": "1fe0825a33249329dd1bbb9948c5e4601580233614ac97d6a364b53c7ee91a6a",
+        "contracts/writer-stage-failure-receipt.schema.json": "48e045d9b44aa40335bd871407d7fa42e3743d23a83e0a5632c00787f2c316d5",
+        "contracts/writer-stage-retry-authorization.schema.json": "f4232113554db01244edb19bed590a012e7386743b4d52832c4876c7406a9085"
     },
-    {
-      "source": "policy",
-      "target": ".agents/policy"
+    "writerStageRuntimeDigests": {
+        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "ae437e088d26c00c0a32ed6a3e8afa6fc0b0c92b7e8b6dff72eeceb318311888",
+        "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447"
     },
-    {
-      "source": "graph",
-      "target": ".agents/graph"
+    "supportedRepositories": [
+        "Ozwasyd/FsusBlog",
+        "Ozwasyd/FsusUI"
+    ],
+    "requiredCapabilities": [
+        "external-runtime-state-root",
+        "fresh-context-routing",
+        "git-worktree-discovery",
+        "read-only-verification-sandbox",
+        "runtime-model-effort-observation",
+        "stage-scoped-write-lease"
+    ],
+    "installTargets": [
+        {
+            "source": "skills/issue-orchestration",
+            "target": ".agents/skills/issue-orchestration"
+        },
+        {
+            "source": "agents",
+            "target": ".codex/agents"
+        },
+        {
+            "source": "contracts",
+            "target": ".agents/contracts"
+        },
+        {
+            "source": "policy",
+            "target": ".agents/policy"
+        },
+        {
+            "source": "graph",
+            "target": ".agents/graph"
+        },
+        {
+            "source": "manifest.json",
+            "target": ".agents/issue-orchestration-manifest.json"
+        }
+    ],
+    "ownedDomains": [
+        "acceptance-group",
+        "delivery",
+        "model-routing",
+        "receipts",
+        "resource-lifecycle",
+        "runtime-projection",
+        "scope-selector",
+        "semantic-graph",
+        "stage-dispatch"
+    ],
+    "excludedAuthorities": [
+        "product-api",
+        "product-design",
+        "product-documentation",
+        "product-runtime",
+        "repository-agents"
+    ],
+    "artifactDigests": {
+        "agents/code-implementer.toml": "0d327e9215c32a400e85d0b1967e2828c69cd218b513d3eca5b83ee704cdc797",
+        "agents/dag-creator-updater.toml": "45519067ef0173a6b6394b13b189915591cd9a7f4ec7f96151f13c40f0c6a7a7",
+        "agents/documentation-writer.toml": "7956db9dfc6cb7af8fb538ae96ab953b71843045f2917f8cfa244e389351b252",
+        "agents/test-owner.toml": "7f42f70f89ea64db0edb68aeed3779003c202d27fc46c08fcabe0f64f2a51939",
+        "agents/ui-system-adjudicator.toml": "f22ddd301b427d116f06fe31f09f5b120440ea850467e1bc7fe717490e4594f7",
+        "agents/ui-ux-implementer.toml": "133d6085b14aa826c8972ecaf1ed534fbae3122c0da76e2d5c1becac08e79374",
+        "agents/ux-acceptance-verifier.toml": "ea2f8d11bac33d9cc4d8339b13f0b07760f85a337f9a1da82dd499b893b9518a",
+        "contracts/compiled-dispatch-prompt.schema.json": "8fc15e918ab52aa3b76efeca29594dbb38bcf4a2ccd4a97d75ac79eaf7a3b8bd",
+        "contracts/executable-slice.schema.json": "d0debfb795a8787819a845a3bd70d2a2efa4d3dca73891733377cc8ec67f8b7d",
+        "contracts/slice-terminal-receipt.schema.json": "4e2c69b8dd4e1fd1525ad645499564e1cd948ccd3696790eddbf9fdbb80369c1",
+        "contracts/stage-continuation-receipt.schema.json": "74ff655b47dd71d80833270fab5bf10fe834382e2c24d6600f383697b6c6857a",
+        "contracts/stage-progress-checkpoint.schema.json": "3e6520f0b55b36772c6e6c42e2676d35bb5c775454913b939a750a6602745bf5",
+        "contracts/stage-work-plan.schema.json": "d73e6ea8e2a4e63a263849c9de8f4f2895c5dbf1d781c6028635611a8d1d9dd2",
+        "contracts/writer-stage-checkpoint-verification-receipt.schema.json": "1fe0825a33249329dd1bbb9948c5e4601580233614ac97d6a364b53c7ee91a6a",
+        "contracts/writer-stage-failure-receipt.schema.json": "48e045d9b44aa40335bd871407d7fa42e3743d23a83e0a5632c00787f2c316d5",
+        "contracts/writer-stage-retry-authorization.schema.json": "f4232113554db01244edb19bed590a012e7386743b4d52832c4876c7406a9085",
+        "graph/graph-patch.schema.json": "46aaec968f735eb5c70cd754f8c9a660c3440110f7b8338604c9f4ed735c6572",
+        "graph/runtime-projection.schema.json": "d1e32acde272d59ac2cbde4531946b334ae9a135d2a9607af92d8c4ff0f0b3f3",
+        "graph/semantic-graph.schema.json": "c7a8e4d5e45b02a8024ca9d174a3c38b7793781364a1fd740cb0fec227653caa",
+        "policy/model-pool.json": "f2f70595f6efa98a90dffed740f04489fccaea4a0af2453f44ece85e466ee410",
+        "policy/remote-mutation-policy.json": "c8358855c88cd727ec951e714b8e33352ca94e5149b8ba92fd04b94548fa7fcf",
+        "policy/routing-policy.json": "81cb6232d4cef89aabfcecde4724b84575e71e135a94b964cbae2064bb6ab9a1",
+        "policy/stage-permissions.json": "9b9413db7b1f14fd53ebf3b9049f5400bb28d407d2943814185fcf37f6002338",
+        "scripts/build-manifest.mjs": "9df6227da224c7cc8cc60974eb29a2631e3da94cdf80897e1a2d489f8f2a0e45",
+        "scripts/discover.mjs": "c1edc0c854e38d249ce0349317aa0f173f815b94a7673287e0edc888d40e5dcd",
+        "scripts/install.mjs": "6304fcdc44360269a04d2596fe57607e95e56bc85e32f706b735fac17d883fc9",
+        "scripts/package-lib.mjs": "46e28d39f04d3b0122118cd4849b928aee3ea9bca9f83410f7b26e91388c56fc",
+        "scripts/uninstall.mjs": "17bb2c0bf5ae4787383d0fb008756bd623f2c667e58b11285a3edde89a5f49ac",
+        "scripts/verify-install.mjs": "f943044579a2f6079221ac532409c752e0c80736dbd72789a11d179728bee52f",
+        "skills/issue-orchestration/agents/openai.yaml": "4dca19c0850a7b790b8aa9414d59bb1acda32e6b558c464ac3b5f3ea5777034a",
+        "skills/issue-orchestration/references/dag-and-scheduling.md": "25b5f6c2b27d1cee7b2604a71e073c8d7f0510ea92731d0d150e73b76ad76eea",
+        "skills/issue-orchestration/references/dispatch-and-runtime-probe.md": "4bd168fe932c69f4c98443e175546455bc4db16d7a5e63450544d16d5c9a3aeb",
+        "skills/issue-orchestration/references/group-delivery.md": "a6b373ebe3ffbe73f21cf8e56e968324240c27a70ed7b0bba4222a1bec7f8dd7",
+        "skills/issue-orchestration/references/review-failure-and-verification.md": "949755fd1a7870fe13f78d2f695bba5abb834f7d311b74fee3a8061834cfbec4",
+        "skills/issue-orchestration/scripts/check-dag-gate.mjs": "490ddd86c321ba14c95dd92c197377a7771c1ab4cbd30b156d0d1c833e68511c",
+        "skills/issue-orchestration/scripts/delivery-epoch.mjs": "10943de4e22954de9939673bb0c77768530b11163b20e2ed9942669cbb00e9a4",
+        "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "e644d6fda58a16ce93b67bc5a22cbda6eefc691ddc65f0fee01bd349b913461c",
+        "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "d3e9c5f1aa155f369639f49052eadbe0c95790f0def11b70ba11147d8d0d7f5f",
+        "skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs": "8d34aa5105ff77fa2e60035c69e8604456d8b14fe8ba962f0d2253194297d2a8",
+        "skills/issue-orchestration/scripts/event-ledger.mjs": "115b63be71282dbfcc28baadea9fb7171fc2ccc5200b2ac17e0ce36bdfdf34ac",
+        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "ae437e088d26c00c0a32ed6a3e8afa6fc0b0c92b7e8b6dff72eeceb318311888",
+        "skills/issue-orchestration/scripts/frontier-compiler.mjs": "9430b4eea6d0fef57c32b919791fd5fd232a83850b34f606a15f1b0aa6b40e79",
+        "skills/issue-orchestration/scripts/human-decision.mjs": "b4c0e1a81da7bd4c5c620c97ed54f9a49983ccc3b6a4ee70342fc372e77a2ef9",
+        "skills/issue-orchestration/scripts/investigation-compiler.mjs": "9bd8db272f795e309a7c588ff57511726414a039d17c59a8efacd3de2be65156",
+        "skills/issue-orchestration/scripts/resource-lifecycle.mjs": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1",
+        "skills/issue-orchestration/scripts/scope-selector.mjs": "b0e0deadc1e31b437de7ae6e3d0e4d832bb6b1e33ce9ed9e54274458ec917a49",
+        "skills/issue-orchestration/scripts/semantic-runtime-projection.mjs": "9d438f5cc4f431abb93289aca942aa34a4c2538f29dd4c411abd7a9906bf3b8f",
+        "skills/issue-orchestration/scripts/stage-profile-policy.mjs": "880a32436a04d1fb641ce1a928d33e27258a866ca3e2c7e3f7ac25ea81527bc9",
+        "skills/issue-orchestration/scripts/validate-state-root.mjs": "ce9adc2a8b3454fd8e89ca8519d3f059e71603cf3bbea81a15f3d91938b61c6d",
+        "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447",
+        "skills/issue-orchestration/SKILL.md": "487b7bc8488ee2d2f6dd2ad5258b576b4c5958e5f112fc85995031ed9c6ebc6b",
+        "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    {
-      "source": "manifest.json",
-      "target": ".agents/issue-orchestration-manifest.json"
-    }
-  ],
-  "ownedDomains": [
-    "acceptance-group",
-    "delivery",
-    "model-routing",
-    "receipts",
-    "resource-lifecycle",
-    "runtime-projection",
-    "scope-selector",
-    "semantic-graph",
-    "stage-dispatch"
-  ],
-  "excludedAuthorities": [
-    "product-api",
-    "product-design",
-    "product-documentation",
-    "product-runtime",
-    "repository-agents"
-  ],
-  "artifactDigests": {
-    "agents/code-implementer.toml": "6b3b3ee2029c392f3eb2510523193d3e46633ff73b9bb396be33dc83bdfe0a31",
-    "agents/dag-creator-updater.toml": "45519067ef0173a6b6394b13b189915591cd9a7f4ec7f96151f13c40f0c6a7a7",
-    "agents/documentation-writer.toml": "a0d9f852dd6610273472f976258eff11439fb831557a8f0be72df0cfebd86463",
-    "agents/test-owner.toml": "3a38a5cd5b51c82d06369ad67d1cf4842b02ac5149484128130e5a35cc95395f",
-    "agents/ui-system-adjudicator.toml": "f22ddd301b427d116f06fe31f09f5b120440ea850467e1bc7fe717490e4594f7",
-    "agents/ui-ux-implementer.toml": "2afd816dd4154fb4dba04628fd212fb43e16e6d181cc0464873982e0da91241f",
-    "agents/ux-acceptance-verifier.toml": "ea2f8d11bac33d9cc4d8339b13f0b07760f85a337f9a1da82dd499b893b9518a",
-    "graph/graph-patch.schema.json": "46aaec968f735eb5c70cd754f8c9a660c3440110f7b8338604c9f4ed735c6572",
-    "graph/runtime-projection.schema.json": "3a5e507161ee81f350ac141e79d41beeecce9eb17708ca49dd10e28e944fc4b4",
-    "graph/semantic-graph.schema.json": "c7a8e4d5e45b02a8024ca9d174a3c38b7793781364a1fd740cb0fec227653caa",
-    "policy/model-pool.json": "5b6bd5166982fe0c1fdb86df94bf3d6fb6b0acc90a44d8c865b2a7fb67299fe9",
-    "policy/remote-mutation-policy.json": "c8358855c88cd727ec951e714b8e33352ca94e5149b8ba92fd04b94548fa7fcf",
-    "policy/routing-policy.json": "6cb23751e30123468a73091cfa05fe6d99be02420a6c45df5519dcd08a2ff147",
-    "policy/stage-permissions.json": "69eb3d324f8d3b379c84960e87189dc48b32c2a7ae261bc4b41feaf1141ba327",
-    "scripts/build-manifest.mjs": "c25d71c2c4d509976416c1fc1616396c37c3660c43e89c9e618246598c1f8573",
-    "scripts/discover.mjs": "ebc0cc32001c84ebaac60bbd54b24005a74767fb116989d6ff38e52e91c7f678",
-    "scripts/install.mjs": "6304fcdc44360269a04d2596fe57607e95e56bc85e32f706b735fac17d883fc9",
-    "scripts/package-lib.mjs": "a2afdb907d1e1006fe905ace1849d44c0b816e15d36b35e3a015bf0564458ada",
-    "scripts/uninstall.mjs": "17bb2c0bf5ae4787383d0fb008756bd623f2c667e58b11285a3edde89a5f49ac",
-    "scripts/verify-install.mjs": "3508b52b082f5c88c3654904b4116b5199415bd1de1394784ef0e486a15578b0",
-    "skills/issue-orchestration/agents/openai.yaml": "3b9add5ad1768919b4f3c4824341b06348ae39a574778f886041249b2217006c",
-    "skills/issue-orchestration/references/dag-and-scheduling.md": "7ba8b3eb2ea4ed2029378056cc58d9f6b6d9054a55ba39f8a7710c8842a9c639",
-    "skills/issue-orchestration/references/dispatch-and-runtime-probe.md": "485a2416835c37af9c629cca10f31d0f21648bae61a7eb3bb808970e05419c04",
-    "skills/issue-orchestration/references/group-delivery.md": "e0c3b17d29e241d131e3c03c52bd49ac69dc5d1f976be4d4290cc177c06d2162",
-    "skills/issue-orchestration/references/review-failure-and-verification.md": "423d5973c202d83c41780f6fc1ce22e88dd66c8d304012f718e6f202531b365c",
-    "skills/issue-orchestration/scripts/check-dag-gate.mjs": "490ddd86c321ba14c95dd92c197377a7771c1ab4cbd30b156d0d1c833e68511c",
-    "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "0002637066057b852b4b27089603ed8f3b15c6617647316de2289d4162434d36",
-    "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "2e52eb840c0d0fa93bfc3e348fe5bc84ec9501d0b7f18ae31eebb1174ac265ba",
-    "skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs": "8d34aa5105ff77fa2e60035c69e8604456d8b14fe8ba962f0d2253194297d2a8",
-    "skills/issue-orchestration/scripts/event-ledger.mjs": "8b3bfad2af1d6a726c59176fa39ae2e192270bdae84950e6ead49af4e331c380",
-    "skills/issue-orchestration/scripts/frontier-compiler.mjs": "bcb171686ef1616f49f2c409746ab5fcc92bf3a073751483058332b2182ab77e",
-    "skills/issue-orchestration/scripts/investigation-compiler.mjs": "9bd8db272f795e309a7c588ff57511726414a039d17c59a8efacd3de2be65156",
-    "skills/issue-orchestration/scripts/resource-lifecycle.mjs": "7bc2658981f8593eb3eb33e27c1db9dc77bb094d19726f3b53c272e25df4ca28",
-    "skills/issue-orchestration/scripts/scope-selector.mjs": "b0e0deadc1e31b437de7ae6e3d0e4d832bb6b1e33ce9ed9e54274458ec917a49",
-    "skills/issue-orchestration/scripts/semantic-runtime-projection.mjs": "49ad086837e230c69c5c7650a4e0707f0b9bb07fddd101cf551d9a009a96bf8b",
-    "skills/issue-orchestration/scripts/stage-profile-policy.mjs": "26188f60b72af5ac06f8d9341d16e6569c62c7f8c338cfe21d4eb767a78623d2",
-    "skills/issue-orchestration/scripts/validate-state-root.mjs": "ce9adc2a8b3454fd8e89ca8519d3f059e71603cf3bbea81a15f3d91938b61c6d",
-    "skills/issue-orchestration/SKILL.md": "68119002d3fdb1e58318500d3deb5065a424af3d97d62b11b49be38ccc52e16c",
-    "skills/issue-orchestration/templates/subagent-task.md": "5c7572b855e2611348b1c4eb744051c95d951303ede027bc766e9fac5a7e9030"
-  },
-  "manifestDigest": "486c732854a821453cf7d8c7aca95c3b3a68b6d185b68569bf7532a30cf1e9a6"
+    "manifestDigest": "92f395195f14cddbb47abd32c6179d8fdbee96ade203e7e1dfe912b31a547768"
 }

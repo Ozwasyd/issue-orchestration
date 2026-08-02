@@ -2,7 +2,7 @@
 
 <!-- Shared package authority. -->
 
-本文件是派发前调查、最小真实探针、闭环 prompt 和实现者行为的唯一详细来源。
+本文件是派发前调查、最小真实探针、verified stage work plan、executable slice、compiled prompt 和 writer 行为的唯一详细来源。
 
 ## 派发前调查
 
@@ -26,41 +26,57 @@
 - 原始输出、退出状态和证据位置；
 - 观察结论、限制及由此新增的动态验收条件。
 
-把观察结论和动态验收直接填入任务模板。静态字符串、mock、文件名、源码推断或网络文章不能成为外部运行时边界的唯一证据。
+把观察结论和动态验收写入 stage work plan 的输入证据。静态字符串、mock、文件名、源码推断或网络文章不能成为外部运行时边界的唯一证据。
 
 纯代码任务不机械增加外部探针。完整 build、Fresh、consumer、visual 或性能验收通常不是“最小探针”；只有关键行为无法用更小真实动作确认时才运行，并明确成本。
 
 探针不得执行未经任务授权的 push、issue close、包发布或生产状态修改。缺少依赖时，可按当前环境提供的凭据安装；任何凭据、token 或秘密都不得写入 prompt、DAG、日志摘要或受跟踪文件。
 
-## 闭环 prompt
+## Verified plan、slice 与 compiled prompt
 
-复制并完整填写 [`../templates/subagent-task.md`](../templates/subagent-task.md)。所有字段必须有已调查的值；确实不适用时写明“不适用”及事实理由。
+完整 issue 不是 writer 任务。Root 先把已确认的 issue、调查、指令链、base、epoch、worktree、routing、acceptance、命令和边界提交给 canonical compiler：
 
-禁止：
+1. `compileStageWorkPlan(input)` 生成并验证 `issue-orchestration.stage-work-plan.v1`；
+2. `compileExecutableSlice({ plan, sliceId })` 只提取当前 `issue-orchestration.executable-slice.v1`；
+3. `compileDispatchPrompt({ plan, slice })` 确定性生成 `issue-orchestration.compiled-dispatch-prompt.v1`；
+4. `validateCompiledDispatchPrompt({ plan, slice, compiled })` 在派发前重算并核对 plan、slice、stage 和 prompt digest。
 
-- 只转发 issue、标题或评论；
-- 使用“全面检查并修好”等开放式指令；
-- 省略隐含验收、反例、失败分类或停止条件；
-- 把 owner、方案、范围、兼容策略或测试强度留给实现者选择；
-- 允许兼容兜底、绕过、降级、阈值放宽、正确基线刷新或测试弱化。
+Work plan 必须绑定 run/repository/issue/node、stage role/phase、base SHA、epoch、worktree identity、semantic/test/authority/Skill/baseline/routing digests、单一 stage objective、全部 acceptance items、有序 slices、slice dependency graph、stage 允许/禁止路径、required commands 和 terminal artifacts。每条 acceptance 与 required command 都必须恰好有 slice owner；遗漏、重复或无 owner 都 fail closed。
 
-填完后逐项对照原始 issue、代码事实和适用仓库指令。任何冲突都由根代理先解决。
+每个 slice 只允许一个有界 objective，并绑定 first required action、read targets、允许写路径或只读输出、forbidden paths、required files/commands/evidence、non-goals、completion/continuation predicates 和 thresholds。阈值至少限制 changed files、modules、read operations、无产出调用与 duration class；达到阈值前没有 terminal artifact 时必须 checkpoint，不得继续开放式调查。
+
+Root 只能调用 compiler/validator、选择已 ready 的 slice 并传递编译结果。Root 不得手写、补写、删减或改写 compiled prompt，也不得直接把 issue 正文、标题、评论或“全面检查并修好”之类开放式指令派发给 writer。[`../templates/subagent-task.md`](../templates/subagent-task.md) 只能是 compiled prompt 的 renderer；模板内容与编译结果不一致时以机器验证失败处理，不能人工修补 digest。
+
+Writer stage 与永久输出合同如下：
+
+| Stage phase | Writer role | 必需输出 |
+| --- | --- | --- |
+| `test-contract` | `test-owner` | tests/fixtures、命令证据、checkpoint |
+| `implementation` | `code-implementer` | diff、命令证据、checkpoint |
+| `ui-implementation` | `ui-ux-implementer` | diff、render evidence、checkpoint |
+| `documentation` | `documentation-writer` | diff 或 verified no-change evidence、checkpoint |
+| `landing-conflict-resolution` | `code-implementer` 或 `ui-ux-implementer` | conflict mapping、diff、checkpoint |
+
+Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v2` 或永久 routing policy。
 
 ## Implementer contract
 
-具体 stage implementer（`code_implementer` 或 `ui_ux_implementer`）只执行已填充的闭环 prompt：
+具体 stage writer 只执行已验证的 compiled prompt：
 
 - 仅在允许路径内修改指定代码、测试和文档；
-- 执行 prompt 指定的局部验收；
+- 先执行 slice 的 first required action，再执行指定的局部验收；
 - 按验收条件逐项返回文件、命令、退出结果与直接证据；
+- 在达到 slice threshold 前返回 complete checkpoint 和 terminal artifacts，或返回 partial checkpoint 与 continuation；
 - 明确列出未运行项、风险和未解决事实。
 
-实现者只接收当前节点的任务投影，不接收状态根路径或完整 DAG。不得读取或修改完整 DAG、ledger、槽位、锁、issue 状态或恢复指纹；不得扩大范围、重新设计、添加未授权兼容层、猜测隐含要求、伪造或弱化测试、放宽阈值、刷新正确基线，也不得 push、发布包、评论或关闭 issue。状态汇报不是交付物。
+Writer 只接收当前 slice 投影，不接收状态根路径、完整 issue 或完整 DAG。不得读取或修改完整 DAG、ledger、槽位、锁、issue 状态或恢复指纹；不得扩大范围、重新设计、添加未授权兼容层、猜测隐含要求、伪造或弱化测试、放宽阈值、刷新正确基线，也不得 push、发布包、评论或关闭 issue。状态汇报和自然语言“已完成”不是 checkpoint 或 terminal artifact。
 
-若 prompt 与代码事实冲突，或发现范围外异常，停止相关修改并上报路径、事实和影响；不得猜测处理。根代理调查后把确认的实现缺陷或返工按 DAG 规则入图。
+`sealProgressCheckpoint` / `validateProgressCheckpoint` 只接受真实 filesystem、Git 和 command evidence：文件 realpath 与 `git hash-object`、HEAD/status、命令 exit/output digest、tree/diff/command/evidence digests，以及精确 cursor。Partial checkpoint 必须给出 `nextRequiredAction` 且不能 candidate-green；complete checkpoint 的该字段必须为 `null`。`compileContinuation` 必须绑定原 run/node/base/epoch/worktree/plan/slice/checkpoint/cursor 并保持 `restartInvestigation=false`，只能从 cursor 的下一动作恢复，不能从 issue 正文重新开始。
+
+若 compiled prompt 与代码事实冲突，或发现范围外异常，停止相关修改并返回绑定当前 slice 的 checkpoint、路径、事实和影响；不得猜测处理。Root 调查后只能通过新 verified plan/slice 或合法 material retry authorization 改变任务。
 
 ## 派发
 
-使用共享 package custom agent `code_implementer` 或 `ui_ux_implementer`，传入完整模板内容，并按 [`dag-and-scheduling.md`](dag-and-scheduling.md) 传递 routing compiler 生成的 stage assignment 与非 full-history fork。角色文件只负责加载本合同，不拥有模型选择规则；实际 requested/effective profile 必须由 `stage-model-pool.v2` receipt 证明。
+使用共享 package 中当前 stage 对应的 writer role，传入通过验证的 compiled prompt，并按 [`dag-and-scheduling.md`](dag-and-scheduling.md) 传递 routing compiler 生成的 stage assignment 与非 full-history fork。Dispatch request/receipt 必须绑定 plan、slice、compiled prompt 和 route digests；任何 identity 漂移都必须拒绝。角色文件只负责加载本合同，不拥有模型选择规则；实际 requested/effective profile 必须由 `stage-model-pool.v2` receipt 证明。
 
-实现者返回后，根代理先检查实际 diff、产物和局部 evidence 是否存在，再进入 independent verification；不得用完成声明代替产出。
+Writer 返回后，Root 先调用机器 gate 校验 checkpoint、terminal receipt、实际 diff/产物和局部 evidence。非最终 slice 的合法结果只能是 `next-slice`；只有 final slice 及此前所有有序 `issue-orchestration.slice-terminal-receipt.v1` 全部有效，stage 才能进入 `candidate-green` 和 independent verification。失败语义、breaker 与 material retry 见 [`review-failure-and-verification.md`](review-failure-and-verification.md)。

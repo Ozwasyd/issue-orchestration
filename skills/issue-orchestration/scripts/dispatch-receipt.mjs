@@ -3,34 +3,27 @@
 
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
+import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {
     STAGE_MODEL_POOL_POLICY,
+    STAGE_ROUTE_DEFINITIONS,
     compileStageRoute,
     splitProfile
 } from './stage-profile-policy.mjs'
+import {
+    compileExecutableSlice,
+    validateCompiledDispatchPrompt
+} from './executable-slice-compiler.mjs'
+import { evaluateSliceTerminalGate } from './writer-stage-progress.mjs'
 import { verifyCleanupReceipt } from './resource-lifecycle.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const SHA = /^[a-f0-9]{40}$/u
-const REQUIRED_REQUEST_FIELDS = [
-    'schema', 'requestId', 'runId', 'nodeId', 'attemptId', 'role', 'stageRole',
-    'requestedByRole', 'promptDigest', 'sourceDagDigest', 'frontierDigest',
-    'issueSnapshotFingerprint', 'repositoryFingerprint', 'repository', 'baseSha',
-    'candidateSha', 'candidateDigest', 'requestedModel', 'requestedEffort',
-    'requestedSandbox', 'requestedForkTurns', 'requestedWorkingDirectory',
-    'stageProfileDigest', 'testOwnerId', 'testContractDigest', 'epochId',
-    'requiredSkills', 'designAuthorityDigests', 'uiImpact', 'behaviorReceiptDigest',
-    'uxAcceptanceReceiptDigest', 'documentationReceiptDigest', 'allowedPathsDigest',
-    'forbiddenPathsDigest', 'writePolicy', 'groupId', 'groupSessionDigest',
-    'memberIssueId', 'memberStage', 'activeWriteLeaseId', 'groupWorktreeIdentity',
-    'groupBranchIdentity', 'testOwnerContinuityIdentity',
-    'implementerContinuityIdentity', 'freshVerificationRollout',
-    'memberTestContractDigest', 'memberCandidateIdentity', 'createdAt'
-]
 
 const V2_REQUEST_FIELDS = [
-    'schema', 'policyVersion', 'routingPolicyDigest', 'stageRole', 'stagePhase',
+    'schema', 'policyVersion', 'routingPolicyDigest',
+    'stagePermissionsPolicyDigest', 'stageRole', 'stagePhase',
     'stageProfileId', 'allowedProfilesDigest', 'defaultProfileId',
     'routingAuthority', 'routingInputDigest', 'selectedProfileReason',
     'selectedProfileId', 'routingClassification', 'routeTransitionFrom',
@@ -52,17 +45,14 @@ const V2_REQUEST_FIELDS = [
     'memberCandidateIdentity', 'createdAt'
 ]
 
-const V2_WRITE_POLICIES = Object.freeze({
-    'root-scheduler:scheduling': 'external-state-root-only',
-    'dag-creator-updater:semantic-proposal': 'read-only',
-    'test-owner:test-contract': 'test-owner-scoped-write-lease',
-    'test-owner:behavior-verification': 'read-only',
-    'code-implementer:implementation': 'stage-scoped-write-lease',
-    'ui-ux-implementer:implementation': 'stage-scoped-write-lease',
-    'ui-system-adjudicator:adjudication': 'read-only',
-    'ux-acceptance-verifier:ux-acceptance': 'read-only',
-    'documentation-writer:documentation': 'documentation-scoped-write-lease'
-})
+const WRITER_STAGE_KEYS = new Set([
+    'test-owner:test-contract',
+    'code-implementer:implementation',
+    'code-implementer:landing-conflict-resolution',
+    'ui-ux-implementer:ui-implementation',
+    'ui-ux-implementer:landing-conflict-resolution',
+    'documentation-writer:documentation',
+])
 
 class ReceiptError extends Error {
     constructor(code, message = code) {
@@ -84,6 +74,19 @@ function canonical(value) {
 function digest(value) {
     return createHash('sha256')
         .update(typeof value === 'string' ? value : JSON.stringify(canonical(value)))
+        .digest('hex')
+}
+
+function orderedCanonical(value) {
+    if (Array.isArray(value)) return value.map(orderedCanonical)
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(Object.keys(value).sort()
+        .map((key) => [key, orderedCanonical(value[key])]))
+}
+
+function orderedDigest(value) {
+    return createHash('sha256')
+        .update(JSON.stringify(orderedCanonical(value)))
         .digest('hex')
 }
 
@@ -111,6 +114,58 @@ function deepFreeze(value) {
     return Object.freeze(value)
 }
 
+function loadStagePermissionsPolicy() {
+    const policyPath = path.resolve(
+        import.meta.dirname,
+        '../../../policy/stage-permissions.json'
+    )
+    let policy
+    try {
+        policy = JSON.parse(fs.readFileSync(policyPath, 'utf8'))
+    } catch {
+        throw new Error('stage-permissions-policy-source-invalid')
+    }
+    const expectedStageKeys = Object.keys(STAGE_ROUTE_DEFINITIONS).sort()
+    const actualStageKeys = Object.keys(policy?.stages ?? {}).sort()
+    if (policy?.schema !==
+        'issue-orchestration.stage-permissions.v1' ||
+        JSON.stringify(actualStageKeys) !==
+            JSON.stringify(expectedStageKeys)) {
+        throw new Error('stage-permissions-policy-source-invalid')
+    }
+    for (const key of expectedStageKeys) {
+        const permission = policy.stages[key]
+        const route = STAGE_ROUTE_DEFINITIONS[key]
+        if (!permission || typeof permission !== 'object' ||
+            Array.isArray(permission) ||
+            JSON.stringify(Object.keys(permission).sort()) !==
+                JSON.stringify([
+                    'freshContext',
+                    'sandbox',
+                    'writeScope'
+                ]) ||
+            !['read-only', 'workspace-write'].includes(
+                permission.sandbox
+            ) ||
+            !['none', 'tests-only', 'implementation-only',
+                'documentation-only'].includes(
+                permission.writeScope
+            ) ||
+            typeof permission.freshContext !== 'boolean' ||
+            permission.sandbox !== route.sandbox ||
+            permission.writeScope !== route.writeScope ||
+            permission.freshContext !== route.freshContext) {
+            throw new Error('stage-permissions-policy-source-invalid')
+        }
+    }
+    return deepFreeze(policy)
+}
+
+export const STAGE_PERMISSIONS_POLICY =
+    loadStagePermissionsPolicy()
+export const STAGE_PERMISSIONS_POLICY_DIGEST =
+    digest(STAGE_PERMISSIONS_POLICY)
+
 export function sealCleanupReceipt(receipt) {
     verifyCleanupReceipt(receipt)
     return deepFreeze(structuredClone(receipt))
@@ -120,457 +175,8 @@ function observationByKind(observations, kind) {
     return observations.find((item) => item?.kind === kind)
 }
 
-function trustworthyObservation(item) {
-    const trustedSources = new Set([
-        'runtime-rollout', 'machine-git-observation', 'runtime-skill-loader',
-        'machine-lease-registry'
-    ])
-    return item && trustedSources.has(item.source) &&
-        item.observationDigest === unsignedDigest(item, 'observationDigest')
-}
-
-function validateVersionedRoute(input) {
-    const classification = input.routingClassification ?? input.classification
-    if (!classification || !input.stagePhase) return false
-    const route = compileStageRoute({
-        ...classification,
-        stageRole: input.stageRole,
-        stagePhase: input.stagePhase,
-        frontierException: input.frontierException,
-        requiredSkillDigests: input.requiredSkills.map(({ digest: value }) => value),
-        capabilityDigest: input.capabilityDigest
-    })
-    const requested = splitProfile(route.selectedProfile)
-    const writePolicies = {
-        'root-scheduler:scheduling': 'external-state-root-only',
-        'dag-creator-updater:semantic-proposal': 'read-only',
-        'test-owner:test-contract': 'test-owner-scoped-write-lease',
-        'test-owner:behavior-verification': 'read-only',
-        'code-implementer:implementation': 'stage-scoped-write-lease',
-        'ui-ux-implementer:implementation': 'stage-scoped-write-lease',
-        'ui-system-adjudicator:adjudication': 'read-only',
-        'ux-acceptance-verifier:ux-acceptance': 'read-only',
-        'documentation-writer:documentation': 'documentation-scoped-write-lease'
-    }
-    const actual = [
-        input.requestedModel,
-        input.requestedEffort,
-        input.requestedSandbox,
-        input.writePolicy
-    ]
-    const expected = [
-        requested.model,
-        requested.effort,
-        route.sandbox,
-        writePolicies[`${input.stageRole}:${input.stagePhase}`]
-    ]
-    if (actual.some((value, index) => value !== expected[index])) {
-        fail(input.stageRole === 'root-scheduler'
-            ? 'dispatch-root-profile-policy'
-            : 'dispatch-stage-profile-policy')
-    }
-    return true
-}
-
-function validateV1RequestBoundary(input) {
-    const expected = {
-        'root-scheduler': [
-            'gpt-5.6-sol', 'low', 'read-only', 'external-state-root-only'
-        ],
-        'dag-creator-updater': [
-            'gpt-5.6-sol', 'max', 'read-only', 'read-only'
-        ],
-        'test-owner': [
-            'gpt-5.6-sol', 'max', 'workspace-write',
-            'test-owner-scoped-write-lease'
-        ],
-        'code-implementer': [
-            'gpt-5.6-sol', 'low', 'workspace-write',
-            'stage-scoped-write-lease'
-        ],
-        'ui-ux-implementer': [
-            'gpt-5.6-sol', 'low', 'workspace-write',
-            'stage-scoped-write-lease'
-        ],
-        'ux-acceptance-verifier': [
-            'gpt-5.6-sol', 'max', 'read-only', 'read-only'
-        ],
-        'documentation-writer': [
-            'gpt-5.6-sol', 'low', 'workspace-write',
-            'documentation-scoped-write-lease'
-        ]
-    }[input.stageRole]
-    const actual = [
-        input.requestedModel,
-        input.requestedEffort,
-        input.requestedSandbox,
-        input.writePolicy
-    ]
-    if (!expected || actual.some((value, index) => value !== expected[index])) {
-        fail(input.stageRole === 'root-scheduler'
-            ? 'dispatch-root-profile-policy'
-            : 'dispatch-stage-profile-policy')
-    }
-}
-
-async function sealDispatchRequestV1(input) {
-    if (containsSecret(input)) fail('dispatch-secret-material')
-    for (const field of REQUIRED_REQUEST_FIELDS) {
-        if (!Object.hasOwn(input, field)) fail(
-            field === 'groupId' ? 'dispatch-group-identity-missing' : 'dispatch-request-field-missing'
-        )
-    }
-    if (input.schema !== 'issue-orchestration.dispatch-request.v1') {
-        fail('dispatch-request-field-missing')
-    }
-    if (!SHA.test(input.baseSha ?? '')) fail('dispatch-request-base-sha')
-    if (!validateVersionedRoute(input)) validateV1RequestBoundary(input)
-    if (input.stageRole === 'ui-ux-implementer' && input.repository === 'Ozwasyd/FsusBlog') {
-        const expectedSkills = ['fsusblog-design-conformance', 'fsusui-design-conformance']
-        const actualSkills = input.requiredSkills.map(({ id }) => id)
-        const skillDigests = input.requiredSkills.map(({ digest: value }) => value)
-        if (JSON.stringify(actualSkills) !== JSON.stringify(expectedSkills) ||
-            JSON.stringify(input.designAuthorityDigests) !== JSON.stringify(skillDigests) ||
-            skillDigests.some((value) => !HASH.test(value))) {
-            fail('dispatch-ui-design-authority-policy')
-        }
-    }
-    if (input.stageRole === 'dag-creator-updater' &&
-        input.requestedByRole !== 'root-scheduler') fail('dispatch-stage-profile-policy')
-    if (input.requestDigest && input.requestDigest !== unsignedDigest(input, 'requestDigest')) {
-        fail('dispatch-request-digest')
-    }
-    const request = structuredClone(input)
-    delete request.requestDigest
-    request.requestDigest = digest(request)
-    return deepFreeze(request)
-}
-
-function observeRuntime(request, rolloutRecords, machineObservations) {
-    const session = rolloutRecords.find((item) => item?.type === 'session_meta')?.payload
-    const contexts = rolloutRecords.filter((item) => item?.type === 'turn_context').map((item) => item.payload)
-    const context = contexts[0] ?? {}
-    const spawn = session?.source?.subagent?.thread_spawn ?? {}
-    const dispatch = observationByKind(machineObservations, 'dispatch-context')
-    const git = observationByKind(machineObservations, 'git-worktree-identity')
-    const skill = observationByKind(machineObservations, 'skill-loader')
-    const lease = observationByKind(machineObservations, 'group-member-lease')
-    const sandbox = context.sandbox_policy?.type
-    return {
-        schema: 'issue-orchestration.runtime-observation.v1',
-        threadId: session?.session_id,
-        rolloutId: session?.id,
-        startedAt: rolloutRecords[0]?.timestamp,
-        effectiveModel: context.model,
-        effectiveEffort: context.effort,
-        effectiveRole: spawn.agent_role,
-        effectiveSandbox: sandbox,
-        effectiveForkTurns: spawn.fork_turns,
-        effectiveWorkingDirectory: context.cwd,
-        loadedSkills: skill?.loadedSkills,
-        skillLoadProvenance: skill?.source,
-        session,
-        contexts,
-        dispatch,
-        git,
-        skill,
-        lease,
-        provenanceTrusted: [dispatch, git, skill, lease].every(trustworthyObservation)
-    }
-}
-
-function compareRuntime(request, observed, priorReceipts) {
-    const reasons = []
-    const missing = [
-        ['threadId', 'runtime-thread-id-unobservable'],
-        ['rolloutId', 'runtime-rollout-id-unobservable'],
-        ['startedAt', 'runtime-started-at-unobservable'],
-        ['effectiveModel', 'runtime-model-unobservable'],
-        ['effectiveEffort', 'runtime-effort-unobservable'],
-        ['effectiveRole', 'runtime-role-unobservable'],
-        ['effectiveSandbox', 'runtime-sandbox-unobservable'],
-        ['effectiveForkTurns', 'runtime-fork-unobservable'],
-        ['effectiveWorkingDirectory', 'runtime-working-directory-unobservable']
-    ]
-    for (const [field, reason] of missing) if (!observed[field]) reasons.push(reason)
-    if (!observed.skill) reasons.push('runtime-skill-load-unobservable')
-    if (observed.effectiveModel && observed.effectiveModel !== request.requestedModel) {
-        reasons.push('runtime-model-mismatch')
-    }
-    if (observed.effectiveEffort && observed.effectiveEffort !== request.requestedEffort) {
-        reasons.push('runtime-effort-mismatch')
-    }
-    if (observed.effectiveRole && observed.effectiveRole !== request.stageRole) {
-        reasons.push('runtime-role-mismatch')
-    }
-    if (observed.effectiveSandbox && observed.effectiveSandbox !== request.requestedSandbox) {
-        reasons.push('runtime-sandbox-role-policy')
-    }
-    if (observed.effectiveForkTurns === 'all') reasons.push('runtime-full-history-fork')
-    else if (observed.effectiveForkTurns &&
-        observed.effectiveForkTurns !== request.requestedForkTurns) {
-        reasons.push('runtime-fork-mismatch')
-    }
-    if (observed.effectiveWorkingDirectory &&
-        observed.effectiveWorkingDirectory !== request.requestedWorkingDirectory) {
-        reasons.push('runtime-working-directory-mismatch')
-    }
-    if (new Set(observed.contexts.map(({ effort }) => effort)).size > 1) {
-        reasons.push('runtime-context-drift')
-    }
-    if (new Set(observed.contexts.map(({ sandbox_policy: policy }) => JSON.stringify(policy))).size > 1) {
-        reasons.push('runtime-sandbox-drift')
-    }
-    const pairs = [
-        [observed.dispatch?.promptDigest, request.promptDigest, 'runtime-prompt-digest-mismatch'],
-        [observed.git?.baseSha, request.baseSha, 'runtime-base-sha-mismatch'],
-        [observed.dispatch?.sourceDagDigest, request.sourceDagDigest, 'runtime-source-dag-digest-mismatch'],
-        [observed.dispatch?.frontierDigest, request.frontierDigest, 'runtime-frontier-digest-mismatch'],
-        [observed.dispatch?.stageProfileDigest, request.stageProfileDigest,
-            'runtime-stage-profile-digest-mismatch'],
-        [observed.dispatch?.testContractDigest, request.testContractDigest,
-            'runtime-test-contract-digest-mismatch'],
-        [observed.dispatch?.requestId, request.requestId, 'runtime-request-id-mismatch'],
-        [observed.dispatch?.epochId, request.epochId, 'runtime-epoch-id-mismatch'],
-        [observed.git?.candidateSha, request.candidateSha, 'runtime-candidate-identity-mismatch'],
-        [observed.git?.candidateDigest, request.candidateDigest,
-            'runtime-candidate-identity-mismatch']
-    ]
-    for (const [actual, expected, reason] of pairs) if (actual !== expected) reasons.push(reason)
-    if (!observed.provenanceTrusted) reasons.push('runtime-provenance-request-copy')
-    if (observed.skill?.source === 'agent-self-report') {
-        reasons.push('runtime-skill-observation-untrusted')
-    }
-    if (request.stageRole === 'test-owner' && observed.contexts[0]?.sandbox_policy) {
-        const expectedRoots = [
-            `${request.requestedWorkingDirectory}/tests/tools`,
-            `${request.requestedWorkingDirectory}/tests/fixtures/issue-orchestration`
-        ]
-        if (JSON.stringify(observed.contexts[0].sandbox_policy.writable_roots) !==
-            JSON.stringify(expectedRoots)) reasons.push('runtime-test-owner-write-boundary')
-    }
-    if (observed.skill) {
-        const loaded = new Map((observed.loadedSkills ?? []).map((item) => [item.id, item.digest]))
-        for (const requirement of request.requiredSkills) {
-            if (!loaded.has(requirement.id)) reasons.push('runtime-required-skill-missing')
-            else if (loaded.get(requirement.id) !== requirement.digest) {
-                reasons.push('runtime-skill-digest-mismatch')
-            }
-        }
-    }
-    if (priorReceipts.some((item) =>
-        item.verificationStatus === 'verified' && item.threadId === observed.threadId &&
-        item.requestId !== request.requestId)) reasons.push('runtime-thread-identity-reused')
-    if (priorReceipts.some((item) =>
-        item.verificationStatus === 'verified' && item.requestDigest === request.requestDigest &&
-        item.attemptId !== request.attemptId)) reasons.push('dispatch-request-replay')
-    const lease = observed.lease ?? {}
-    if (request.groupId !== null) {
-        const groupPairs = [
-            [lease.groupId, request.groupId, 'runtime-group-id-mismatch'],
-            [lease.groupSessionDigest, request.groupSessionDigest,
-                'runtime-group-session-mismatch'],
-            [lease.memberIssueId, request.memberIssueId, 'runtime-group-member-mismatch'],
-            [lease.memberStage, request.memberStage, 'runtime-group-member-stage-mismatch'],
-            [lease.memberTestContractDigest, request.memberTestContractDigest,
-                'runtime-member-test-contract-mismatch'],
-            [lease.activeWriteLeaseId, request.activeWriteLeaseId, 'runtime-write-lease-mismatch'],
-            [observed.git?.worktreeIdentity, request.groupWorktreeIdentity,
-                'runtime-group-worktree-mismatch'],
-            [observed.git?.branchIdentity, request.groupBranchIdentity,
-                'runtime-group-branch-mismatch'],
-            [lease.memberCandidateIdentity, request.memberCandidateIdentity,
-                'runtime-member-candidate-mismatch'],
-            [lease.testOwnerContinuityIdentity, request.testOwnerContinuityIdentity,
-                'runtime-test-owner-continuity-mismatch'],
-            [lease.implementerContinuityIdentity, request.implementerContinuityIdentity,
-                'runtime-implementer-continuity-mismatch']
-        ]
-        for (const [actual, expected, reason] of groupPairs) if (actual !== expected) reasons.push(reason)
-        const owners = lease.activeLeaseOwners ?? []
-        if (owners.filter((item) => item.leaseId === request.activeWriteLeaseId).length !== 1) {
-            reasons.push('runtime-write-lease-conflict')
-        }
-    }
-    if (request.freshVerificationRollout && lease.freshVerificationRollout !== true) {
-        reasons.push('runtime-verification-not-fresh')
-    }
-    return unique(reasons)
-}
-
-async function verifyRuntimeDispatchV1(input) {
-    if (containsSecret(input.extraMetadata) || containsSecret(input.machineObservations)) {
-        return rejectedDispatch(input.request, null, ['dispatch-secret-material'])
-    }
-    const runtimeObservation = observeRuntime(
-        input.request,
-        input.rolloutRecords ?? [],
-        input.machineObservations ?? []
-    )
-    const reasons = compareRuntime(input.request, runtimeObservation, input.priorReceipts ?? [])
-    const runtimeMetadataDigest = digest(runtimeObservation)
-    if (input.claimedRuntimeMetadataDigest &&
-        input.claimedRuntimeMetadataDigest !== runtimeMetadataDigest) reasons.push('runtime-metadata-digest')
-    if (input.replayReceiptDigest && (input.priorReceipts ?? []).some((item) =>
-        item.receiptDigest === input.replayReceiptDigest && item.epochId !== input.request.epochId)) {
-        reasons.push('dispatch-receipt-replay')
-    }
-    const capabilityReasons = reasons.filter((reason) =>
-        reason.endsWith('-unobservable') || reason === 'runtime-provenance-request-copy')
-    const verificationStatus = reasons.length === 0
-        ? 'verified'
-        : capabilityReasons.length === reasons.length ? 'capability-unverified' : 'rejected'
-    const dispatchReceipt = {
-        schema: 'issue-orchestration.dispatch-receipt.v1',
-        requestId: input.request.requestId,
-        requestDigest: input.request.requestDigest,
-        attemptId: input.request.attemptId,
-        epochId: input.request.epochId,
-        threadId: runtimeObservation.threadId,
-        rolloutId: runtimeObservation.rolloutId,
-        runtimeMetadataDigest,
-        verificationStatus,
-        mismatchReasons: unique(reasons)
-    }
-    dispatchReceipt.receiptDigest = digest(dispatchReceipt)
-    return { runtimeObservation, dispatchReceipt }
-}
-
-function rejectedDispatch(request, runtimeObservation, reasons) {
-    return {
-        runtimeObservation,
-        dispatchReceipt: {
-            schema: 'issue-orchestration.dispatch-receipt.v1',
-            requestId: request.requestId,
-            verificationStatus: 'rejected',
-            mismatchReasons: reasons
-        }
-    }
-}
-
-async function verifyImplementerSelfTestV1({ request, dispatchReceipt, contract, execution }) {
-    const reasons = []
-    const expectedCommands = contract.visibleTestMatrix
-    if (execution.commandResults?.length !== expectedCommands.length ||
-        expectedCommands.some((item, index) =>
-            JSON.stringify(execution.commandResults?.[index]?.command) !== JSON.stringify(item.command) ||
-            execution.commandResults?.[index]?.id !== item.id ||
-            execution.commandResults?.[index]?.exitStatus !== 0 ||
-            !HASH.test(execution.commandResults?.[index]?.resultDigest ?? ''))) {
-        reasons.push('self-test-visible-matrix-incomplete')
-    }
-    if (execution.visibleTestMatrixDigest !== contract.visibleTestMatrixDigest) {
-        reasons.push('self-test-visible-matrix-incomplete')
-    }
-    if (execution.frozenTestTreeDigestBefore !== contract.frozenTestTree.digest ||
-        execution.frozenTestTreeDigestAfter !== contract.frozenTestTree.digest ||
-        execution.frozenTestTreeDigestBefore !== execution.frozenTestTreeDigestAfter) {
-        reasons.push('self-test-frozen-tree-drift')
-    }
-    if (!execution.failureHistory?.some((item) =>
-        execution.firstFailureRefs?.includes(item.ref) && item.outcome === 'failed')) {
-        reasons.push('self-test-command-history-incomplete')
-    }
-    if (execution.commandResults?.some((item) => item.skipped)) reasons.push('self-test-command-skipped')
-    if (!SHA.test(execution.candidateSha ?? '') || execution.candidateSha === '0'.repeat(40)) {
-        reasons.push('self-test-candidate-mismatch')
-    }
-    if (execution.baseSha !== request.baseSha) reasons.push('self-test-base-mismatch')
-    if (execution.requestDigest !== request.requestDigest) reasons.push('self-test-request-mismatch')
-    if (execution.runId !== request.runId || execution.nodeId !== request.nodeId ||
-        execution.attemptId !== request.attemptId || execution.stageRole !== request.stageRole ||
-        execution.frozenTestContractDigest !== contract.testContractDigest) {
-        reasons.push('self-test-request-mismatch')
-    }
-    if (execution.remainingFailures?.length) reasons.push('self-test-remaining-failures')
-    if (Object.values(execution.lintTypecheckBuildResults ?? {}).includes('failed')) {
-        reasons.push('self-test-quality-gate-failed')
-    }
-    if (execution.firstFailureRefs?.[0] !== execution.failureHistory?.[0]?.ref) {
-        reasons.push('self-test-first-failure-lost')
-    }
-    if (execution.workingTreeStatusDigest !== execution.observedWorkingTreeStatusDigest) {
-        reasons.push('self-test-working-tree-drift')
-    }
-    if (!HASH.test(execution.implementationDiffDigest ?? '')) {
-        reasons.push('self-test-implementation-diff-missing')
-    }
-    if (execution.modifiedPaths?.some((item) => item.startsWith('tests/'))) {
-        reasons.push('self-test-frozen-path-modified')
-    }
-    if (execution.verifierRole !== 'deterministic-machine') reasons.push('self-test-verifier-authority')
-    if (dispatchReceipt.schema !== 'issue-orchestration.dispatch-receipt.v1' ||
-        dispatchReceipt.verificationStatus !== 'verified' ||
-        dispatchReceipt.requestId !== request.requestId ||
-        dispatchReceipt.requestDigest !== request.requestDigest ||
-        dispatchReceipt.attemptId !== request.attemptId ||
-        dispatchReceipt.epochId !== request.epochId ||
-        dispatchReceipt.receiptDigest !== unsignedDigest(dispatchReceipt, 'receiptDigest')) {
-        reasons.push('verified-dispatch-receipt-required')
-    }
-    const receipt = {
-        schema: 'issue-orchestration.implementer-self-test-receipt.v1',
-        verificationStatus: reasons.length ? 'rejected' : 'verified',
-        mismatchReasons: unique(reasons),
-        requestDigest: request.requestDigest,
-        requestId: request.requestId,
-        attemptId: request.attemptId,
-        epochId: request.epochId,
-        candidateSha: execution.candidateSha,
-        visibleTestMatrixDigest: execution.visibleTestMatrixDigest,
-        frozenTestTreeDigestBefore: execution.frozenTestTreeDigestBefore,
-        frozenTestTreeDigestAfter: execution.frozenTestTreeDigestAfter,
-        implementationDiffDigest: execution.implementationDiffDigest,
-        commandResults: structuredClone(execution.commandResults),
-        firstFailureRefs: structuredClone(execution.firstFailureRefs),
-        failureHistory: structuredClone(execution.failureHistory)
-    }
-    receipt.receiptDigest = digest(receipt)
-    return receipt
-}
-
-async function authorizeReceiptTransitionV1(input) {
-    if (!input.dispatchReceipt ||
-        input.dispatchReceipt.schema !== 'issue-orchestration.dispatch-receipt.v1' ||
-        input.dispatchReceipt.verificationStatus !== 'verified') {
-        fail('verified-dispatch-receipt-required')
-    }
-    if (input.eventType === 'implementation.candidate-green') {
-        if (!input.selfTestReceipt) fail('verified-self-test-receipt-required')
-        if (input.selfTestReceipt.schema !==
-            'issue-orchestration.implementer-self-test-receipt.v1') {
-            fail('receipt-schema-stage-mismatch')
-        }
-        if (input.selfTestReceipt.verificationStatus !== 'verified') {
-            fail('verified-self-test-receipt-required')
-        }
-        if (input.request && (
-            input.selfTestReceipt.candidateSha !== input.candidateSha ||
-            input.selfTestReceipt.requestDigest !== input.request.requestDigest ||
-            input.selfTestReceipt.requestId !== input.request.requestId ||
-            input.selfTestReceipt.attemptId !== input.request.attemptId ||
-            input.selfTestReceipt.epochId !== input.request.epochId
-        )) fail('self-test-candidate-mismatch')
-    }
-    if (input.eventType === 'independent-verification.passed') {
-        const receipt = input.behaviorReceipt
-        if (!receipt || receipt.schema !== 'issue-orchestration.behavior-receipt.v1' ||
-            receipt.verificationStatus !== 'verified') {
-            fail('independent-behavior-receipt-required')
-        }
-    }
-    return true
-}
-
 function hasV2Schema(value, prefix) {
     return value?.schema === `issue-orchestration.${prefix}.v2`
-}
-
-function isV2Transition(input) {
-    return input?.transitionSchema === 'issue-orchestration.transition.v2' ||
-        [input?.request, input?.dispatchReceipt, input?.selfTestReceipt,
-            input?.behaviorReceipt, input?.uxAcceptanceReceipt]
-            .some((item) => typeof item?.schema === 'string' && item.schema.endsWith('.v2'))
 }
 
 function expectedRoutingPolicyDigest() {
@@ -595,7 +201,8 @@ function expectedV2Route(input) {
 
 function assertV2Hashes(input) {
     for (const field of [
-        'routingPolicyDigest', 'allowedProfilesDigest', 'routingInputDigest',
+        'routingPolicyDigest', 'stagePermissionsPolicyDigest',
+        'allowedProfilesDigest', 'routingInputDigest',
         'promptDigest', 'sourceDagDigest', 'frontierDigest',
         'issueSnapshotFingerprint', 'repositoryFingerprint',
         'scopeIdentityDigest', 'dependencyIdentityDigest', 'candidateDigest',
@@ -603,6 +210,139 @@ function assertV2Hashes(input) {
         'memberCandidateIdentity'
     ]) {
         if (!HASH.test(input[field] ?? '')) fail('dispatch-request-field-missing')
+    }
+}
+
+function assertV2WriterStageBinding(input) {
+    const key = `${input.stageRole}:${input.stagePhase}`
+    if (!WRITER_STAGE_KEYS.has(key)) return
+    for (const field of [
+        'planDigest', 'sliceDigest', 'compiledPromptDigest'
+    ]) {
+        if (!HASH.test(input[field] ?? '')) {
+            fail('dispatch-executable-slice-binding')
+        }
+    }
+    if (!HASH.test(input.slicePolicyDigest ?? '') ||
+        !HASH.test(input.plannerReceiptDigest ?? '')) {
+        fail('dispatch-executable-slice-binding')
+    }
+    const plan = input.stageWorkPlan
+    const slice = input.executableSlice
+    const compiledPrompt = input.compiledPrompt
+    const sequence = input.writerSequenceBinding
+    let expectedSlice
+    try {
+        expectedSlice = compileExecutableSlice({
+            plan,
+            sliceId: slice?.sliceId
+        })
+    } catch {
+        fail('dispatch-executable-slice-binding')
+    }
+    const sliceIndex = plan?.orderedSlices?.findIndex(
+        ({ sliceId }) => sliceId === expectedSlice.sliceId
+    )
+    const sequenceFields = [
+        'schema',
+        'source',
+        'projectionStatus',
+        'planDigest',
+        'stageAttemptId',
+        'stageRole',
+        'stagePhase',
+        'sliceIndex',
+        'expectedNextSliceId',
+        'expectedNextSliceDigest',
+        'prerequisiteSliceIds',
+        'completedSliceReceiptDigests',
+        'writerStageProjectionDigest'
+    ]
+    const sequenceStructurallyValid = sequence &&
+        typeof sequence === 'object' &&
+        !Array.isArray(sequence) &&
+        JSON.stringify(Object.keys(sequence).sort()) === JSON.stringify(
+            sequenceFields.sort()
+        ) &&
+        HASH.test(input.writerSequenceBindingDigest ?? '') &&
+        orderedDigest(sequence) === input.writerSequenceBindingDigest &&
+        sequence.schema ===
+            'issue-orchestration.writer-slice-sequence-binding.v1' &&
+        sequence.planDigest === plan?.planDigest &&
+        sequence.stageAttemptId === plan?.stageAttemptId &&
+        sequence.stageRole === plan?.stageRole &&
+        sequence.stagePhase === plan?.stagePhase &&
+        sequence.sliceIndex === sliceIndex &&
+        sequence.expectedNextSliceId === expectedSlice.sliceId &&
+        sequence.expectedNextSliceDigest === expectedSlice.sliceDigest &&
+        JSON.stringify(sequence.prerequisiteSliceIds) === JSON.stringify(
+            expectedSlice.prerequisiteSliceIds
+        ) &&
+        Array.isArray(sequence.completedSliceReceiptDigests) &&
+        sequence.completedSliceReceiptDigests.length === sliceIndex &&
+        sequence.completedSliceReceiptDigests.every((value) =>
+            HASH.test(value))
+    const initialSequenceValid =
+        sequence?.source === 'initial-stage-plan' &&
+        sequence.projectionStatus === null &&
+        sliceIndex === 0 &&
+        sequence.prerequisiteSliceIds.length === 0 &&
+        sequence.completedSliceReceiptDigests.length === 0 &&
+        (sequence.writerStageProjectionDigest === null ||
+            HASH.test(sequence.writerStageProjectionDigest ?? ''))
+    const projectedSequenceValid =
+        sequence?.source === 'semantic-runtime-projection' &&
+        ['next-slice', 'retry-authorized'].includes(
+            sequence.projectionStatus
+        ) &&
+        HASH.test(sequence.writerStageProjectionDigest ?? '')
+    if (!sequenceStructurallyValid ||
+        !initialSequenceValid && !projectedSequenceValid ||
+        input.plannerBindingStatus !== 'verified' ||
+        plan.plannerBindingStatus !== 'verified' ||
+        slice.plannerBindingStatus !== 'verified' ||
+        input.plannerBindingStatus !== plan.plannerBindingStatus ||
+        input.plannerBindingStatus !== slice.plannerBindingStatus ||
+        input.slicePolicyDigest !== plan.slicePolicyDigest ||
+        input.slicePolicyDigest !== slice.slicePolicyDigest ||
+        input.slicePolicyDigest !== compiledPrompt?.slicePolicyDigest ||
+        input.plannerReceiptDigest !== plan.plannerReceiptDigest ||
+        input.plannerReceiptDigest !== slice.plannerReceiptDigest ||
+        input.plannerReceiptDigest !== compiledPrompt?.plannerReceiptDigest ||
+        input.planDigest !== plan.planDigest ||
+        plan.contractBindingStatus !== 'verified' ||
+        !HASH.test(plan.frozenStageContractReceiptDigest ?? '') ||
+        !HASH.test(plan.resourceLeaseReceiptDigest ?? '') ||
+        slice.contractBindingStatus !== 'verified' ||
+        slice.frozenStageContractReceiptDigest !==
+            plan.frozenStageContractReceiptDigest ||
+        slice.resourceLeaseReceiptDigest !==
+            plan.resourceLeaseReceiptDigest ||
+        slice.activeWriteLeaseId !== plan.activeWriteLeaseId ||
+        slice.stageAttemptId !== plan.stageAttemptId ||
+        input.attemptId !== plan.stageAttemptId ||
+        input.sliceDigest !== expectedSlice.sliceDigest ||
+        slice?.sliceDigest !== expectedSlice.sliceDigest ||
+        input.compiledPromptDigest !== compiledPrompt?.promptDigest ||
+        input.promptDigest !== compiledPrompt?.promptDigest ||
+        input.runId !== plan.runId ||
+        input.repository !== plan.repository ||
+        input.nodeId !== plan.node ||
+        input.baseSha !== plan.baseSha ||
+        input.epochId !== plan.epochId ||
+        input.requestedWorkingDirectory !== plan.worktreeIdentity ||
+        input.stageRole !== plan.stageRole ||
+        input.stagePhase !== plan.stagePhase ||
+        input.testContractDigest !== plan.testContractDigest ||
+        input.routingInputDigest !== plan.routingInputDigest ||
+        input.allowedPathsDigest !== digest(expectedSlice.allowedPaths) ||
+        input.forbiddenPathsDigest !== digest(expectedSlice.forbiddenPaths) ||
+        validateCompiledDispatchPrompt({
+            plan,
+            slice: expectedSlice,
+            compiled: compiledPrompt
+        }).length > 0) {
+        fail('dispatch-executable-slice-binding')
     }
 }
 
@@ -639,7 +379,7 @@ function assertV2SkillBinding(input) {
 function assertV2GroupBinding(input) {
     if (input.groupId === null) {
         for (const field of [
-            'groupSessionDigest', 'activeWriteLeaseId', 'groupWorktreeIdentity',
+            'groupSessionDigest', 'groupWorktreeIdentity',
             'groupBranchIdentity', 'testOwnerContinuityIdentity',
             'implementerContinuityIdentity'
         ]) {
@@ -686,8 +426,13 @@ function validateV2DispatchRequest(input) {
         fail('dispatch-request-field-missing')
     }
     assertV2Hashes(input)
+    assertV2WriterStageBinding(input)
     if (input.routingPolicyDigest !== expectedRoutingPolicyDigest()) {
         fail('dispatch-routing-policy-replay')
+    }
+    if (input.stagePermissionsPolicyDigest !==
+        STAGE_PERMISSIONS_POLICY_DIGEST) {
+        fail('dispatch-stage-permissions-policy-replay')
     }
     if (input.routingOverride !== undefined ||
         input.selectedByRole !== undefined ||
@@ -703,7 +448,7 @@ function validateV2DispatchRequest(input) {
     assertV2GroupBinding(input)
     const route = expectedV2Route(input)
     const selected = splitProfile(route.selectedProfile)
-    const expectedWritePolicy = V2_WRITE_POLICIES[
+    const stagePermission = STAGE_PERMISSIONS_POLICY.stages[
         `${input.stageRole}:${input.stagePhase}`
     ]
     const routeFieldsMatch = input.stageProfileId === route.selectedProfile &&
@@ -716,8 +461,9 @@ function validateV2DispatchRequest(input) {
         input.requestedModel === selected.model &&
         input.requestedEffort === selected.effort &&
         input.requestedSandbox === route.sandbox &&
-        input.writePolicy === expectedWritePolicy &&
-        input.readOnlyPolicy === (route.sandbox === 'read-only')
+        input.writePolicy === stagePermission.writeScope &&
+        input.readOnlyPolicy ===
+            (stagePermission.sandbox === 'read-only')
     if (!routeFieldsMatch) fail('dispatch-routing-selection-mismatch')
     assertV2SkillBinding(input)
     if (input.requestDigest !== undefined &&
@@ -755,7 +501,9 @@ function observeRuntimeV2(request, rolloutRecords, machineObservations) {
     const git = observationByKind(machineObservations, 'git-worktree-identity')
     const skill = observationByKind(machineObservations, 'skill-loader')
     const capability = observationByKind(machineObservations, 'runtime-capability.v2')
-    const lease = observationByKind(machineObservations, 'group-member-lease')
+    const lease =
+        observationByKind(machineObservations, 'group-member-lease') ??
+        observationByKind(machineObservations, 'writer-stage-lease')
     return {
         schema: 'issue-orchestration.runtime-observation.v2',
         threadId: session?.session_id,
@@ -770,6 +518,13 @@ function observeRuntimeV2(request, rolloutRecords, machineObservations) {
         effectiveWorkingDirectory: context.cwd,
         effectiveProfileId: capability?.effectiveProfileId,
         routingInputDigest: dispatch?.routingInputDigest,
+        stagePermissionsPolicyDigest:
+            dispatch?.stagePermissionsPolicyDigest,
+        planDigest: dispatch?.planDigest,
+        sliceDigest: dispatch?.sliceDigest,
+        compiledPromptDigest: dispatch?.compiledPromptDigest,
+        writerSequenceBindingDigest:
+            dispatch?.writerSequenceBindingDigest,
         loadedSkills: skill?.loadedSkills,
         session,
         contexts,
@@ -825,6 +580,15 @@ function compareRuntimeV2(request, observed, priorReceipts) {
     const bindings = [
         [observed.dispatch?.requestId, request.requestId, 'runtime-request-id-mismatch'],
         [observed.dispatch?.promptDigest, request.promptDigest, 'runtime-prompt-digest-mismatch'],
+        [observed.dispatch?.planDigest, request.planDigest,
+            'runtime-plan-digest-mismatch'],
+        [observed.dispatch?.sliceDigest, request.sliceDigest,
+            'runtime-slice-digest-mismatch'],
+        [observed.dispatch?.compiledPromptDigest, request.compiledPromptDigest,
+            'runtime-compiled-prompt-digest-mismatch'],
+        [observed.dispatch?.writerSequenceBindingDigest,
+            request.writerSequenceBindingDigest,
+            'runtime-writer-sequence-digest-mismatch'],
         [observed.dispatch?.sourceDagDigest, request.sourceDagDigest,
             'runtime-source-dag-digest-mismatch'],
         [observed.dispatch?.frontierDigest, request.frontierDigest,
@@ -841,6 +605,9 @@ function compareRuntimeV2(request, observed, priorReceipts) {
             'runtime-policy-version-mismatch'],
         [observed.dispatch?.routingPolicyDigest, request.routingPolicyDigest,
             'runtime-routing-policy-digest-mismatch'],
+        [observed.dispatch?.stagePermissionsPolicyDigest,
+            request.stagePermissionsPolicyDigest,
+            'runtime-stage-permissions-policy-digest-mismatch'],
         [observed.dispatch?.routingInputDigest, request.routingInputDigest,
             'runtime-routing-input-digest-mismatch'],
         [observed.dispatch?.testContractDigest, request.testContractDigest,
@@ -882,6 +649,33 @@ function compareRuntimeV2(request, observed, priorReceipts) {
     ]
     for (const [actual, expected, reason] of leasePairs) {
         if (actual !== expected) reasons.push(reason)
+    }
+    const writerKey = `${request.stageRole}:${request.stagePhase}`
+    if (WRITER_STAGE_KEYS.has(writerKey)) {
+        const plan = request.stageWorkPlan ?? {}
+        const writerLeasePairs = [
+            [lease.leaseId, plan.activeWriteLeaseId,
+                'runtime-write-lease-mismatch'],
+            [lease.leaseDigest, plan.resourceLeaseReceiptDigest,
+                'runtime-write-lease-mismatch'],
+            [lease.attemptId, request.attemptId,
+                'runtime-write-lease-mismatch'],
+            [lease.ownerId, request.stageRole,
+                'runtime-write-lease-mismatch'],
+            [lease.worktreeIdentity, request.requestedWorkingDirectory,
+                'runtime-write-lease-mismatch']
+        ]
+        for (const [actual, expected, reason] of writerLeasePairs) {
+            if (actual !== expected) reasons.push(reason)
+        }
+        if (lease.state !== 'active' ||
+            (lease.activeLeaseOwners ?? [])
+                .filter((item) =>
+                    item.leaseId === plan.activeWriteLeaseId &&
+                    item.attemptId === request.attemptId)
+                .length !== 1) {
+            reasons.push('runtime-write-lease-conflict')
+        }
     }
     if (request.groupId !== null) {
         const groupedPairs = [
@@ -960,12 +754,19 @@ function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
         stageProfileId: request.stageProfileId,
         policyVersion: request.policyVersion,
         routingPolicyDigest: request.routingPolicyDigest,
+        stagePermissionsPolicyDigest:
+            request.stagePermissionsPolicyDigest,
         routingInputDigest: request.routingInputDigest,
         selectedProfileId: request.selectedProfileId,
         selectedProfileReason: request.selectedProfileReason,
         baseSha: request.baseSha,
         candidateSha: request.candidateSha,
         candidateDigest: request.candidateDigest,
+        planDigest: request.planDigest ?? null,
+        sliceDigest: request.sliceDigest ?? null,
+        compiledPromptDigest: request.compiledPromptDigest ?? null,
+        writerSequenceBindingDigest:
+            request.writerSequenceBindingDigest ?? null,
         scopeIdentityDigest: request.scopeIdentityDigest,
         dependencyIdentityDigest: request.dependencyIdentityDigest,
         memberIssueId: request.memberIssueId,
@@ -1147,7 +948,10 @@ function selfTestV2Reasons({ request, dispatchReceipt, contract, execution, prio
         dispatchReceipt.attemptId !== request.attemptId ||
         dispatchReceipt.epochId !== request.epochId ||
         dispatchReceipt.baseSha !== request.baseSha ||
-        dispatchReceipt.candidateSha !== request.candidateSha) {
+        dispatchReceipt.candidateSha !== request.candidateSha ||
+        dispatchReceipt.stagePhase !== request.stagePhase ||
+        dispatchReceipt.planDigest !== (request.planDigest ?? null) ||
+        dispatchReceipt.sliceDigest !== (request.sliceDigest ?? null)) {
         reasons.push('verified-dispatch-receipt-required')
     }
     const expectedCommands = contract.visibleTestMatrix ?? []
@@ -1226,6 +1030,9 @@ async function verifyImplementerSelfTestV2({
         nodeId: execution.nodeId,
         attemptId: execution.attemptId,
         stageRole: execution.stageRole,
+        stagePhase: request.stagePhase,
+        planDigest: request.planDigest ?? null,
+        sliceDigest: request.sliceDigest ?? null,
         stageProfileId: execution.stageProfileId,
         routingInputDigest: execution.routingInputDigest,
         requestDigest: execution.requestDigest,
@@ -1285,6 +1092,27 @@ async function authorizeReceiptTransitionV2(input) {
             receipt.attemptId !== dispatchReceipt.attemptId) {
             fail('self-test-candidate-mismatch')
         }
+        if (dispatchReceipt.sliceDigest) {
+            let gate
+            try {
+                gate = evaluateSliceTerminalGate({
+                    plan: input.stageWorkPlan,
+                    currentSlice: input.currentSlice,
+                    currentCheckpoint: input.currentCheckpoint,
+                    terminalReceipts: input.sliceTerminalReceipts
+                })
+            } catch {
+                fail('writer-stage-terminal-gate-required')
+            }
+            if (gate.nextState !== 'candidate-green' ||
+                gate.candidateEligible !== true ||
+                input.stageWorkPlan?.planDigest !==
+                    dispatchReceipt.planDigest ||
+                input.currentSlice?.sliceDigest !==
+                    dispatchReceipt.sliceDigest) {
+                fail('writer-stage-terminal-gate-required')
+            }
+        }
     }
     if (input.eventType === 'independent-verification.passed') {
         const receipt = input.behaviorReceipt
@@ -1321,27 +1149,110 @@ async function authorizeReceiptTransitionV2(input) {
 }
 
 export async function sealDispatchRequest(input) {
-    return input?.schema === 'issue-orchestration.dispatch-request.v2'
-        ? sealDispatchRequestV2(input)
-        : sealDispatchRequestV1(input)
+    if (input?.schema === 'issue-orchestration.dispatch-request.v1') {
+        fail('dispatch-v1-historical-only')
+    }
+    if (input?.schema !== 'issue-orchestration.dispatch-request.v2') {
+        fail('dispatch-request-v2-required')
+    }
+    return sealDispatchRequestV2(input)
 }
 
 export async function verifyRuntimeDispatch(input) {
-    return input?.request?.schema === 'issue-orchestration.dispatch-request.v2'
-        ? verifyRuntimeDispatchV2(input)
-        : verifyRuntimeDispatchV1(input)
+    if (input?.request?.schema === 'issue-orchestration.dispatch-request.v1') {
+        fail('dispatch-v1-historical-only')
+    }
+    if (input?.request?.schema !== 'issue-orchestration.dispatch-request.v2') {
+        fail('dispatch-request-v2-required')
+    }
+    return verifyRuntimeDispatchV2(input)
 }
 
 export async function sealImplementerSelfTestReceipt(input) {
-    return input?.request?.schema === 'issue-orchestration.dispatch-request.v2'
-        ? verifyImplementerSelfTestV2(input)
-        : verifyImplementerSelfTestV1(input)
+    if (input?.request?.schema === 'issue-orchestration.dispatch-request.v1') {
+        fail('dispatch-v1-historical-only')
+    }
+    if (input?.request?.schema !== 'issue-orchestration.dispatch-request.v2') {
+        fail('dispatch-request-v2-required')
+    }
+    return verifyImplementerSelfTestV2(input)
 }
 
 export async function authorizeReceiptTransition(input) {
-    return isV2Transition(input)
-        ? authorizeReceiptTransitionV2(input)
-        : authorizeReceiptTransitionV1(input)
+    if (input?.transitionSchema !== 'issue-orchestration.transition.v2') {
+        fail('transition-v2-required')
+    }
+    return authorizeReceiptTransitionV2(input)
+}
+
+export function auditHistoricalDispatchEvidence(input) {
+    const artifacts = [
+        {
+            digestField: 'requestDigest',
+            expectedSchema: 'issue-orchestration.dispatch-request.v1',
+            field: 'request'
+        },
+        {
+            digestField: 'receiptDigest',
+            expectedSchema: 'issue-orchestration.dispatch-receipt.v1',
+            field: 'dispatchReceipt'
+        },
+        {
+            digestField: 'receiptDigest',
+            expectedSchema:
+                'issue-orchestration.implementer-self-test-receipt.v1',
+            field: 'selfTestReceipt'
+        }
+    ]
+    const present = artifacts.filter(({ field }) => input?.[field])
+    if (present.length === 0) fail('historical-dispatch-evidence-required')
+    const findings = []
+    const summaries = {}
+    for (const artifact of present) {
+        const value = input[artifact.field]
+        if (value.schema !== artifact.expectedSchema) {
+            fail('historical-dispatch-v1-required')
+        }
+        const suppliedDigest = value[artifact.digestField]
+        const digestIntact = typeof suppliedDigest === 'string' &&
+            suppliedDigest === unsignedDigest(value, artifact.digestField)
+        if (!digestIntact) {
+            findings.push(`${artifact.field}-digest-invalid`)
+        }
+        summaries[artifact.field] = {
+            schema: value.schema,
+            suppliedDigest: suppliedDigest ?? null,
+            digestIntact
+        }
+    }
+    const { request, dispatchReceipt, selfTestReceipt } = input
+    if (request && dispatchReceipt && (
+        dispatchReceipt.requestId !== request.requestId ||
+        dispatchReceipt.requestDigest !== request.requestDigest ||
+        dispatchReceipt.attemptId !== request.attemptId ||
+        dispatchReceipt.epochId !== request.epochId
+    )) {
+        findings.push('dispatch-receipt-request-binding-invalid')
+    }
+    if (request && selfTestReceipt && (
+        selfTestReceipt.requestId !== request.requestId ||
+        selfTestReceipt.requestDigest !== request.requestDigest ||
+        selfTestReceipt.attemptId !== request.attemptId ||
+        selfTestReceipt.epochId !== request.epochId
+    )) {
+        findings.push('self-test-receipt-request-binding-invalid')
+    }
+    return deepFreeze({
+        schema: 'issue-orchestration.historical-dispatch-audit.v1',
+        mode: 'read-only-historical-audit',
+        mutationAuthority: 'none',
+        canCreateDispatchRequest: false,
+        canCreateReceipt: false,
+        canAuthorizeTransition: false,
+        integrityStatus: findings.length === 0 ? 'intact' : 'damaged',
+        findings: unique(findings),
+        artifacts: summaries
+    })
 }
 
 async function runCli(argv) {

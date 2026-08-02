@@ -1,0 +1,744 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:writer-stage-retry-authorization:v1",
+    "title": "issue-orchestration.writer-stage-retry-authorization.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "verificationStatus",
+        "priorFailureReceiptDigest",
+        "semanticFailureDigest",
+        "priorSliceDigest",
+        "nextSliceId",
+        "nextSliceDigest",
+        "nextPlanDigest",
+        "nextCompiledPromptDigest",
+        "revisionKind",
+        "changedRequirementIds",
+        "revisionEvidence",
+        "revisionEvidenceDigest",
+        "sourceFailureEventId",
+        "sourceFailureEventDigest",
+        "authorityActorId",
+        "authorityActorRole",
+        "authoritySourceKind",
+        "authoritySourceDigest",
+        "resourceCleanupReceiptDigest",
+        "authorized",
+        "breakerOpen",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.writer-stage-retry-authorization.v1"
+        },
+        "verificationStatus": {
+            "enum": [
+                "verified",
+                "unbound-test-only"
+            ]
+        },
+        "priorFailureReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "semanticFailureDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "priorSliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "nextSliceId": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "nextSliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "nextPlanDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "nextCompiledPromptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "revisionKind": {
+            "enum": [
+                "slice-revision",
+                "compiled-prompt-revision",
+                "runtime-revision",
+                "capability-revision"
+            ]
+        },
+        "changedRequirementIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "revisionEvidence": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/verifiedRevisionEvidence"
+                },
+                {
+                    "$ref": "#/$defs/unboundRevisionEvidence"
+                }
+            ]
+        },
+        "revisionEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "sourceFailureEventId": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sourceFailureEventDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "authorityActorId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "authorityActorRole": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "authoritySourceKind": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "authoritySourceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "resourceCleanupReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "carryForwardPrefix": {
+            "$ref": "#/$defs/completedPrefixCarryForward"
+        },
+        "carryForwardPrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "authorized": {
+            "const": true
+        },
+        "breakerOpen": {
+            "const": false
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "verificationStatus": {
+                        "const": "verified"
+                    }
+                },
+                "required": [
+                    "verificationStatus"
+                ]
+            },
+            "then": {
+                "required": [
+                    "carryForwardPrefix",
+                    "carryForwardPrefixDigest"
+                ],
+                "properties": {
+                    "nextSliceId": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "nextPlanDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "nextCompiledPromptDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "revisionEvidence": {
+                        "$ref": "#/$defs/verifiedRevisionEvidence"
+                    },
+                    "sourceFailureEventId": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "sourceFailureEventDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "resourceCleanupReceiptDigest": {
+                        "$ref": "#/$defs/digest"
+                    }
+                }
+            },
+            "else": {
+                "not": {
+                    "anyOf": [
+                        {
+                            "required": [
+                                "carryForwardPrefix"
+                            ]
+                        },
+                        {
+                            "required": [
+                                "carryForwardPrefixDigest"
+                            ]
+                        }
+                    ]
+                },
+                "properties": {
+                    "revisionKind": {
+                        "const": "slice-revision"
+                    },
+                    "nextPlanDigest": {
+                        "type": "null"
+                    },
+                    "nextCompiledPromptDigest": {
+                        "type": "null"
+                    },
+                    "revisionEvidence": {
+                        "$ref": "#/$defs/unboundRevisionEvidence"
+                    },
+                    "sourceFailureEventId": {
+                        "type": "null"
+                    },
+                    "sourceFailureEventDigest": {
+                        "type": "null"
+                    },
+                    "authorityActorId": {
+                        "const": "frozen-test-only"
+                    },
+                    "authorityActorRole": {
+                        "const": "frozen-test-only"
+                    },
+                    "authoritySourceKind": {
+                        "const": "unbound-test-only"
+                    },
+                    "resourceCleanupReceiptDigest": {
+                        "type": "null"
+                    }
+                }
+            }
+        },
+        {
+            "if": {
+                "properties": {
+                    "verificationStatus": {
+                        "const": "verified"
+                    }
+                },
+                "required": [
+                    "verificationStatus"
+                ]
+            },
+            "then": {
+                "$ref": "#/$defs/revisionAuthorityBinding"
+            }
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "gitObjectDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "changedRequirementIds": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "completedPrefixCarryForward": {
+            "type": "object",
+            "required": [
+                "schema",
+                "verificationStatus",
+                "priorFailureReceiptDigest",
+                "sourceFailureEventId",
+                "sourceFailureEventDigest",
+                "revisionEvidenceDigest",
+                "previousPrefixDigest",
+                "currentPlanDigest",
+                "currentStageAttemptId",
+                "entries",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.writer-stage-completed-prefix-carry-forward.v1"
+                },
+                "verificationStatus": {
+                    "const": "verified"
+                },
+                "priorFailureReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sourceFailureEventId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sourceFailureEventDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "revisionEvidenceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousPrefixDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentPlanDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentStageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "entries": {
+                    "type": "array",
+                    "maxItems": 15,
+                    "items": {
+                        "$ref": "#/$defs/completedPrefixEntry"
+                    }
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "completedPrefixEntry": {
+            "type": "object",
+            "required": [
+                "order",
+                "sliceId",
+                "previousPlanDigest",
+                "previousStageAttemptId",
+                "previousSliceDigest",
+                "previousSliceMaterialDigest",
+                "previousCheckpointDigest",
+                "previousCheckpointVerificationReceiptDigest",
+                "previousTracePrefixDigest",
+                "previousTerminalReceiptDigest",
+                "previousTerminalChainDigest",
+                "previousSliceOrdinal",
+                "previousPlanSliceCount",
+                "previousPriorTerminalReceiptDigests",
+                "previousCompletedSlicePrefixDigest",
+                "previousAcceptedPriorChangedPathsDigest",
+                "changedPaths",
+                "currentPlanDigest",
+                "currentStageAttemptId",
+                "currentSliceDigest",
+                "unchangedSliceMaterialDigest"
+            ],
+            "properties": {
+                "order": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 15
+                },
+                "sliceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "previousPlanDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousStageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "previousSliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousSliceMaterialDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousCheckpointDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousCheckpointVerificationReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousTracePrefixDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousTerminalReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousTerminalChainDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousSliceOrdinal": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 15
+                },
+                "previousPlanSliceCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 16
+                },
+                "previousPriorTerminalReceiptDigests": {
+                    "type": "array",
+                    "maxItems": 14,
+                    "items": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "uniqueItems": true
+                },
+                "previousCompletedSlicePrefixDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousAcceptedPriorChangedPathsDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "changedPaths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "uniqueItems": true
+                },
+                "currentPlanDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentStageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "currentSliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "unchangedSliceMaterialDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "replayEvidence": {
+            "type": "object",
+            "required": [
+                "repositoryRoot",
+                "sourcePath",
+                "sourceRelativePath",
+                "headSha",
+                "sourceGitObjectDigest",
+                "syntaxProbeDigest",
+                "observationDigest"
+            ],
+            "properties": {
+                "repositoryRoot": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sourcePath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sourceRelativePath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "headSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "sourceGitObjectDigest": {
+                    "$ref": "#/$defs/gitObjectDigest"
+                },
+                "syntaxProbeDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "observationDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "verifiedRevisionEvidence": {
+            "type": "object",
+            "required": [
+                "schema",
+                "verificationStatus",
+                "revisionKind",
+                "priorFailureReceiptDigest",
+                "semanticFailureDigest",
+                "sourceFailureEventId",
+                "sourceFailureEventDigest",
+                "previousDigest",
+                "currentDigest",
+                "previousMaterialDigest",
+                "currentMaterialDigest",
+                "changedRequirementIds",
+                "authorityActorId",
+                "authorityActorRole",
+                "authoritySourceKind",
+                "authoritySourceDigest",
+                "currentPlanDigest",
+                "currentSliceId",
+                "currentSliceDigest",
+                "currentCompiledPromptDigest",
+                "contractReceiptDigest",
+                "resourceLeaseReceiptDigest",
+                "replayEvidence",
+                "authorityReceiptDigest",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.writer-stage-revision-evidence.v1"
+                },
+                "verificationStatus": {
+                    "const": "verified"
+                },
+                "revisionKind": {
+                    "enum": [
+                        "slice-revision",
+                        "compiled-prompt-revision",
+                        "runtime-revision",
+                        "capability-revision"
+                    ]
+                },
+                "priorFailureReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "semanticFailureDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sourceFailureEventId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sourceFailureEventDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "previousMaterialDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentMaterialDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "changedRequirementIds": {
+                    "$ref": "#/$defs/changedRequirementIds"
+                },
+                "authorityActorId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "authorityActorRole": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "authoritySourceKind": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "authoritySourceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentPlanDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentSliceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "currentSliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentCompiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "contractReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "resourceLeaseReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "replayEvidence": {
+                    "$ref": "#/$defs/replayEvidence"
+                },
+                "authorityReceiptDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/$defs/revisionAuthorityBinding"
+                }
+            ],
+            "additionalProperties": false
+        },
+        "unboundRevisionEvidence": {
+            "type": "object",
+            "required": [
+                "schema",
+                "verificationStatus",
+                "revisionKind",
+                "previousDigest",
+                "currentDigest",
+                "changedRequirementIds",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.writer-stage-revision-evidence.v1"
+                },
+                "verificationStatus": {
+                    "const": "unbound-test-only"
+                },
+                "revisionKind": {
+                    "const": "slice-revision"
+                },
+                "previousDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "currentDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "changedRequirementIds": {
+                    "$ref": "#/$defs/changedRequirementIds"
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "revisionAuthorityBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "revisionKind": {
+                            "const": "slice-revision"
+                        },
+                        "authorityActorId": {
+                            "const": "deterministic-slice-compiler"
+                        },
+                        "authorityActorRole": {
+                            "const": "deterministic-slice-compiler"
+                        },
+                        "authoritySourceKind": {
+                            "const": "verified-executable-slice"
+                        },
+                        "authorityReceiptDigest": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "revisionKind": {
+                            "const": "compiled-prompt-revision"
+                        },
+                        "authorityActorId": {
+                            "const": "deterministic-prompt-compiler"
+                        },
+                        "authorityActorRole": {
+                            "const": "deterministic-prompt-compiler"
+                        },
+                        "authoritySourceKind": {
+                            "const": "verified-compiled-prompt"
+                        },
+                        "authorityReceiptDigest": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "revisionKind": {
+                            "const": "runtime-revision"
+                        },
+                        "authorityActorId": {
+                            "const": "independent-runtime-verifier"
+                        },
+                        "authorityActorRole": {
+                            "const": "independent-runtime-verifier"
+                        },
+                        "authoritySourceKind": {
+                            "const": "verified-runtime-dispatch-receipt"
+                        },
+                        "authorityReceiptDigest": {
+                            "$ref": "#/$defs/digest"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "revisionKind": {
+                            "const": "capability-revision"
+                        },
+                        "authorityActorId": {
+                            "const": "independent-capability-verifier"
+                        },
+                        "authorityActorRole": {
+                            "const": "independent-capability-verifier"
+                        },
+                        "authoritySourceKind": {
+                            "const": "verified-runtime-capability-receipt"
+                        },
+                        "authorityReceiptDigest": {
+                            "$ref": "#/$defs/digest"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

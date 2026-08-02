@@ -1,0 +1,222 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:stage-continuation-receipt:v1",
+    "title": "issue-orchestration.stage-continuation-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "runId",
+        "node",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "sliceId",
+        "sliceDigest",
+        "checkpointDigest",
+        "checkpointVerificationReceiptDigest",
+        "checkpointOrdinal",
+        "previousCheckpointDigest",
+        "previousCheckpointVerificationReceiptDigest",
+        "previousMachineTracePrefixDigest",
+        "previousMachineTracePrefixByteLength",
+        "machineTracePrefixDigest",
+        "machineTracePrefixByteLength",
+        "completedSlicePrefixDigest",
+        "acceptedPriorChangedPathsDigest",
+        "resumeCursor",
+        "nextRequiredAction",
+        "restartInvestigation",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.stage-continuation-receipt.v1"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointVerificationReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointOrdinal": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "previousCheckpointDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousCheckpointVerificationReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousMachineTracePrefixDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "previousMachineTracePrefixByteLength": {
+            "oneOf": [
+                {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "machineTracePrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "machineTracePrefixByteLength": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "completedSlicePrefixDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "acceptedPriorChangedPathsDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "resumeCursor": {
+            "$ref": "#/$defs/actionCursor"
+        },
+        "nextRequiredAction": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "restartInvestigation": {
+            "const": false
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "oneOf": [
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "const": 1
+                        },
+                        "previousCheckpointDigest": {
+                            "type": "null"
+                        },
+                        "previousCheckpointVerificationReceiptDigest": {
+                            "type": "null"
+                        },
+                        "previousMachineTracePrefixDigest": {
+                            "type": "null"
+                        },
+                        "previousMachineTracePrefixByteLength": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "type": "integer",
+                            "minimum": 2
+                        },
+                        "previousCheckpointDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousCheckpointVerificationReceiptDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousMachineTracePrefixDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousMachineTracePrefixByteLength": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "actionCursor": {
+            "type": "object",
+            "required": [
+                "kind",
+                "completedActionCount",
+                "nextActionIndex",
+                "lastCompletedAction"
+            ],
+            "properties": {
+                "kind": {
+                    "const": "executable-slice-action"
+                },
+                "completedActionCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 176
+                },
+                "nextActionIndex": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 177
+                },
+                "lastCompletedAction": {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

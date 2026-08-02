@@ -1,10 +1,26 @@
 import { createHash, randomBytes } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
 export const OWNERSHIP_FILE = '.issue-orchestration-install.json'
 export const INSTALL_SCHEMA =
     'issue-orchestration.shared-install-ownership.v1'
+export const WRITER_STAGE_CONTRACT_FILES = Object.freeze([
+    'contracts/compiled-dispatch-prompt.schema.json',
+    'contracts/executable-slice.schema.json',
+    'contracts/slice-terminal-receipt.schema.json',
+    'contracts/stage-continuation-receipt.schema.json',
+    'contracts/stage-progress-checkpoint.schema.json',
+    'contracts/stage-work-plan.schema.json',
+    'contracts/writer-stage-checkpoint-verification-receipt.schema.json',
+    'contracts/writer-stage-failure-receipt.schema.json',
+    'contracts/writer-stage-retry-authorization.schema.json'
+])
+export const WRITER_STAGE_RUNTIME_FILES = Object.freeze([
+    'skills/issue-orchestration/scripts/executable-slice-compiler.mjs',
+    'skills/issue-orchestration/scripts/writer-stage-progress.mjs'
+])
 
 export class SharedPackageError extends Error {
     constructor(code, message = code, details = {}) {
@@ -54,6 +70,69 @@ export function walkFiles(directory) {
             }
             return entry.isDirectory() ? walkFiles(child) : [child]
         })
+}
+
+export function packageRelativePath(sourceRoot, file) {
+    const resolvedRoot = path.resolve(sourceRoot)
+    const relative = path.relative(resolvedRoot, path.resolve(file))
+    if (relative === ''
+        || relative === '..'
+        || relative.startsWith(`..${path.sep}`)
+        || path.isAbsolute(relative)) {
+        fail(
+            'manifest-artifact-path-invalid',
+            'Package artifacts must be files below the source root.',
+            { sourceRoot: resolvedRoot, file: path.resolve(file) }
+        )
+    }
+    return relative.split(path.sep).join('/')
+}
+
+export function collectArtifactDigests(sourceRoot) {
+    const resolvedRoot = path.resolve(sourceRoot)
+    const manifestPath = path.join(resolvedRoot, 'manifest.json')
+    return Object.fromEntries(walkFiles(resolvedRoot)
+        .filter((file) => path.resolve(file) !== manifestPath)
+        .map((file) => [
+            packageRelativePath(resolvedRoot, file),
+            fileDigest(file)
+        ])
+        .sort(([left], [right]) => left.localeCompare(right)))
+}
+
+export function resolveSourceCommit(
+    sourceRoot,
+    explicitCommit = process.env.ISSUE_ORCHESTRATION_SOURCE_COMMIT
+) {
+    if (explicitCommit !== undefined && explicitCommit !== '') {
+        const normalized = explicitCommit.trim().toLowerCase()
+        if (!/^[a-f0-9]{40}$/u.test(normalized)) {
+            fail(
+                'manifest-source-commit-invalid',
+                'The explicit source commit must be a 40-character Git object ID.'
+            )
+        }
+        return normalized
+    }
+    const result = spawnSync(
+        'git',
+        ['-C', path.resolve(sourceRoot), 'rev-parse', '--verify', 'HEAD^{commit}'],
+        { encoding: 'utf8' }
+    )
+    const sourceCommit = result.status === 0
+        ? result.stdout.trim().toLowerCase()
+        : ''
+    if (!/^[a-f0-9]{40}$/u.test(sourceCommit)) {
+        fail(
+            'manifest-source-commit-unavailable',
+            'Unable to resolve the package source commit.',
+            {
+                sourceRoot: path.resolve(sourceRoot),
+                gitStatus: result.status
+            }
+        )
+    }
+    return sourceCommit
 }
 
 export function parseArguments(argv) {
@@ -111,6 +190,19 @@ function requireDigest(value, code) {
     if (!/^[a-f0-9]{64}$/u.test(value ?? '')) fail(code)
 }
 
+function requireArtifactBindings(manifest, field, requiredFiles, code) {
+    requireObject(manifest[field], code)
+    const expected = Object.fromEntries(requiredFiles.map((relative) => [
+        relative,
+        manifest.artifactDigests[relative]
+    ]))
+    if (Object.values(expected).some((value) => value === undefined)
+        || JSON.stringify(canonical(manifest[field]))
+            !== JSON.stringify(canonical(expected))) {
+        fail(code)
+    }
+}
+
 function canonicalPath(candidate) {
     const absolute = path.resolve(candidate)
     const missing = []
@@ -160,7 +252,8 @@ export function validateInstallBoundary({
 }
 
 export function readManifest(sourceRoot) {
-    const manifestPath = path.join(sourceRoot, 'manifest.json')
+    const resolvedRoot = path.resolve(sourceRoot)
+    const manifestPath = path.join(resolvedRoot, 'manifest.json')
     let manifest
     try {
         manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
@@ -181,14 +274,26 @@ export function readManifest(sourceRoot) {
     if (Object.hasOwn(manifest.artifactDigests, 'manifest.json')) {
         fail('manifest-self-artifact-forbidden')
     }
+    const actualArtifacts = collectArtifactDigests(resolvedRoot)
+    const actualPaths = Object.keys(actualArtifacts)
+    const manifestPaths = Object.keys(manifest.artifactDigests).sort()
+    const actualPathSet = new Set(actualPaths)
+    const manifestPathSet = new Set(manifestPaths)
+    const missingFromManifest = actualPaths.filter((relative) =>
+        !manifestPathSet.has(relative))
+    const missingFromSource = manifestPaths.filter((relative) =>
+        !actualPathSet.has(relative))
+    if (missingFromManifest.length > 0 || missingFromSource.length > 0) {
+        fail(
+            'manifest-artifact-set-drift',
+            'The manifest artifact set does not exactly match the package.',
+            { missingFromManifest, missingFromSource }
+        )
+    }
     for (const [relative, expected] of
         Object.entries(manifest.artifactDigests)) {
         requireDigest(expected, 'manifest-artifact-digest-invalid')
-        const absolute = path.resolve(sourceRoot, relative)
-        if (!absolute.startsWith(`${sourceRoot}${path.sep}`)
-            || !fs.existsSync(absolute)
-            || !fs.statSync(absolute).isFile()
-            || fileDigest(absolute) !== expected) {
+        if (actualArtifacts[relative] !== expected) {
             fail('manifest-artifact-drift', relative)
         }
     }
@@ -221,6 +326,18 @@ export function readManifest(sourceRoot) {
             fail('manifest-binding-drift', field)
         }
     }
+    requireArtifactBindings(
+        manifest,
+        'writerStageContractDigests',
+        WRITER_STAGE_CONTRACT_FILES,
+        'manifest-writer-stage-contract-binding-drift'
+    )
+    requireArtifactBindings(
+        manifest,
+        'writerStageRuntimeDigests',
+        WRITER_STAGE_RUNTIME_FILES,
+        'manifest-writer-stage-runtime-binding-drift'
+    )
     requireObject(manifest.agentDigests, 'manifest-agent-digests-invalid')
     for (const [agentId, expected] of Object.entries(manifest.agentDigests)) {
         if (manifest.artifactDigests[`agents/${agentId}.toml`] !== expected) {

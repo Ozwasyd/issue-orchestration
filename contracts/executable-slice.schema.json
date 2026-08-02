@@ -1,0 +1,685 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:executable-slice:v1",
+    "title": "issue-orchestration.executable-slice.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "runId",
+        "repository",
+        "issue",
+        "node",
+        "stageRole",
+        "stagePhase",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "semanticContractDigest",
+        "testContractDigest",
+        "authorityDigest",
+        "skillDigest",
+        "baselineDigest",
+        "routingInputDigest",
+        "contractBindingStatus",
+        "frozenStageContractReceiptDigest",
+        "plannerBindingStatus",
+        "slicePolicyDigest",
+        "plannerReceiptDigest",
+        "activeWriteLeaseId",
+        "resourceLeaseReceiptDigest",
+        "stageAttemptId",
+        "runtimeStateRootDigest",
+        "runtimeAuthorityIdentityDigest",
+        "resourceRegistryIdentityDigest",
+        "resourceRegistrySnapshotDigest",
+        "resourceRegistryObservedAt",
+        "sourceEventDigest",
+        "sourceLedgerDigest",
+        "sourceLedgerObservedAt",
+        "sourceDispatchReceiptDigest",
+        "planDigest",
+        "sliceId",
+        "order",
+        "prerequisiteSliceIds",
+        "singleObjective",
+        "firstRequiredAction",
+        "firstAction",
+        "firstReadTargets",
+        "firstWritablePath",
+        "explicitReadOnlyOutput",
+        "allowedPaths",
+        "forbiddenPaths",
+        "requiredCreatedOrModifiedFiles",
+        "requiredFiles",
+        "requiredCommands",
+        "requiredEvidence",
+        "expectedFailureOrProgressSignal",
+        "explicitNonGoals",
+        "maxChangedFiles",
+        "maxOwnedModules",
+        "maxReadOnlyOperationsBeforeCheckpoint",
+        "maxNoArtifactToolCalls",
+        "maxNoArtifactActiveDurationClass",
+        "safeCheckpointKind",
+        "acceptanceItemIds",
+        "completionPredicate",
+        "continuationPredicate",
+        "sliceDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.executable-slice.v1"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "repository": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "issue": {
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            ]
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "stageRole": {
+            "$ref": "#/$defs/writerRole"
+        },
+        "stagePhase": {
+            "$ref": "#/$defs/writerPhase"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "semanticContractDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "testContractDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "authorityDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "skillDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "baselineDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "routingInputDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "contractBindingStatus": {
+            "enum": [
+                "verified",
+                "unbound-test-only"
+            ]
+        },
+        "frozenStageContractReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "plannerBindingStatus": {
+            "enum": [
+                "verified",
+                "unbound-test-only"
+            ]
+        },
+        "slicePolicyDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "plannerReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "activeWriteLeaseId": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "resourceLeaseReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "stageAttemptId": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "runtimeStateRootDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "runtimeAuthorityIdentityDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "resourceRegistryIdentityDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "resourceRegistrySnapshotDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "resourceRegistryObservedAt": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/dateTime"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sourceEventDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sourceLedgerDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sourceLedgerObservedAt": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/dateTime"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "sourceDispatchReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "planDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "order": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "prerequisiteSliceIds": {
+            "$ref": "#/$defs/strings"
+        },
+        "singleObjective": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "firstRequiredAction": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "firstAction": {
+            "type": "object",
+            "required": [
+                "kind",
+                "command",
+                "path"
+            ],
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "command",
+                        "filesystem-write",
+                        "unbound-test-only"
+                    ]
+                },
+                "command": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "path": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
+        "firstReadTargets": {
+            "$ref": "#/$defs/nonEmptyStrings"
+        },
+        "firstWritablePath": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "explicitReadOnlyOutput": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "allowedPaths": {
+            "$ref": "#/$defs/strings"
+        },
+        "forbiddenPaths": {
+            "$ref": "#/$defs/strings"
+        },
+        "requiredCreatedOrModifiedFiles": {
+            "$ref": "#/$defs/strings"
+        },
+        "requiredFiles": {
+            "$ref": "#/$defs/strings"
+        },
+        "requiredCommands": {
+            "$ref": "#/$defs/nonEmptyStrings"
+        },
+        "requiredEvidence": {
+            "$ref": "#/$defs/nonEmptyStrings"
+        },
+        "expectedFailureOrProgressSignal": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "explicitNonGoals": {
+            "$ref": "#/$defs/nonEmptyStrings"
+        },
+        "maxChangedFiles": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "maxOwnedModules": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "maxReadOnlyOperationsBeforeCheckpoint": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "maxNoArtifactToolCalls": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "maxNoArtifactActiveDurationClass": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "safeCheckpointKind": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "acceptanceItemIds": {
+            "$ref": "#/$defs/nonEmptyStrings"
+        },
+        "completionPredicate": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "continuationPredicate": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "oneOf": [
+        {
+            "properties": {
+                "firstWritablePath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "explicitReadOnlyOutput": {
+                    "type": "null"
+                }
+            }
+        },
+        {
+            "properties": {
+                "firstWritablePath": {
+                    "type": "null"
+                },
+                "explicitReadOnlyOutput": {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            }
+        }
+    ],
+    "allOf": [
+        {
+            "$ref": "#/$defs/writerBinding"
+        },
+        {
+            "if": {
+                "properties": {
+                    "plannerBindingStatus": {
+                        "const": "verified"
+                    }
+                },
+                "required": [
+                    "plannerBindingStatus"
+                ]
+            },
+            "then": {
+                "properties": {
+                    "contractBindingStatus": {
+                        "const": "verified"
+                    },
+                    "slicePolicyDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "plannerReceiptDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "frozenStageContractReceiptDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "activeWriteLeaseId": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "resourceLeaseReceiptDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "stageAttemptId": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "runtimeStateRootDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "runtimeAuthorityIdentityDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "resourceRegistryIdentityDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "resourceRegistrySnapshotDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "resourceRegistryObservedAt": {
+                        "$ref": "#/$defs/dateTime"
+                    },
+                    "sourceEventDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "sourceLedgerDigest": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "sourceLedgerObservedAt": {
+                        "$ref": "#/$defs/dateTime"
+                    },
+                    "sourceDispatchReceiptDigest": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/$defs/digest"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                }
+            },
+            "else": {
+                "properties": {
+                    "contractBindingStatus": {
+                        "const": "unbound-test-only"
+                    },
+                    "slicePolicyDigest": {
+                        "type": "null"
+                    },
+                    "plannerReceiptDigest": {
+                        "type": "null"
+                    },
+                    "frozenStageContractReceiptDigest": {
+                        "type": "null"
+                    },
+                    "activeWriteLeaseId": {
+                        "type": "null"
+                    },
+                    "resourceLeaseReceiptDigest": {
+                        "type": "null"
+                    },
+                    "stageAttemptId": {
+                        "type": "null"
+                    },
+                    "runtimeStateRootDigest": {
+                        "type": "null"
+                    },
+                    "runtimeAuthorityIdentityDigest": {
+                        "type": "null"
+                    },
+                    "resourceRegistryIdentityDigest": {
+                        "type": "null"
+                    },
+                    "resourceRegistrySnapshotDigest": {
+                        "type": "null"
+                    },
+                    "resourceRegistryObservedAt": {
+                        "type": "null"
+                    },
+                    "sourceEventDigest": {
+                        "type": "null"
+                    },
+                    "sourceLedgerDigest": {
+                        "type": "null"
+                    },
+                    "sourceLedgerObservedAt": {
+                        "type": "null"
+                    },
+                    "sourceDispatchReceiptDigest": {
+                        "type": "null"
+                    }
+                }
+            }
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "dateTime": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "strings": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "nonEmptyStrings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "writerRole": {
+            "enum": [
+                "test-owner",
+                "code-implementer",
+                "ui-ux-implementer",
+                "documentation-writer"
+            ]
+        },
+        "writerPhase": {
+            "enum": [
+                "test-contract",
+                "implementation",
+                "ui-implementation",
+                "documentation",
+                "landing-conflict-resolution"
+            ]
+        },
+        "writerBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "test-owner"
+                        },
+                        "stagePhase": {
+                            "const": "test-contract"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "code-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "ui-ux-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "ui-implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "documentation-writer"
+                        },
+                        "stagePhase": {
+                            "const": "documentation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "enum": [
+                                "code-implementer",
+                                "ui-ux-implementer"
+                            ]
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

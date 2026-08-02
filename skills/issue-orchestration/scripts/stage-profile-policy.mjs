@@ -204,23 +204,20 @@ function selectTestOwnerProfile(input, key) {
     return [selector.focused, 'verification-focused-or-cross-module']
 }
 
-function selectCodeProfile(input) {
-    const selected = ROUTING_POLICY.selectors[
-        'code-implementer:implementation'
-    ][input.engineeringRiskClass]
+function selectCodeProfile(input, key) {
+    const selected =
+        ROUTING_POLICY.selectors[key][input.engineeringRiskClass]
     return selected
         ? [selected, `engineering-risk-${input.engineeringRiskClass}`]
         : undefined
 }
 
-function selectUiProfile(input) {
+function selectUiProfile(input, key) {
     if (input.domain !== 'ui-ux') fail('routing-ui-domain')
     if (input.uiDecisionClass === 'system-design-dispute') {
         fail('routing-ui-adjudication-required')
     }
-    const selected = ROUTING_POLICY.selectors[
-        'ui-ux-implementer:implementation'
-    ][input.uiDecisionClass]
+    const selected = ROUTING_POLICY.selectors[key][input.uiDecisionClass]
     if (selected) return [selected, `ui-${input.uiDecisionClass}`]
     fail('routing-ui-classification')
 }
@@ -275,12 +272,14 @@ function selectProfile(input, key) {
         || key === 'test-owner:behavior-verification') {
         return selectTestOwnerProfile(input, key)
     }
-    if (key === 'code-implementer:implementation') {
+    if (key === 'code-implementer:implementation' ||
+        key === 'code-implementer:landing-conflict-resolution') {
         if (input.domain === 'ui-ux') fail('routing-ui-owner')
-        return selectCodeProfile(input)
+        return selectCodeProfile(input, key)
     }
-    if (key === 'ui-ux-implementer:implementation') {
-        return selectUiProfile(input)
+    if (key === 'ui-ux-implementer:ui-implementation' ||
+        key === 'ui-ux-implementer:landing-conflict-resolution') {
+        return selectUiProfile(input, key)
     }
     if (key === 'ui-system-adjudicator:adjudication') {
         return selectAdjudicatorProfile(input)
@@ -391,7 +390,7 @@ export function validateStageAssignment(value) {
     }
     if (value.stageRole === 'ui-ux-implementer'
         && !definition.allowedProfiles.includes(value.selectedProfile)) {
-        fail('routing-profile-forbidden')
+        fail('routing-ui-profile')
     }
     validateFreshContext(value, definition)
     const expected = compileStageRoute({
@@ -404,7 +403,7 @@ export function validateStageAssignment(value) {
     })
     if (value.stageRole === 'root-scheduler'
         && value.selectedProfile !== expected.selectedProfile) {
-        fail('routing-profile-forbidden')
+        fail('routing-root-profile')
     }
     if (!sameValues(value.allowedProfiles, expected.allowedProfiles)
         || value.defaultProfile !== expected.defaultProfile

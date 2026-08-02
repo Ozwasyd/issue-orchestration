@@ -1,0 +1,177 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:compiled-dispatch-prompt:v1",
+    "title": "issue-orchestration.compiled-dispatch-prompt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "planDigest",
+        "sliceId",
+        "sliceDigest",
+        "slicePolicyDigest",
+        "plannerReceiptDigest",
+        "stageRole",
+        "stagePhase",
+        "prompt",
+        "promptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.compiled-dispatch-prompt.v1"
+        },
+        "planDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "slicePolicyDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "plannerReceiptDigest": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/digest"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "stageRole": {
+            "$ref": "#/$defs/writerRole"
+        },
+        "stagePhase": {
+            "$ref": "#/$defs/writerPhase"
+        },
+        "prompt": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "promptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "oneOf": [
+        {
+            "properties": {
+                "slicePolicyDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "plannerReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            }
+        },
+        {
+            "properties": {
+                "slicePolicyDigest": {
+                    "type": "null"
+                },
+                "plannerReceiptDigest": {
+                    "type": "null"
+                }
+            }
+        }
+    ],
+    "allOf": [
+        {
+            "$ref": "#/$defs/writerBinding"
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "writerRole": {
+            "enum": [
+                "test-owner",
+                "code-implementer",
+                "ui-ux-implementer",
+                "documentation-writer"
+            ]
+        },
+        "writerPhase": {
+            "enum": [
+                "test-contract",
+                "implementation",
+                "ui-implementation",
+                "documentation",
+                "landing-conflict-resolution"
+            ]
+        },
+        "writerBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "test-owner"
+                        },
+                        "stagePhase": {
+                            "const": "test-contract"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "code-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "ui-ux-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "ui-implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "documentation-writer"
+                        },
+                        "stagePhase": {
+                            "const": "documentation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "enum": [
+                                "code-implementer",
+                                "ui-ux-implementer"
+                            ]
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

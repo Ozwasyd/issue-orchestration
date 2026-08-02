@@ -2,6 +2,21 @@ import { createHash } from 'node:crypto'
 // Shared issue-orchestration package runtime.
 import fs from 'node:fs'
 import path from 'node:path'
+import {
+    compileContinuation,
+    compileDispatchPrompt,
+    compileExecutableSlice,
+    validateSealedCompiledDispatchPrompt,
+    validateSealedExecutableSlice,
+    validateSealedStageWorkPlan
+} from './executable-slice-compiler.mjs'
+import {
+    replayEventLedgerSync
+} from './event-ledger.mjs'
+import {
+    evaluateSliceTerminalGate,
+    validateSealedWriterStageCheckpointEvidence
+} from './writer-stage-progress.mjs'
 
 const REMOTE_MUTATION_POLICY = Object.freeze(JSON.parse(fs.readFileSync(
     path.resolve(
@@ -34,18 +49,26 @@ const DECISION_RECEIPT_SCHEMA =
 const PROJECTOR_VERSION = 'issue-orchestration.runtime-projector.v1'
 const PROJECTOR_DIGEST = digest({
     projectorVersion: PROJECTOR_VERSION,
-    inputs: ['immutable-runtime-ledger.v1', 'semantic-graph.v1', 'runtime-facts.v1'],
+    inputs: [
+        'immutable-runtime-ledger.v1-non-writer-historical',
+        'ledger.v2-canonical-active-writer-replay',
+        'semantic-graph.v1',
+        'runtime-facts.v1'
+    ],
     outputs: [
         'completed',
         'ready-and-blocked',
         'critical-path',
         'conflicts',
         'slots-and-leases',
-        'next-executable-frontier'
+        'next-executable-frontier',
+        'writer-stage-artifacts-and-breakers',
+        'writer-checkpoint-fork-and-terminal-chain-digests'
     ]
 })
 
 const SHA256 = /^[a-f0-9]{64}$/u
+const GIT_SHA = /^[a-f0-9]{40}$/u
 const ALLOWED_PATCH_OPERATIONS = new Set([
     'add-node',
     'remove-node',
@@ -104,20 +127,45 @@ function clone(value) {
     return structuredClone(value)
 }
 
-function canonical(value) {
+function canonical(value, semanticKey = null) {
     if (Array.isArray(value)) {
-        return value.map(canonical).sort((left, right) =>
+        const normalized = value.map((item) => canonical(item))
+        if ([
+            'completedSlicePrefix',
+            'completedSliceReceiptDigests',
+            'priorTerminalReceiptDigests'
+        ].includes(semanticKey)) {
+            return normalized
+        }
+        return normalized.sort((left, right) =>
             JSON.stringify(left).localeCompare(JSON.stringify(right))
         )
     }
     if (!value || typeof value !== 'object') return value
     return Object.fromEntries(Object.keys(value).sort()
-        .map((key) => [key, canonical(value[key])]))
+        .map((key) => [key, canonical(value[key], key)]))
+}
+
+function orderedCanonical(value) {
+    if (Array.isArray(value)) return value.map(orderedCanonical)
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(Object.keys(value).sort()
+        .map((key) => [key, orderedCanonical(value[key])]))
 }
 
 function digest(value) {
     return createHash('sha256')
         .update(Buffer.isBuffer(value) ? value : JSON.stringify(canonical(value)))
+        .digest('hex')
+}
+
+function orderedDigest(value) {
+    return createHash('sha256')
+        .update(
+            Buffer.isBuffer(value)
+                ? value
+                : JSON.stringify(orderedCanonical(value))
+        )
         .digest('hex')
 }
 
@@ -129,6 +177,11 @@ function unsignedDigest(value, field) {
 
 function sameValue(left, right) {
     return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
+}
+
+function sameOrderedValue(left, right) {
+    return JSON.stringify(orderedCanonical(left)) ===
+        JSON.stringify(orderedCanonical(right))
 }
 
 function requireObject(value, code, message = code) {
@@ -438,10 +491,1231 @@ function hasOccupiedConflict(node, conflictState, occupiedIds) {
     )
 }
 
+const WRITER_START_PHASES = Object.freeze({
+    'test-contract.started': new Set(['test-contract']),
+    'documentation.started': new Set(['documentation']),
+    'implementation.started': new Set([
+        'implementation',
+        'ui-implementation',
+        'landing-conflict-resolution'
+    ])
+})
+const WRITER_PHASE_ROLES = Object.freeze({
+    'test-contract': new Set(['test-owner']),
+    implementation: new Set(['code-implementer']),
+    'ui-implementation': new Set(['ui-ux-implementer']),
+    documentation: new Set(['documentation-writer']),
+    'landing-conflict-resolution': new Set([
+        'code-implementer',
+        'ui-ux-implementer'
+    ])
+})
+const WRITER_SOURCE_PREDECESSORS = Object.freeze({
+    'test-contract': Object.freeze({
+        'node.discovered': 'dag-updater'
+    }),
+    implementation: Object.freeze({
+        'test-contract.frozen': 'test-owner'
+    }),
+    'ui-implementation': Object.freeze({
+        'test-contract.frozen': 'test-owner'
+    }),
+    documentation: Object.freeze({
+        'ux-acceptance.accepted': 'ux-acceptance-verifier',
+        'independent-verification.passed': 'test-owner'
+    }),
+    'landing-conflict-resolution': Object.freeze({
+        'delivery.failed': 'root-scheduler'
+    })
+})
+const WRITER_FAILURE_EVENTS = new Set([
+    'writer-stage.invocation-failed',
+    'writer-stage.environment-failed',
+    'writer-stage.runtime-capability-missing',
+    'writer-stage.first-action-not-executed',
+    'writer-stage.output-missing',
+    'writer-stage.checkpoint-missing',
+    'writer-stage.receipt-rejected'
+])
+const WRITER_STAGE_PROJECTION_FIELDS = Object.freeze([
+    'baseSha',
+    'breakerOpen',
+    'acceptedPriorChangedPathsDigest',
+    'checkpointDigest',
+    'checkpointOrdinal',
+    'checkpointVerificationReceiptDigest',
+    'compiledPromptDigest',
+    'completedSlicePrefix',
+    'completedSlicePrefixDigest',
+    'completedSliceReceiptDigests',
+    'continuationReceiptDigest',
+    'epochId',
+    'expectedNextSliceDigest',
+    'expectedNextSliceId',
+    'failureReceiptDigest',
+    'issue',
+    'machineTracePrefixByteLength',
+    'machineTracePrefixDigest',
+    'machineTraceSnapshotDigest',
+    'node',
+    'operationsDigest',
+    'planDigest',
+    'previousCheckpointDigest',
+    'previousCheckpointVerificationReceiptDigest',
+    'previousMachineTracePrefixByteLength',
+    'previousMachineTracePrefixDigest',
+    'repository',
+    'retryAuthorizationDigest',
+    'runId',
+    'runtimeProgressObservationDigest',
+    'semanticFailureDigest',
+    'sliceDigest',
+    'sliceId',
+    'stageAttemptId',
+    'stagePhase',
+    'stageRole',
+    'status',
+    'terminalChainDigest',
+    'terminalReceiptDigest',
+    'worktreeIdentity'
+])
+const WRITER_STAGE_STATUSES = new Set([
+    'active',
+    'checkpointed',
+    'continuing',
+    'terminal-failure',
+    'retry-authorized',
+    'next-slice',
+    'completed'
+])
+const CHECKPOINT_DIGEST_PROJECTION_FIELDS = Object.freeze([
+    'acceptedPriorChangedPathsDigest',
+    'checkpointVerificationReceiptDigest',
+    'completedSlicePrefixDigest',
+    'machineTracePrefixDigest',
+    'machineTraceSnapshotDigest',
+    'operationsDigest',
+    'previousCheckpointDigest',
+    'previousCheckpointVerificationReceiptDigest',
+    'previousMachineTracePrefixDigest',
+    'runtimeProgressObservationDigest'
+])
+const CHECKPOINT_NUMBER_PROJECTION_FIELDS = Object.freeze([
+    'checkpointOrdinal',
+    'machineTracePrefixByteLength',
+    'previousMachineTracePrefixByteLength'
+])
+const COMPLETED_SLICE_PROJECTION_FIELDS = Object.freeze([
+    ...CHECKPOINT_DIGEST_PROJECTION_FIELDS,
+    ...CHECKPOINT_NUMBER_PROJECTION_FIELDS,
+    'checkpointDigest',
+    'changedPaths',
+    'planDigest',
+    'planSliceCount',
+    'priorTerminalReceiptDigests',
+    'sliceDigest',
+    'sliceId',
+    'sliceOrdinal',
+    'stageAttemptId',
+    'stagePhase',
+    'stageRole',
+    'terminalChainDigest',
+    'terminalReceiptDigest'
+])
+
+function activeWriterLedgerRequested(ledger) {
+    return Array.isArray(ledger?.events) &&
+        ledger.events.some((event) =>
+            typeof event?.eventType === 'string' &&
+            (event.eventType.startsWith('writer-stage.') ||
+                Object.hasOwn(event.payload ?? {}, 'stageWorkPlan')))
+}
+
+function replayCanonicalWriterLedger(ledger) {
+    if (!activeWriterLedgerRequested(ledger)) return null
+    if (ledger?.header?.schema !== 'issue-orchestration.ledger.v2' ||
+        ledger.header.transitionSchema !==
+            'issue-orchestration.transition.v2') {
+        fail('runtime-projector-active-writer-ledger-v2-required')
+    }
+    try {
+        return replayEventLedgerSync(ledger)
+    } catch (error) {
+        fail(
+            'runtime-projector-active-writer-ledger-replay-invalid',
+            'runtime-projector-active-writer-ledger-replay-invalid',
+            {
+                ledgerErrorCode: error?.code ?? null
+            }
+        )
+    }
+}
+
+function writerStartArtifacts(event) {
+    const allowedPhases = WRITER_START_PHASES[event.eventType]
+    if (!allowedPhases) return null
+    const payload = event.payload ?? {}
+    if (!Object.hasOwn(payload, 'stageWorkPlan')) return null
+    const plan = payload.stageWorkPlan
+    const slice = payload.currentSlice
+    const compiledPrompt = payload.compiledPrompt
+    const dispatchReceipt = payload.dispatchReceipt
+    let expectedSlice
+    let expectedPrompt
+    try {
+        expectedSlice = compileExecutableSlice({
+            plan,
+            sliceId: slice?.sliceId
+        })
+        expectedPrompt = compileDispatchPrompt({
+            plan,
+            slice: expectedSlice
+        })
+    } catch {
+        fail('runtime-projector-writer-start-binding-invalid')
+    }
+    if (!allowedPhases.has(plan.stagePhase) ||
+        !WRITER_PHASE_ROLES[plan.stagePhase]?.has(plan.stageRole) ||
+        plan.node !== event.nodeId ||
+        !sameOrderedValue(slice, expectedSlice) ||
+        !sameOrderedValue(payload.executableSlice, expectedSlice) ||
+        !sameOrderedValue(compiledPrompt, expectedPrompt) ||
+        plan.stageAttemptId !== event.attemptId ||
+        dispatchReceipt?.schema !==
+            'issue-orchestration.dispatch-receipt.v2' ||
+        dispatchReceipt.verificationStatus !== 'verified' ||
+        !sealedDigestValid(dispatchReceipt, 'receiptDigest') ||
+        dispatchReceipt.attemptId !== event.attemptId ||
+        dispatchReceipt.stageRole !== plan.stageRole ||
+        dispatchReceipt.stagePhase !== plan.stagePhase ||
+        dispatchReceipt?.planDigest !== plan.planDigest ||
+        dispatchReceipt?.sliceId !== expectedSlice.sliceId ||
+        dispatchReceipt?.sliceDigest !== expectedSlice.sliceDigest ||
+        dispatchReceipt?.compiledPromptDigest !==
+            expectedPrompt.promptDigest) {
+        fail('runtime-projector-writer-start-binding-invalid')
+    }
+    for (const field of ['stagePhase', 'stageRole']) {
+        if (Object.hasOwn(dispatchReceipt, field) &&
+            dispatchReceipt[field] !== plan[field]) {
+            fail('runtime-projector-writer-start-binding-invalid')
+        }
+    }
+    return {
+        plan,
+        slice: expectedSlice,
+        compiledPrompt: expectedPrompt
+    }
+}
+
+function sealedWriterAuthority(ledger, eventIndex, plan) {
+    const allowedPredecessors =
+        WRITER_SOURCE_PREDECESSORS[plan.stagePhase] ?? {}
+    for (let length = 1; length <= eventIndex; length += 1) {
+        const sourceEvents = ledger.events.slice(0, length)
+        const sourceEvent = sourceEvents.findLast((candidate) =>
+            allowedPredecessors[candidate.eventType] ===
+                candidate.actorRole)
+        if (!sourceEvent) continue
+        const sourceLedgerDigest = orderedDigest({
+            header: ledger.header,
+            events: sourceEvents
+        })
+        if (sourceLedgerDigest === plan.sourceLedgerDigest &&
+            sourceEvent.eventDigest === plan.sourceEventDigest) {
+            return {
+                expectedSourceEventDigest: sourceEvent.eventDigest,
+                expectedSourceLedgerDigest: sourceLedgerDigest
+            }
+        }
+    }
+    fail('runtime-projector-writer-start-binding-invalid')
+}
+
+function writerStageMatchesPlan(stage, plan) {
+    return stage.runId === plan?.runId &&
+        stage.repository === plan.repository &&
+        stage.issue === plan.issue &&
+        stage.node === plan.node &&
+        stage.baseSha === plan.baseSha &&
+        stage.epochId === plan.epochId &&
+        stage.worktreeIdentity === plan.worktreeIdentity &&
+        stage.stageAttemptId === plan.stageAttemptId &&
+        stage.stageRole === plan.stageRole &&
+        stage.stagePhase === plan.stagePhase &&
+        stage.planDigest === plan.planDigest
+}
+
+function activeWriterArtifacts(stage, payload, code) {
+    const plan = payload.stageWorkPlan
+    const slice = payload.currentSlice
+    let expectedSlice
+    let expectedPrompt
+    try {
+        expectedSlice = compileExecutableSlice({
+            plan,
+            sliceId: slice?.sliceId
+        })
+        expectedPrompt = compileDispatchPrompt({
+            plan,
+            slice: expectedSlice
+        })
+    } catch {
+        fail(code)
+    }
+    if (!writerStageMatchesPlan(stage, plan) ||
+        !sameOrderedValue(slice, expectedSlice) ||
+        !sameOrderedValue(payload.compiledPrompt, expectedPrompt) ||
+        stage.sliceId !== expectedSlice.sliceId ||
+        stage.sliceDigest !== expectedSlice.sliceDigest ||
+        stage.compiledPromptDigest !== expectedPrompt.promptDigest) {
+        fail(code)
+    }
+    return {
+        compiledPrompt: expectedPrompt,
+        plan,
+        slice: expectedSlice
+    }
+}
+
+function sealedDigestValid(value, field) {
+    if (!value || !SHA256.test(value[field] ?? '')) return false
+    const unsigned = clone(value)
+    delete unsigned[field]
+    return orderedDigest(unsigned) === value[field]
+}
+
+function nextCheckpointLineage(stage) {
+    const prior = stage._lastCheckpointLineage
+    return {
+        checkpointOrdinal: prior
+            ? prior.checkpointOrdinal + 1
+            : 1,
+        previousCheckpointDigest:
+            prior?.checkpointDigest ?? null,
+        previousCheckpointVerificationReceiptDigest:
+            prior?.checkpointVerificationReceiptDigest ?? null,
+        previousMachineTracePrefixDigest:
+            prior?.machineTracePrefixDigest ?? null,
+        previousMachineTracePrefixByteLength:
+            prior?.machineTracePrefixByteLength ?? null,
+        previousMachineTraceSnapshot:
+            prior?.machineTraceSnapshot ?? null
+    }
+}
+
+function checkpointProjection(receipt) {
+    return {
+        acceptedPriorChangedPathsDigest:
+            receipt.acceptedPriorChangedPathsDigest,
+        checkpointOrdinal: receipt.checkpointOrdinal,
+        checkpointVerificationReceiptDigest: receipt.receiptDigest,
+        completedSlicePrefixDigest:
+            receipt.completedSlicePrefixDigest,
+        machineTracePrefixByteLength:
+            receipt.machineTracePrefixByteLength,
+        machineTracePrefixDigest:
+            receipt.machineTracePrefixDigest,
+        machineTraceSnapshotDigest:
+            receipt.machineTraceSnapshotDigest,
+        operationsDigest: receipt.operationsDigest,
+        previousCheckpointDigest:
+            receipt.previousCheckpointDigest,
+        previousCheckpointVerificationReceiptDigest:
+            receipt.previousCheckpointVerificationReceiptDigest,
+        previousMachineTracePrefixByteLength:
+            receipt.previousMachineTracePrefixByteLength,
+        previousMachineTracePrefixDigest:
+            receipt.previousMachineTracePrefixDigest,
+        runtimeProgressObservationDigest:
+            receipt.runtimeProgressObservationDigest
+    }
+}
+
+function checkpointProjectionValid(projection) {
+    if (!Number.isInteger(projection.checkpointOrdinal) ||
+        projection.checkpointOrdinal < 1 ||
+        !Number.isInteger(projection.machineTracePrefixByteLength) ||
+        projection.machineTracePrefixByteLength <= 0) {
+        return false
+    }
+    const requiredDigests = CHECKPOINT_DIGEST_PROJECTION_FIELDS.filter(
+        (field) => !field.startsWith('previous')
+    )
+    if (requiredDigests.some((field) =>
+        !SHA256.test(projection[field] ?? ''))) {
+        return false
+    }
+    if (projection.checkpointOrdinal === 1) {
+        return projection.previousCheckpointDigest === null &&
+            projection.previousCheckpointVerificationReceiptDigest ===
+                null &&
+            projection.previousMachineTracePrefixDigest === null &&
+            projection.previousMachineTracePrefixByteLength === null
+    }
+    return SHA256.test(projection.previousCheckpointDigest ?? '') &&
+        SHA256.test(
+            projection.previousCheckpointVerificationReceiptDigest ?? ''
+        ) &&
+        SHA256.test(
+            projection.previousMachineTracePrefixDigest ?? ''
+        ) &&
+        Number.isInteger(
+            projection.previousMachineTracePrefixByteLength
+        ) &&
+        projection.previousMachineTracePrefixByteLength > 0
+}
+
+function clearActiveCheckpointProjection(
+    stage,
+    { resetLineage = false } = {}
+) {
+    stage.checkpointDigest = null
+    for (const field of CHECKPOINT_DIGEST_PROJECTION_FIELDS) {
+        stage[field] = null
+    }
+    for (const field of CHECKPOINT_NUMBER_PROJECTION_FIELDS) {
+        stage[field] = null
+    }
+    stage._activeCheckpointLineage = null
+    if (resetLineage) stage._lastCheckpointLineage = null
+}
+
+function projectedCheckpointValid(
+    stage,
+    plan,
+    slice,
+    checkpoint,
+    verificationReceipt,
+    checkpointLineage
+) {
+    let sealedEvidenceErrors
+    try {
+        const compiledPrompt = compileDispatchPrompt({ plan, slice })
+        const sliceOrdinal = plan.orderedSlices.findIndex(
+            ({ sliceId }) => sliceId === slice.sliceId
+        )
+        if (sliceOrdinal < 0) return false
+        const acceptedPrefix =
+            stage._canonicalCompletedSlicePrefix.slice(0, sliceOrdinal)
+        const acceptedPriorChangedPaths = [
+            ...new Set(acceptedPrefix.flatMap(
+                ({ changedPaths = [] }) => changedPaths
+            ))
+        ].sort()
+        sealedEvidenceErrors =
+            validateSealedWriterStageCheckpointEvidence({
+                plan,
+                slice,
+                checkpoint,
+                compiledPrompt,
+                compiledPromptDigest: compiledPrompt.promptDigest,
+                routeDigest: plan.routingInputDigest,
+                sealedAuthority: stage._sealedAuthority,
+                acceptedPriorChangedPaths,
+                completedSlicePrefixDigest: orderedDigest(acceptedPrefix),
+                ...checkpointLineage,
+                verificationReceipt
+            })
+    } catch {
+        return false
+    }
+    if (checkpoint?.schema !==
+        'issue-orchestration.stage-progress-checkpoint.v1' ||
+        !Array.isArray(sealedEvidenceErrors) ||
+        sealedEvidenceErrors.length > 0 ||
+        !['partial', 'complete'].includes(checkpoint.status) ||
+        checkpoint.runId !== plan.runId ||
+        checkpoint.node !== plan.node ||
+        checkpoint.baseSha !== plan.baseSha ||
+        checkpoint.epochId !== plan.epochId ||
+        checkpoint.worktreeIdentity !== plan.worktreeIdentity ||
+        checkpoint.sliceId !== slice.sliceId ||
+        checkpoint.sliceDigest !== slice.sliceDigest ||
+        checkpoint.verificationStatus !== 'verified' ||
+        !sealedDigestValid(checkpoint, 'checkpointDigest') ||
+        !sealedDigestValid(checkpoint.evidence, 'evidenceDigest') ||
+        checkpoint.evidenceDigest !== checkpoint.evidence.evidenceDigest ||
+        !Array.isArray(checkpoint.evidence.typedEvidenceReceipts) ||
+        checkpoint.evidence.typedEvidenceReceipts.length === 0 ||
+        checkpoint.evidence.typedEvidenceReceipts.some((receipt) =>
+            receipt?.schema !==
+                'issue-orchestration.writer-stage-evidence-receipt.v1' ||
+            !sealedDigestValid(receipt, 'receiptDigest')) ||
+        checkpoint.evidence.machineRuntimeTrace?.schema !==
+            'issue-orchestration.machine-writer-runtime-trace-handle.v1' ||
+        checkpoint.evidence.machineRuntimeTrace.verificationStatus !==
+            'verified' ||
+        !sealedDigestValid(
+            checkpoint.evidence.machineRuntimeTrace,
+            'receiptDigest'
+        ) ||
+        checkpoint.evidence.runtimeProgressObservation?.schema !==
+            'issue-orchestration.writer-stage-runtime-progress-observation.v1' ||
+        !sealedDigestValid(
+            checkpoint.evidence.runtimeProgressObservation,
+            'observationDigest'
+        ) ||
+        !checkpoint.cursor ||
+        !Number.isInteger(checkpoint.cursor.completedActionCount) ||
+        !Number.isInteger(checkpoint.cursor.nextActionIndex) ||
+        typeof checkpoint.cursor.lastCompletedAction !== 'string') {
+        return false
+    }
+    if (checkpoint.status === 'partial') {
+        return typeof checkpoint.nextRequiredAction === 'string' &&
+            checkpoint.nextRequiredAction.length > 0 &&
+            checkpoint.candidateState !== 'candidate-green'
+    }
+    return checkpoint.nextRequiredAction === null
+}
+
+function projectWriterCheckpoint(stage, payload) {
+    const { plan, slice } = activeWriterArtifacts(
+        stage,
+        payload,
+        'runtime-projector-writer-checkpoint-binding-invalid'
+    )
+    const checkpointLineage = nextCheckpointLineage(stage)
+    if (!projectedCheckpointValid(
+        stage,
+        plan,
+        slice,
+        payload.checkpoint,
+        payload.checkpointVerificationReceipt,
+        checkpointLineage
+    )) {
+        fail('runtime-projector-writer-checkpoint-binding-invalid')
+    }
+    const receipt = payload.checkpointVerificationReceipt
+    const safeProjection = checkpointProjection(receipt)
+    if (!checkpointProjectionValid(safeProjection)) {
+        fail('runtime-projector-writer-checkpoint-binding-invalid')
+    }
+    Object.assign(stage, safeProjection)
+    stage.checkpointDigest = payload.checkpoint.checkpointDigest
+    const lineage = {
+        ...safeProjection,
+        checkpointDigest: payload.checkpoint.checkpointDigest,
+        machineTraceSnapshot:
+            payload.checkpoint.evidence.machineRuntimeTrace.traceSnapshot,
+        validationOptions: checkpointLineage
+    }
+    stage._activeCheckpointLineage = lineage
+    stage._lastCheckpointLineage = lineage
+    stage.status = 'checkpointed'
+}
+
+function projectWriterContinuation(stage, payload) {
+    const { plan, slice } = activeWriterArtifacts(
+        stage,
+        payload,
+        'runtime-projector-writer-continuation-binding-invalid'
+    )
+    const checkpoint = payload.checkpoint
+    if (!projectedCheckpointValid(
+        stage,
+        plan,
+        slice,
+        checkpoint,
+        payload.checkpointVerificationReceipt,
+        stage._activeCheckpointLineage?.validationOptions
+    ) ||
+        checkpoint.status !== 'partial' ||
+        payload.checkpointVerificationReceipt?.receiptDigest !==
+            stage.checkpointVerificationReceiptDigest) {
+        fail('runtime-projector-writer-continuation-binding-invalid')
+    }
+    const sliceOrdinal = plan.orderedSlices.findIndex(
+        ({ sliceId }) => sliceId === slice.sliceId
+    )
+    const acceptedPrefix =
+        stage._canonicalCompletedSlicePrefix.slice(0, sliceOrdinal)
+    const acceptedPriorChangedPaths = [
+        ...new Set(acceptedPrefix.flatMap(
+            ({ changedPaths = [] }) => changedPaths
+        ))
+    ].sort()
+    let expected
+    try {
+        expected = compileContinuation({
+            plan,
+            slice,
+            checkpoint,
+            checkpointVerificationReceiptDigest:
+                stage.checkpointVerificationReceiptDigest,
+            checkpointOrdinal: stage.checkpointOrdinal,
+            previousCheckpointDigest:
+                stage.previousCheckpointDigest,
+            previousCheckpointVerificationReceiptDigest:
+                stage.previousCheckpointVerificationReceiptDigest,
+            previousMachineTracePrefixDigest:
+                stage.previousMachineTracePrefixDigest,
+            previousMachineTracePrefixByteLength:
+                stage.previousMachineTracePrefixByteLength,
+            machineTracePrefixDigest:
+                stage.machineTracePrefixDigest,
+            machineTracePrefixByteLength:
+                stage.machineTracePrefixByteLength,
+            completedSlicePrefixDigest:
+                stage.completedSlicePrefixDigest,
+            acceptedPriorChangedPathsDigest:
+                stage.acceptedPriorChangedPathsDigest,
+            acceptedPriorChangedPaths
+        })
+    } catch {
+        fail('runtime-projector-writer-continuation-binding-invalid')
+    }
+    if (payload.checkpoint?.checkpointDigest !== stage.checkpointDigest ||
+        !sameOrderedValue(payload.continuationReceipt, expected)) {
+        fail('runtime-projector-writer-continuation-binding-invalid')
+    }
+    stage.continuationReceiptDigest = expected.receiptDigest
+    stage.status = 'continuing'
+}
+
+function projectWriterFailure(stage, event) {
+    const payload = event.payload ?? {}
+    const observation = payload.writerStageObservation
+    const failureReceipt = payload.failureReceipt ?? payload.receipt
+    if (observation?.runId !== stage.runId ||
+        observation.repository !== stage.repository ||
+        observation.issue !== stage.issue ||
+        observation.node !== stage.node ||
+        observation.baseSha !== stage.baseSha ||
+        observation.epochId !== stage.epochId ||
+        observation.worktreeIdentity !== stage.worktreeIdentity ||
+        observation.stageRole !== stage.stageRole ||
+        observation.stagePhase !== stage.stagePhase ||
+        observation.planDigest !== stage.planDigest ||
+        observation.sliceId !== stage.sliceId ||
+        observation.sliceDigest !== stage.sliceDigest ||
+        observation.compiledPromptDigest !== stage.compiledPromptDigest ||
+        observation.attemptId !== stage.stageAttemptId ||
+        failureReceipt?.schema !==
+            'issue-orchestration.writer-stage-failure-receipt.v1' ||
+        failureReceipt.status !== 'terminal' ||
+        failureReceipt.eventType !== event.eventType ||
+        failureReceipt.runId !== stage.runId ||
+        failureReceipt.repository !== stage.repository ||
+        failureReceipt.issue !== stage.issue ||
+        failureReceipt.node !== stage.node ||
+        failureReceipt.baseSha !== stage.baseSha ||
+        failureReceipt.epochId !== stage.epochId ||
+        failureReceipt.worktreeIdentity !== stage.worktreeIdentity ||
+        failureReceipt.planDigest !== stage.planDigest ||
+        failureReceipt.sliceId !== stage.sliceId ||
+        failureReceipt.sliceDigest !== stage.sliceDigest ||
+        failureReceipt.compiledPromptDigest !==
+            stage.compiledPromptDigest ||
+        failureReceipt.stageRole !== stage.stageRole ||
+        failureReceipt.stagePhase !== stage.stagePhase ||
+        failureReceipt.attemptId !== stage.stageAttemptId ||
+        failureReceipt.breakerOpen !== true ||
+        !SHA256.test(failureReceipt.semanticFailureDigest ?? '') ||
+        !sealedDigestValid(failureReceipt, 'receiptDigest')) {
+        fail('runtime-projector-writer-failure-binding-invalid')
+    }
+    stage.failureReceiptDigest = failureReceipt.receiptDigest
+    stage.semanticFailureDigest = failureReceipt.semanticFailureDigest
+    stage.breakerOpen = true
+    stage.status = 'terminal-failure'
+}
+
+function projectWriterRetry(stage, payload) {
+    const expected = payload.retryAuthorization
+    if (payload.priorFailureReceipt?.receiptDigest !==
+            stage.failureReceiptDigest ||
+        payload.priorFailureReceipt?.semanticFailureDigest !==
+            stage.semanticFailureDigest ||
+        expected?.schema !==
+            'issue-orchestration.writer-stage-retry-authorization.v1' ||
+        expected.verificationStatus !== 'verified' ||
+        expected.authorized !== true ||
+        expected.breakerOpen !== false ||
+        expected.priorFailureReceiptDigest !==
+            stage.failureReceiptDigest ||
+        expected.semanticFailureDigest !== stage.semanticFailureDigest ||
+        expected.sourceFailureEventId !==
+            payload.sourceFailureEvent?.eventId ||
+        expected.sourceFailureEventDigest !==
+            payload.sourceFailureEvent?.eventDigest ||
+        expected.resourceCleanupReceiptDigest !==
+            payload.resourceCleanupReceipt?.receiptDigest ||
+        !sealedDigestValid(expected, 'receiptDigest')) {
+        fail('runtime-projector-writer-retry-binding-invalid')
+    }
+    stage.retryAuthorizationDigest = expected.receiptDigest
+    stage.expectedNextSliceId = expected.nextSliceId
+    stage.expectedNextSliceDigest = expected.nextSliceDigest
+    stage._expectedNextPlanDigest = expected.nextPlanDigest
+    stage._expectedNextCompiledPromptDigest =
+        expected.nextCompiledPromptDigest
+    stage._carryForwardPrefix = expected.carryForwardPrefix ?? null
+    stage.breakerOpen = false
+    stage.status = 'retry-authorized'
+}
+
+function terminalChainDigestFor(receipt) {
+    return orderedDigest({
+        planDigest: receipt.planDigest,
+        sliceId: receipt.sliceId,
+        sliceDigest: receipt.sliceDigest,
+        sliceOrdinal: receipt.sliceOrdinal,
+        planSliceCount: receipt.planSliceCount,
+        checkpointDigest: receipt.checkpointDigest,
+        checkpointVerificationReceiptDigest:
+            receipt.checkpointVerificationReceiptDigest,
+        completedSlicePrefixDigest:
+            receipt.completedSlicePrefixDigest,
+        acceptedPriorChangedPathsDigest:
+            receipt.acceptedPriorChangedPathsDigest,
+        priorTerminalReceiptDigests:
+            receipt.priorTerminalReceiptDigests
+    })
+}
+
+function completedSliceProjectionEntry({
+    event,
+    plan,
+    slice,
+    checkpointProjection: safeCheckpoint,
+    terminalReceipt
+}) {
+    return {
+        acceptedPriorChangedPathsDigest:
+            terminalReceipt.acceptedPriorChangedPathsDigest,
+        checkpointDigest: terminalReceipt.checkpointDigest,
+        checkpointOrdinal: safeCheckpoint.checkpointOrdinal,
+        checkpointVerificationReceiptDigest:
+            terminalReceipt.checkpointVerificationReceiptDigest,
+        changedPaths: [...terminalReceipt.changedPaths].sort(),
+        completedSlicePrefixDigest:
+            terminalReceipt.completedSlicePrefixDigest,
+        machineTracePrefixByteLength:
+            safeCheckpoint.machineTracePrefixByteLength,
+        machineTracePrefixDigest:
+            safeCheckpoint.machineTracePrefixDigest,
+        machineTraceSnapshotDigest:
+            safeCheckpoint.machineTraceSnapshotDigest,
+        operationsDigest: safeCheckpoint.operationsDigest,
+        planDigest: plan.planDigest,
+        planSliceCount: terminalReceipt.planSliceCount,
+        previousCheckpointDigest:
+            safeCheckpoint.previousCheckpointDigest,
+        previousCheckpointVerificationReceiptDigest:
+            safeCheckpoint.previousCheckpointVerificationReceiptDigest,
+        previousMachineTracePrefixByteLength:
+            safeCheckpoint.previousMachineTracePrefixByteLength,
+        previousMachineTracePrefixDigest:
+            safeCheckpoint.previousMachineTracePrefixDigest,
+        priorTerminalReceiptDigests: [
+            ...terminalReceipt.priorTerminalReceiptDigests
+        ],
+        runtimeProgressObservationDigest:
+            safeCheckpoint.runtimeProgressObservationDigest,
+        sliceDigest: slice.sliceDigest,
+        sliceId: slice.sliceId,
+        sliceOrdinal: terminalReceipt.sliceOrdinal,
+        stageAttemptId: event.attemptId,
+        stagePhase: plan.stagePhase,
+        stageRole: plan.stageRole,
+        terminalChainDigest: terminalReceipt.terminalChainDigest,
+        terminalReceiptDigest: terminalReceipt.receiptDigest
+    }
+}
+
+function replayWriterTerminalGate({
+    stage,
+    plan,
+    currentSlice,
+    currentCheckpoint,
+    compiledPrompt,
+    checkpointVerificationReceipt,
+    terminalReceipts,
+    nextSlice
+}) {
+    const sliceOrdinal = plan.orderedSlices.findIndex(
+        ({ sliceId }) => sliceId === currentSlice.sliceId
+    )
+    const acceptedPrefix =
+        stage._canonicalCompletedSlicePrefix.slice(0, sliceOrdinal)
+    const acceptedPriorChangedPaths = [
+        ...new Set(acceptedPrefix.flatMap(
+            ({ changedPaths = [] }) => changedPaths
+        ))
+    ].sort()
+    if (!projectedCheckpointValid(
+        stage,
+        plan,
+        currentSlice,
+        currentCheckpoint,
+        checkpointVerificationReceipt,
+        stage._activeCheckpointLineage?.validationOptions
+    ) || currentCheckpoint.status !== 'complete') {
+        fail('runtime-projector-writer-terminal-binding-invalid')
+    }
+    try {
+        return evaluateSliceTerminalGate({
+            carryForwardPrefix: stage._carryForwardPrefix,
+            plan,
+            currentSlice,
+            currentCheckpoint,
+            compiledPrompt,
+            checkpointVerificationReceipt,
+            sealedAuthority: stage._sealedAuthority,
+            acceptedPriorChangedPaths,
+            completedSlicePrefixDigest:
+                orderedDigest(acceptedPrefix),
+            previousMachineTraceSnapshot:
+                stage._activeCheckpointLineage
+                    ?.validationOptions
+                    ?.previousMachineTraceSnapshot ?? null,
+            terminalReceipts,
+            nextSlice
+        })
+    } catch (error) {
+        let expectedSliceDigest = null
+        let observedSliceDigest = null
+        try {
+            expectedSliceDigest = orderedDigest(
+                compileExecutableSlice({
+                    plan,
+                    sliceId: currentSlice?.sliceId
+                })
+            )
+            observedSliceDigest = orderedDigest(currentSlice)
+        } catch {
+            // Preserve the terminal gate's original fail-closed error.
+        }
+        fail(
+            'runtime-projector-writer-terminal-binding-invalid',
+            'runtime-projector-writer-terminal-binding-invalid',
+            {
+                terminalGateError:
+                    typeof error?.message === 'string'
+                        ? error.message
+                        : null,
+                expectedSliceDigest,
+                observedSliceDigest
+            }
+        )
+    }
+}
+
+function projectWriterTerminal(stage, event) {
+    const payload = event.payload ?? {}
+    const { compiledPrompt, plan, slice } = activeWriterArtifacts(
+        stage,
+        payload,
+        'runtime-projector-writer-terminal-binding-invalid'
+    )
+    if (payload.currentCheckpoint?.checkpointDigest !==
+            stage.checkpointDigest ||
+        payload.checkpointVerificationReceipt?.receiptDigest !==
+            stage.checkpointVerificationReceiptDigest) {
+        fail('runtime-projector-writer-terminal-binding-invalid')
+    }
+    const gate = replayWriterTerminalGate({
+        stage,
+        plan,
+        currentSlice: payload.currentSlice,
+        currentCheckpoint: payload.currentCheckpoint,
+        compiledPrompt,
+        checkpointVerificationReceipt:
+            payload.checkpointVerificationReceipt,
+        terminalReceipts: payload.sliceTerminalReceipts,
+        nextSlice: payload.nextSlice ?? null
+    })
+    const receiptDigests = payload.sliceTerminalReceipts
+        .map(({ receiptDigest }) => receiptDigest)
+    const completedPrefix = receiptDigests.slice(0, -1)
+    const terminal = gate.terminalReceipt
+    if (gate.eventType !== event.eventType ||
+        !sameOrderedValue(payload.terminalReceipt, terminal) ||
+        !sameOrderedValue(
+            completedPrefix,
+            stage.completedSliceReceiptDigests
+        ) ||
+        terminal.sliceOrdinal !== completedPrefix.length + 1 ||
+        terminal.planSliceCount !== plan.orderedSlices.length ||
+        !sameOrderedValue(
+            terminal.priorTerminalReceiptDigests,
+            completedPrefix
+        ) ||
+        terminal.checkpointVerificationReceiptDigest !==
+            stage.checkpointVerificationReceiptDigest ||
+        terminal.completedSlicePrefixDigest !==
+            stage.completedSlicePrefixDigest ||
+        terminal.acceptedPriorChangedPathsDigest !==
+            stage.acceptedPriorChangedPathsDigest ||
+        terminal.terminalChainDigest !==
+            terminalChainDigestFor(terminal)) {
+        fail('runtime-projector-writer-terminal-binding-invalid')
+    }
+    let nextPrompt = null
+    if (event.eventType === 'writer-stage.slice-completed') {
+        try {
+            nextPrompt = compileDispatchPrompt({
+                plan,
+                slice: gate.nextSlice
+            })
+        } catch {
+            fail('runtime-projector-writer-terminal-binding-invalid')
+        }
+        const nextDispatch = payload.nextDispatchReceipt
+        if (!sameOrderedValue(payload.nextSlice, gate.nextSlice) ||
+            !sameOrderedValue(payload.nextCompiledPrompt, nextPrompt) ||
+            nextDispatch?.schema !==
+                'issue-orchestration.dispatch-receipt.v2' ||
+            nextDispatch.verificationStatus !== 'verified' ||
+            !sealedDigestValid(nextDispatch, 'receiptDigest') ||
+            nextDispatch.runId !== plan.runId ||
+            nextDispatch.nodeId !== plan.node ||
+            nextDispatch.attemptId !== event.attemptId ||
+            nextDispatch.planDigest !== plan.planDigest ||
+            nextDispatch.sliceId !== gate.nextSlice.sliceId ||
+            nextDispatch.sliceDigest !== gate.nextSlice.sliceDigest ||
+            nextDispatch.compiledPromptDigest !== nextPrompt.promptDigest ||
+            nextDispatch.stageRole !== plan.stageRole ||
+            nextDispatch.stagePhase !== plan.stagePhase ||
+            gate.nextState !== 'next-slice' ||
+            gate.stageComplete !== false) {
+            fail('runtime-projector-writer-terminal-binding-invalid')
+        }
+    }
+    if (event.eventType === 'writer-stage.completed' &&
+        (gate.nextState !== 'candidate-green' ||
+            gate.stageComplete !== true ||
+            gate.nextSlice !== null)) {
+        fail('runtime-projector-writer-terminal-binding-invalid')
+    }
+    const safeCheckpoint = checkpointProjection(
+        payload.checkpointVerificationReceipt
+    )
+    stage.completedSlicePrefix.push(completedSliceProjectionEntry({
+        event,
+        plan,
+        slice,
+        checkpointProjection: safeCheckpoint,
+        terminalReceipt: terminal
+    }))
+    stage.completedSliceReceiptDigests = receiptDigests
+    stage.terminalChainDigest = terminal.terminalChainDigest
+    stage.terminalReceiptDigest = terminal.receiptDigest
+    stage.expectedNextSliceId = gate.nextSlice?.sliceId ?? null
+    stage.expectedNextSliceDigest = gate.nextSlice?.sliceDigest ?? null
+    stage._expectedNextPlanDigest = gate.nextSlice
+        ? plan.planDigest
+        : null
+    stage._expectedNextCompiledPromptDigest = nextPrompt?.promptDigest ?? null
+    if (gate.nextSlice) {
+        stage.sliceId = gate.nextSlice.sliceId
+        stage.sliceDigest = gate.nextSlice.sliceDigest
+        stage.compiledPromptDigest = nextPrompt.promptDigest
+        clearActiveCheckpointProjection(stage, { resetLineage: true })
+        stage.continuationReceiptDigest = null
+    }
+    stage.breakerOpen = false
+    stage.status = gate.nextState === 'next-slice'
+        ? 'next-slice'
+        : 'completed'
+}
+
+function validateCanonicalWriterProjection(stages, ledgerProjection) {
+    if (!ledgerProjection) {
+        if (Object.keys(stages).length > 0) {
+            fail('runtime-projector-active-writer-ledger-v2-required')
+        }
+        return
+    }
+    if (ledgerProjection.schema !== 'issue-orchestration.projection.v2') {
+        fail('runtime-projector-writer-ledger-projection-mismatch')
+    }
+    for (const [nodeId, stage] of Object.entries(stages)) {
+        const node = ledgerProjection.nodes?.[nodeId]
+        const prefix = node?.completedSlicePrefix
+        if (!node || !Array.isArray(prefix)) {
+            fail('runtime-projector-writer-ledger-projection-mismatch')
+        }
+        const receiptDigests = prefix.map((entry) =>
+            entry?.terminalReceiptDigest)
+        if (!sameOrderedValue(
+            receiptDigests,
+            stage.completedSliceReceiptDigests
+        ) ||
+            prefix.length !== stage.completedSlicePrefix.length ||
+            prefix.some((entry, index) => {
+                const projected = stage.completedSlicePrefix[index]
+                return !projected ||
+                !SHA256.test(entry?.planDigest ?? '') ||
+                entry?.stageRole !== stage.stageRole ||
+                entry?.stagePhase !== stage.stagePhase ||
+                typeof entry?.stageAttemptId !== 'string' ||
+                !entry.stageAttemptId ||
+                !SHA256.test(entry?.sliceDigest ?? '') ||
+                !SHA256.test(entry?.checkpointDigest ?? '') ||
+                !SHA256.test(
+                    entry?.checkpointVerificationReceiptDigest ?? ''
+                ) ||
+                !SHA256.test(entry?.tracePrefixDigest ?? '') ||
+                !Array.isArray(entry?.changedPaths) ||
+                entry.changedPaths.some((filePath) =>
+                    typeof filePath !== 'string' || !filePath) ||
+                !SHA256.test(entry?.terminalReceiptDigest ?? '') ||
+                projected.planDigest !== entry.planDigest ||
+                projected.sliceId !== entry.sliceId ||
+                projected.sliceDigest !== entry.sliceDigest ||
+                projected.checkpointDigest !== entry.checkpointDigest ||
+                projected.checkpointVerificationReceiptDigest !==
+                    entry.checkpointVerificationReceiptDigest ||
+                projected.machineTracePrefixDigest !==
+                    entry.tracePrefixDigest ||
+                !sameOrderedValue(
+                    projected.changedPaths,
+                    entry.changedPaths
+                ) ||
+                projected.terminalReceiptDigest !==
+                    entry.terminalReceiptDigest ||
+                projected.stageRole !== entry.stageRole ||
+                projected.stagePhase !== entry.stagePhase ||
+                projected.stageAttemptId !== entry.stageAttemptId
+            }) ||
+            node.activePlanDigest !== stage.planDigest ||
+            node.activeSliceId !== stage.sliceId ||
+            node.activeSliceDigest !== stage.sliceDigest ||
+            node.activeCompiledPromptDigest !==
+                stage.compiledPromptDigest ||
+            node.activeStageRole !== stage.stageRole ||
+            node.activeStagePhase !== stage.stagePhase ||
+            (node.latestCheckpointDigest ?? null) !==
+                stage.checkpointDigest ||
+            (node.latestCheckpointVerificationReceiptDigest ?? null) !==
+                stage.checkpointVerificationReceiptDigest ||
+            (node.latestCheckpointTracePrefixDigest ?? null) !==
+                stage.machineTracePrefixDigest ||
+            (node.writerStageTerminalReceiptDigest ?? null) !==
+                stage.terminalReceiptDigest ||
+            (node.writerStageFailureReceiptDigest ?? null) !==
+                stage.failureReceiptDigest ||
+            (node.writerStageSemanticFailureDigest ?? null) !==
+                stage.semanticFailureDigest ||
+            (node.writerStageRetryAuthorizationDigest ?? null) !==
+                stage.retryAuthorizationDigest ||
+            (node.expectedNextSliceId ?? null) !==
+                stage.expectedNextSliceId ||
+            (node.expectedNextSliceDigest ?? null) !==
+                stage.expectedNextSliceDigest ||
+            (node.expectedNextPlanDigest ?? null) !==
+                stage._expectedNextPlanDigest ||
+            (node.expectedNextCompiledPromptDigest ?? null) !==
+                stage._expectedNextCompiledPromptDigest) {
+            fail('runtime-projector-writer-ledger-projection-mismatch')
+        }
+        if (stage.status === 'completed' &&
+            node.completedWriterStageAttemptId !==
+                stage.stageAttemptId ||
+            stage.status !== 'completed' &&
+                node.completedWriterStageAttemptId !== null ||
+            node.activeAttemptId !== null &&
+                node.activeAttemptId !== stage.stageAttemptId) {
+            fail('runtime-projector-writer-ledger-projection-mismatch')
+        }
+    }
+}
+
+function projectWriterStages(ledger, canonicalLedgerProjection) {
+    const stages = {}
+    for (const [eventIndex, event] of ledger.events.entries()) {
+        const nodeId = event.nodeId
+        if (!nodeId) {
+            if (WRITER_START_PHASES[event.eventType] ||
+                typeof event.eventType === 'string' &&
+                    event.eventType.startsWith('writer-stage.')) {
+                fail('runtime-projector-writer-node-binding-invalid')
+            }
+            continue
+        }
+        const start = writerStartArtifacts(event)
+        if (start) {
+            const { plan, slice, compiledPrompt } = start
+            const prior = stages[nodeId]
+            const sealedAuthority =
+                sealedWriterAuthority(ledger, eventIndex, plan)
+            if (validateSealedStageWorkPlan(
+                plan,
+                sealedAuthority
+            ).length ||
+                validateSealedExecutableSlice({
+                    plan,
+                    slice,
+                    authority: sealedAuthority
+                }).length ||
+                validateSealedCompiledDispatchPrompt({
+                    plan,
+                    slice,
+                    compiled: compiledPrompt,
+                    authority: sealedAuthority
+                }).length) {
+                fail('runtime-projector-writer-start-binding-invalid')
+            }
+            const firstSlice = compileExecutableSlice({
+                plan,
+                sliceId: plan.orderedSlices[0]?.sliceId
+            })
+            if (!prior && firstSlice.sliceDigest !== slice.sliceDigest) {
+                fail('runtime-projector-writer-first-slice-binding-invalid')
+            }
+            const authorizedResume = prior &&
+                prior.expectedNextSliceDigest === slice.sliceDigest &&
+                prior.expectedNextSliceId === slice.sliceId &&
+                prior._expectedNextPlanDigest === plan.planDigest &&
+                prior._expectedNextCompiledPromptDigest ===
+                    compiledPrompt.promptDigest
+            const completedPhaseTransition = prior &&
+                prior.status === 'completed' &&
+                prior.planDigest !== plan.planDigest &&
+                prior.stagePhase !== plan.stagePhase
+            if (prior &&
+                !authorizedResume &&
+                !completedPhaseTransition) {
+                fail('runtime-projector-writer-next-slice-binding-invalid')
+            }
+            const canonicalCompletedSlicePrefix =
+                canonicalLedgerProjection?.nodes?.[nodeId]
+                    ?.completedSlicePrefix
+            if (!Array.isArray(canonicalCompletedSlicePrefix)) {
+                fail('runtime-projector-writer-ledger-projection-mismatch')
+            }
+            stages[nodeId] = {
+                runId: plan.runId,
+                repository: plan.repository,
+                issue: plan.issue,
+                node: plan.node,
+                baseSha: plan.baseSha,
+                epochId: plan.epochId,
+                worktreeIdentity: plan.worktreeIdentity,
+                stageAttemptId: plan.stageAttemptId,
+                stageRole: plan.stageRole,
+                stagePhase: plan.stagePhase,
+                acceptedPriorChangedPathsDigest: null,
+                checkpointOrdinal: null,
+                checkpointVerificationReceiptDigest: null,
+                completedSlicePrefix: authorizedResume
+                    ? clone(prior.completedSlicePrefix ?? [])
+                    : [],
+                completedSlicePrefixDigest: null,
+                completedSliceReceiptDigests: authorizedResume
+                    ? [...(prior.completedSliceReceiptDigests ?? [])]
+                    : [],
+                planDigest: plan.planDigest,
+                sliceId: slice.sliceId,
+                sliceDigest: slice.sliceDigest,
+                compiledPromptDigest: compiledPrompt.promptDigest,
+                checkpointDigest: null,
+                machineTracePrefixByteLength: null,
+                machineTracePrefixDigest: null,
+                machineTraceSnapshotDigest: null,
+                operationsDigest: null,
+                previousCheckpointDigest: null,
+                previousCheckpointVerificationReceiptDigest: null,
+                previousMachineTracePrefixByteLength: null,
+                previousMachineTracePrefixDigest: null,
+                runtimeProgressObservationDigest: null,
+                continuationReceiptDigest: null,
+                terminalReceiptDigest: null,
+                terminalChainDigest: null,
+                failureReceiptDigest: null,
+                semanticFailureDigest: null,
+                retryAuthorizationDigest: authorizedResume
+                    ? prior.retryAuthorizationDigest ?? null
+                    : null,
+                expectedNextSliceId: null,
+                expectedNextSliceDigest: null,
+                _expectedNextPlanDigest: null,
+                _expectedNextCompiledPromptDigest: null,
+                _canonicalCompletedSlicePrefix:
+                    canonicalCompletedSlicePrefix,
+                _sealedAuthority: sealedAuthority,
+                _activeCheckpointLineage: null,
+                _lastCheckpointLineage: null,
+                _carryForwardPrefix: authorizedResume
+                    ? prior._carryForwardPrefix
+                    : null,
+                breakerOpen: false,
+                status: 'active'
+            }
+            continue
+        }
+        const stage = stages[nodeId]
+        if (!stage) {
+            if (typeof event.eventType === 'string' &&
+                event.eventType.startsWith('writer-stage.')) {
+                fail('runtime-projector-writer-stage-missing')
+            }
+            continue
+        }
+        const payload = event.payload ?? {}
+        if (event.eventType === 'writer-stage.checkpoint-recorded') {
+            projectWriterCheckpoint(stage, payload)
+        } else if (event.eventType ===
+            'writer-stage.continuation-recorded') {
+            projectWriterContinuation(stage, payload)
+        } else if (WRITER_FAILURE_EVENTS.has(event.eventType)) {
+            projectWriterFailure(stage, event)
+        } else if (event.eventType === 'writer-stage.retry-authorized') {
+            projectWriterRetry(stage, payload)
+        } else if (event.eventType === 'writer-stage.slice-completed' ||
+            event.eventType === 'writer-stage.completed') {
+            projectWriterTerminal(stage, event)
+        }
+    }
+    validateCanonicalWriterProjection(stages, canonicalLedgerProjection)
+    for (const stage of Object.values(stages)) {
+        delete stage._expectedNextPlanDigest
+        delete stage._expectedNextCompiledPromptDigest
+        delete stage._canonicalCompletedSlicePrefix
+        delete stage._sealedAuthority
+        delete stage._activeCheckpointLineage
+        delete stage._lastCheckpointLineage
+        delete stage._carryForwardPrefix
+    }
+    return canonical(stages)
+}
+
+function projectCandidateCommits(
+    runtimeCandidateCommits,
+    writerStages,
+    canonicalLedgerProjection
+) {
+    const candidates = clone(runtimeCandidateCommits ?? {})
+    if (!canonicalLedgerProjection) return canonical(candidates)
+    for (const nodeId of Object.keys(writerStages)) {
+        const candidateSha =
+            canonicalLedgerProjection.nodes?.[nodeId]?.candidateSha ?? null
+        if (candidateSha === null) {
+            if (Object.hasOwn(candidates, nodeId)) {
+                fail('runtime-projector-writer-candidate-premature')
+            }
+            continue
+        }
+        if (!GIT_SHA.test(candidateSha) ||
+            Object.hasOwn(candidates, nodeId) &&
+                candidates[nodeId] !== candidateSha) {
+            fail('runtime-projector-writer-candidate-binding-invalid')
+        }
+        candidates[nodeId] = candidateSha
+    }
+    return canonical(candidates)
+}
+
 export function projectRuntime({ semanticGraph, ledger, runtime }) {
     validateSemanticGraph(semanticGraph)
     requireObject(ledger, 'runtime-projector-ledger-invalid')
-    if (ledger.schema !== 'issue-orchestration.immutable-runtime-ledger.v1') {
+    const canonicalWriterLedger = replayCanonicalWriterLedger(ledger)
+    if (!canonicalWriterLedger &&
+        ledger.schema !==
+            'issue-orchestration.immutable-runtime-ledger.v1') {
         fail('runtime-projector-ledger-schema-invalid')
     }
     if (!Array.isArray(ledger.events)) fail('runtime-projector-events-invalid')
@@ -484,6 +1758,8 @@ export function projectRuntime({ semanticGraph, ledger, runtime }) {
         : 0
     const nextExecutableFrontier =
         readyFrontier.slice(0, Math.max(0, availableSlots))
+    const writerStages =
+        projectWriterStages(ledger, canonicalWriterLedger)
 
     const projection = {
         schema: RUNTIME_PROJECTION_SCHEMA,
@@ -506,12 +1782,198 @@ export function projectRuntime({ semanticGraph, ledger, runtime }) {
             leases
         },
         epochId: runtime.epochId ?? null,
-        candidateCommits: canonical(runtime.candidateCommits ?? {}),
+        candidateCommits: projectCandidateCommits(
+            runtime.candidateCommits,
+            writerStages,
+            canonicalWriterLedger
+        ),
         deliveryCommits: canonical(runtime.deliveryCommits ?? {}),
-        cleanup: canonical(runtime.cleanup ?? {})
+        cleanup: canonical(runtime.cleanup ?? {}),
+        writerStages
     }
+    validateWriterStageProjection(projection.writerStages)
     projection.runtimeProjectionDigest = digest(projection)
     return projection
+}
+
+function completedSliceProjectionValid(stage) {
+    if (!Array.isArray(stage.completedSlicePrefix) ||
+        stage.completedSlicePrefix.length !==
+            stage.completedSliceReceiptDigests.length) {
+        return false
+    }
+    const priorTerminalReceiptDigests = []
+    for (const [index, entry] of
+        stage.completedSlicePrefix.entries()) {
+        if (!entry || typeof entry !== 'object' ||
+            Array.isArray(entry) ||
+            !sameOrderedValue(
+                Object.keys(entry).sort(),
+                [...COMPLETED_SLICE_PROJECTION_FIELDS].sort()
+            ) ||
+            !checkpointProjectionValid(entry) ||
+            !SHA256.test(entry.checkpointDigest ?? '') ||
+            !SHA256.test(entry.planDigest ?? '') ||
+            !SHA256.test(entry.sliceDigest ?? '') ||
+            !SHA256.test(entry.terminalChainDigest ?? '') ||
+            !SHA256.test(entry.terminalReceiptDigest ?? '') ||
+            entry.sliceOrdinal !== index + 1 ||
+            !Number.isInteger(entry.planSliceCount) ||
+            entry.planSliceCount < entry.sliceOrdinal ||
+            !sameOrderedValue(
+                entry.priorTerminalReceiptDigests,
+                priorTerminalReceiptDigests
+            ) ||
+            entry.terminalChainDigest !==
+                terminalChainDigestFor(entry) ||
+            entry.terminalReceiptDigest !==
+                stage.completedSliceReceiptDigests[index] ||
+            !WRITER_PHASE_ROLES[entry.stagePhase]?.has(
+                entry.stageRole
+            ) ||
+            entry.stagePhase !== stage.stagePhase ||
+            entry.stageRole !== stage.stageRole ||
+            typeof entry.stageAttemptId !== 'string' ||
+            !entry.stageAttemptId ||
+            typeof entry.sliceId !== 'string' ||
+            !entry.sliceId ||
+            !Array.isArray(entry.changedPaths) ||
+            entry.changedPaths.some((filePath) =>
+                typeof filePath !== 'string' || !filePath) ||
+            new Set(entry.changedPaths).size !==
+                entry.changedPaths.length ||
+            !sameOrderedValue(
+                entry.changedPaths,
+                [...entry.changedPaths].sort()
+            )) {
+            return false
+        }
+        priorTerminalReceiptDigests.push(
+            entry.terminalReceiptDigest
+        )
+    }
+    return true
+}
+
+function validateWriterStageProjection(writerStages) {
+    requireObject(
+        writerStages,
+        'runtime-projection-writer-stages-invalid'
+    )
+    for (const [nodeId, stage] of Object.entries(writerStages)) {
+        requireObject(stage, 'runtime-projection-writer-stage-invalid')
+        if (!sameOrderedValue(
+            Object.keys(stage).sort(),
+            [...WRITER_STAGE_PROJECTION_FIELDS].sort()
+        ) ||
+            stage.node !== nodeId ||
+            !GIT_SHA.test(stage.baseSha ?? '') ||
+            !WRITER_PHASE_ROLES[stage.stagePhase]?.has(stage.stageRole) ||
+            !WRITER_STAGE_STATUSES.has(stage.status) ||
+            typeof stage.breakerOpen !== 'boolean' ||
+            !Array.isArray(stage.completedSliceReceiptDigests) ||
+            stage.completedSliceReceiptDigests.some((value) =>
+                !SHA256.test(value)) ||
+            new Set(stage.completedSliceReceiptDigests).size !==
+                stage.completedSliceReceiptDigests.length ||
+            !completedSliceProjectionValid(stage) ||
+            !Number.isInteger(stage.issue) &&
+                (typeof stage.issue !== 'string' || !stage.issue) ||
+            ![
+                'runId',
+                'repository',
+                'node',
+                'epochId',
+                'worktreeIdentity',
+                'stageAttemptId',
+                'sliceId'
+            ].every((field) =>
+                typeof stage[field] === 'string' && stage[field].length > 0) ||
+            ![
+                'planDigest',
+                'sliceDigest',
+                'compiledPromptDigest'
+            ].every((field) => SHA256.test(stage[field] ?? '')) ||
+            ![
+                'acceptedPriorChangedPathsDigest',
+                'checkpointDigest',
+                'checkpointVerificationReceiptDigest',
+                'completedSlicePrefixDigest',
+                'machineTracePrefixDigest',
+                'machineTraceSnapshotDigest',
+                'operationsDigest',
+                'previousCheckpointDigest',
+                'previousCheckpointVerificationReceiptDigest',
+                'previousMachineTracePrefixDigest',
+                'runtimeProgressObservationDigest',
+                'continuationReceiptDigest',
+                'terminalChainDigest',
+                'terminalReceiptDigest',
+                'failureReceiptDigest',
+                'semanticFailureDigest',
+                'retryAuthorizationDigest',
+                'expectedNextSliceDigest'
+            ].every((field) =>
+                stage[field] === null ||
+                SHA256.test(stage[field] ?? '')) ||
+            CHECKPOINT_NUMBER_PROJECTION_FIELDS.some((field) =>
+                stage[field] !== null &&
+                (!Number.isInteger(stage[field]) ||
+                    stage[field] < 1)) ||
+            stage.expectedNextSliceId !== null &&
+                (typeof stage.expectedNextSliceId !== 'string' ||
+                    !stage.expectedNextSliceId)) {
+            fail('runtime-projection-writer-stage-invalid')
+        }
+        const hasActiveCheckpoint = stage.checkpointDigest !== null
+        if (hasActiveCheckpoint !==
+                (stage.checkpointVerificationReceiptDigest !== null) ||
+            hasActiveCheckpoint &&
+                !checkpointProjectionValid(stage) ||
+            !hasActiveCheckpoint &&
+                (CHECKPOINT_DIGEST_PROJECTION_FIELDS.some((field) =>
+                    stage[field] !== null) ||
+                CHECKPOINT_NUMBER_PROJECTION_FIELDS.some((field) =>
+                    stage[field] !== null)) ||
+            stage.completedSlicePrefix.length === 0 &&
+                (stage.terminalReceiptDigest !== null ||
+                    stage.terminalChainDigest !== null) ||
+            stage.completedSlicePrefix.length > 0 &&
+                ((stage.terminalReceiptDigest === null) !==
+                    (stage.terminalChainDigest === null) ||
+                stage.terminalReceiptDigest !== null &&
+                    (stage.terminalReceiptDigest !==
+                        stage.completedSlicePrefix.at(-1)
+                            .terminalReceiptDigest ||
+                    stage.terminalChainDigest !==
+                        stage.completedSlicePrefix.at(-1)
+                            .terminalChainDigest))) {
+            fail('runtime-projection-writer-stage-checkpoint-invalid')
+        }
+        if (stage.status === 'terminal-failure' &&
+            (stage.breakerOpen !== true ||
+                !stage.failureReceiptDigest ||
+                !stage.semanticFailureDigest) ||
+            stage.status === 'retry-authorized' &&
+                (stage.breakerOpen !== false ||
+                    !stage.retryAuthorizationDigest ||
+                    !stage.expectedNextSliceDigest) ||
+            stage.status === 'next-slice' &&
+                (!stage.terminalReceiptDigest ||
+                    !stage.terminalChainDigest ||
+                    !stage.expectedNextSliceId ||
+                    !stage.expectedNextSliceDigest ||
+                    stage.completedSliceReceiptDigests.length === 0) ||
+            stage.status === 'completed' &&
+                (stage.breakerOpen !== false ||
+                    !stage.terminalReceiptDigest ||
+                    !stage.terminalChainDigest ||
+                    stage.expectedNextSliceId !== null ||
+                    stage.expectedNextSliceDigest !== null ||
+                    stage.completedSliceReceiptDigests.length === 0)) {
+            fail('runtime-projection-writer-stage-state-invalid')
+        }
+    }
 }
 
 function validateProjectionShape(projection) {
@@ -543,6 +2005,7 @@ function validateProjectionShape(projection) {
         || projection.projectorDigest !== PROJECTOR_DIGEST) {
         fail('runtime-projector-identity-mismatch')
     }
+    validateWriterStageProjection(projection.writerStages)
 }
 
 export function validateRuntimeProjection({

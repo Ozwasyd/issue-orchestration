@@ -1,0 +1,264 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:writer-stage-failure-receipt:v1",
+    "title": "issue-orchestration.writer-stage-failure-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "runId",
+        "repository",
+        "issue",
+        "node",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "sliceId",
+        "sliceDigest",
+        "planDigest",
+        "compiledPromptDigest",
+        "routeDigest",
+        "stageRole",
+        "stagePhase",
+        "attemptId",
+        "agentId",
+        "status",
+        "authorityStatus",
+        "eventType",
+        "breakerOpen",
+        "missingRequiredOutputs",
+        "receiptValidationErrors",
+        "evidenceDigest",
+        "semanticFailureDigest",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.writer-stage-failure-receipt.v1"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "repository": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "issue": {
+            "oneOf": [
+                {
+                    "type": "integer"
+                },
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            ]
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "planDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "compiledPromptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "routeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "stageRole": {
+            "enum": [
+                "test-owner",
+                "code-implementer",
+                "ui-ux-implementer",
+                "documentation-writer",
+                "landing-owner"
+            ]
+        },
+        "stagePhase": {
+            "$ref": "#/$defs/writerPhase"
+        },
+        "attemptId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "agentId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "status": {
+            "const": "terminal"
+        },
+        "authorityStatus": {
+            "enum": [
+                "active-writer",
+                "historical-observation-only"
+            ]
+        },
+        "eventType": {
+            "enum": [
+                "writer-stage.invocation-failed",
+                "writer-stage.environment-failed",
+                "writer-stage.runtime-capability-missing",
+                "writer-stage.first-action-not-executed",
+                "writer-stage.output-missing",
+                "writer-stage.checkpoint-missing",
+                "writer-stage.receipt-rejected"
+            ]
+        },
+        "breakerOpen": {
+            "const": true
+        },
+        "missingRequiredOutputs": {
+            "$ref": "#/$defs/strings"
+        },
+        "receiptValidationErrors": {
+            "$ref": "#/$defs/strings"
+        },
+        "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "semanticFailureDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/$defs/failureAuthorityBinding"
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "strings": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "writerPhase": {
+            "enum": [
+                "test-contract",
+                "implementation",
+                "ui-implementation",
+                "documentation",
+                "landing-conflict-resolution"
+            ]
+        },
+        "writerBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "test-owner"
+                        },
+                        "stagePhase": {
+                            "const": "test-contract"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "code-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "ui-ux-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "ui-implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "documentation-writer"
+                        },
+                        "stagePhase": {
+                            "const": "documentation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "enum": [
+                                "code-implementer",
+                                "ui-ux-implementer"
+                            ]
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        }
+                    }
+                }
+            ]
+        },
+        "failureAuthorityBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "allOf": [
+                        {
+                            "$ref": "#/$defs/writerBinding"
+                        },
+                        {
+                            "properties": {
+                                "authorityStatus": {
+                                    "const": "active-writer"
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "landing-owner"
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        },
+                        "authorityStatus": {
+                            "const": "historical-observation-only"
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

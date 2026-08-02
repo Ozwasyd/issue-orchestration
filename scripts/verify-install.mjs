@@ -66,6 +66,10 @@ function discovery(cwd, manifest) {
         patchSchemaDigest: manifest.patchSchemaDigest,
         runtimeProjectionSchemaDigest:
             manifest.runtimeProjectionSchemaDigest,
+        writerStageContractDigests:
+            manifest.writerStageContractDigests,
+        writerStageRuntimeDigests:
+            manifest.writerStageRuntimeDigests,
         projectorDigest: manifest.projectorDigest
     }
 }

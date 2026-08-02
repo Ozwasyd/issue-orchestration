@@ -1,54 +1,34 @@
-# Subagent task
+# Compiled subagent envelope
 
-<!-- Shared package template. -->
+<!-- Shared package template. This file is a wire shape, not a Root-authored prompt. -->
 
-> 派发前由根代理完整填写。只投影当前节点所需事实，不附带状态根路径、完整 DAG 或全局 ledger。不得把未决设计、owner 或验收边界留给 subagent；不适用字段必须给出事实理由。
+The permanent compiler is the only writer of this envelope. Root forwards the
+sealed values byte-for-byte and may not add issue prose, global DAG state,
+instructions, acceptance items, paths, commands, or stopping rules.
 
-## 任务身份
+```json
+{
+  "schema": "issue-orchestration.compiled-dispatch-prompt.v1",
+  "planDigest": "<sha256>",
+  "sliceId": "<verified executable slice id>",
+  "sliceDigest": "<sha256>",
+  "stageRole": "<authorized writer role>",
+  "stagePhase": "<authorized writer phase>",
+  "prompt": "<exact deterministic compiler output>",
+  "promptDigest": "<sha256>"
+}
+```
 
-- 目标 issue：
-- base SHA：
-- 问题背景和已确认事实：
-- 依赖关系：
-- 责任仓：
-- 验收组：
+Additional fields are forbidden. The issue number is identity metadata inside
+the referenced plan; the issue body is never a writer task.
 
-## 修改边界
+The writer must perform the compiled first action and return exactly one
+machine-verifiable result:
 
-- 允许修改路径：
-- 禁止范围：
-- 必查路径：
-- 必改路径：
-- 实现原则：
+- `issue-orchestration.stage-progress-checkpoint.v1`;
+- `issue-orchestration.stage-continuation-receipt.v1`;
+- `issue-orchestration.slice-terminal-receipt.v1`; or
+- `issue-orchestration.writer-stage-failure-receipt.v1`.
 
-## 验收
-
-- 验收命令：
-- 测试要求：
-- 文档要求：
-- 预期交付物：
-- 全部验收条件：
-- 反例：
-
-## 失败与停止
-
-- 失败分类规则：
-- 停止条件：
-- 禁止的兼容、绕过、降级、阈值放宽和测试弱化方案：
-
-## 真实探针及动态验收结果
-
-- 是否适用及理由：
-- base SHA 与环境：
-- 命令和输入：
-- 原始输出与证据：
-- 观察结论和限制：
-- 由探针产生的动态验收：
-
-## 返回格式
-
-- 修改文件与理由：
-- 每条验收条件的直接证据：
-- 实际运行命令、退出结果和证据位置：
-- 未运行项及理由：
-- 风险、冲突或范围外异常：
+Narrative plans, rewritten prompts, unsealed progress summaries, and
+whole-issue restarts are invalid output.

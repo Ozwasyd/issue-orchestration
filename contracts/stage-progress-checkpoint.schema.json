@@ -1,0 +1,1614 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:stage-progress-checkpoint:v1",
+    "title": "issue-orchestration.stage-progress-checkpoint.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "runId",
+        "node",
+        "baseSha",
+        "epochId",
+        "worktreeIdentity",
+        "sliceId",
+        "sliceDigest",
+        "status",
+        "verificationStatus",
+        "candidateState",
+        "cursor",
+        "nextRequiredAction",
+        "evidence",
+        "evidenceDigest",
+        "treeDigest",
+        "diffDigest",
+        "commandEvidenceDigest",
+        "checkpointDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.stage-progress-checkpoint.v1"
+        },
+        "runId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "node": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "baseSha": {
+            "$ref": "#/$defs/gitSha"
+        },
+        "epochId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "worktreeIdentity": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceId": {
+            "$ref": "#/$defs/nonEmpty"
+        },
+        "sliceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "status": {
+            "enum": [
+                "partial",
+                "complete"
+            ]
+        },
+        "verificationStatus": {
+            "enum": [
+                "verified",
+                "unbound-test-only"
+            ]
+        },
+        "candidateState": {
+            "enum": [
+                "in-progress",
+                "slice-complete"
+            ]
+        },
+        "cursor": {
+            "$ref": "#/$defs/actionCursor"
+        },
+        "nextRequiredAction": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                {
+                    "type": "null"
+                }
+            ]
+        },
+        "evidence": {
+            "type": "object",
+            "required": [
+                "requiredFiles",
+                "commands",
+                "git",
+                "evidenceDigest"
+            ],
+            "properties": {
+                "requiredFiles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/fileEvidence"
+                    }
+                },
+                "commands": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/commandEvidence"
+                    }
+                },
+                "git": {
+                    "$ref": "#/$defs/gitEvidence"
+                },
+                "satisfiedEvidenceIds": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/$defs/nonEmpty"
+                    },
+                    "uniqueItems": true
+                },
+                "typedEvidenceReceipts": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/typedEvidenceReceipt"
+                    }
+                },
+                "machineRuntimeTrace": {
+                    "$ref": "#/$defs/machineRuntimeTrace"
+                },
+                "runtimeProgressObservation": {
+                    "$ref": "#/$defs/runtimeProgressObservation"
+                },
+                "evidenceDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "treeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "diffDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "commandEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "checkpointDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "verificationStatus": {
+                        "const": "verified"
+                    }
+                },
+                "required": [
+                    "verificationStatus"
+                ]
+            },
+            "then": {
+                "properties": {
+                    "evidence": {
+                        "type": "object",
+                        "required": [
+                            "satisfiedEvidenceIds",
+                            "typedEvidenceReceipts",
+                            "machineRuntimeTrace",
+                            "runtimeProgressObservation"
+                        ]
+                    }
+                }
+            },
+            "else": {
+                "properties": {
+                    "evidence": {
+                        "type": "object",
+                        "allOf": [
+                            {
+                                "not": {
+                                    "required": [
+                                        "typedEvidenceReceipts"
+                                    ]
+                                }
+                            },
+                            {
+                                "not": {
+                                    "required": [
+                                        "machineRuntimeTrace"
+                                    ]
+                                }
+                            },
+                            {
+                                "not": {
+                                    "required": [
+                                        "runtimeProgressObservation"
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ],
+    "additionalProperties": false,
+    "$defs": {
+        "nonEmpty": {
+            "type": "string",
+            "minLength": 1
+        },
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "gitSha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "gitObjectDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40,64}$"
+        },
+        "strings": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/nonEmpty"
+            },
+            "uniqueItems": true
+        },
+        "actionCursor": {
+            "type": "object",
+            "required": [
+                "kind",
+                "completedActionCount",
+                "nextActionIndex",
+                "lastCompletedAction"
+            ],
+            "properties": {
+                "kind": {
+                    "const": "executable-slice-action"
+                },
+                "completedActionCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 176
+                },
+                "nextActionIndex": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 177
+                },
+                "lastCompletedAction": {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            },
+            "additionalProperties": false
+        },
+        "writerRole": {
+            "enum": [
+                "test-owner",
+                "code-implementer",
+                "ui-ux-implementer",
+                "documentation-writer"
+            ]
+        },
+        "writerPhase": {
+            "enum": [
+                "test-contract",
+                "implementation",
+                "ui-implementation",
+                "documentation",
+                "landing-conflict-resolution"
+            ]
+        },
+        "writerBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "test-owner"
+                        },
+                        "stagePhase": {
+                            "const": "test-contract"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "code-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "ui-ux-implementer"
+                        },
+                        "stagePhase": {
+                            "const": "ui-implementation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "const": "documentation-writer"
+                        },
+                        "stagePhase": {
+                            "const": "documentation"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "stageRole": {
+                            "enum": [
+                                "code-implementer",
+                                "ui-ux-implementer"
+                            ]
+                        },
+                        "stagePhase": {
+                            "const": "landing-conflict-resolution"
+                        }
+                    }
+                }
+            ]
+        },
+        "fileEvidence": {
+            "type": "object",
+            "required": [
+                "path",
+                "realPath",
+                "gitObjectDigest"
+            ],
+            "properties": {
+                "path": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "realPath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "gitObjectDigest": {
+                    "$ref": "#/$defs/gitObjectDigest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "commandEvidence": {
+            "type": "object",
+            "required": [
+                "command",
+                "exitStatus",
+                "outputDigest"
+            ],
+            "properties": {
+                "command": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "exitStatus": {
+                    "type": "integer"
+                },
+                "outputDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "gitEvidence": {
+            "type": "object",
+            "required": [
+                "headSha",
+                "worktreeStatus"
+            ],
+            "properties": {
+                "headSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "worktreeStatus": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "writerIdentityProperties": {
+            "type": "object",
+            "required": [
+                "runId",
+                "repository",
+                "issue",
+                "node",
+                "stageRole",
+                "stagePhase",
+                "planDigest",
+                "sliceId",
+                "sliceDigest",
+                "baseSha",
+                "epochId",
+                "worktreeIdentity",
+                "routeDigest",
+                "compiledPromptDigest",
+                "stageAttemptId",
+                "activeWriteLeaseId",
+                "resourceLeaseReceiptDigest",
+                "runtimeStateRootDigest",
+                "runtimeAuthorityIdentityDigest"
+            ],
+            "properties": {
+                "runId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "repository": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "issue": {
+                    "oneOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        }
+                    ]
+                },
+                "node": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "stageRole": {
+                    "$ref": "#/$defs/writerRole"
+                },
+                "stagePhase": {
+                    "$ref": "#/$defs/writerPhase"
+                },
+                "planDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sliceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "baseSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "epochId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "worktreeIdentity": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "routeDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "compiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "stageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "activeWriteLeaseId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "resourceLeaseReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeStateRootDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeAuthorityIdentityDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "typedEvidenceReceipt": {
+            "type": "object",
+            "required": [
+                "schema",
+                "runId",
+                "repository",
+                "issue",
+                "node",
+                "stageRole",
+                "stagePhase",
+                "planDigest",
+                "sliceId",
+                "sliceDigest",
+                "baseSha",
+                "epochId",
+                "worktreeIdentity",
+                "routeDigest",
+                "compiledPromptDigest",
+                "stageAttemptId",
+                "activeWriteLeaseId",
+                "resourceLeaseReceiptDigest",
+                "runtimeStateRootDigest",
+                "runtimeAuthorityIdentityDigest",
+                "evidenceId",
+                "evidenceType",
+                "payload",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.writer-stage-evidence-receipt.v1"
+                },
+                "runId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "repository": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "issue": {
+                    "oneOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        }
+                    ]
+                },
+                "node": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "stageRole": {
+                    "$ref": "#/$defs/writerRole"
+                },
+                "stagePhase": {
+                    "$ref": "#/$defs/writerPhase"
+                },
+                "planDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sliceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "baseSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "epochId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "worktreeIdentity": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "routeDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "compiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "stageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "activeWriteLeaseId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "resourceLeaseReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeStateRootDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeAuthorityIdentityDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "evidenceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "evidenceType": {
+                    "enum": [
+                        "command",
+                        "file",
+                        "ui-render",
+                        "conflict-mapping",
+                        "documentation-no-change",
+                        "evidence-bundle"
+                    ]
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/$defs/writerBinding"
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "command"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/commandEvidence"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "file"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/fileEvidence"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "ui-render"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/uiRenderEvidence"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "conflict-mapping"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/conflictMappingEvidence"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "documentation-no-change"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/documentationNoChangeEvidence"
+                            }
+                        }
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "evidenceType": {
+                                "const": "evidence-bundle"
+                            }
+                        },
+                        "required": [
+                            "evidenceType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/evidenceBundle"
+                            }
+                        }
+                    }
+                }
+            ],
+            "additionalProperties": false
+        },
+        "uiRenderEvidence": {
+            "type": "object",
+            "required": [
+                "artifactPath",
+                "realPath",
+                "gitObjectDigest",
+                "contentDigest",
+                "renderer",
+                "viewport"
+            ],
+            "properties": {
+                "artifactPath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "realPath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "gitObjectDigest": {
+                    "$ref": "#/$defs/gitObjectDigest"
+                },
+                "contentDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "renderer": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "viewport": {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            },
+            "additionalProperties": false
+        },
+        "conflictMappingEntry": {
+            "type": "object",
+            "required": [
+                "sourceRevision",
+                "sourcePath",
+                "sourceGitObjectDigest",
+                "destinationPath",
+                "destinationGitObjectDigest"
+            ],
+            "properties": {
+                "sourceRevision": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "sourcePath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sourceGitObjectDigest": {
+                    "$ref": "#/$defs/gitObjectDigest"
+                },
+                "destinationPath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "destinationGitObjectDigest": {
+                    "$ref": "#/$defs/gitObjectDigest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "conflictMappingEvidence": {
+            "type": "object",
+            "required": [
+                "entries"
+            ],
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/conflictMappingEntry"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "documentationNoChangeEvidence": {
+            "type": "object",
+            "required": [
+                "headSha",
+                "worktreeStatus",
+                "inspectedFiles"
+            ],
+            "properties": {
+                "headSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "worktreeStatus": {
+                    "const": ""
+                },
+                "inspectedFiles": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/fileEvidence"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "evidenceBundle": {
+            "type": "object",
+            "required": [
+                "receiptDigests"
+            ],
+            "properties": {
+                "receiptDigests": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/digest"
+                    },
+                    "uniqueItems": true
+                }
+            },
+            "additionalProperties": false
+        },
+        "runtimeObservation": {
+            "type": "object",
+            "required": [
+                "schema",
+                "rolloutId",
+                "threadId",
+                "effectiveWorkingDirectory"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.runtime-observation.v2"
+                },
+                "rolloutId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "threadId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "effectiveWorkingDirectory": {
+                    "$ref": "#/$defs/nonEmpty"
+                }
+            },
+            "additionalProperties": false
+        },
+        "dispatchReceipt": {
+            "type": "object",
+            "required": [
+                "schema",
+                "runId",
+                "nodeId",
+                "attemptId",
+                "baseSha",
+                "epochId",
+                "planDigest",
+                "sliceDigest",
+                "compiledPromptDigest",
+                "activeWriteLeaseId",
+                "actualWorkingDirectory",
+                "rolloutId",
+                "threadId",
+                "runtimeMetadataDigest",
+                "verificationStatus",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.dispatch-receipt.v2"
+                },
+                "runId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "nodeId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "attemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "baseSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "epochId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "planDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "compiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "activeWriteLeaseId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "actualWorkingDirectory": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "rolloutId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "threadId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "runtimeMetadataDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "verificationStatus": {
+                    "const": "verified"
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "machineRuntimeTrace": {
+            "type": "object",
+            "required": [
+                "schema",
+                "source",
+                "verificationStatus",
+                "tracePath",
+                "traceDigest",
+                "traceSnapshot",
+                "runtimeStateRootDigest",
+                "runtimeAuthorityIdentityDigest",
+                "activeWriteLeaseId",
+                "resourceLeaseReceiptDigest",
+                "routeDigest",
+                "runtimeObservation",
+                "dispatchReceipt",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.machine-writer-runtime-trace-handle.v1"
+                },
+                "source": {
+                    "const": "codex-rollout-jsonl"
+                },
+                "verificationStatus": {
+                    "const": "verified"
+                },
+                "tracePath": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "traceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "traceSnapshot": {
+                    "$ref": "#/$defs/machineTraceSnapshot"
+                },
+                "runtimeStateRootDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeAuthorityIdentityDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "activeWriteLeaseId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "resourceLeaseReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "routeDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeObservation": {
+                    "$ref": "#/$defs/runtimeObservation"
+                },
+                "dispatchReceipt": {
+                    "$ref": "#/$defs/dispatchReceipt"
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "machineTraceSnapshot": {
+            "type": "object",
+            "required": [
+                "schema",
+                "records",
+                "prefixByteLength",
+                "prefixDigest",
+                "recordCount",
+                "checkpointOrdinal",
+                "previousPrefixDigest",
+                "previousPrefixByteLength",
+                "snapshotDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.machine-writer-runtime-trace-snapshot.v1"
+                },
+                "records": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/sanitizedTraceRecord"
+                    }
+                },
+                "prefixByteLength": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "prefixDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "recordCount": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "checkpointOrdinal": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "previousPrefixDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "previousPrefixByteLength": {
+                    "oneOf": [
+                        {
+                            "type": "integer",
+                            "minimum": 1
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "snapshotDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/$defs/snapshotForkBinding"
+                }
+            ],
+            "additionalProperties": false
+        },
+        "sanitizedSessionMetaRecord": {
+            "type": "object",
+            "required": [
+                "type",
+                "payload"
+            ],
+            "properties": {
+                "type": {
+                    "const": "session_meta"
+                },
+                "payload": {
+                    "type": "object",
+                    "required": [
+                        "id",
+                        "session_id"
+                    ],
+                    "properties": {
+                        "id": {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        "session_id": {
+                            "$ref": "#/$defs/nonEmpty"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            },
+            "additionalProperties": false
+        },
+        "sanitizedWriterOperationPayload": {
+            "type": "object",
+            "required": [
+                "type",
+                "source",
+                "identity",
+                "sequence",
+                "kind",
+                "startedAt",
+                "completedAt",
+                "targetPath",
+                "toolName",
+                "command",
+                "writePath",
+                "evidenceReceiptDigest",
+                "artifactReceiptDigest",
+                "checkpointKind",
+                "checkpointStatus",
+                "nextRequiredAction",
+                "observationDigest"
+            ],
+            "properties": {
+                "type": {
+                    "const": "writer_stage_operation"
+                },
+                "source": {
+                    "const": "machine-runtime-instrumentation"
+                },
+                "identity": {
+                    "$ref": "#/$defs/writerIdentityProperties"
+                },
+                "sequence": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "kind": {
+                    "enum": [
+                        "read-only",
+                        "tool-call",
+                        "artifact",
+                        "checkpoint"
+                    ]
+                },
+                "startedAt": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "completedAt": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "targetPath": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "toolName": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "command": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "writePath": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "evidenceReceiptDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "artifactReceiptDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "checkpointKind": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "checkpointStatus": {
+                    "oneOf": [
+                        {
+                            "enum": [
+                                "partial",
+                                "complete"
+                            ]
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "nextRequiredAction": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "observationDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "sanitizedWriterOperationRecord": {
+            "type": "object",
+            "required": [
+                "type",
+                "payload"
+            ],
+            "properties": {
+                "type": {
+                    "const": "event_msg"
+                },
+                "payload": {
+                    "$ref": "#/$defs/sanitizedWriterOperationPayload"
+                }
+            },
+            "additionalProperties": false
+        },
+        "sanitizedTraceRecord": {
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/sanitizedSessionMetaRecord"
+                },
+                {
+                    "$ref": "#/$defs/sanitizedWriterOperationRecord"
+                }
+            ]
+        },
+        "snapshotForkBinding": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "const": 1
+                        },
+                        "previousPrefixDigest": {
+                            "type": "null"
+                        },
+                        "previousPrefixByteLength": {
+                            "type": "null"
+                        }
+                    }
+                },
+                {
+                    "properties": {
+                        "checkpointOrdinal": {
+                            "type": "integer",
+                            "minimum": 2
+                        },
+                        "previousPrefixDigest": {
+                            "$ref": "#/$defs/digest"
+                        },
+                        "previousPrefixByteLength": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                }
+            ]
+        },
+        "runtimeProgressOperation": {
+            "type": "object",
+            "required": [
+                "sequence",
+                "kind",
+                "startedAt",
+                "completedAt",
+                "targetPath",
+                "toolName",
+                "command",
+                "writePath",
+                "evidenceReceiptDigest",
+                "artifactReceiptDigest",
+                "checkpointKind",
+                "checkpointStatus",
+                "nextRequiredAction",
+                "sourceReceiptDigest"
+            ],
+            "properties": {
+                "sequence": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "kind": {
+                    "enum": [
+                        "read-only",
+                        "tool-call",
+                        "artifact",
+                        "checkpoint"
+                    ]
+                },
+                "startedAt": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "completedAt": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "targetPath": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "toolName": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "command": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "writePath": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "evidenceReceiptDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "artifactReceiptDigest": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/digest"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "checkpointKind": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "checkpointStatus": {
+                    "oneOf": [
+                        {
+                            "enum": [
+                                "partial",
+                                "complete"
+                            ]
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "nextRequiredAction": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "sourceReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "runtimeProgressObservation": {
+            "type": "object",
+            "required": [
+                "schema",
+                "source",
+                "runId",
+                "repository",
+                "issue",
+                "node",
+                "stageRole",
+                "stagePhase",
+                "planDigest",
+                "sliceId",
+                "sliceDigest",
+                "baseSha",
+                "epochId",
+                "worktreeIdentity",
+                "routeDigest",
+                "compiledPromptDigest",
+                "stageAttemptId",
+                "activeWriteLeaseId",
+                "resourceLeaseReceiptDigest",
+                "runtimeStateRootDigest",
+                "runtimeAuthorityIdentityDigest",
+                "checkpointKind",
+                "machineTraceReceiptDigest",
+                "dispatchReceiptDigest",
+                "rolloutId",
+                "threadId",
+                "operations",
+                "derivedCursor",
+                "remainingActions",
+                "observedOwnedModules",
+                "observedReadOnlyOperationsBeforeCheckpoint",
+                "observedMaxNoArtifactToolCalls",
+                "observedMaxNoArtifactActiveDurationClass",
+                "observationDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.writer-stage-runtime-progress-observation.v1"
+                },
+                "source": {
+                    "const": "machine-writer-runtime"
+                },
+                "runId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "repository": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "issue": {
+                    "oneOf": [
+                        {
+                            "type": "integer"
+                        },
+                        {
+                            "$ref": "#/$defs/nonEmpty"
+                        }
+                    ]
+                },
+                "node": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "stageRole": {
+                    "$ref": "#/$defs/writerRole"
+                },
+                "stagePhase": {
+                    "$ref": "#/$defs/writerPhase"
+                },
+                "planDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sliceId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "sliceDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "baseSha": {
+                    "$ref": "#/$defs/gitSha"
+                },
+                "epochId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "worktreeIdentity": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "routeDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "compiledPromptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "stageAttemptId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "activeWriteLeaseId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "resourceLeaseReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeStateRootDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "runtimeAuthorityIdentityDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "checkpointKind": {
+                    "enum": [
+                        "stage-progress",
+                        "slice-terminal",
+                        "documentation-no-change",
+                        "ui-render-evidence",
+                        "landing-conflict-resolution"
+                    ]
+                },
+                "machineTraceReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "dispatchReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "rolloutId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "threadId": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "operations": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/$defs/runtimeProgressOperation"
+                    }
+                },
+                "derivedCursor": {
+                    "$ref": "#/$defs/actionCursor"
+                },
+                "remainingActions": {
+                    "$ref": "#/$defs/strings"
+                },
+                "observedOwnedModules": {
+                    "$ref": "#/$defs/strings"
+                },
+                "observedReadOnlyOperationsBeforeCheckpoint": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "observedMaxNoArtifactToolCalls": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "observedMaxNoArtifactActiveDurationClass": {
+                    "enum": [
+                        "instant",
+                        "short",
+                        "medium",
+                        "long",
+                        "extended"
+                    ]
+                },
+                "observationDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/$defs/writerBinding"
+                }
+            ],
+            "additionalProperties": false
+        }
+    }
+}
