@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "e97023e4a40e769d53851077f510340857ace80a",
-    "sourceTreeDigest": "16071e87903532109c92d844173646e019da322ec4ed0e8fb00ed893ed29004a",
+    "sourceCommit": "46f9b41bf84855cace1bf843191d53d6a4b11099",
+    "sourceTreeDigest": "b3f97548b2a1192be9e0dd2d2f03d8b74b6f5752a0b6adcc1e59864f321d975f",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "08e771cab8c19b2094556aae8b50fc5897a42ad395364a8936a8f329a3f2f9b8",
     "agentDigests": {
@@ -137,6 +137,7 @@
         "skills/issue-orchestration/references/dispatch-and-runtime-probe.md": "7b889ecfd448b2f9d459f9747d660b0342e84d5a073bb4d2ef9f2bc0d88f4b6a",
         "skills/issue-orchestration/references/group-delivery.md": "a6b373ebe3ffbe73f21cf8e56e968324240c27a70ed7b0bba4222a1bec7f8dd7",
         "skills/issue-orchestration/references/review-failure-and-verification.md": "b5d6870b70f3a99e986c53088a5141a9e7771912b5f6f065485212566806b780",
+        "skills/issue-orchestration/scripts/acceptance-group-session.mjs": "3139532730928c125ac9a3457d01dbd66d0a8df86a0335e8640ec315616b5a20",
         "skills/issue-orchestration/scripts/check-dag-gate.mjs": "490ddd86c321ba14c95dd92c197377a7771c1ab4cbd30b156d0d1c833e68511c",
         "skills/issue-orchestration/scripts/delivery-epoch.mjs": "10943de4e22954de9939673bb0c77768530b11163b20e2ed9942669cbb00e9a4",
         "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "e644d6fda58a16ce93b67bc5a22cbda6eefc691ddc65f0fee01bd349b913461c",
@@ -157,5 +158,5 @@
         "skills/issue-orchestration/SKILL.md": "08e771cab8c19b2094556aae8b50fc5897a42ad395364a8936a8f329a3f2f9b8",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "7f20782af319d9d96843e4528c0bcae5f8f0a6f69cb371614521974f99aa1fde"
+    "manifestDigest": "6bb229a68842a58143bc1034148ee646e8834de2b021f19fe30acc12498cc030"
 }
