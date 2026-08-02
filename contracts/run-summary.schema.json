@@ -1,0 +1,57 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:run-summary:v2",
+    "title": "issue-orchestration.run-summary.v2",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "sourceCount",
+        "sourceDigests",
+        "sourceSetDigest",
+        "observedFrom",
+        "observedUntil",
+        "runIds",
+        "nodeStatusCounts",
+        "stateDigests",
+        "failures",
+        "componentSummaryDigests",
+        "falsePositiveDagDispatchCount",
+        "summaryDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.run-summary.v2"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "sourceCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "sourceDigests": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/digest"
+            },
+            "uniqueItems": true
+        },
+        "sourceSetDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "falsePositiveDagDispatchCount": {
+            "const": 0
+        },
+        "summaryDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

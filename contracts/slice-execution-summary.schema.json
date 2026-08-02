@@ -1,0 +1,50 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:slice-execution-summary:v1",
+    "title": "issue-orchestration.slice-execution-summary.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "sourceCount",
+        "sourceDigests",
+        "sourceSetDigest",
+        "observedFrom",
+        "observedUntil",
+        "workPlanCount",
+        "sliceCount",
+        "signalRates",
+        "outputMissingCauseCounts",
+        "hardViolationCounts",
+        "summaryDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.slice-execution-summary.v1"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "workPlanCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "sliceCount": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "hardViolationCounts": {
+            "type": "object"
+        },
+        "summaryDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

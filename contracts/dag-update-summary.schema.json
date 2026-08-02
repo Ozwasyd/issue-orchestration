@@ -1,0 +1,40 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:dag-update-summary:v1",
+    "title": "issue-orchestration.dag-update-summary.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "sourceCount",
+        "sourceDigests",
+        "sourceSetDigest",
+        "observedFrom",
+        "observedUntil",
+        "modeCounts",
+        "graphPatchOperationCount",
+        "falsePositiveDagDispatchCount",
+        "summaryDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.dag-update-summary.v1"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "falsePositiveDagDispatchCount": {
+            "const": 0
+        },
+        "summaryDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

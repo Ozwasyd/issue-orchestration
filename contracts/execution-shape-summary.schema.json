@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:execution-shape-summary:v1",
+    "title": "issue-orchestration.execution-shape-summary.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "sourceCount",
+        "sourceDigests",
+        "sourceSetDigest",
+        "observedFrom",
+        "observedUntil",
+        "cells",
+        "summaryDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.execution-shape-summary.v1"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "cells": {
+            "type": "array"
+        },
+        "summaryDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

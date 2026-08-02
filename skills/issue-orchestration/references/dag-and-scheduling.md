@@ -144,6 +144,14 @@ Skill 的调度预算固定为 15 个 subagent 槽位，根调度线程不占用
 
 共享 package 永久只拥有七个 agent role：`code-implementer`、`dag-creator-updater`、`documentation-writer`、`test-owner`、`ui-system-adjudicator`、`ui-ux-implementer` 和 `ux-acceptance-verifier`。Landing conflict resolution 复用 `code-implementer` 或 `ui-ux-implementer`，不创建 `landing-owner`。某个修复批次对 Sol Ultra 的直接实现授权是该批次的 delivery authority，不是永久 runtime profile、fallback 或 routing input；临时 bootstrap run 也只能保留作历史审计、冻结测试恢复和退役 evidence，不能成为 dispatcher 或兼容权威。
 
+## Telemetry projection
+
+`scripts/telemetry.mjs` 只消费 ledger、dispatch/batch、epoch、resource、acceptance-group、DAG decision、landing、human-decision、stage-work-plan 与 execution-route 的 verified source projection，确定性生成 telemetry event、run/model/group/DAG/landing/human/slice/shape/checkpoint summary。Source 顺序和完全重复项不改变 digest；同 source digest 的不同 projection、未验证 source、未知字段或 output schema 反向作为 source 均 fail closed。
+
+不可观察 effective model/effort/sandbox、duration、artifact、checkpoint 或 cost 写 `not-observed`，不得从 requested metadata、agent 自述或自然语言补值。Projection allowlist 拒绝 raw prompt、issue body、source diff、command output、human free text、secret、PII 与 chain-of-thought。
+
+Telemetry 能报告 whole-issue dispatch、prompt/slice 缺口、continuation 重启、机械升档、group member 掩盖、漏 commit mapping、跨 member conflict、旧 receipt replay、force push、错误 human request 和 cleanup 覆盖 first failure，但无权修改 correctness policy、DAG、slice plan、landing/human/resource state 或 route。失败次数、等待、human preference、余额、token 与可观察成本永远不是 routing input；`falsePositiveDagDispatchCount` 必须为零。
+
 ## Terminal
 
 合法 terminal 只有：

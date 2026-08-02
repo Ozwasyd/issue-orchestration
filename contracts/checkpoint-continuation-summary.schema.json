@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:checkpoint-continuation-summary:v1",
+    "title": "issue-orchestration.checkpoint-continuation-summary.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "sourceCount",
+        "sourceDigests",
+        "sourceSetDigest",
+        "observedFrom",
+        "observedUntil",
+        "checkpointCount",
+        "continuationCount",
+        "checkpointProducedRate",
+        "checkpointVerifiedRate",
+        "continuationRecoveryRate",
+        "continuationRecoveryLatency",
+        "continuationRestartedFromBeginningCount",
+        "partialCheckpointPromotedToStageGreenCount",
+        "summaryDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.checkpoint-continuation-summary.v1"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "continuationRestartedFromBeginningCount": {
+            "const": 0
+        },
+        "partialCheckpointPromotedToStageGreenCount": {
+            "const": 0
+        },
+        "summaryDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

@@ -1,0 +1,107 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:telemetry-event:v2",
+    "title": "issue-orchestration.telemetry-event.v2",
+    "type": "object",
+    "required": [
+        "schema",
+        "derivationVersion",
+        "telemetryEventId",
+        "sourceKind",
+        "sourceAuthority",
+        "sourceSchema",
+        "sourceEventDigest",
+        "sourceReceiptDigest",
+        "sourceVerificationDigest",
+        "runId",
+        "nodeId",
+        "attemptId",
+        "role",
+        "stagePhase",
+        "timestamp",
+        "eventType",
+        "repository",
+        "epochId",
+        "baseSha",
+        "domain",
+        "engineeringRiskClass",
+        "uiDecisionClass",
+        "contractState",
+        "verificationClass",
+        "workPlanDigest",
+        "sliceId",
+        "sliceDigest",
+        "compiledPromptDigest",
+        "workShape",
+        "dominantWorkShape",
+        "capabilityRequirementDigest",
+        "routingPolicyVersion",
+        "routingInputDigest",
+        "executionRouteDecisionDigest",
+        "selectedProfile",
+        "requestedModel",
+        "requestedEffort",
+        "requestedSandbox",
+        "effectiveModel",
+        "effectiveEffort",
+        "effectiveSandbox",
+        "runtimeMetadataDigest",
+        "candidateDigest",
+        "contractDigest",
+        "skillDigest",
+        "baselineDigest",
+        "contextDigest",
+        "failureClass",
+        "reworkClass",
+        "outputMissingCause",
+        "semanticFailureIdentity",
+        "stateDigests",
+        "measurements",
+        "signals",
+        "attributes",
+        "telemetryEventDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.telemetry-event.v2"
+        },
+        "derivationVersion": {
+            "const": "issue-orchestration.telemetry-derivation.v2"
+        },
+        "telemetryEventId": {
+            "$ref": "#/$defs/digest"
+        },
+        "sourceKind": {
+            "enum": [
+                "event",
+                "receipt"
+            ]
+        },
+        "sourceAuthority": {
+            "type": "string",
+            "minLength": 1
+        },
+        "stateDigests": {
+            "type": "object"
+        },
+        "measurements": {
+            "type": "object"
+        },
+        "signals": {
+            "type": "object"
+        },
+        "attributes": {
+            "type": "object"
+        },
+        "telemetryEventDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}
