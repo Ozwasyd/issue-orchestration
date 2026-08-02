@@ -188,15 +188,38 @@ function denied(code, reason, base) {
     return { ...base, launchAuthorized: false, code, reason }
 }
 
-function authorizeLaunch(request, expectedRole, base) {
+function verifiedRoute(value, stageRole, stagePhase) {
+    return value?.schema ===
+            'issue-orchestration.execution-route-decision.v1' &&
+        value.policyVersion === 'execution-capability-routing.v2' &&
+        value.modelPoolPolicyVersion === 'stage-model-pool.v3' &&
+        value.routingAuthority ===
+            'deterministic-execution-capability-compiler' &&
+        value.stageRole === stageRole &&
+        value.stagePhase === stagePhase &&
+        /^[a-f0-9]{64}$/u.test(value.routeDecisionDigest ?? '') &&
+        value.runtimeVerificationStatus === 'verified'
+}
+
+function authorizeLaunch(request, expectedAction, base) {
     const checks = [
         [request?.explicit === true, 'explicit launch required'],
         [request?.requester?.role === 'root-scheduler', 'root requester required'],
-        [request?.requester?.model === 'gpt-5.6-sol', 'root model mismatch'],
-        [request?.requester?.effort === 'low', 'root effort mismatch'],
-        [request?.agent?.role === expectedRole, 'agent role mismatch'],
-        [request?.agent?.model === 'gpt-5.6-sol', 'agent model mismatch'],
-        [request?.agent?.effort === 'max', 'agent effort mismatch'],
+        [verifiedRoute(
+            request?.requester?.routeDecision,
+            'root-scheduler',
+            'scheduling'
+        ), 'root route decision mismatch'],
+        [
+            request?.agent?.role === 'dag-creator-updater',
+            'agent role mismatch'
+        ],
+        [request?.agent?.action === expectedAction, 'agent action mismatch'],
+        [verifiedRoute(
+            request?.agent?.routeDecision,
+            'dag-creator-updater',
+            'semantic-proposal'
+        ), 'agent route decision mismatch'],
         [request?.agent?.sandboxMode === 'read-only', 'agent sandbox mismatch'],
         [request?.agent?.freshContext === true, 'fresh context required'],
         [request?.agent?.resident === false, 'resident agent forbidden']
@@ -207,7 +230,8 @@ function authorizeLaunch(request, expectedRole, base) {
     return {
         ...base,
         launchAuthorized: true,
-        agentRole: expectedRole,
+        agentRole: 'dag-creator-updater',
+        agentAction: expectedAction,
         oneShot: true
     }
 }

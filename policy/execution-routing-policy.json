@@ -1,153 +1,57 @@
 {
-    "schema": "issue-orchestration.execution-routing-policy.v1",
-    "version": "execution-capability-routing.v1",
-    "modelPoolPolicyVersion": "stage-model-pool.v2",
-    "routingAuthority": "deterministic-execution-capability-compiler",
-    "matrixAuthority": "profile-capability-matrix.json",
-    "observationAuthority": "profile-capability-observations.json",
-    "telemetryAuthority": "observe-only",
-    "forbiddenInputs": [
-        "balance",
-        "subscription",
-        "failureCount",
-        "reworkCount",
-        "telemetryCost",
-        "tokenCount",
-        "tokenBudget",
-        "humanPreference",
-        "requestedProfile",
-        "selectedProfile",
-        "profileOverride",
-        "currentRootProfile"
-    ],
-    "workShapes": [
-        "atomic-edit",
-        "bounded-multifile",
-        "iterative-debug",
-        "runtime-probe-heavy",
-        "context-heavy",
-        "high-tool-depth",
-        "long-horizon-cross-module",
-        "read-only-adjudication"
-    ],
-    "contextBreadthOrder": [
-        "narrow",
-        "moderate",
-        "broad",
-        "very-broad"
-    ],
-    "shapeRequirements": {
-        "atomic-edit": [
-            1,
-            1,
-            1,
-            1,
-            0,
-            1
-        ],
-        "bounded-multifile": [
-            2,
-            2,
-            2,
-            2,
-            1,
-            2
-        ],
-        "iterative-debug": [
-            3,
-            3,
-            3,
-            3,
-            2,
-            2
-        ],
-        "runtime-probe-heavy": [
-            3,
-            3,
-            3,
-            3,
-            4,
-            3
-        ],
-        "context-heavy": [
-            4,
-            3,
-            4,
-            4,
-            2,
-            4
-        ],
-        "high-tool-depth": [
-            4,
-            4,
-            4,
-            4,
-            3,
-            4
-        ],
-        "long-horizon-cross-module": [
-            5,
-            5,
-            5,
-            5,
-            4,
-            5
-        ],
-        "read-only-adjudication": [
-            4,
-            3,
-            4,
-            4,
-            3,
-            4
-        ]
-    },
-    "selectionPriority": {
-        "atomic-edit": [
-            "luna-max",
-            "sol-low",
-            "sol-high",
-            "terra-max",
-            "sol-xhigh"
-        ],
-        "bounded-multifile": [
-            "luna-max",
-            "sol-medium",
-            "sol-high",
-            "terra-max",
-            "sol-xhigh"
-        ],
-        "iterative-debug": [
-            "sol-high",
-            "terra-max",
-            "sol-xhigh"
-        ],
-        "runtime-probe-heavy": [
-            "terra-max",
-            "sol-high",
-            "sol-xhigh"
-        ],
-        "context-heavy": [
-            "sol-high",
-            "sol-xhigh"
-        ],
-        "high-tool-depth": [
-            "sol-high",
-            "sol-xhigh"
-        ],
-        "long-horizon-cross-module": [
-            "sol-xhigh",
-            "sol-max"
-        ],
-        "read-only-adjudication": [
-            "sol-high",
-            "sol-xhigh"
-        ]
-    },
-    "uiImplementationProfiles": [
-        "sol-low",
-        "sol-medium"
-    ],
-    "solMaxRule": "frontier-exception-only",
-    "rerouteFailureClass": "profile-capability-mismatch"
+  "schema": "issue-orchestration.execution-routing-policy.v2",
+  "version": "execution-capability-routing.v2",
+  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "routingAuthority": "deterministic-execution-capability-compiler",
+  "matrixAuthority": "profile-capability-matrix.json",
+  "observationAuthority": "profile-capability-observations.json",
+  "telemetryAuthority": "observe-only",
+  "forbiddenInputs": [
+    "balance",
+    "subscription",
+    "failureCount",
+    "reworkCount",
+    "telemetryCost",
+    "tokenCount",
+    "tokenBudget",
+    "humanPreference",
+    "requestedProfile",
+    "selectedProfile",
+    "profileOverride",
+    "currentRootProfile"
+  ],
+  "workShapes": [
+    "atomic-edit",
+    "bounded-multifile",
+    "iterative-debug",
+    "runtime-probe-heavy",
+    "context-heavy",
+    "high-tool-depth",
+    "long-horizon-cross-module",
+    "read-only-adjudication"
+  ],
+  "contextBreadthOrder": ["narrow", "moderate", "broad", "very-broad"],
+  "shapeRequirements": {
+    "atomic-edit": [1, 1, 1, 1, 0, 1],
+    "bounded-multifile": [2, 2, 2, 2, 1, 2],
+    "iterative-debug": [3, 3, 3, 3, 2, 3],
+    "runtime-probe-heavy": [4, 4, 4, 4, 4, 4],
+    "context-heavy": [3, 3, 3, 3, 2, 3],
+    "high-tool-depth": [4, 4, 4, 4, 3, 4],
+    "long-horizon-cross-module": [4, 4, 4, 4, 4, 4],
+    "read-only-adjudication": [3, 3, 3, 3, 2, 3]
+  },
+  "selectionPriority": {
+    "atomic-edit": ["terra-low", "sol-low", "terra-medium", "sol-medium"],
+    "bounded-multifile": ["terra-medium", "sol-medium", "terra-high", "sol-high"],
+    "iterative-debug": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"],
+    "runtime-probe-heavy": ["terra-max", "sol-high", "sol-xhigh"],
+    "context-heavy": ["terra-high", "terra-xhigh", "sol-high", "sol-xhigh"],
+    "high-tool-depth": ["terra-xhigh", "terra-max", "sol-xhigh"],
+    "long-horizon-cross-module": ["sol-high", "sol-xhigh"],
+    "read-only-adjudication": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"]
+  },
+  "uiImplementationProfiles": ["sol-low", "sol-medium"],
+  "solMaxRule": "machine-proven-frontier-exception-only",
+  "rerouteFailureClass": "profile-capability-mismatch"
 }

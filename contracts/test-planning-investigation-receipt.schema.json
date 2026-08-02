@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:test-planning-investigation-receipt:v1",
+  "title": "issue-orchestration.test-planning-investigation-receipt.v1",
+  "type": "object",
+  "required": ["schema", "status", "actorRole", "phase", "sourceFingerprint", "receiptDigest"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.test-planning-investigation-receipt.v1"},
+    "status": {"const": "verified"},
+    "actorRole": {"const": "test-owner"},
+    "phase": {"const": "test-contract-planning"},
+    "sourceFingerprint": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": true,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

@@ -15,8 +15,8 @@ const ROUTING_POLICY = loadPolicy('routing-policy.json')
 const STAGE_PERMISSIONS = loadPolicy('stage-permissions.json')
 
 if (MODEL_POOL.schema
-        !== 'issue-orchestration.stage-model-pool-policy.v2'
-    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v2'
+        !== 'issue-orchestration.stage-model-pool-policy.v3'
+    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v3'
     || STAGE_PERMISSIONS.schema
         !== 'issue-orchestration.stage-permissions.v1'
     || MODEL_POOL.version !== ROUTING_POLICY.version) {
@@ -131,6 +131,42 @@ export function splitProfile(profileId) {
     })
 }
 
+export function verifyRuntimeProfileMetadata(value) {
+    const profile = MODEL_POOL.profiles[value?.selectedProfile]
+    if (!profile ||
+        typeof value.requestedModel !== 'string' ||
+        typeof value.effectiveModel !== 'string' ||
+        typeof value.requestedEffort !== 'string' ||
+        typeof value.effectiveEffort !== 'string' ||
+        value.requestedModel !== profile.model ||
+        value.effectiveModel !== profile.model ||
+        value.requestedEffort !== profile.effort ||
+        value.effectiveEffort !== profile.effort ||
+        value.multiAgentBackend !== profile.multiAgentBackend ||
+        value.multiAgentBackend !== 'v2') {
+        fail('runtime-profile-metadata-mismatch')
+    }
+    return Object.freeze({
+        schema:
+            'issue-orchestration.runtime-profile-metadata-verification.v1',
+        status: 'verified',
+        selectedProfile: value.selectedProfile,
+        requestedModel: value.requestedModel,
+        effectiveModel: value.effectiveModel,
+        requestedEffort: value.requestedEffort,
+        effectiveEffort: value.effectiveEffort,
+        multiAgentBackend: value.multiAgentBackend,
+        metadataDigest: digest({
+            selectedProfile: value.selectedProfile,
+            requestedModel: value.requestedModel,
+            effectiveModel: value.effectiveModel,
+            requestedEffort: value.requestedEffort,
+            effectiveEffort: value.effectiveEffort,
+            multiAgentBackend: value.multiAgentBackend
+        })
+    })
+}
+
 function assertHash(value, code) {
     if (!HASH.test(value ?? '')) fail(code)
 }
@@ -171,6 +207,14 @@ function selectDagProfile(input) {
     ]
     if (input.engineeringRiskClass === 'frontier'
         && input.frontierException === true) {
+        const receipt = input.frontierExceptionReceipt
+        if (receipt?.schema !==
+                'issue-orchestration.frontier-exception-receipt.v1' ||
+            receipt.sliceMinimal !== true ||
+            receipt.solXhighCapabilityInsufficient !== true ||
+            !HASH.test(receipt.evidenceDigest ?? '')) {
+            fail('routing-frontier-exception-receipt')
+        }
         return [selector.frontierException, 'dag-frontier-exception']
     }
     if (input.contractState === 'authority-conflict'
@@ -253,22 +297,37 @@ function selectUxProfile(input) {
 
 function selectDocumentationProfile(input) {
     if (input.domain !== 'documentation') fail('routing-documentation-domain')
-    const selector = ROUTING_POLICY.selectors[
-        'documentation-writer:documentation'
-    ]
-    return input.engineeringRiskClass === 'bounded'
-        ? [selector.bounded, 'documentation-current-sync']
-        : [selector.complex, 'documentation-complex-authority-migration']
+    if (input.documentationClass === 'mechanical-no-change') {
+        return ['terra-low', 'documentation-mechanical-no-change']
+    }
+    if (input.documentationClass === 'architecture-public-contract'
+        || input.engineeringRiskClass !== 'bounded') {
+        return ['terra-high', 'documentation-architecture-public-contract']
+    }
+    return ['terra-medium', 'documentation-current-sync']
 }
 
 function selectProfile(input, key) {
     if (key === 'root-scheduler:scheduling') {
-        return [STAGES[key].defaultProfile, 'root-scheduler-policy']
+        if (input.controlPlaneRecovery === true) {
+            if (typeof input.recoveryClassification !== 'string' ||
+                !input.recoveryClassification ||
+                !HASH.test(input.recoveryReceiptDigest ?? '')) {
+                fail('routing-root-recovery-receipt')
+            }
+            return ['terra-medium', 'root-control-plane-recovery']
+        }
+        if (input.recoveryClassification ||
+            input.recoveryReceiptDigest) {
+            fail('routing-root-recovery-receipt')
+        }
+        return ['terra-low', 'root-mechanical-control']
     }
     if (key === 'dag-creator-updater:semantic-proposal') {
         return selectDagProfile(input)
     }
-    if (key === 'test-owner:test-contract'
+    if (key === 'test-owner:test-contract-planning'
+        || key === 'test-owner:test-contract'
         || key === 'test-owner:behavior-verification') {
         return selectTestOwnerProfile(input, key)
     }
@@ -304,7 +363,13 @@ export function compileStageRoutingIdentity(input) {
             .map((field) => [field, input[field]])),
         stageRole: input.stageRole,
         stagePhase: input.stagePhase,
-        frontierException: input.frontierException === true
+        frontierException: input.frontierException === true,
+        frontierExceptionReceiptDigest:
+            input.frontierExceptionReceipt?.evidenceDigest ?? null,
+        controlPlaneRecovery: input.controlPlaneRecovery === true,
+        recoveryClassification: input.recoveryClassification ?? null,
+        recoveryReceiptDigest: input.recoveryReceiptDigest ?? null,
+        documentationClass: input.documentationClass ?? null
     }
     const requiredSkillDigests = Array.isArray(input.requiredSkillDigests)
         ? [...input.requiredSkillDigests]
@@ -354,11 +419,17 @@ function validateFreshContext(value, definition) {
 function validateRuntimeCapability(value) {
     const capability = value.runtimeCapability
     if (!capability) return
-    if (capability.available !== true
-        || capability.requestedProfile !== value.selectedProfile
-        || capability.effectiveProfile !== value.selectedProfile) {
+    if (capability.available !== true) {
         fail('runtime-capability-missing')
     }
+    verifyRuntimeProfileMetadata({
+        selectedProfile: value.selectedProfile,
+        requestedModel: capability.requestedModel,
+        effectiveModel: capability.effectiveModel,
+        requestedEffort: capability.requestedEffort,
+        effectiveEffort: capability.effectiveEffort,
+        multiAgentBackend: capability.multiAgentBackend
+    })
 }
 
 function validateCandidate(value) {

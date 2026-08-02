@@ -29,6 +29,16 @@ import {
     validateDispatchBatch,
     validateDispatchFrontierBinding
 } from './dispatch-batch-selector.mjs'
+import {
+    assertDigest as assertContractDigest,
+    digest as contractDigest,
+    fail as contractFail,
+    seal as contractSeal
+} from './runtime-contract-lib.mjs'
+import {
+    STAGE_ROUTE_DEFINITIONS,
+    verifyRuntimeProfileMetadata
+} from './stage-profile-policy.mjs'
 
 class DagGateError extends Error {
     constructor(code, message, details = {}) {
@@ -65,6 +75,278 @@ export function validateDispatchProjectionPresence(dag) {
         )
     }
     return { valid: true }
+}
+
+const LEGACY_NODE_ROUTE_FIELDS = Object.freeze([
+    'model',
+    'effort',
+    'difficultyBand',
+    'reworkCount',
+    'effortPromotionEvidence'
+])
+
+function validateV3Route({
+    route,
+    node,
+    policyDigest
+}) {
+    if (route?.routingAuthority !==
+            'deterministic-execution-capability-compiler') {
+        contractFail('dag-gate-route-authority')
+    }
+    if (route?.schema !==
+            'issue-orchestration.execution-route-decision.v1' ||
+        route.policyVersion !== 'execution-capability-routing.v2' ||
+        route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
+        route.modelPoolPolicyDigest !== policyDigest ||
+        route.stageRole !== node.stageRole ||
+        route.stagePhase !== node.stagePhase ||
+        route.runtimeVerificationStatus !== 'verified') {
+        contractFail('dag-gate-route-binding')
+    }
+    if (route.sliceDigest !== node.sliceDigest) {
+        contractFail('dag-gate-route-binding')
+    }
+    const definition = STAGE_ROUTE_DEFINITIONS[
+        `${node.stageRole}:${node.stagePhase}`
+    ]
+    if (!definition ||
+        !definition.allowedProfiles.includes(route.selectedProfile) ||
+        route.selectedProfile.includes('ultra') ||
+        route.selectedProfile.startsWith('luna-')) {
+        contractFail('dag-gate-profile')
+    }
+    try {
+        verifyRuntimeProfileMetadata({
+            selectedProfile: route.selectedProfile,
+            requestedModel: node.runtimeMetadata?.requestedModel,
+            effectiveModel: node.runtimeMetadata?.effectiveModel,
+            requestedEffort: node.runtimeMetadata?.requestedEffort,
+            effectiveEffort: node.runtimeMetadata?.effectiveEffort,
+            multiAgentBackend:
+                node.runtimeMetadata?.multiAgentBackend
+        })
+    } catch {
+        contractFail('dag-gate-runtime-metadata')
+    }
+    assertContractDigest(
+        route.routeDecisionDigest,
+        'dag-gate-route-binding'
+    )
+}
+
+function validateMemberReceipts(node, usedReceiptDigests) {
+    for (const kind of ['candidate', 'behavior']) {
+        const receipt = node.receipts?.[kind]
+        if (!receipt) contractFail('dag-gate-member-receipt-missing')
+        if (receipt.memberId !== node.memberId ||
+            !/^[a-f0-9]{64}$/u.test(
+                receipt.receiptDigest ?? ''
+            ) ||
+            usedReceiptDigests.has(receipt.receiptDigest)) {
+            contractFail('dag-gate-member-receipt-binding')
+        }
+        usedReceiptDigests.add(receipt.receiptDigest)
+    }
+}
+
+function validateMemberResource(node, usedLeaseIds) {
+    if (node.stageState !== 'active') return
+    const lease = node.resourceOwnership?.writeLease
+    if (!lease ||
+        lease.active !== true ||
+        lease.ownerMemberId !== node.memberId ||
+        typeof lease.leaseId !== 'string' ||
+        !lease.leaseId ||
+        usedLeaseIds.has(lease.leaseId) ||
+        !/^[a-f0-9]{64}$/u.test(
+            lease.leaseDigest ?? ''
+        )) {
+        contractFail('dag-gate-writer-lease')
+    }
+    usedLeaseIds.add(lease.leaseId)
+}
+
+function validateCompletedMember(node) {
+    if (node.stageState !== 'completed') return
+    const tombstone = node.completedTombstone
+    if (tombstone?.stateReason !== 'completed' ||
+        tombstone.commitAncestryVerified !== true ||
+        !/^[a-f0-9]{64}$/u.test(
+            tombstone.evidenceDigest ?? ''
+        )) {
+        contractFail('dag-gate-completed-tombstone')
+    }
+}
+
+function projectMember(node, policyDigest) {
+    for (const field of [
+        'acceptanceContractDigest',
+        'testContractDigest',
+        'planDigest',
+        'sliceDigest',
+        'promptDigest'
+    ]) assertContractDigest(node[field], 'dag-gate-member-binding')
+    const projection = {
+        schema:
+            'issue-orchestration.node-member-runtime-projection.v1',
+        memberId: node.memberId,
+        repository: node.repository,
+        issueNumber: node.issueNumber,
+        stageState: node.stageState,
+        stageRole: node.stageRole,
+        stagePhase: node.stagePhase,
+        acceptanceContractDigest:
+            node.acceptanceContractDigest,
+        testContractDigest: node.testContractDigest,
+        planDigest: node.planDigest,
+        sliceDigest: node.sliceDigest,
+        promptDigest: node.promptDigest,
+        policyDigest,
+        routeDecision: structuredClone(node.routeDecision),
+        runtimeMetadata: structuredClone(node.runtimeMetadata),
+        receipts: structuredClone(node.receipts),
+        resourceOwnership:
+            structuredClone(node.resourceOwnership),
+        disposition: node.disposition,
+        completedTombstone:
+            structuredClone(node.completedTombstone ?? null)
+    }
+    projection.projectionDigest = contractDigest(projection)
+    return projection
+}
+
+function validateRootV3(rootRuntime, policyDigest) {
+    const route = rootRuntime?.routeDecision
+    if (route?.routingAuthority !==
+            'deterministic-execution-capability-compiler') {
+        contractFail('dag-gate-route-authority')
+    }
+    if (route?.stageRole !== 'root-scheduler' ||
+        route.stagePhase !== 'scheduling' ||
+        route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
+        route.policyVersion !== 'execution-capability-routing.v2' ||
+        route.modelPoolPolicyDigest !== policyDigest ||
+        !['terra-low', 'terra-medium'].includes(
+            route.selectedProfile
+        )) {
+        contractFail('dag-gate-profile')
+    }
+    const recovery = route.selectedProfile === 'terra-medium'
+    if (recovery !== (rootRuntime.controlPlaneRecovery === true) ||
+        (recovery &&
+            (typeof rootRuntime.recoveryClassification !== 'string' ||
+                !rootRuntime.recoveryClassification ||
+                !/^[a-f0-9]{64}$/u.test(
+                    rootRuntime.recoveryReceiptDigest ?? ''
+                )))) {
+        contractFail('dag-gate-root-recovery')
+    }
+    try {
+        verifyRuntimeProfileMetadata({
+            selectedProfile: route.selectedProfile,
+            requestedModel:
+                rootRuntime.metadata?.requestedModel,
+            effectiveModel:
+                rootRuntime.metadata?.effectiveModel,
+            requestedEffort:
+                rootRuntime.metadata?.requestedEffort,
+            effectiveEffort:
+                rootRuntime.metadata?.effectiveEffort,
+            multiAgentBackend:
+                rootRuntime.metadata?.multiAgentBackend
+        })
+    } catch {
+        contractFail('dag-gate-root-runtime')
+    }
+    return route.selectedProfile
+}
+
+export function validateDagStartupGateV2(value) {
+    if (value?.legacyFallbackEnabled === true) {
+        contractFail('dag-gate-legacy-fallback')
+    }
+    if (value?.authoritySource !== 'permanent-shared-package') {
+        contractFail('dag-gate-authority-source')
+    }
+    if (value?.schema !==
+            'issue-orchestration.dag-startup-gate-request.v2' ||
+        value.selectorReceipt?.schema !==
+            'issue-orchestration.scope-selector-receipt.v1') {
+        contractFail('dag-gate-request')
+    }
+    assertContractDigest(
+        value.selectorReceipt.receiptDigest,
+        'dag-gate-selector'
+    )
+    assertContractDigest(
+        value.selectorReceipt.remoteSnapshotDigest,
+        'dag-gate-selector'
+    )
+    if (value.dag?.schema !==
+        'issue-orchestration.semantic-graph.v2') {
+        contractFail('dag-gate-rebuild-required')
+    }
+    if (value.dag.testContractDigest !== undefined ||
+        value.dag.stageReceipts !== undefined) {
+        contractFail('dag-gate-legacy-authority')
+    }
+    assertContractDigest(
+        value.dag.policyDigest,
+        'dag-gate-policy'
+    )
+    const rootProfile = validateRootV3(
+        value.rootRuntime,
+        value.dag.policyDigest
+    )
+    if (!Array.isArray(value.dag.nodes) ||
+        value.dag.nodes.length === 0) {
+        contractFail('dag-gate-members')
+    }
+    const memberIds = new Set()
+    const usedReceiptDigests = new Set()
+    const usedLeaseIds = new Set()
+    const projections = []
+    for (const node of value.dag.nodes) {
+        if (LEGACY_NODE_ROUTE_FIELDS.some((field) =>
+            Object.hasOwn(node, field))) {
+            contractFail('dag-gate-legacy-authority')
+        }
+        if (typeof node.memberId !== 'string' ||
+            !node.memberId ||
+            memberIds.has(node.memberId)) {
+            contractFail('dag-gate-member-identity')
+        }
+        memberIds.add(node.memberId)
+        validateV3Route({
+            route: node.routeDecision,
+            node,
+            policyDigest: value.dag.policyDigest
+        })
+        validateMemberReceipts(node, usedReceiptDigests)
+        validateMemberResource(node, usedLeaseIds)
+        validateCompletedMember(node)
+        projections.push(projectMember(
+            node,
+            value.dag.policyDigest
+        ))
+    }
+    return contractSeal({
+        schema:
+            'issue-orchestration.dag-startup-gate-receipt.v2',
+        status: 'verified',
+        selectorReceiptDigest:
+            value.selectorReceipt.receiptDigest,
+        remoteSnapshotDigest:
+            value.selectorReceipt.remoteSnapshotDigest,
+        policyDigest: value.dag.policyDigest,
+        rootProfile,
+        memberCount: projections.length,
+        memberProjectionDigests:
+            projections.map(({ projectionDigest }) =>
+                projectionDigest),
+        legacyGlobalReceiptAuthority: false
+    }, 'receiptDigest')
 }
 
 function tryLstat(target) {
@@ -440,14 +722,6 @@ function validateNodesAndGroups(dag, snapshot, repositoryNames, liveFacts) {
         'closed',
         'terminal'
     ])
-    const effortByBand = new Map([
-        ['simple-to-lower-middle', 'low'],
-        ['lower-middle-to-medium', 'medium'],
-        ['medium-to-upper-middle', 'high'],
-        ['upper-middle-to-hard', 'xhigh'],
-        ['hard-to-extreme', 'max']
-    ])
-    const effortOrder = ['low', 'medium', 'high', 'xhigh', 'max']
     const invalidStatusNodes = []
 
     for (const node of dag.nodes) {
@@ -465,36 +739,6 @@ function validateNodesAndGroups(dag, snapshot, repositoryNames, liveFacts) {
         requireString(node.ownerRepository, `${node.id}.ownerRepository`)
         if (!repositoryNames.has(node.ownerRepository)) {
             fail('node-owner', `DAG node ${node.id} has unknown owner repository ${node.ownerRepository}.`)
-        }
-        const baseEffort = effortByBand.get(node.difficultyBand)
-        if (!baseEffort) {
-            fail('node-difficulty', `DAG node ${node.id} has invalid difficulty band ${node.difficultyBand}.`)
-        }
-        if (node.model !== 'gpt-5.6-sol') {
-            fail('node-model', `DAG node ${node.id} must use gpt-5.6-sol.`)
-        }
-        if (!Number.isInteger(node.reworkCount) || node.reworkCount < 0) {
-            fail('node-rework-count', `DAG node ${node.id} has invalid reworkCount.`)
-        }
-        const baseIndex = effortOrder.indexOf(baseEffort)
-        const requiredIndex = node.reworkCount >= 2
-            ? Math.min(baseIndex + 1, effortOrder.length - 1)
-            : baseIndex
-        const requiredEffort = effortOrder[requiredIndex]
-        const actualIndex = effortOrder.indexOf(node.effort)
-        if (
-            actualIndex < requiredIndex
-            || (node.reworkCount < 2 && actualIndex !== baseIndex)
-        ) {
-            fail('node-effort', `DAG node ${node.id} effort does not match its difficulty/rework requirement.`, {
-                difficultyBand: node.difficultyBand,
-                reworkCount: node.reworkCount,
-                requiredEffort,
-                actualEffort: node.effort
-            })
-        }
-        if (node.reworkCount >= 2) {
-            requireString(node.effortPromotionEvidence, `${node.id}.effortPromotionEvidence`)
         }
         requireString(node.acceptanceGroup, `${node.id}.acceptanceGroup`)
         if (!Array.isArray(node.dependencyKeys) || !Array.isArray(node.activeDependencies) || !Array.isArray(node.satisfiedDependencies)) {

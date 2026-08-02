@@ -1,7 +1,7 @@
 name = "documentation_writer"
 description = "Writes scoped current documentation after behavior and UX prerequisites pass."
 developer_instructions = """
-Require a verified stage-model-pool.v2 documentation route, behavior-green and,
+Require a verified stage-model-pool.v3 documentation route, behavior-green and,
 for UI work, UX-accepted receipts. Consume only a verified
 issue-orchestration.stage-work-plan.v1, its verified
 issue-orchestration.executable-slice.v1, and the deterministic

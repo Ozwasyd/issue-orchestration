@@ -27,9 +27,9 @@ node .agents/skills/issue-orchestration/scripts/validate-state-root.mjs \
 
 守卫会按输入遍历顺序解析相对路径和 `..`，拒绝 symlink 组件，以最近存在祖先推导不存在尾部的规范路径，并同时核验 Linux mount coordinate、device/inode identity 和实际 Git worktree。对无法证明 backing path 的 FUSE/overlay alias mount 直接拒绝。它不以字符串前缀作为充分证据；无法读取 mount 或 worktree 身份时 fail closed。第一次校验通过后，只能使用输出的 `candidate.canonical` 以 `0700` 权限创建状态根；创建后必须用同一参数复验，复验通过前不得写 DAG。
 
-根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v2` semantic-proposal route 的 fresh-context、read-only DAG updater 提议，再由机器门禁校验后纳入 v2 DAG。
+根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v3` semantic-proposal route 的 fresh-context、read-only DAG updater 提议，再由机器门禁校验后纳入 v2 DAG。
 
-## 启动 DAG 门禁
+## Member/node 启动门禁
 
 读取适用指令链并确认两仓路径、远端、默认分支、HEAD 和 dirty state 后，按以下状态机启动：
 
@@ -43,7 +43,12 @@ instructions_loaded
   -> dispatch_enabled
 ```
 
-`dispatch_enabled` 之前禁止修改产品代码、创建 worktree 或派发 subagent。顺序如下：
+这条状态机按 member/node 独立运行，不是阻断整个 scope 的全局许可门。每个
+member 的 `dag-startup-gate-receipt.v2` 只能消费自己的 bounded projection：
+route/actual runtime identity、lease、member receipts 与 completed-prerequisite
+tombstones；`stageReceipts`、`testContractDigest`、节点 `model`/`effort`、
+难度或 rework promotion 都没有启动权威。该 member 的 `dispatch_enabled`
+之前不得为它创建写入型 attempt。顺序如下：
 
 1. 在状态根查找当前仓库组合和 issue 范围对应的 DAG；不存在、不可读或损坏时标记需要重建，不得继续派发。
 2. 重新读取本次范围全部远端 open issues 和会改变范围或验收的评论，生成当前启动时间之后的 issue snapshot。
@@ -88,13 +93,13 @@ node .agents/skills/issue-orchestration/scripts/check-dag-gate.mjs \
   --startup-time <ISO-8601>
 ```
 
-只有输出 `valid=true` 且 `dispatchEnabled=true` 才能让节点进入 `ready`。该机器检查不替代第 3 步的语义调查；仅从 issue 标题、数量或时间猜测依赖不构成一致性。
+只有 member receipt 输出 `valid=true` 且 `dispatchEnabled=true` 才能让该节点进入 `ready`；另一个 member 的失败不得把已满足投影的节点全局阻塞。该机器检查不替代语义调查；仅从 issue 标题、数量或时间猜测依赖不构成一致性。
 
 ## 运行态图
 
 DAG 至少记录：
 
-- run id、刷新时间、固定请求的 15 个 subagent 槽位、实际可用槽位及能力证据；
+- run id、刷新时间、V2 runtime 实际可用槽位及能力证据；
 - 两仓绝对路径、默认分支、HEAD、dirty state 与远端身份；
 - 每个节点的 issue URL/编号、当前标题、依赖、责任仓、验收组、状态、routing classification、writer、独立 verifier、开始时间；
 - 当前 writer stage 的 verified plan digest、有序 slice identities、compiled prompt/checkpoint/continuation/terminal receipt digests，以及 failure/breaker/retry authorization identity；
@@ -128,17 +133,15 @@ DAG 至少记录：
 
 预计超过 5 分钟的 build、Fresh、consumer、visual 或性能任务启动后，立即返回调度循环，为其他独立 `ready` 节点分配空闲槽位。长任务只占自己的槽位；不得让根线程只轮询它。
 
-Skill 的调度预算固定为 15 个 subagent 槽位，根调度线程不占用该预算。DAG 必须记录 `subagentSlotsConfigured=15`、实际运行时可提供的 subagent capacity 证据，以及 `subagentSlotsEffective`。
-
-`subagentSlotsEffective` 取 15、运行时实际 subagent capacity 和环境资源上限三者的最小值；调用者可为单次运行显式降低，但不得提高到 15 以上。每个 active slice writer、independent verifier/adjudicator 或仍运行的长任务各占一个 subagent 槽位。槽位满时才等待最早能改变 DAG 的事件。
+`subagentSlotsEffective` 取运行时实际 V2 capacity、调用者显式上限和环境资源上限三者的最小值。每个 active slice writer、independent verifier/adjudicator 或仍运行的长任务各占一个 agent 槽位。槽位满时才等待最早能改变 DAG 的事件。
 
 ## 根调度模型
 
-根调度进程（root scheduler）固定使用 `luna-low`。进入调度循环前先从本轮运行时元数据核验实际 model 与 reasoning effort；不匹配时分类为调用问题，停止本次父调用并以正确参数接管 checkpoint。Root 只调用 `stage-model-pool.v2` routing compiler，不得自行判断风险、UI 分类、模型或 fallback。
+根调度进程（root scheduler）固定使用 `terra-low`。进入调度循环前先从本轮运行时元数据核验 requested/effective model、reasoning effort 与 multi-agent backend V2；不匹配时分类为调用问题，停止本次父调用并以 recovery receipt 接管 checkpoint。Root 只执行有界投影上的机械动作并调用 `stage-model-pool.v3` routing compiler，不读取完整 issue/DAG/state，不执行语义调查，也不得自行判断风险、UI 分类、模型或 fallback。
 
 ## Stage model pool 与重分类
 
-永久 writer routing 的唯一 authority 是 `execution-capability-routing.v1`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后从 `profile-capability-matrix.v1` 中选择满足全部硬能力且属于 stage pool 的最低充分 profile。`engineeringRiskClass=high-risk` 本身不再等于 Terra/max；Luna 只接 atomic 或低深度 bounded slice，Terra 只接 capability evidence 覆盖的 runtime/lifecycle slice，Sol/high 接复杂可切片任务，Sol/xhigh 只接有机器 unsplittable 证据的长链或高工具深度任务，Sol/max 只接机器验证的 frontier exception。UI writer 始终只有 `sol-low`/`sol-medium`；context-heavy、high-tool-depth 或 long-horizon UI 必须重新切片或转 fresh read-only adjudication。非 writer stage 继续受 `stage-model-pool.v2` 的 role pool 与 read-only policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是机器 resource verifier。
+永久 writer routing 的唯一 authority 是 `execution-capability-routing.v2`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后从 `profile-capability-matrix.v2` 中选择满足全部硬能力且属于 stage pool 的最低充分 profile。永久池只包含 Terra 与 Sol 的 `low/medium/high/xhigh/max` 十个 profile；Luna 与 Ultra 不可发现。UI、长链和 frontier 仍必须由机器 capability evidence 决定，不能由节点字段或 Root 偏好决定。非 writer stage 继续受 `stage-model-pool.v3` 的 role pool 与 read-only policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
 
 `reworkCount`、失败次数、余额、token、成本、telemetry、当前 root profile 和人工偏好不是 routing input。`writer-stage.output-missing` 不能自动升档；只有最小或实质修订后的 slice、机器 `profile-capability-mismatch`、旧 failure receipt、breaker reset/retry authorization 和可观察 requested/effective metadata 同时成立，才能重编 route。Acceptance-group 的每个 member 与 landing/reverification slice 都独立编译 route，不能继承上一 member 的 profile、candidate receipt 或 verifier context。不可用或不可观察 profile 必须 fail closed，不得静默 fallback。
 

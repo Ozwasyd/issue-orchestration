@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:test-contract-planning-request:v1",
+  "title": "issue-orchestration.test-contract-planning-request.v1",
+  "type": "object",
+  "required": [
+    "schema", "phase", "sandbox", "freshContext", "attemptId",
+    "nodeDiscoveredReceiptDigest", "acceptanceContractDigest",
+    "routeDecisionDigest", "requestDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.test-contract-planning-request.v1"},
+    "phase": {"const": "test-contract-planning"},
+    "sandbox": {"const": "read-only"},
+    "freshContext": {"const": true},
+    "attemptId": {"type": "string", "minLength": 1},
+    "nodeDiscoveredReceiptDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "requestDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": true,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

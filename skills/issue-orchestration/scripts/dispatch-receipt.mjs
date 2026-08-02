@@ -42,7 +42,8 @@ const V2_REQUEST_FIELDS = [
     'attemptId', 'promptDigest', 'sourceDagDigest', 'frontierDigest',
     'issueSnapshotFingerprint', 'repositoryFingerprint', 'scopeIdentityDigest',
     'dependencyIdentityDigest', 'repository', 'baseSha', 'epochId',
-    'requestedModel', 'requestedEffort', 'requestedMode', 'requestedSandbox',
+    'requestedModel', 'requestedEffort', 'requestedMultiAgentBackend',
+    'requestedMode', 'requestedSandbox',
     'requestedForkTurns', 'requestedWorkingDirectory', 'requiredSkills',
     'requiredSkillIds', 'requiredSkillDigests', 'designAuthorityDigests',
     'uiImpact', 'allowedPathsDigest', 'forbiddenPathsDigest', 'writePolicy',
@@ -504,8 +505,8 @@ function validateV2DispatchRequest(input) {
         }
     }
     if (input.schema !== 'issue-orchestration.dispatch-request.v2' ||
-        input.policyVersion !== 'stage-model-pool.v2' ||
-        input.routingClassification?.routingPolicyVersion !== 'stage-model-pool.v2' ||
+        input.policyVersion !== 'stage-model-pool.v3' ||
+        input.routingClassification?.routingPolicyVersion !== 'stage-model-pool.v3' ||
         !SHA.test(input.baseSha ?? '') || !SHA.test(input.candidateSha ?? '')) {
         fail('dispatch-request-field-missing')
     }
@@ -550,6 +551,8 @@ function validateV2DispatchRequest(input) {
             route.executionRouteDecisionDigest &&
         input.requestedModel === selected.model &&
         input.requestedEffort === selected.effort &&
+        input.requestedMultiAgentBackend === 'v2' &&
+        input.executionRouteDecision.multiAgentBackend === 'v2' &&
         input.requestedSandbox === route.sandbox &&
         input.writePolicy === stagePermission.writeScope &&
         input.readOnlyPolicy ===
@@ -601,6 +604,11 @@ function observeRuntimeV2(request, rolloutRecords, machineObservations) {
         startedAt: rolloutRecords[0]?.timestamp,
         effectiveModel: context.model,
         effectiveEffort: context.effort,
+        effectiveMultiAgentBackend:
+            context.multiAgentBackend ??
+            context.multi_agent_backend ??
+            session?.multiAgentBackend ??
+            session?.multi_agent_backend,
         effectiveRole: spawn.agent_role,
         effectiveMode: context.mode,
         effectiveSandbox: context.sandbox_policy?.type,
@@ -638,6 +646,10 @@ function compareRuntimeV2(request, observed, priorReceipts) {
         ['startedAt', 'runtime-started-at-unobservable'],
         ['effectiveModel', 'runtime-model-unobservable'],
         ['effectiveEffort', 'runtime-effort-unobservable'],
+        [
+            'effectiveMultiAgentBackend',
+            'runtime-multi-agent-backend-unobservable'
+        ],
         ['effectiveRole', 'runtime-role-unobservable'],
         ['effectiveMode', 'runtime-mode-unobservable'],
         ['effectiveSandbox', 'runtime-sandbox-unobservable'],
@@ -650,6 +662,11 @@ function compareRuntimeV2(request, observed, priorReceipts) {
     const actualPairs = [
         [observed.effectiveModel, request.requestedModel, 'runtime-model-mismatch'],
         [observed.effectiveEffort, request.requestedEffort, 'runtime-effort-mismatch'],
+        [
+            observed.effectiveMultiAgentBackend,
+            request.requestedMultiAgentBackend,
+            'runtime-multi-agent-backend-mismatch'
+        ],
         [observed.effectiveRole, request.stageRole, 'runtime-role-mismatch'],
         [observed.effectiveMode, request.requestedMode, 'runtime-mode-mismatch'],
         [observed.effectiveSandbox, request.requestedSandbox, 'runtime-sandbox-role-policy'],
@@ -723,7 +740,13 @@ function compareRuntimeV2(request, observed, priorReceipts) {
     const capability = observed.capability
     if (!capability || capability.available !== true ||
         capability.requestedProfileId !== request.selectedProfileId ||
-        capability.effectiveProfileId !== request.selectedProfileId) {
+        capability.effectiveProfileId !== request.selectedProfileId ||
+        capability.requestedModel !== request.requestedModel ||
+        capability.effectiveModel !== request.requestedModel ||
+        capability.requestedEffort !== request.requestedEffort ||
+        capability.effectiveEffort !== request.requestedEffort ||
+        capability.multiAgentBackend !==
+            request.requestedMultiAgentBackend) {
         reasons.push('runtime-capability-missing')
     }
     if (!observed.provenanceTrusted) reasons.push('runtime-provenance-request-copy')
@@ -881,6 +904,8 @@ function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
         rolloutId: runtimeObservation.rolloutId,
         actualModel: runtimeObservation.effectiveModel,
         actualEffort: runtimeObservation.effectiveEffort,
+        actualMultiAgentBackend:
+            runtimeObservation.effectiveMultiAgentBackend,
         actualRole: runtimeObservation.effectiveRole,
         actualMode: runtimeObservation.effectiveMode,
         actualSandbox: runtimeObservation.effectiveSandbox,
@@ -949,6 +974,11 @@ function observeRootStartup(rolloutRecords, machineObservations) {
         actualRole: context.role ?? session?.role,
         actualModel: context.model ?? session?.model,
         actualEffort: context.effort ?? session?.effort,
+        actualMultiAgentBackend:
+            context.multiAgentBackend ??
+            context.multi_agent_backend ??
+            session?.multiAgentBackend ??
+            session?.multi_agent_backend,
         actualMode: context.mode ?? session?.mode,
         actualWorkingDirectory: context.cwd,
         session,
@@ -966,22 +996,25 @@ export async function verifyRootStartup(input) {
     )
     const reasons = []
     const requestValid = request.schema === 'issue-orchestration.root-startup-request.v2' &&
-        request.policyVersion === 'stage-model-pool.v2' &&
+        request.policyVersion === 'stage-model-pool.v3' &&
         request.stageRole === 'root-scheduler' &&
         request.stagePhase === 'scheduling' &&
-        request.stageProfileId === 'luna-low' &&
-        request.requestedModel === 'gpt-5.6-luna' &&
+        request.stageProfileId === 'terra-low' &&
+        request.requestedModel === 'gpt-5.6-terra' &&
         request.requestedEffort === 'low' && request.requestedMode === 'normal' &&
+        request.requestedMultiAgentBackend === 'v2' &&
         request.requestDigest === unsignedDigest(request, 'requestDigest')
     if (!requestValid) reasons.push('root-startup-request-invalid')
     const rootMetadata = [observation.session ?? {}, observation.context ?? {}]
     const rootActuals = [
         ['role', 'root-scheduler'],
-        ['model', 'gpt-5.6-luna'],
+        ['model', 'gpt-5.6-terra'],
         ['effort', 'low'],
+        ['multiAgentBackend', 'v2'],
         ['mode', 'normal']
     ]
     if (!observation.actualModel || !observation.actualEffort ||
+        !observation.actualMultiAgentBackend ||
         !observation.actualRole || !observation.actualMode ||
         !observation.threadId || !observation.rolloutId ||
         !observation.actualWorkingDirectory || !observation.capabilityTrusted) {
@@ -994,14 +1027,17 @@ export async function verifyRootStartup(input) {
             reasons.push('root-startup-profile-mismatch')
         }
     }
-    if (observation.actualModel && observation.actualModel !== 'gpt-5.6-luna' ||
+    if (observation.actualModel && observation.actualModel !== 'gpt-5.6-terra' ||
         observation.actualEffort && observation.actualEffort !== 'low' ||
+        observation.actualMultiAgentBackend &&
+            observation.actualMultiAgentBackend !== 'v2' ||
         observation.actualRole && observation.actualRole !== 'root-scheduler' ||
         observation.actualMode && observation.actualMode !== 'normal' ||
         observation.actualWorkingDirectory &&
             observation.actualWorkingDirectory !== request.requestedWorkingDirectory ||
         observation.capability && (observation.capability.available !== true ||
-            observation.capability.stageProfileId !== 'luna-low')) {
+            observation.capability.stageProfileId !== 'terra-low' ||
+            observation.capability.multiAgentBackend !== 'v2')) {
         reasons.push('root-startup-profile-mismatch')
     }
     const receipt = {
@@ -1021,6 +1057,8 @@ export async function verifyRootStartup(input) {
         actualRole: observation.actualRole,
         actualModel: observation.actualModel,
         actualEffort: observation.actualEffort,
+        actualMultiAgentBackend:
+            observation.actualMultiAgentBackend,
         actualMode: observation.actualMode,
         actualWorkingDirectory: observation.actualWorkingDirectory,
         runtimeMetadataDigest: digest(observation),

@@ -6,11 +6,16 @@
             "writeScope": "none",
             "freshContext": false
         },
-        "dag-creator-updater:semantic-proposal": {
-            "sandbox": "read-only",
-            "writeScope": "none",
-            "freshContext": true
-        },
+    "dag-creator-updater:semantic-proposal": {
+      "sandbox": "read-only",
+      "writeScope": "none",
+      "freshContext": true
+    },
+    "test-owner:test-contract-planning": {
+      "sandbox": "read-only",
+      "writeScope": "none",
+      "freshContext": true
+    },
         "test-owner:test-contract": {
             "sandbox": "workspace-write",
             "writeScope": "tests-only",

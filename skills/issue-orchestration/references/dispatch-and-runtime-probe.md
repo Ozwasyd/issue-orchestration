@@ -6,7 +6,9 @@
 
 ## 派发前调查
 
-根代理在每次派发前亲自完成以下工作：
+每次派发前，由 fresh-context、read-only semantic agent 完成以下工作并产生
+有界 `dispatch-investigation-projection.v1`；Root 只校验 fingerprint、缓存与
+receipt identity，不读取完整 issue、完整 DAG/state 或语义源文件：
 
 1. 读取完整 issue、全部范围约束和会改变验收的评论；
 2. 记录目标仓库的 base SHA、当前分支、dirty state、适用的 `AGENTS.md` / override 指令链；
@@ -14,7 +16,7 @@
 4. 查明已确认事实、责任仓、设计方案、允许修改边界、禁止范围和验收组；
 5. 核对仓库事实与调度策略是否属于不同权威层。
 
-信息不足、base SHA 漂移、owner 未确定或设计仍有分叉时不得派发。继续调查并刷新 DAG；不得把选择题交给实现者。
+信息不足、base SHA 漂移、owner 未确定或设计仍有分叉时不得派发。继续由对应语义 agent 调查并刷新投影；不得由 Root 补写结论或把选择题交给 writer。
 
 ## 最小真实探针
 
@@ -34,7 +36,13 @@
 
 ## Verified plan、slice 与 compiled prompt
 
-完整 issue 不是 writer 任务。Root 先把已确认的 issue、调查、指令链、base、epoch、worktree、routing、acceptance、命令和边界提交给 canonical compiler：
+完整 issue 不是 writer 任务。`issue-requirement-authority.mjs` 先从完整远端
+issue body 与所有 relevant comment blocks 精确一次性编译 immutable
+requirement inventory 和 acceptance contract。Root 只能接受或拒绝该
+contract，不能增删改 requirement。随后 semantic proposer 给出 slice plan，
+`slice-plan-validator.mjs` 独立验证 acceptance/command ownership、无环顺序、
+路径、first action 与 capacity。Root 不能提议或修改 slice。Canonical
+compiler 再处理通过验证的投影：
 
 1. `compileStageWorkPlan(input)` 生成并验证 `issue-orchestration.stage-work-plan.v1`；
 2. `compileExecutableSlice({ plan, sliceId })` 只提取当前 `issue-orchestration.executable-slice.v1`；
@@ -51,13 +59,20 @@ Writer stage 与永久输出合同如下：
 
 | Stage phase | Writer role | 必需输出 |
 | --- | --- | --- |
+| `test-contract-planning` | `test-owner` | fresh read-only planning receipt；不得写文件 |
 | `test-contract` | `test-owner` | tests/fixtures、命令证据、checkpoint |
 | `implementation` | `code-implementer` | diff、命令证据、checkpoint |
 | `ui-implementation` | `ui-ux-implementer` | diff、render evidence、checkpoint |
 | `documentation` | `documentation-writer` | diff 或 verified no-change evidence、checkpoint |
 | `landing-conflict-resolution` | `code-implementer` 或 `ui-ux-implementer` | conflict mapping、diff、checkpoint |
 
-Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v2` 或永久 routing policy。
+Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v3` 或永久 routing policy。
+
+首次 test-contract writer 不允许依赖虚构历史或空白 attempt。固定冷启动顺序
+是：immutable acceptance contract → fresh read-only planning
+request/receipt → 资源和 exclusive lease → frozen test contract →
+validated slice/compiled prompt → fresh writer attempt。Planning 与 writer
+必须是不同 rollout/thread；历史 bootstrap、旧 runner 或旧 checkpoint 不能替代。
 
 ## Implementer contract
 
@@ -79,4 +94,12 @@ Writer 只接收当前 slice 投影，不接收状态根路径、完整 issue �
 
 使用共享 package 中当前 stage 对应的 writer role，传入通过验证的 compiled prompt，并按 [`dag-and-scheduling.md`](dag-and-scheduling.md) 先对 verified slice 调用 `execution-route-compiler.mjs`。Dispatch request/receipt 必须绑定 plan、slice、execution shape、capability requirement、capability matrix evidence、route decision、compiled prompt 和非 full-history fork；任何 identity 漂移都必须拒绝。角色文件只负责加载本合同，不拥有模型选择规则。实际 requested/effective model、effort、sandbox、cwd、checkpoint 与 continuation capability 必须由受信 runtime observation 证明；不可观察时 fail closed。
 
-Writer 返回后，Root 先调用机器 gate 校验 checkpoint、terminal receipt、实际 diff/产物和局部 evidence。非最终 slice 的合法结果只能是 `next-slice`；只有 final slice 及此前所有有序 `issue-orchestration.slice-terminal-receipt.v1` 全部有效，stage 才能进入 `candidate-green` 和 independent verification。失败语义、breaker 与 material retry 见 [`review-failure-and-verification.md`](review-failure-and-verification.md)。
+Writer spawn 前必须创建在线 watchdog；运行中逐事件校验 first action/artifact、
+read/no-artifact/time budgets、command heartbeat/lease、cancel acknowledgment
+与 checkpoint/terminal artifact。预算越界、heartbeat 丢失或取消不收敛时
+先取消 writer、封存 trace，再 fail closed，不能在返回后补造证据。Writer
+返回后，Root 调用机器 gate 校验 watchdog receipt、checkpoint、terminal
+receipt、实际 diff/产物和局部 evidence。非最终 slice 的合法结果只能是
+`next-slice`；只有 final slice 及此前所有有序 terminal receipts 全部有效，
+stage 才能进入 `candidate-green` 和 independent verification。失败语义、
+breaker 与 retry 见 [`review-failure-and-verification.md`](review-failure-and-verification.md)。

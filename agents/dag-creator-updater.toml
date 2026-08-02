@@ -2,7 +2,7 @@ name = "dag_creator_updater"
 description = "Produces one read-only semantic graph proposal from selector-bound issue facts."
 sandbox_mode = "read-only"
 developer_instructions = """
-Run only with a verified stage-model-pool.v2 route as a fresh,
+Run only with a verified stage-model-pool.v3 route as a fresh,
 root-scheduler-launched, proposal-only DAG creator or updater.
 Own discoveryFacts and classificationFacts in the semantic graph; bind every fact
 to the selector receipt and current remote member evidence, including all

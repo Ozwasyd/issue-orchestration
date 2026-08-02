@@ -115,10 +115,11 @@ function expectedCandidate(node, stage, landingConflict = null) {
     if (stage === 'test-contract-ready') {
         return {
             role: 'test-owner',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
+            phase: 'test-contract',
             mode: 'write-tests-only',
-            allowedPaths: node.allowedTestPaths
+            allowedPaths: node.allowedTestPaths,
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     if (stage === 'implementation-ready') {
@@ -126,56 +127,66 @@ function expectedCandidate(node, stage, landingConflict = null) {
             role: node.surface === 'ui-ux'
                 ? 'ui-ux-implementer'
                 : 'code-implementer',
-            model: 'gpt-5.6-sol',
-            effort: 'low',
+            phase: node.surface === 'ui-ux'
+                ? 'ui-implementation'
+                : 'implementation',
             mode: 'write-implementation-only',
             allowedPaths: node.allowedImplementationPaths,
-            designAuthorityRequired: node.surface === 'ui-ux'
+            designAuthorityRequired: node.surface === 'ui-ux',
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     if (stage === 'landing-conflict-resolution-ready') {
         const role = landingConflict?.memberWriterRole
         return {
             role,
+            phase: 'landing-conflict-resolution',
             mode: 'write-implementation-only',
             allowedPaths: node.allowedImplementationPaths,
-            designAuthorityRequired: role === 'ui-ux-implementer'
+            designAuthorityRequired: role === 'ui-ux-implementer',
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     if (stage === 'behavior-verification-ready') {
         return {
             role: 'test-owner',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
+            phase: 'behavior-verification',
             mode: 'read-execute-only',
-            allowedPaths: []
+            allowedPaths: [],
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     if (stage === 'ux-acceptance-ready') {
         return {
             role: 'ux-acceptance-verifier',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
+            phase: 'ux-acceptance',
             mode: 'read-only',
             allowedPaths: [],
-            designAuthorityRequired: true
+            designAuthorityRequired: true,
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     if (stage === 'documentation-ready') {
         return {
             role: 'documentation-writer',
-            model: 'gpt-5.6-luna',
-            effort: 'xhigh',
+            phase: 'documentation',
             mode: 'write-docs-only',
-            allowedPaths: [`docs/frontier-${node.issueNumber}.md`]
+            allowedPaths: [`docs/frontier-${node.issueNumber}.md`],
+            routeRequired: true,
+            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
         }
     }
     return {
         role: 'root-scheduler',
-        model: 'gpt-5.6-sol',
-        effort: 'low',
+        phase: 'scheduling',
         mode: 'root-only',
-        allowedPaths: []
+        allowedPaths: [],
+        routeRequired: true,
+        stageModelPoolPolicyVersion: 'stage-model-pool.v3'
     }
 }
 

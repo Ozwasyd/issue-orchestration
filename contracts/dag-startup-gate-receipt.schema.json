@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:dag-startup-gate-receipt:v2",
+  "title": "issue-orchestration.dag-startup-gate-receipt.v2",
+  "type": "object",
+  "required": [
+    "schema", "status", "selectorReceiptDigest", "remoteSnapshotDigest",
+    "policyDigest", "rootProfile", "memberCount", "memberProjectionDigests",
+    "legacyGlobalReceiptAuthority", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.dag-startup-gate-receipt.v2"},
+    "status": {"const": "verified"},
+    "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "rootProfile": {"enum": ["terra-low", "terra-medium"]},
+    "memberCount": {"type": "integer", "minimum": 1},
+    "memberProjectionDigests": {
+      "type": "array", "items": {"$ref": "#/$defs/digest"}, "minItems": 1,
+      "uniqueItems": true
+    },
+    "legacyGlobalReceiptAuthority": {"const": false},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

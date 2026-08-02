@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:slice-plan-validation-receipt:v1",
+  "title": "issue-orchestration.slice-plan-validation-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "proposalDigest", "acceptanceContractDigest",
+    "proposalAuthoredBy", "validatedBy", "generatedByValidator",
+    "acceptanceOwnerMap", "commandOwnerMap", "evidenceOwnerMap",
+    "orderedSliceIds", "validationDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.slice-plan-validation-receipt.v1"},
+    "status": {"const": "verified"},
+    "proposalDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "proposalAuthoredBy": {"type": "string"},
+    "validatedBy": {"const": "deterministic-slice-validator.v2"},
+    "generatedByValidator": {"const": false},
+    "acceptanceOwnerMap": {"type": "object"},
+    "commandOwnerMap": {"type": "object"},
+    "evidenceOwnerMap": {"type": "object"},
+    "orderedSliceIds": {"type": "array", "items": {"type": "string"}},
+    "validationDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

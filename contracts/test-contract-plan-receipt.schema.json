@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:test-contract-plan-receipt:v1",
+  "title": "issue-orchestration.test-contract-plan-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "actorRole", "phase", "rootAuthored",
+    "sandbox", "freshContext", "attemptId", "acceptanceContractDigest",
+    "ownerRepository", "testPaths", "commands", "fixturePaths",
+    "runtimeProbes", "stageBoundaries", "sliceProposalDigest",
+    "filesystemWrites", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.test-contract-plan-receipt.v1"},
+    "status": {"const": "verified"},
+    "actorRole": {"const": "test-owner"},
+    "phase": {"const": "test-contract-planning"},
+    "rootAuthored": {"const": false},
+    "sandbox": {"const": "read-only"},
+    "freshContext": {"const": true},
+    "attemptId": {"type": "string"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "ownerRepository": {"type": "string"},
+    "testPaths": {"type": "array", "items": {"type": "string"}},
+    "commands": {"type": "array", "items": {"type": "string"}},
+    "fixturePaths": {"type": "array", "items": {"type": "string"}},
+    "runtimeProbes": {"type": "array"},
+    "stageBoundaries": {"type": "array", "items": {"type": "string"}},
+    "sliceProposalDigest": {"$ref": "#/$defs/digest"},
+    "filesystemWrites": {"maxItems": 0},
+    "disputedAuthority": {},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

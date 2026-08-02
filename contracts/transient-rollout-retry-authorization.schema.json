@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:transient-rollout-retry-authorization:v1",
+  "title": "issue-orchestration.transient-rollout-retry-authorization.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "classification", "retryOrdinal",
+    "semanticFailureIdentity", "semanticIdentity",
+    "firstFailureReceiptDigest", "firstFailurePreserved",
+    "previousRuntimeObservationDigest", "newRolloutIdentity",
+    "reworkCountDelta", "humanDecisionRequired", "authorizationDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.transient-rollout-retry-authorization.v1"},
+    "status": {"const": "authorized"},
+    "classification": {"const": "writer-stage.transient-rollout-retry-authorized"},
+    "retryOrdinal": {"const": 1},
+    "semanticFailureIdentity": {"$ref": "#/$defs/digest"},
+    "semanticIdentity": {"type": "object"},
+    "firstFailureReceiptDigest": {"$ref": "#/$defs/digest"},
+    "firstFailurePreserved": {"const": true},
+    "previousRuntimeObservationDigest": {"$ref": "#/$defs/digest"},
+    "newRolloutIdentity": {"type": "object"},
+    "reworkCountDelta": {"const": 0},
+    "humanDecisionRequired": {"const": false},
+    "authorizationDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

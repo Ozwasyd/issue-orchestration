@@ -1,165 +1,121 @@
 {
-    "schema": "issue-orchestration.profile-capability-matrix.v1",
-    "policyVersion": "execution-capability-routing.v1",
-    "evidenceAuthority": "recomputed-machine-runtime-observations",
-    "evidenceFixture": "profile-capability-observations.json",
-    "evidenceDigest": "ef1b90cfd004a3c74cf85a08520498df8ae60b05b4d19d825961bb638f8a8ca3",
-    "modelSelfReportAccepted": false,
-    "profiles": {
-        "luna-low": {
-            "planningDepth": 1,
-            "toolChainPersistence": 1,
-            "contextRetentionClass": 1,
-            "checkpointReliability": 1,
-            "runtimeProbeCapability": 1,
-            "crossModuleReasoningClass": 1,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none"
-            ],
-            "evidenceDigest": "d0a30e874535544c9166c6eee67f72697d84b40fb83ca153f42114c90ae1e914"
-        },
-        "luna-high": {
-            "planningDepth": 2,
-            "toolChainPersistence": 2,
-            "contextRetentionClass": 2,
-            "checkpointReliability": 2,
-            "runtimeProbeCapability": 1,
-            "crossModuleReasoningClass": 1,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume"
-            ],
-            "evidenceDigest": "d66b960772d58297db3c536d0fc9520e3b478fc6bf7d645c4412edb3a1a73c40"
-        },
-        "luna-max": {
-            "planningDepth": 2,
-            "toolChainPersistence": 2,
-            "contextRetentionClass": 2,
-            "checkpointReliability": 2,
-            "runtimeProbeCapability": 2,
-            "crossModuleReasoningClass": 2,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume"
-            ],
-            "evidenceDigest": "06de56395c6183f2a7931d58d2d55cc54cf369af74ca2e08e214b554f100111b"
-        },
-        "terra-max": {
-            "planningDepth": 3,
-            "toolChainPersistence": 3,
-            "contextRetentionClass": 3,
-            "checkpointReliability": 3,
-            "runtimeProbeCapability": 4,
-            "crossModuleReasoningClass": 3,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume"
-            ],
-            "evidenceDigest": "d863371ccc8cb892bc98f95ee0373e896144320e2fddc18527582f55d96994da"
-        },
-        "sol-low": {
-            "planningDepth": 1,
-            "toolChainPersistence": 2,
-            "contextRetentionClass": 2,
-            "checkpointReliability": 2,
-            "runtimeProbeCapability": 1,
-            "crossModuleReasoningClass": 2,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume"
-            ],
-            "evidenceDigest": "959ec9d205dd147fb052515be50451703cba45f6397022dde41d1ac9672dcb9a"
-        },
-        "sol-medium": {
-            "planningDepth": 2,
-            "toolChainPersistence": 2,
-            "contextRetentionClass": 2,
-            "checkpointReliability": 2,
-            "runtimeProbeCapability": 2,
-            "crossModuleReasoningClass": 2,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume"
-            ],
-            "evidenceDigest": "55e69faaa12a99c17a886a2859237fe303a8b8ec54f885ec95f3a64f4929f318"
-        },
-        "sol-high": {
-            "planningDepth": 4,
-            "toolChainPersistence": 4,
-            "contextRetentionClass": 4,
-            "checkpointReliability": 4,
-            "runtimeProbeCapability": 4,
-            "crossModuleReasoningClass": 4,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume",
-                "durable-continuation"
-            ],
-            "evidenceDigest": "d2ba54b9f116fc260dc043635e2b1e86eb2ec19a1f98619691ddf36f2f5b223a"
-        },
-        "sol-xhigh": {
-            "planningDepth": 5,
-            "toolChainPersistence": 5,
-            "contextRetentionClass": 5,
-            "checkpointReliability": 5,
-            "runtimeProbeCapability": 5,
-            "crossModuleReasoningClass": 5,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume",
-                "durable-continuation"
-            ],
-            "evidenceDigest": "052f19835f3ac369d5985405c77a8413ddea214069771101e44e9ae4e99cbb27"
-        },
-        "sol-max": {
-            "planningDepth": 5,
-            "toolChainPersistence": 5,
-            "contextRetentionClass": 5,
-            "checkpointReliability": 5,
-            "runtimeProbeCapability": 5,
-            "crossModuleReasoningClass": 5,
-            "supportedSandboxes": [
-                "read-only",
-                "workspace-write"
-            ],
-            "allowedContinuationModes": [
-                "none",
-                "checkpoint-resume",
-                "durable-continuation"
-            ],
-            "evidenceDigest": "712690ea6be289ab0a121b405bb4621afd80835a42a6183c6bd5da2af325e9ea"
-        }
+  "schema": "issue-orchestration.profile-capability-matrix.v2",
+  "policyVersion": "execution-capability-routing.v2",
+  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "evidenceAuthority": "recomputed-codex-v2-runtime-observations",
+  "evidenceFixture": "profile-capability-observations.json",
+  "evidenceDigest": "a6c6509776584ae1bfcb69cd7a199db6f744a4489fa2c640e52bcab24c454bb7",
+  "modelSelfReportAccepted": false,
+  "profiles": {
+    "terra-low": {
+      "planningDepth": 1,
+      "toolChainPersistence": 1,
+      "contextRetentionClass": 1,
+      "checkpointReliability": 1,
+      "runtimeProbeCapability": 1,
+      "crossModuleReasoningClass": 1,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none"],
+      "evidenceDigest": "2d02476ba9478b182fbd127de0202e67127b12c2fa9f3685448f786995536958"
+    },
+    "terra-medium": {
+      "planningDepth": 2,
+      "toolChainPersistence": 2,
+      "contextRetentionClass": 2,
+      "checkpointReliability": 2,
+      "runtimeProbeCapability": 1,
+      "crossModuleReasoningClass": 2,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume"],
+      "evidenceDigest": "323189ccc57d73192ba2df05ca250d3a5d88a2770e6659ed31895abb510f9cad"
+    },
+    "terra-high": {
+      "planningDepth": 3,
+      "toolChainPersistence": 3,
+      "contextRetentionClass": 3,
+      "checkpointReliability": 3,
+      "runtimeProbeCapability": 2,
+      "crossModuleReasoningClass": 3,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume"],
+      "evidenceDigest": "21300e843ff484ec50d117b8d4a7c2c7b2dda6f6b66b6c25d26e8a6ce2fb419c"
+    },
+    "terra-xhigh": {
+      "planningDepth": 4,
+      "toolChainPersistence": 4,
+      "contextRetentionClass": 4,
+      "checkpointReliability": 4,
+      "runtimeProbeCapability": 3,
+      "crossModuleReasoningClass": 4,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
+      "evidenceDigest": "b9f62ddf138c476e7f38396333f0dd4dc61e783969da96e16529dd07120f507d"
+    },
+    "terra-max": {
+      "planningDepth": 4,
+      "toolChainPersistence": 5,
+      "contextRetentionClass": 4,
+      "checkpointReliability": 5,
+      "runtimeProbeCapability": 5,
+      "crossModuleReasoningClass": 4,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
+      "evidenceDigest": "7096f30137f62a9ae860fdaf67cdc98cd21536a622677cd72c2cf3710024ec12"
+    },
+    "sol-low": {
+      "planningDepth": 1,
+      "toolChainPersistence": 2,
+      "contextRetentionClass": 2,
+      "checkpointReliability": 2,
+      "runtimeProbeCapability": 1,
+      "crossModuleReasoningClass": 2,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume"],
+      "evidenceDigest": "7e744f6522fcd92f94d5bf4dd101fed620effcf8e37469462b02be7372ba946c"
+    },
+    "sol-medium": {
+      "planningDepth": 2,
+      "toolChainPersistence": 2,
+      "contextRetentionClass": 2,
+      "checkpointReliability": 2,
+      "runtimeProbeCapability": 2,
+      "crossModuleReasoningClass": 2,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume"],
+      "evidenceDigest": "ae9d29f1f872a2613ea7698f44659fa20868e43618c54f8b2c7b02e1028a32ac"
+    },
+    "sol-high": {
+      "planningDepth": 4,
+      "toolChainPersistence": 4,
+      "contextRetentionClass": 4,
+      "checkpointReliability": 4,
+      "runtimeProbeCapability": 4,
+      "crossModuleReasoningClass": 4,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
+      "evidenceDigest": "56b46c283e60ee40c53dd12db6366c7d19bab3e20ff1c5296933b395ec76cb55"
+    },
+    "sol-xhigh": {
+      "planningDepth": 5,
+      "toolChainPersistence": 5,
+      "contextRetentionClass": 5,
+      "checkpointReliability": 5,
+      "runtimeProbeCapability": 5,
+      "crossModuleReasoningClass": 5,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
+      "evidenceDigest": "826d6231bfb6bb45821f718062ae44cb339eee8db46fa13ec41d1056253d9395"
+    },
+    "sol-max": {
+      "planningDepth": 5,
+      "toolChainPersistence": 5,
+      "contextRetentionClass": 5,
+      "checkpointReliability": 5,
+      "runtimeProbeCapability": 5,
+      "crossModuleReasoningClass": 5,
+      "supportedSandboxes": ["read-only", "workspace-write"],
+      "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
+      "evidenceDigest": "f0a833720e5d3adc1193e6e9692332bc56298224336f26f6fe6aa313e6acfeae"
     }
+  }
 }

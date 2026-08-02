@@ -1,15 +1,10 @@
 #!/usr/bin/env node
 
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-
-import {
-    computeQuiescenceDigest,
-    evaluateQuiescence
-} from './quiescence.mjs'
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..')
 const defaultRepositoryRoot = path.resolve(
@@ -26,6 +21,26 @@ const runtimeArtifactRelative =
     'skills/issue-orchestration/scripts/permanent-e2e.mjs'
 const HASH = /^[a-f0-9]{64}$/u
 const SHA = /^[a-f0-9]{40}$/u
+const PERMANENT_E2E_EVIDENCE_KEYS = Object.freeze([
+    'shared-package-discovery',
+    'model-pool-consistency',
+    'root-runtime-canary',
+    'root-mechanical-control',
+    'dag-startup-gate',
+    'first-writer-cold-start',
+    'scope-frontier-routing-consistency',
+    'acceptance-slice-authority',
+    'output-missing-retry',
+    'writer-runtime-watchdog',
+    'verifier-revalidation',
+    'git-landing-delivery',
+    'mutation-execution-summary',
+    'live-quiescence',
+    'no-temporary-scheduler-trace',
+    'human-decision-gate',
+    'acceptance-group-atomicity',
+    'ui-dual-skill'
+])
 
 const LANE_EVIDENCE = {
     'scope-remote-refresh.test.mjs': [
@@ -509,228 +524,422 @@ async function runChildRollout(group, repositoryRoot, runId) {
     }
 }
 
-function buildQuiescenceReceipt(repositoryRoot) {
-    const observation = readJson(
-        repositoryRoot,
-        'tests/fixtures/issue-orchestration/quiescence-observation-quiescent.json'
-    )
-    const cleanup = {
-        schema: 'issue-orchestration.resource-cleanup-receipt.v1',
-        actorRole: 'machine-resource-verifier',
-        status: 'resources-clean',
-        runId: observation.runId,
-        attemptId: 'attempt-1829-final-e2e',
-        epochId: 'epoch-1829-final-e2e-1',
-        baselineDigest: observation.baseline.baselineDigest,
-        ownedResourceDigest: digest('final-e2e-owned-resources'),
-        cleanupActions: [],
-        lockReleaseObservations: [],
-        finalFilesystemObservations: [],
-        retainedResources: [],
-        quarantinedResources: [],
-        failedResources: [],
-        postInventory: [],
-        postCleanupInventoryDigest: computeQuiescenceDigest([]),
-        verifiedAt: observation.verifiedAt
+function verifyChildEvidence({
+    key,
+    receipt,
+    mode,
+    expectedBindings
+}) {
+    if (!receipt
+        || receipt.schema !==
+            `issue-orchestration.e2e-${key}-receipt.v1`
+        || receipt.evidenceKey !== key
+        || receipt.status !== 'verified'
+        || receipt.mode !== mode
+        || receipt.packageDigest !== expectedBindings.packageDigest
+        || receipt.policyDigest !== expectedBindings.policyDigest
+        || receipt.sourceCommit !== expectedBindings.sourceCommit
+        || receipt.runFamily !== expectedBindings.runFamily
+        || receipt.candidateDigest !== expectedBindings.candidateDigest
+        || receipt.multiAgentBackend !== 'v2'
+        || typeof receipt.executedCommand !== 'string'
+        || !receipt.executedCommand
+        || typeof receipt.rolloutId !== 'string'
+        || !receipt.rolloutId
+        || receipt.observedResult !== 'passed'
+        || !HASH.test(receipt.receiptDigest ?? '')
+        || receipt.receiptDigest !== unsignedDigest(
+            receipt,
+            'receiptDigest'
+        )) {
+        fail('permanent-e2e-child-evidence-invalid', key)
     }
-    cleanup.receiptDigest = computeQuiescenceDigest(cleanup)
-    observation.inventories.attempts.records = [{
-        attemptId: cleanup.attemptId,
-        issueTarget: 'Ozwasyd/FsusBlog#1829',
-        runId: cleanup.runId,
-        epochId: cleanup.epochId,
-        status: 'completed',
-        active: false,
-        terminalEventDigest: digest('final-e2e-terminal'),
-        cleanupReceiptDigest: cleanup.receiptDigest,
-        cleanupReceipt: cleanup
-    }]
-    observation.inventories.stages.records[0]
-        .resourceCleanupReceiptDigest = cleanup.receiptDigest
-    const receipt = evaluateQuiescence(observation)
-    if (receipt.status !== 'quiescent' ||
-        receipt.violations.length !== 0 ||
-        receipt.bootstrapDisposition.status !== 'retired' ||
-        receipt.bootstrapDisposition.fallbackEnabled !== false) {
-        fail(
-            'permanent-e2e-not-quiescent',
-            `permanent-e2e-not-quiescent:${JSON.stringify({
-                status: receipt.status,
-                violations: receipt.violations,
-                bootstrapDisposition: receipt.bootstrapDisposition
-            })}`
+    const profile = `${receipt.requestedModel === 'gpt-5.6-terra'
+        ? 'terra'
+        : receipt.requestedModel === 'gpt-5.6-sol' ? 'sol' : 'forbidden'
+    }-${receipt.requestedEffort}`
+    if (receipt.selectedProfile !== profile
+        || receipt.effectiveModel !== receipt.requestedModel
+        || receipt.effectiveEffort !== receipt.requestedEffort
+        || !/^(?:terra|sol)-(?:low|medium|high|xhigh|max)$/u.test(
+            receipt.selectedProfile
+        )) {
+        fail('permanent-e2e-child-profile-invalid', key)
+    }
+}
+
+function requireEvidence(value, code) {
+    if (value !== true) fail(code)
+    return value
+}
+
+function exactRegisteredProfiles(receipt) {
+    const expected = [
+        'sol-high',
+        'sol-low',
+        'sol-max',
+        'sol-medium',
+        'sol-xhigh',
+        'terra-high',
+        'terra-low',
+        'terra-max',
+        'terra-medium',
+        'terra-xhigh'
+    ]
+    return Array.isArray(receipt.registeredProfiles)
+        && receipt.registeredProfiles.length === expected.length
+        && [...receipt.registeredProfiles].sort().every(
+            (profile, index) => profile === expected[index]
         )
-    }
-    return receipt
 }
 
-function validateMutationControls(repositoryRoot, laneEvidence) {
-    const controls = readJson(repositoryRoot, mutationsRelative)
-    const verifiedLanes = new Set(
-        laneEvidence.map(({ laneFile }) => laneFile)
+function verifyEvidenceSemantics(receipts) {
+    const pool = receipts['model-pool-consistency']
+    requireEvidence(
+        pool.policySchema ===
+                'issue-orchestration.stage-model-pool-policy.v3'
+            && pool.policyVersion === 'stage-model-pool.v3'
+            && pool.routingSchema ===
+                'issue-orchestration.execution-routing-policy.v2'
+            && exactRegisteredProfiles(pool)
+            && pool.forbiddenProfileCount === 0
+            && pool.parallelModelTableCount === 0,
+        'permanent-e2e-model-pool-invalid'
     )
-    if (controls.length !== 19 ||
-        new Set(controls.map(({ id }) => id)).size !== 19 ||
-        controls.some(({ evidenceLane }) =>
-            evidenceLane !== 'cross-repo-e2e.test.mjs' &&
-            !verifiedLanes.has(evidenceLane))) {
-        fail('permanent-e2e-mutation-controls')
+
+    const rootCanary = receipts['root-runtime-canary']
+    requireEvidence(
+        rootCanary.runtimeKind === 'real-codex-v2-runtime'
+            && rootCanary.fiveCwdDiscoveryCount === 5
+            && rootCanary.coldStartWriterArtifactObserved === true
+            && HASH.test(rootCanary.runtimeCanaryReceiptDigest ?? ''),
+        'permanent-e2e-runtime-canary-invalid'
+    )
+
+    const rootControl = receipts['root-mechanical-control']
+    requireEvidence(
+        rootControl.semanticWorkPerformedByRoot === false
+            && rootControl.ownerDecisionCount === 0
+            && rootControl.acceptanceEditCount === 0
+            && rootControl.sliceProposalCount === 0
+            && rootControl.implementationWriteCount === 0,
+        'permanent-e2e-root-authority-invalid'
+    )
+    requireEvidence(
+        receipts['dag-startup-gate'].memberScopedGateVerified === true,
+        'permanent-e2e-startup-gate-invalid'
+    )
+    const coldStart = receipts['first-writer-cold-start']
+    requireEvidence(
+        coldStart.acceptanceBeforePlanning === true
+            && coldStart.planningBeforeLease === true
+            && coldStart.leaseBeforeFrozenContract === true
+            && coldStart.frozenContractBeforeWriter === true
+            && coldStart.distinctPlanningAndWriterRollouts === true
+            && coldStart.fabricatedHistoryCount === 0,
+        'permanent-e2e-cold-start-invalid'
+    )
+    requireEvidence(
+        receipts['scope-frontier-routing-consistency']
+            .routingCompilerOnly === true,
+        'permanent-e2e-routing-authority-invalid'
+    )
+    const slices = receipts['acceptance-slice-authority']
+    requireEvidence(
+        slices.acceptanceExact === true
+            && slices.rootAuthoredRequirementCount === 0
+            && slices.rootAuthoredSliceCount === 0
+            && slices.validatorMutatedProposal === false,
+        'permanent-e2e-acceptance-authority-invalid'
+    )
+    const retry = receipts['output-missing-retry']
+    requireEvidence(
+        retry.transientSameContractRetryCount === 1
+            && retry.secondEmptyRolloutTerminal === true
+            && retry.materialRetryBoundaryVerified === true,
+        'permanent-e2e-output-missing-retry-invalid'
+    )
+    const watchdog = receipts['writer-runtime-watchdog']
+    requireEvidence(
+        watchdog.onlineBeforeSpawn === true
+            && watchdog.firstActionObserved === true
+            && watchdog.firstArtifactObserved === true
+            && watchdog.failClosed === true,
+        'permanent-e2e-watchdog-invalid'
+    )
+    const revalidation = receipts['verifier-revalidation']
+    requireEvidence(
+        revalidation.oldReceiptInvalidated === true
+            && revalidation.freshCandidateBVerifier === true
+            && revalidation.inheritedContext === false
+            && revalidation.impactPlanVerified === true,
+        'permanent-e2e-verifier-revalidation-invalid'
+    )
+    requireEvidence(
+        receipts['git-landing-delivery'].realLandingVerified === true,
+        'permanent-e2e-git-landing-invalid'
+    )
+    requireEvidence(
+        receipts['human-decision-gate'].humanGateVerified === true,
+        'permanent-e2e-human-gate-invalid'
+    )
+    requireEvidence(
+        receipts['acceptance-group-atomicity']
+            .acceptanceGroupAtomicityVerified === true,
+        'permanent-e2e-acceptance-group-invalid'
+    )
+    requireEvidence(
+        receipts['ui-dual-skill'].uiDualSkillVerified === true,
+        'permanent-e2e-ui-dual-skill-invalid'
+    )
+
+    const rolloutIds = Object.values(receipts).map(
+        ({ rolloutId }) => rolloutId
+    )
+    const receiptDigests = Object.values(receipts).map(
+        ({ receiptDigest }) => receiptDigest
+    )
+    if (new Set(rolloutIds).size !== rolloutIds.length
+        || new Set(receiptDigests).size !== receiptDigests.length) {
+        fail('permanent-e2e-duplicate-evidence')
     }
-    return controls.length
 }
 
-export function verifyPermanentE2EReceipt(receipt) {
+function verifyPermanentE2EV2Receipt(receipt) {
     if (receipt?.schema !==
-            'issue-orchestration.permanent-e2e-receipt.v1' ||
-        receipt.status !== 'verified' ||
-        !HASH.test(receipt.packageDigest ?? '') ||
-        !SHA.test(receipt.sourceCommit ?? '') ||
-        !Array.isArray(receipt.repositories) ||
-        receipt.repositories.length !== 2 ||
-        receipt.repositories.some((entry) =>
-            entry.worktreeCount !== 1 ||
-            entry.localBranchCount !== 1 ||
-            entry.head !== entry.remoteHead) ||
-        !Array.isArray(receipt.dependencyStates) ||
-        receipt.dependencyStates.length < 22 ||
-        receipt.dependencyStates.some(({ state }) => state !== 'CLOSED') ||
-        !Array.isArray(receipt.laneEvidence) ||
-        receipt.laneEvidence.length !== 25 ||
-        !Array.isArray(receipt.childRollouts) ||
-        receipt.childRollouts.length !== 4 ||
-        receipt.childRollouts.some(({ exitCode }) => exitCode !== 0) ||
-        receipt.fiveCwdDiscoveryVerified !== true ||
-        receipt.realGitLandingVerified !== true ||
-        receipt.testContractLivenessVerified !== true ||
-        receipt.outputMissingRecoveryVerified !== true ||
-        receipt.acceptanceGroupAtomicityVerified !== true ||
-        receipt.uiDualSkillVerified !== true ||
-        receipt.humanGateVerified !== true ||
-        receipt.mutationControlsKilled !== 19 ||
-        receipt.falsePositiveDagDispatchCount !== 0 ||
-        receipt.temporaryBootstrapUsed !== false ||
-        receipt.temporaryBootstrapRunId !==
-            'cdfdbdbe-d901-4482-bafe-c4ba92c17779' ||
-        !HASH.test(receipt.resourceLifecycleSha256 ?? '') ||
-        !HASH.test(receipt.quiescenceReceiptDigest ?? '') ||
-        !Array.isArray(receipt.quiescenceViolations) ||
-        receipt.quiescenceViolations.length !== 0 ||
-        !HASH.test(receipt.receiptDigest ?? '') ||
-        receipt.receiptDigest !== unsignedDigest(
+            'issue-orchestration.permanent-e2e-receipt.v2'
+        || !['production-verified', 'fixture-verified'].includes(
+            receipt.status
+        )
+        || typeof receipt.productionReady !== 'boolean'
+        || !HASH.test(receipt.packageDigest ?? '')
+        || !HASH.test(receipt.policyDigest ?? '')
+        || !SHA.test(receipt.sourceCommit ?? '')
+        || typeof receipt.runFamily !== 'string'
+        || !receipt.runFamily
+        || !HASH.test(receipt.candidateDigest ?? '')
+        || !receipt.evidenceRefs
+        || !sameKeySet(
+            Object.keys(receipt.evidenceRefs),
+            PERMANENT_E2E_EVIDENCE_KEYS
+        )
+        || Object.values(receipt.evidenceRefs).some(
+            (value) => !HASH.test(value ?? '')
+        )
+        || receipt.fiveCwdDiscoveryVerified !== true
+        || receipt.testContractLivenessVerified !== true
+        || receipt.outputMissingRecoveryVerified !== true
+        || receipt.onlineWatchdogVerified !== true
+        || receipt.verifierRevalidationVerified !== true
+        || receipt.realGitLandingVerified !== true
+        || receipt.acceptanceGroupAtomicityVerified !== true
+        || receipt.uiDualSkillVerified !== true
+        || receipt.humanGateVerified !== true
+        || receipt.rootProfileVerified !== true
+        || receipt.rootMechanicalControlVerified !== true
+        || receipt.temporaryBootstrapUsed !== false
+        || receipt.temporarySchedulerUsed !== false
+        || receipt.fallbackExecutorUsed !== false
+        || receipt.repoLocalCopyUsed !== false
+        || !Array.isArray(receipt.quiescenceViolations)
+        || receipt.quiescenceViolations.length !== 0
+        || !Number.isInteger(receipt.mutationControlsKilled)
+        || receipt.mutationControlsKilled < 1
+        || !HASH.test(receipt.mutationEvidenceDigest ?? '')
+        || !HASH.test(receipt.receiptDigest ?? '')
+        || receipt.receiptDigest !== unsignedDigest(
             receipt,
             'receiptDigest'
         )) {
         fail('permanent-e2e-receipt-invalid')
     }
-    return deepFreeze(structuredClone(receipt))
+    if ((receipt.status === 'production-verified')
+            !== receipt.productionReady) {
+        fail('permanent-e2e-production-status-invalid')
+    }
+    return deepFreeze({
+        status: 'valid',
+        receipt: structuredClone(receipt)
+    })
+}
+
+function sameKeySet(left, right) {
+    return left.length === right.length
+        && [...left].sort().every(
+            (value, index) => value === [...right].sort()[index]
+        )
+}
+
+export function reducePermanentE2EEvidence({
+    mode,
+    receipts,
+    expectedBindings
+}) {
+    if (!['live', 'fixture'].includes(mode)
+        || !receipts
+        || !expectedBindings
+        || !HASH.test(expectedBindings.packageDigest ?? '')
+        || !HASH.test(expectedBindings.policyDigest ?? '')
+        || !SHA.test(expectedBindings.sourceCommit ?? '')
+        || !HASH.test(expectedBindings.candidateDigest ?? '')
+        || typeof expectedBindings.runFamily !== 'string'
+        || !expectedBindings.runFamily
+        || !sameKeySet(
+            Object.keys(receipts),
+            PERMANENT_E2E_EVIDENCE_KEYS
+        )) {
+        fail('permanent-e2e-evidence-bundle-invalid')
+    }
+    for (const key of PERMANENT_E2E_EVIDENCE_KEYS) {
+        verifyChildEvidence({
+            key,
+            receipt: receipts[key],
+            mode,
+            expectedBindings
+        })
+    }
+    verifyEvidenceSemantics(receipts)
+
+    const rootCanary = receipts['root-runtime-canary']
+    const rootControl = receipts['root-mechanical-control']
+    if (rootCanary.selectedProfile !== 'terra-low'
+        || rootCanary.requestedEffort !== 'low'
+        || rootCanary.effectiveEffort !== 'low'
+        || rootControl.selectedProfile !== 'terra-low'
+        || rootControl.requestedEffort !== 'low'
+        || rootControl.effectiveEffort !== 'low'
+        || rootControl.semanticWorkPerformedByRoot !== false) {
+        fail('permanent-e2e-root-authority-invalid')
+    }
+
+    const mutationReceipt = receipts['mutation-execution-summary']
+    if (!Array.isArray(mutationReceipt.mutations)
+        || mutationReceipt.mutations.length < 1
+        || new Set(mutationReceipt.mutations.map(
+            ({ mutationId }) => mutationId
+        )).size !== mutationReceipt.mutations.length) {
+        fail('permanent-e2e-mutations-invalid')
+    }
+    for (const mutation of mutationReceipt.mutations) {
+        if (!mutation.mutationId
+            || !HASH.test(mutation.injectedInputDigest ?? '')
+            || mutation.expectedRejectionCode !==
+                mutation.actualRejectionCode
+            || mutation.commandExitCode === 0
+            || !HASH.test(mutation.restorationDigest ?? '')) {
+            fail('permanent-e2e-mutation-survived')
+        }
+    }
+
+    const quiescence = receipts['live-quiescence']
+    if (quiescence.observationSource !==
+            'issue-orchestration.quiescence-observation-collector.v1'
+        || quiescence.observationFresh !== true
+        || !Array.isArray(quiescence.violations)
+        || quiescence.violations.length !== 0) {
+        fail('permanent-e2e-quiescence-invalid')
+    }
+    const trace = receipts['no-temporary-scheduler-trace']
+    for (const field of [
+        'temporaryBootstrapCount',
+        'temporarySchedulerCount',
+        'residentDaemonCount',
+        'fallbackExecutorCount',
+        'repoLocalCopyCount'
+    ]) {
+        if (trace[field] !== 0) {
+            fail('permanent-e2e-temporary-authority-observed')
+        }
+    }
+
+    const evidenceRefs = Object.fromEntries(
+        PERMANENT_E2E_EVIDENCE_KEYS.map((key) => [
+            key,
+            receipts[key].receiptDigest
+        ])
+    )
+    const productionReady = mode === 'live'
+    const receipt = {
+        schema: 'issue-orchestration.permanent-e2e-receipt.v2',
+        status: productionReady
+            ? 'production-verified'
+            : 'fixture-verified',
+        productionReady,
+        mode,
+        packageDigest: expectedBindings.packageDigest,
+        policyDigest: expectedBindings.policyDigest,
+        sourceCommit: expectedBindings.sourceCommit,
+        runFamily: expectedBindings.runFamily,
+        candidateDigest: expectedBindings.candidateDigest,
+        evidenceRefs,
+        fiveCwdDiscoveryVerified:
+            rootCanary.fiveCwdDiscoveryCount === 5,
+        testContractLivenessVerified:
+            receipts['first-writer-cold-start']
+                .frozenContractBeforeWriter === true,
+        outputMissingRecoveryVerified:
+            receipts['output-missing-retry']
+                .transientSameContractRetryCount === 1
+            && receipts['output-missing-retry']
+                .materialRetryBoundaryVerified === true,
+        onlineWatchdogVerified:
+            receipts['writer-runtime-watchdog']
+                .onlineBeforeSpawn === true,
+        verifierRevalidationVerified:
+            receipts['verifier-revalidation']
+                .freshCandidateBVerifier === true,
+        realGitLandingVerified:
+            receipts['git-landing-delivery']
+                .realLandingVerified === true,
+        acceptanceGroupAtomicityVerified:
+            receipts['acceptance-group-atomicity']
+                .acceptanceGroupAtomicityVerified === true,
+        uiDualSkillVerified:
+            receipts['ui-dual-skill'].uiDualSkillVerified === true,
+        humanGateVerified:
+            receipts['human-decision-gate']
+                .humanGateVerified === true,
+        rootProfileVerified:
+            rootCanary.selectedProfile === 'terra-low',
+        rootMechanicalControlVerified:
+            rootControl.semanticWorkPerformedByRoot === false,
+        mutationControlsKilled: mutationReceipt.mutations.length,
+        mutationEvidenceDigest: digest(mutationReceipt.mutations),
+        quiescenceViolations: structuredClone(quiescence.violations),
+        quiescenceObservationDigest: quiescence.receiptDigest,
+        temporaryBootstrapUsed:
+            trace.temporaryBootstrapCount !== 0,
+        temporarySchedulerUsed:
+            trace.temporarySchedulerCount !== 0,
+        fallbackExecutorUsed:
+            trace.fallbackExecutorCount !== 0,
+        repoLocalCopyUsed:
+            trace.repoLocalCopyCount !== 0
+    }
+    receipt.receiptDigest = unsignedDigest(receipt, 'receiptDigest')
+    return verifyPermanentE2EV2Receipt(receipt).receipt
+}
+
+export function verifyPermanentE2EReceipt(receipt) {
+    return verifyPermanentE2EV2Receipt(receipt)
 }
 
 export async function runPermanentCrossRepoE2E({
-    repositoryRoot = defaultRepositoryRoot,
-    fsusUIRoot = path.resolve(repositoryRoot, '../FsusUI'),
-    live = false
+    evidenceBundle
 } = {}) {
-    const contract = readContract(repositoryRoot)
-    const manifest = readManifest(repositoryRoot)
-    const runId = `permanent-e2e-${randomUUID()}`
-    const staticLaneFiles = contract.laneFiles.filter(
-        (lane) => lane !== 'cross-repo-e2e.test.mjs'
-    )
-    const [repositories, dependencies, laneEvidence] =
-        await Promise.all([
-            Promise.all([
-                inspectRepository({
-                    repository: 'Ozwasyd/FsusBlog',
-                    root: repositoryRoot,
-                    branch: 'master',
-                    live
-                }),
-                inspectRepository({
-                    repository: 'Ozwasyd/FsusUI',
-                    root: fsusUIRoot,
-                    branch: 'main',
-                    live
-                })
-            ]),
-            dependencyStates({ contract, live }),
-            Promise.all(staticLaneFiles.map((lane) =>
-                verifyPermanentE2ELane(lane, { repositoryRoot })))
-        ])
-    const childRollouts = await Promise.all(
-        CHILD_ROLLOUT_GROUPS.map((group) =>
-            runChildRollout(group, repositoryRoot, runId))
-    )
-    const quiescenceReceipt =
-        buildQuiescenceReceipt(repositoryRoot)
-    const mutationControlsKilled = validateMutationControls(
-        repositoryRoot,
-        laneEvidence
-    )
-    const resourceLifecycleSha256 = createHash('sha256')
-        .update(fs.readFileSync(path.resolve(
-            repositoryRoot,
-            'tools/codex/issue-orchestration-package/skills/issue-orchestration/scripts/resource-lifecycle.mjs'
-        )))
-        .digest('hex')
-    if (resourceLifecycleSha256 !==
-        contract.frozenResourceLifecycleSha256) {
-        fail('permanent-e2e-resource-lifecycle-drift')
-    }
-    const remoteRereadRepositories = await Promise.all([
-        inspectRepository({
-            repository: 'Ozwasyd/FsusBlog',
-            root: repositoryRoot,
-            branch: 'master',
-            live
-        }),
-        inspectRepository({
-            repository: 'Ozwasyd/FsusUI',
-            root: fsusUIRoot,
-            branch: 'main',
-            live
-        })
-    ])
-    const receipt = {
-        schema: 'issue-orchestration.permanent-e2e-receipt.v1',
-        runId,
-        status: 'verified',
-        liveRemoteEvidence: live,
-        packageDigest: manifest.manifestDigest,
-        sourceCommit: manifest.sourceCommit,
-        repositories,
-        dependencyStates: dependencies,
-        laneEvidence,
-        childRollouts,
-        fiveCwdDiscoveryVerified: true,
-        realGitLandingVerified: true,
-        testContractLivenessVerified: true,
-        outputMissingRecoveryVerified: true,
-        acceptanceGroupAtomicityVerified: true,
-        uiDualSkillVerified: true,
-        humanGateVerified: true,
-        mutationControlsKilled,
-        falsePositiveDagDispatchCount: 0,
-        temporaryBootstrapUsed: false,
-        temporaryBootstrapRunId:
-            contract.temporaryBootstrapRunId,
-        temporaryBootstrapDisposition:
-            contract.temporaryBootstrapDisposition,
-        resourceLifecycleSha256,
-        quiescenceReceiptDigest: quiescenceReceipt.receiptDigest,
-        quiescenceViolations: quiescenceReceipt.violations,
-        remoteReread: {
-            blogHead: remoteRereadRepositories[0].remoteHead,
-            fsusUIHead: remoteRereadRepositories[1].remoteHead,
-            dependencySnapshotDigest: digest(dependencies)
-        }
-    }
-    receipt.receiptDigest = unsignedDigest(receipt, 'receiptDigest')
-    return verifyPermanentE2EReceipt(receipt)
+    return reducePermanentE2EEvidence(evidenceBundle)
 }
 
 async function main() {
-    const live = process.argv.includes('--live')
-    const receipt = await runPermanentCrossRepoE2E({ live })
+    const bundleIndex = process.argv.indexOf('--evidence-bundle')
+    if (bundleIndex < 0 || !process.argv[bundleIndex + 1]) {
+        fail('permanent-e2e-evidence-bundle-required')
+    }
+    const evidenceBundle = JSON.parse(fs.readFileSync(
+        path.resolve(process.argv[bundleIndex + 1]),
+        'utf8'
+    ))
+    const receipt = await runPermanentCrossRepoE2E({ evidenceBundle })
     process.stdout.write(`${JSON.stringify(receipt)}\n`)
 }
 

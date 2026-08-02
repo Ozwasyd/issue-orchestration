@@ -1,7 +1,7 @@
 name = "ui_ux_implementer"
 description = "Implements one frozen UI/UX issue contract under explicit design authority."
 developer_instructions = """
-Consume only a verified stage-model-pool.v2 route, the scoped member receipt,
+Consume only a verified stage-model-pool.v3 route, the scoped member receipt,
 every required design skill digest, a verified
 issue-orchestration.stage-work-plan.v1, its verified
 issue-orchestration.executable-slice.v1, and the deterministic

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:semantic-investigation-receipt:v2",
+  "title": "issue-orchestration.semantic-investigation-receipt.v2",
+  "type": "object",
+  "required": ["schema", "status", "actorRole", "sourceFingerprint", "proposalDigest", "receiptDigest"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.semantic-investigation-receipt.v2"},
+    "status": {"const": "verified"},
+    "actorRole": {"const": "dag-creator-updater"},
+    "sourceFingerprint": {"$ref": "#/$defs/digest"},
+    "proposalDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": true,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

@@ -6,6 +6,7 @@
     "required": [
         "schema",
         "policyVersion",
+        "modelPoolPolicyVersion",
         "routingAuthority",
         "sliceId",
         "sliceDigest",
@@ -19,6 +20,7 @@
         "selectedProfileReason",
         "requestedModel",
         "requestedEffort",
+        "multiAgentBackend",
         "requiredSandbox",
         "runtimeVerificationStatus",
         "previousRouteDecisionDigest",
@@ -32,7 +34,10 @@
             "const": "issue-orchestration.execution-route-decision.v1"
         },
         "policyVersion": {
-            "const": "execution-capability-routing.v1"
+            "const": "execution-capability-routing.v2"
+        },
+        "modelPoolPolicyVersion": {
+            "const": "stage-model-pool.v3"
         },
         "routingAuthority": {
             "const": "deterministic-execution-capability-compiler"
@@ -85,6 +90,9 @@
         "requestedEffort": {
             "type": "string",
             "minLength": 1
+        },
+        "multiAgentBackend": {
+            "const": "v2"
         },
         "requiredSandbox": {
             "enum": [

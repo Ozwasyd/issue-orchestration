@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:slice-plan-proposal:v1",
+  "title": "issue-orchestration.slice-plan-proposal.v1",
+  "type": "object",
+  "required": [
+    "schema", "proposalAuthoredBy", "rootAuthored",
+    "acceptanceContractDigest", "stageRole", "stagePhase", "objective",
+    "allowedPaths", "forbiddenPaths", "requiredCommands",
+    "requiredEvidence", "orderedSlices", "sliceDependencyGraph",
+    "actorRuntime", "proposalDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.slice-plan-proposal.v1"},
+    "proposalAuthoredBy": {"type": "string", "minLength": 1},
+    "rootAuthored": {"const": false},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "stageRole": {"type": "string"},
+    "stagePhase": {"type": "string"},
+    "objective": {"type": "string"},
+    "allowedPaths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "forbiddenPaths": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "requiredCommands": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "requiredEvidence": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "orderedSlices": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "sliceDependencyGraph": {"type": "object"},
+    "actorRuntime": {"type": "object"},
+    "proposalDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

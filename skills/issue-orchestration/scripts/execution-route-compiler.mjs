@@ -6,7 +6,8 @@ import {
     STAGE_MODEL_POOL_POLICY,
     STAGE_ROUTE_DEFINITIONS,
     splitProfile,
-    validateRoutingClassification
+    validateRoutingClassification,
+    verifyRuntimeProfileMetadata
 } from './stage-profile-policy.mjs'
 import {
     compileExecutableSlice
@@ -111,14 +112,17 @@ export function verifyProfileCapabilityMatrix({
     observations = CAPABILITY_OBSERVATIONS
 } = {}) {
     if (matrix?.schema !==
-            'issue-orchestration.profile-capability-matrix.v1' ||
+            'issue-orchestration.profile-capability-matrix.v2' ||
         matrix.policyVersion !== ROUTING_POLICY.version ||
+        matrix.modelPoolPolicyVersion !==
+            STAGE_MODEL_POOL_POLICY.version ||
         matrix.evidenceAuthority !==
-            'recomputed-machine-runtime-observations' ||
+            'recomputed-codex-v2-runtime-observations' ||
         matrix.modelSelfReportAccepted !== false ||
         observations?.schema !==
-            'issue-orchestration.profile-capability-observations.v1' ||
-        observations.authority !== 'machine-runtime-fixture-observer' ||
+            'issue-orchestration.profile-capability-observations.v2' ||
+        observations.authority !==
+            'codex-v2-runtime-metadata-observer' ||
         matrix.evidenceDigest !== digest(observations)) {
         fail('execution-route-capability-matrix-invalid')
     }
@@ -132,7 +136,13 @@ export function verifyProfileCapabilityMatrix({
         'visibleCommandLoopCount',
         'sliceCompletionStatus',
         'outputMissingClass',
-        'runtimeInvocationFailure'
+        'runtimeInvocationFailure',
+        'requestedModel',
+        'effectiveModel',
+        'requestedEffort',
+        'effectiveEffort',
+        'multiAgentBackend',
+        'runtimeMetadataObserved'
     ]
     const observationProfiles = new Set()
     for (const observation of observations.observations ?? []) {
@@ -143,6 +153,21 @@ export function verifyProfileCapabilityMatrix({
             fail('execution-route-capability-evidence-invalid')
         }
         observationProfiles.add(observation.profileId)
+        try {
+            verifyRuntimeProfileMetadata({
+                selectedProfile: observation.profileId,
+                requestedModel: observation.requestedModel,
+                effectiveModel: observation.effectiveModel,
+                requestedEffort: observation.requestedEffort,
+                effectiveEffort: observation.effectiveEffort,
+                multiAgentBackend: observation.multiAgentBackend
+            })
+        } catch {
+            fail('execution-route-capability-runtime-metadata-invalid')
+        }
+        if (observation.runtimeMetadataObserved !== true) {
+            fail('execution-route-capability-runtime-metadata-invalid')
+        }
         if (!sameValue(
             matrix.profiles?.[observation.profileId],
             capabilityFromObservation(observation)
@@ -478,15 +503,19 @@ function validateRuntimeObservation(observation, selectedProfile) {
             'issue-orchestration.runtime-capability-observation.v1' ||
         observation.source !== 'runtime-capability-registry' ||
         observation.observable !== true ||
-        typeof observation.requestedProfile !== 'string' ||
-        !observation.requestedProfile ||
-        typeof observation.effectiveProfile !== 'string' ||
-        !observation.effectiveProfile ||
         !HASH.test(observation.observationDigest ?? '')) {
         fail('execution-route-runtime-unobservable')
     }
-    if (observation.requestedProfile !== selectedProfile ||
-        observation.effectiveProfile !== selectedProfile) {
+    try {
+        verifyRuntimeProfileMetadata({
+            selectedProfile,
+            requestedModel: observation.requestedModel,
+            effectiveModel: observation.effectiveModel,
+            requestedEffort: observation.requestedEffort,
+            effectiveEffort: observation.effectiveEffort,
+            multiAgentBackend: observation.multiAgentBackend
+        })
+    } catch {
         fail('execution-route-runtime-profile-mismatch')
     }
     return 'verified'
@@ -514,6 +543,7 @@ function compileDecision({
     return seal({
         schema: 'issue-orchestration.execution-route-decision.v1',
         policyVersion: ROUTING_POLICY.version,
+        modelPoolPolicyVersion: STAGE_MODEL_POOL_POLICY.version,
         routingAuthority: ROUTING_POLICY.routingAuthority,
         sliceId: shape.sliceId,
         sliceDigest: shape.sliceDigest,
@@ -527,6 +557,10 @@ function compileDecision({
         selectedProfileReason: selected.selectedProfileReason,
         requestedModel: runtime.model,
         requestedEffort: runtime.effort,
+        multiAgentBackend:
+            STAGE_MODEL_POOL_POLICY.profiles[
+                selected.selectedProfile
+            ].multiAgentBackend,
         requiredSandbox: requirement.requiredSandbox,
         runtimeVerificationStatus,
         previousRouteDecisionDigest: null,

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:quiescence-observation-collector-receipt:v1",
+  "title": "issue-orchestration.quiescence-observation-collector-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "runId", "machineId", "baselineDigest",
+    "inventoryDigests", "staticFixtureUsed", "mutationCount",
+    "observationDigest", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.quiescence-observation-collector-receipt.v1"},
+    "status": {"enum": ["complete", "incomplete"]},
+    "runId": {"type": "string"},
+    "machineId": {"type": "string"},
+    "baselineDigest": {"$ref": "#/$defs/digest"},
+    "inventoryDigests": {"type": "object", "minProperties": 1},
+    "staticFixtureUsed": {"const": false},
+    "mutationCount": {"const": 0},
+    "observationDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

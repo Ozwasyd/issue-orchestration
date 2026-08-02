@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:behavior-receipt:v3",
+  "title": "issue-orchestration.behavior-receipt.v3",
+  "type": "object",
+  "required": [
+    "schema", "status", "candidate", "candidateDigest",
+    "blockerReceiptDigest", "impactPlanDigest", "verifierRolloutId",
+    "freshContext", "sandbox", "commandEvidence", "reusableEvidence",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.behavior-receipt.v3"},
+    "status": {"const": "behavior-green"},
+    "candidate": {"type": "object"},
+    "candidateDigest": {"$ref": "#/$defs/digest"},
+    "blockerReceiptDigest": {"$ref": "#/$defs/digest"},
+    "impactPlanDigest": {"$ref": "#/$defs/digest"},
+    "verifierRolloutId": {"type": "string"},
+    "freshContext": {"const": true},
+    "sandbox": {"const": "read-only"},
+    "commandEvidence": {"type": "array", "minItems": 1},
+    "reusableEvidence": {"type": "array"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

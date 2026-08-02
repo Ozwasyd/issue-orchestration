@@ -40,7 +40,7 @@ const manifest = {
         agentId,
         artifactDigests[`agents/${agentId}.toml`]
     ])),
-    modelPoolPolicyVersion: 'stage-model-pool.v2',
+    modelPoolPolicyVersion: 'stage-model-pool.v3',
     modelPoolDigest: artifactDigests['policy/model-pool.json'],
     routingPolicyDigest: artifactDigests['policy/routing-policy.json'],
     stagePermissionDigest:
@@ -114,7 +114,10 @@ const manifest = {
         'product-design',
         'product-documentation',
         'product-runtime',
-        'repository-agents'
+        'repository-agents',
+        'repo-local-orchestration-copy',
+        'temporary-scheduler',
+        'bootstrap-executor'
     ],
     artifactDigests
 }

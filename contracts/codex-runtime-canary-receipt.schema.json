@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:codex-runtime-canary-receipt:v1",
+  "title": "issue-orchestration.codex-runtime-canary-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "source", "packageDigest", "policyDigest",
+    "sourceCommit", "runId", "rootReceipt", "rollouts", "cwdDiscovery",
+    "coldStart", "cleanup", "runtimeTrace", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.codex-runtime-canary-receipt.v1"},
+    "status": {"const": "production-verified"},
+    "source": {"const": "real-codex-v2-runtime"},
+    "packageDigest": {"$ref": "#/$defs/digest"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "sourceCommit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "runId": {"type": "string"},
+    "rootReceipt": {"type": "object"},
+    "rollouts": {"type": "array", "minItems": 3},
+    "cwdDiscovery": {"type": "array", "minItems": 5},
+    "coldStart": {"type": "object"},
+    "cleanup": {"type": "object"},
+    "runtimeTrace": {"type": "object"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

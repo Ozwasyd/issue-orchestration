@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:verification-impact-plan:v1",
+  "title": "issue-orchestration.verification-impact-plan.v1",
+  "type": "object",
+  "required": [
+    "schema", "blockerReceiptDigest", "candidateDigest", "impactedPaths",
+    "blockerRequirementIds", "globalInvariantCommands", "commands",
+    "highRiskBoundaries", "fullVerificationRequired", "planDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.verification-impact-plan.v1"},
+    "blockerReceiptDigest": {"$ref": "#/$defs/digest"},
+    "candidateDigest": {"$ref": "#/$defs/digest"},
+    "impactedPaths": {"type": "array", "minItems": 1},
+    "blockerRequirementIds": {"type": "array", "minItems": 1},
+    "globalInvariantCommands": {"type": "array", "minItems": 1},
+    "commands": {"type": "array", "minItems": 1},
+    "highRiskBoundaries": {"type": "array"},
+    "fullVerificationRequired": {"type": "boolean"},
+    "planDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:dispatch-investigation-projection:v1",
+  "title": "issue-orchestration.dispatch-investigation-projection.v1",
+  "type": "object",
+  "required": [
+    "schema", "repository", "issueNumber", "sourceFingerprint",
+    "semanticReceiptDigest", "acceptanceContractDigest",
+    "testPlanningReceiptDigest", "sliceValidationReceiptDigest",
+    "stageRole", "stagePhase", "allowedPaths", "requiredCommands",
+    "acceptanceIds", "selectedSliceId", "selectedSliceDigest",
+    "compiledPromptDigest", "nextActions", "fullIssueBodyIncluded",
+    "fullDagIncluded", "stateRootIncluded", "projectionDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.dispatch-investigation-projection.v1"},
+    "repository": {"type": "string"},
+    "issueNumber": {"type": "integer"},
+    "sourceFingerprint": {"$ref": "#/$defs/digest"},
+    "semanticReceiptDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "testPlanningReceiptDigest": {"$ref": "#/$defs/digest"},
+    "sliceValidationReceiptDigest": {"$ref": "#/$defs/digest"},
+    "uiAdjudicationReceiptDigest": {"oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+    "stageRole": {"type": "string"},
+    "stagePhase": {"type": "string"},
+    "allowedPaths": {"type": "array"},
+    "requiredCommands": {"type": "array"},
+    "acceptanceIds": {"type": "array"},
+    "selectedSliceId": {"type": "string"},
+    "selectedSliceDigest": {"$ref": "#/$defs/digest"},
+    "compiledPromptDigest": {"$ref": "#/$defs/digest"},
+    "nextActions": {"type": "array", "minItems": 1, "maxItems": 1},
+    "fullIssueBodyIncluded": {"const": false},
+    "fullDagIncluded": {"const": false},
+    "stateRootIncluded": {"const": false},
+    "projectionDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

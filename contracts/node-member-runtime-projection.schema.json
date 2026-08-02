@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:node-member-runtime-projection:v1",
+  "title": "issue-orchestration.node-member-runtime-projection.v1",
+  "type": "object",
+  "required": [
+    "schema", "memberId", "stageState", "acceptanceContractDigest",
+    "testContractDigest", "planDigest", "sliceDigest", "promptDigest",
+    "routeDecision", "runtimeMetadata", "receipts", "resourceOwnership",
+    "projectionDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.node-member-runtime-projection.v1"},
+    "memberId": {"type": "string", "minLength": 1},
+    "stageState": {"enum": ["active", "completed", "retry", "continuation", "terminal"]},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "testContractDigest": {"$ref": "#/$defs/digest"},
+    "planDigest": {"$ref": "#/$defs/digest"},
+    "sliceDigest": {"$ref": "#/$defs/digest"},
+    "promptDigest": {"$ref": "#/$defs/digest"},
+    "routeDecision": {"type": "object"},
+    "runtimeMetadata": {"type": "object"},
+    "receipts": {"type": "object"},
+    "resourceOwnership": {"type": "object"},
+    "projectionDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": true,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

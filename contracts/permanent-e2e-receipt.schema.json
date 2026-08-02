@@ -1,300 +1,169 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:issue-orchestration:permanent-e2e-receipt:v1",
-  "title": "issue-orchestration.permanent-e2e-receipt.v1",
+  "$id": "urn:issue-orchestration:permanent-e2e-receipt:v2",
+  "title": "issue-orchestration.permanent-e2e-receipt.v2",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "schema",
-    "runId",
     "status",
-    "liveRemoteEvidence",
+    "productionReady",
+    "mode",
     "packageDigest",
+    "policyDigest",
     "sourceCommit",
-    "repositories",
-    "dependencyStates",
-    "laneEvidence",
-    "childRollouts",
+    "runFamily",
+    "candidateDigest",
+    "evidenceRefs",
     "fiveCwdDiscoveryVerified",
-    "realGitLandingVerified",
     "testContractLivenessVerified",
     "outputMissingRecoveryVerified",
+    "onlineWatchdogVerified",
+    "verifierRevalidationVerified",
+    "realGitLandingVerified",
     "acceptanceGroupAtomicityVerified",
     "uiDualSkillVerified",
     "humanGateVerified",
+    "rootProfileVerified",
+    "rootMechanicalControlVerified",
     "mutationControlsKilled",
-    "falsePositiveDagDispatchCount",
-    "temporaryBootstrapUsed",
-    "temporaryBootstrapRunId",
-    "temporaryBootstrapDisposition",
-    "resourceLifecycleSha256",
-    "quiescenceReceiptDigest",
+    "mutationEvidenceDigest",
     "quiescenceViolations",
-    "remoteReread",
+    "quiescenceObservationDigest",
+    "temporaryBootstrapUsed",
+    "temporarySchedulerUsed",
+    "fallbackExecutorUsed",
+    "repoLocalCopyUsed",
     "receiptDigest"
   ],
   "properties": {
     "schema": {
-      "const": "issue-orchestration.permanent-e2e-receipt.v1"
+      "const": "issue-orchestration.permanent-e2e-receipt.v2"
     },
-    "runId": {
+    "status": {
+      "enum": ["production-verified", "fixture-verified"]
+    },
+    "productionReady": {
+      "type": "boolean"
+    },
+    "mode": {
+      "enum": ["live", "fixture"]
+    },
+    "packageDigest": {
+      "$ref": "#/$defs/hash"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/hash"
+    },
+    "sourceCommit": {
+      "$ref": "#/$defs/sha"
+    },
+    "runFamily": {
       "type": "string",
       "minLength": 1
     },
-    "status": {
-      "const": "verified"
+    "candidateDigest": {
+      "$ref": "#/$defs/hash"
     },
-    "liveRemoteEvidence": {
-      "type": "boolean"
-    },
-    "packageDigest": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
-    },
-    "sourceCommit": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{40}$"
-    },
-    "repositories": {
-      "type": "array",
-      "minItems": 2,
-      "maxItems": 2,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "repository",
-          "root",
-          "head",
-          "branch",
-          "remoteHead",
-          "worktreeCount",
-          "localBranchCount",
-          "statusDigest"
-        ],
-        "properties": {
-          "repository": {
-            "enum": [
-              "Ozwasyd/FsusBlog",
-              "Ozwasyd/FsusUI"
-            ]
-          },
-          "root": {
-            "type": "string",
-            "minLength": 1
-          },
-          "head": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{40}$"
-          },
-          "branch": {
-            "type": "string",
-            "minLength": 1
-          },
-          "remoteHead": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{40}$"
-          },
-          "worktreeCount": {
-            "const": 1
-          },
-          "localBranchCount": {
-            "const": 1
-          },
-          "statusDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        }
+    "evidenceRefs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shared-package-discovery",
+        "model-pool-consistency",
+        "root-runtime-canary",
+        "root-mechanical-control",
+        "dag-startup-gate",
+        "first-writer-cold-start",
+        "scope-frontier-routing-consistency",
+        "acceptance-slice-authority",
+        "output-missing-retry",
+        "writer-runtime-watchdog",
+        "verifier-revalidation",
+        "git-landing-delivery",
+        "mutation-execution-summary",
+        "live-quiescence",
+        "no-temporary-scheduler-trace",
+        "human-decision-gate",
+        "acceptance-group-atomicity",
+        "ui-dual-skill"
+      ],
+      "properties": {
+        "shared-package-discovery": {"$ref": "#/$defs/hash"},
+        "model-pool-consistency": {"$ref": "#/$defs/hash"},
+        "root-runtime-canary": {"$ref": "#/$defs/hash"},
+        "root-mechanical-control": {"$ref": "#/$defs/hash"},
+        "dag-startup-gate": {"$ref": "#/$defs/hash"},
+        "first-writer-cold-start": {"$ref": "#/$defs/hash"},
+        "scope-frontier-routing-consistency": {"$ref": "#/$defs/hash"},
+        "acceptance-slice-authority": {"$ref": "#/$defs/hash"},
+        "output-missing-retry": {"$ref": "#/$defs/hash"},
+        "writer-runtime-watchdog": {"$ref": "#/$defs/hash"},
+        "verifier-revalidation": {"$ref": "#/$defs/hash"},
+        "git-landing-delivery": {"$ref": "#/$defs/hash"},
+        "mutation-execution-summary": {"$ref": "#/$defs/hash"},
+        "live-quiescence": {"$ref": "#/$defs/hash"},
+        "no-temporary-scheduler-trace": {"$ref": "#/$defs/hash"},
+        "human-decision-gate": {"$ref": "#/$defs/hash"},
+        "acceptance-group-atomicity": {"$ref": "#/$defs/hash"},
+        "ui-dual-skill": {"$ref": "#/$defs/hash"}
       }
     },
-    "dependencyStates": {
-      "type": "array",
-      "minItems": 22,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "target",
-          "state",
-          "evidenceDigest"
-        ],
-        "properties": {
-          "target": {
-            "type": "string",
-            "minLength": 1
-          },
-          "state": {
-            "const": "CLOSED"
-          },
-          "evidenceDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        }
-      }
-    },
-    "laneEvidence": {
-      "type": "array",
-      "minItems": 25,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "laneFile",
-          "status",
-          "evidenceFiles",
-          "evidenceDigest"
-        ],
-        "properties": {
-          "laneFile": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "const": "verified"
-          },
-          "evidenceFiles": {
-            "type": "array",
-            "minItems": 1,
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          },
-          "evidenceDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          }
-        }
-      }
-    },
-    "childRollouts": {
-      "type": "array",
-      "minItems": 4,
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "rolloutId",
-          "command",
-          "exitCode",
-          "stdoutDigest",
-          "stderrDigest",
-          "durationMs",
-          "testSummary"
-        ],
-        "properties": {
-          "rolloutId": {
-            "type": "string",
-            "minLength": 1
-          },
-          "command": {
-            "type": "array",
-            "minItems": 2,
-            "items": {
-              "type": "string"
-            }
-          },
-          "exitCode": {
-            "const": 0
-          },
-          "stdoutDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          },
-          "stderrDigest": {
-            "type": "string",
-            "pattern": "^[a-f0-9]{64}$"
-          },
-          "durationMs": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "testSummary": {
-            "type": "string",
-            "minLength": 1
-          }
-        }
-      }
-    },
-    "fiveCwdDiscoveryVerified": {
-      "const": true
-    },
-    "realGitLandingVerified": {
-      "const": true
-    },
-    "testContractLivenessVerified": {
-      "const": true
-    },
-    "outputMissingRecoveryVerified": {
-      "const": true
-    },
-    "acceptanceGroupAtomicityVerified": {
-      "const": true
-    },
-    "uiDualSkillVerified": {
-      "const": true
-    },
-    "humanGateVerified": {
-      "const": true
-    },
+    "fiveCwdDiscoveryVerified": {"const": true},
+    "testContractLivenessVerified": {"const": true},
+    "outputMissingRecoveryVerified": {"const": true},
+    "onlineWatchdogVerified": {"const": true},
+    "verifierRevalidationVerified": {"const": true},
+    "realGitLandingVerified": {"const": true},
+    "acceptanceGroupAtomicityVerified": {"const": true},
+    "uiDualSkillVerified": {"const": true},
+    "humanGateVerified": {"const": true},
+    "rootProfileVerified": {"const": true},
+    "rootMechanicalControlVerified": {"const": true},
     "mutationControlsKilled": {
-      "const": 19
+      "type": "integer",
+      "minimum": 1
     },
-    "falsePositiveDagDispatchCount": {
-      "const": 0
-    },
-    "temporaryBootstrapUsed": {
-      "const": false
-    },
-    "temporaryBootstrapRunId": {
-      "const": "cdfdbdbe-d901-4482-bafe-c4ba92c17779"
-    },
-    "temporaryBootstrapDisposition": {
-      "enum": [
-        "audit-only-pending-final-retirement",
-        "retired-audit-only"
-      ]
-    },
-    "resourceLifecycleSha256": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
-    },
-    "quiescenceReceiptDigest": {
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
-    },
+    "mutationEvidenceDigest": {"$ref": "#/$defs/hash"},
     "quiescenceViolations": {
       "type": "array",
       "maxItems": 0
     },
-    "remoteReread": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "blogHead",
-        "fsusUIHead",
-        "dependencySnapshotDigest"
-      ],
-      "properties": {
-        "blogHead": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{40}$"
-        },
-        "fsusUIHead": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{40}$"
-        },
-        "dependencySnapshotDigest": {
-          "type": "string",
-          "pattern": "^[a-f0-9]{64}$"
+    "quiescenceObservationDigest": {"$ref": "#/$defs/hash"},
+    "temporaryBootstrapUsed": {"const": false},
+    "temporarySchedulerUsed": {"const": false},
+    "fallbackExecutorUsed": {"const": false},
+    "repoLocalCopyUsed": {"const": false},
+    "receiptDigest": {"$ref": "#/$defs/hash"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"mode": {"const": "live"}},
+        "required": ["mode"]
+      },
+      "then": {
+        "properties": {
+          "status": {"const": "production-verified"},
+          "productionReady": {"const": true}
+        }
+      },
+      "else": {
+        "properties": {
+          "status": {"const": "fixture-verified"},
+          "productionReady": {"const": false}
         }
       }
-    },
-    "receiptDigest": {
+    }
+  ],
+  "$defs": {
+    "hash": {
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
     }
   }
 }

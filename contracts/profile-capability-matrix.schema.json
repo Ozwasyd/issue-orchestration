@@ -1,11 +1,12 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "urn:issue-orchestration:profile-capability-matrix:v1",
-    "title": "issue-orchestration.profile-capability-matrix.v1",
+    "$id": "urn:issue-orchestration:profile-capability-matrix:v2",
+    "title": "issue-orchestration.profile-capability-matrix.v2",
     "type": "object",
     "required": [
         "schema",
         "policyVersion",
+        "modelPoolPolicyVersion",
         "evidenceAuthority",
         "evidenceFixture",
         "evidenceDigest",
@@ -14,13 +15,16 @@
     ],
     "properties": {
         "schema": {
-            "const": "issue-orchestration.profile-capability-matrix.v1"
+            "const": "issue-orchestration.profile-capability-matrix.v2"
         },
         "policyVersion": {
-            "const": "execution-capability-routing.v1"
+            "const": "execution-capability-routing.v2"
+        },
+        "modelPoolPolicyVersion": {
+            "const": "stage-model-pool.v3"
         },
         "evidenceAuthority": {
-            "const": "recomputed-machine-runtime-observations"
+            "const": "recomputed-codex-v2-runtime-observations"
         },
         "evidenceFixture": {
             "const": "profile-capability-observations.json"

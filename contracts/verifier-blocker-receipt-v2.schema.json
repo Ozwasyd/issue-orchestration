@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:verifier-blocker-receipt:v2",
+  "title": "issue-orchestration.verifier-blocker-receipt.v2",
+  "type": "object",
+  "required": [
+    "schema", "status", "candidate", "candidateDigest",
+    "acceptanceContractDigest", "testContractDigest", "blockerPaths",
+    "blockerRequirementIds", "blockerEvidenceDigests",
+    "minimumFixBoundary", "verifierRolloutId", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.verifier-blocker-receipt.v2"},
+    "status": {"const": "rejected"},
+    "candidate": {"type": "object"},
+    "candidateDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "testContractDigest": {"$ref": "#/$defs/digest"},
+    "blockerPaths": {"type": "array", "minItems": 1},
+    "blockerRequirementIds": {"type": "array", "minItems": 1},
+    "blockerEvidenceDigests": {"type": "array", "minItems": 1},
+    "minimumFixBoundary": {"type": "array", "minItems": 1},
+    "verifierRolloutId": {"type": "string"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

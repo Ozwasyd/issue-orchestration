@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:writer-runtime-watchdog-receipt:v1",
+  "title": "issue-orchestration.writer-runtime-watchdog-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema", "status", "requestId", "rolloutId", "attemptId",
+    "planDigest", "sliceDigest", "routeDecisionDigest", "leaseDigest",
+    "firstActionVerified", "firstArtifactVerified", "state",
+    "traceDigest", "cancellationReason", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.writer-runtime-watchdog-receipt.v1"},
+    "status": {"enum": ["completed", "checkpoint-received", "terminal-failure"]},
+    "requestId": {"type": "string"},
+    "rolloutId": {"type": "string"},
+    "attemptId": {"type": "string"},
+    "planDigest": {"$ref": "#/$defs/digest"},
+    "sliceDigest": {"$ref": "#/$defs/digest"},
+    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "leaseDigest": {"$ref": "#/$defs/digest"},
+    "firstActionVerified": {"type": "boolean"},
+    "firstArtifactVerified": {"type": "boolean"},
+    "state": {"type": "string"},
+    "traceDigest": {"$ref": "#/$defs/digest"},
+    "cancellationReason": {"type": ["string", "null"]},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": true,
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

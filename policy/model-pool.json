@@ -1,137 +1,122 @@
 {
-    "schema": "issue-orchestration.stage-model-pool-policy.v2",
-    "version": "stage-model-pool.v2",
-    "routingAuthority": "deterministic-routing-compiler",
-    "profiles": {
-        "luna-low": {
-            "model": "gpt-5.6-luna",
-            "effort": "low"
-        },
-        "luna-high": {
-            "model": "gpt-5.6-luna",
-            "effort": "high"
-        },
-        "luna-max": {
-            "model": "gpt-5.6-luna",
-            "effort": "max"
-        },
-        "terra-max": {
-            "model": "gpt-5.6-terra",
-            "effort": "max"
-        },
-        "sol-low": {
-            "model": "gpt-5.6-sol",
-            "effort": "low"
-        },
-        "sol-medium": {
-            "model": "gpt-5.6-sol",
-            "effort": "medium"
-        },
-        "sol-high": {
-            "model": "gpt-5.6-sol",
-            "effort": "high"
-        },
-        "sol-xhigh": {
-            "model": "gpt-5.6-sol",
-            "effort": "xhigh"
-        },
-        "sol-max": {
-            "model": "gpt-5.6-sol",
-            "effort": "max"
-        }
+  "schema": "issue-orchestration.stage-model-pool-policy.v3",
+  "version": "stage-model-pool.v3",
+  "routingAuthority": "deterministic-execution-capability-compiler",
+  "profiles": {
+    "terra-low": {
+      "model": "gpt-5.6-terra",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "2d02476ba9478b182fbd127de0202e67127b12c2fa9f3685448f786995536958"
     },
-    "stages": {
-        "root-scheduler:scheduling": {
-            "allowedProfiles": [
-                "luna-low"
-            ],
-            "defaultProfile": "luna-low"
-        },
-        "dag-creator-updater:semantic-proposal": {
-            "allowedProfiles": [
-                "terra-max",
-                "sol-xhigh",
-                "sol-max"
-            ],
-            "defaultProfile": "terra-max"
-        },
-        "test-owner:test-contract": {
-            "allowedProfiles": [
-                "sol-high",
-                "terra-max",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "sol-high"
-        },
-        "test-owner:behavior-verification": {
-            "allowedProfiles": [
-                "sol-high",
-                "terra-max",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "sol-high"
-        },
-        "code-implementer:implementation": {
-            "allowedProfiles": [
-                "luna-max",
-                "sol-high",
-                "terra-max",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "luna-max"
-        },
-        "code-implementer:landing-conflict-resolution": {
-            "allowedProfiles": [
-                "luna-max",
-                "sol-high",
-                "terra-max",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "luna-max"
-        },
-        "ui-ux-implementer:ui-implementation": {
-            "allowedProfiles": [
-                "sol-low",
-                "sol-medium"
-            ],
-            "defaultProfile": "sol-low"
-        },
-        "ui-ux-implementer:landing-conflict-resolution": {
-            "allowedProfiles": [
-                "sol-low",
-                "sol-medium"
-            ],
-            "defaultProfile": "sol-low"
-        },
-        "ui-system-adjudicator:adjudication": {
-            "allowedProfiles": [
-                "sol-high",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "sol-high"
-        },
-        "ux-acceptance-verifier:ux-acceptance": {
-            "allowedProfiles": [
-                "sol-medium",
-                "sol-high",
-                "sol-xhigh"
-            ],
-            "defaultProfile": "sol-medium"
-        },
-        "documentation-writer:documentation": {
-            "allowedProfiles": [
-                "luna-high",
-                "luna-max"
-            ],
-            "defaultProfile": "luna-high"
-        }
+    "terra-medium": {
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "323189ccc57d73192ba2df05ca250d3a5d88a2770e6659ed31895abb510f9cad"
     },
-    "cleanup": {
-        "greenAuthority": "machine-resource-verifier",
-        "llmProfile": null,
-        "diagnosticProfiles": [
-            "luna-low",
-            "terra-max"
-        ]
+    "terra-high": {
+      "model": "gpt-5.6-terra",
+      "effort": "high",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "21300e843ff484ec50d117b8d4a7c2c7b2dda6f6b66b6c25d26e8a6ce2fb419c"
+    },
+    "terra-xhigh": {
+      "model": "gpt-5.6-terra",
+      "effort": "xhigh",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "b9f62ddf138c476e7f38396333f0dd4dc61e783969da96e16529dd07120f507d"
+    },
+    "terra-max": {
+      "model": "gpt-5.6-terra",
+      "effort": "max",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "7096f30137f62a9ae860fdaf67cdc98cd21536a622677cd72c2cf3710024ec12"
+    },
+    "sol-low": {
+      "model": "gpt-5.6-sol",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "7e744f6522fcd92f94d5bf4dd101fed620effcf8e37469462b02be7372ba946c"
+    },
+    "sol-medium": {
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "ae9d29f1f872a2613ea7698f44659fa20868e43618c54f8b2c7b02e1028a32ac"
+    },
+    "sol-high": {
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "56b46c283e60ee40c53dd12db6366c7d19bab3e20ff1c5296933b395ec76cb55"
+    },
+    "sol-xhigh": {
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "826d6231bfb6bb45821f718062ae44cb339eee8db46fa13ec41d1056253d9395"
+    },
+    "sol-max": {
+      "model": "gpt-5.6-sol",
+      "effort": "max",
+      "multiAgentBackend": "v2",
+      "capabilityEvidenceDigest": "f0a833720e5d3adc1193e6e9692332bc56298224336f26f6fe6aa313e6acfeae"
     }
+  },
+  "stages": {
+    "root-scheduler:scheduling": {
+      "allowedProfiles": ["terra-low", "terra-medium"],
+      "defaultProfile": "terra-low"
+    },
+    "dag-creator-updater:semantic-proposal": {
+      "allowedProfiles": ["terra-high", "terra-xhigh", "terra-max", "sol-xhigh", "sol-max"],
+      "defaultProfile": "terra-high"
+    },
+    "test-owner:test-contract-planning": {
+      "allowedProfiles": ["terra-high", "terra-xhigh", "terra-max", "sol-high", "sol-xhigh"],
+      "defaultProfile": "terra-high"
+    },
+    "test-owner:test-contract": {
+      "allowedProfiles": ["terra-medium", "terra-high", "terra-xhigh", "terra-max", "sol-high", "sol-xhigh"],
+      "defaultProfile": "terra-medium"
+    },
+    "test-owner:behavior-verification": {
+      "allowedProfiles": ["terra-high", "terra-xhigh", "terra-max", "sol-high", "sol-xhigh"],
+      "defaultProfile": "terra-high"
+    },
+    "code-implementer:implementation": {
+      "allowedProfiles": ["terra-low", "terra-medium", "terra-high", "terra-xhigh", "terra-max", "sol-high", "sol-xhigh"],
+      "defaultProfile": "terra-medium"
+    },
+    "code-implementer:landing-conflict-resolution": {
+      "allowedProfiles": ["terra-medium", "terra-high", "terra-xhigh", "terra-max", "sol-high", "sol-xhigh"],
+      "defaultProfile": "terra-high"
+    },
+    "ui-ux-implementer:ui-implementation": {
+      "allowedProfiles": ["sol-low", "sol-medium"],
+      "defaultProfile": "sol-low"
+    },
+    "ui-ux-implementer:landing-conflict-resolution": {
+      "allowedProfiles": ["sol-low", "sol-medium"],
+      "defaultProfile": "sol-medium"
+    },
+    "ui-system-adjudicator:adjudication": {
+      "allowedProfiles": ["sol-high", "sol-xhigh"],
+      "defaultProfile": "sol-high"
+    },
+    "ux-acceptance-verifier:ux-acceptance": {
+      "allowedProfiles": ["sol-medium", "sol-high", "sol-xhigh"],
+      "defaultProfile": "sol-medium"
+    },
+    "documentation-writer:documentation": {
+      "allowedProfiles": ["terra-low", "terra-medium", "terra-high"],
+      "defaultProfile": "terra-medium"
+    }
+  },
+  "cleanup": {
+    "greenAuthority": "machine-resource-verifier",
+    "llmProfile": null,
+    "diagnosticProfiles": ["terra-low", "terra-medium"]
+  }
 }

@@ -8,7 +8,7 @@
 
 每个 executable slice 同时最多一名 writer；完整 stage 达到 `candidate-green` 后最多一名独立 behavior verifier。不得为同一 slice 并行派发第二名 writer 或增加评审层。
 
-`test-owner` 的 `behavior-verification` phase 只审查指定 issue、verified work plan、全部有序 slice terminal receipts、compiled prompt digests、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v2` 的 fresh read-only route，只报告会阻止当前验收组交付的 blocker；每条必须包含：
+`test-owner` 的 `behavior-verification` phase 只审查指定 issue、verified work plan、全部有序 slice terminal receipts、compiled prompt digests、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v3` 的 fresh read-only route，只报告会阻止当前验收组交付的 blocker；每条必须包含：
 
 - 准确路径或产物；
 - 可复核的事实依据；
@@ -23,7 +23,12 @@
 
 每项修改只调用一次全量 independent verifier（UI dispute 另按 policy 调用一次 adjudicator）。blocker 由原实现者修复；根代理只复验 blocker 指向的路径、验收条件和受影响检查。
 
-只有修复重新触及安全、公开契约或架构边界时，才允许再次全量 verification，并记录触发事实。普通修复不得增加第二 verifier 或重复整套验收。
+Verifier blocker、修复提交或 candidate identity 任一改变都会立即使旧
+behavior receipt 失效。Root 先用 `compileVerificationImpactPlan` 确定受影响
+requirement、路径与命令，再启动 fresh-context candidate B verifier；它不是
+第二评审层，也不得继承 candidate A 对话。未受影响且仍绑定当前 source 的
+evidence 可复用，受影响边界必须重验。普通修复不得增加第二 reviewer 或重复
+不受影响的整套验收。
 
 每次独立 verifier 确认实现缺陷或 blocker 并回派原 writer 时，根代理递增 DAG 节点的 `reworkCount`。该计数不属于 routing input，也不得自动升档；只有冻结 policy 允许的结构化 blocker receipt 才能生成 route-reclassification。Writer 自身的 invocation、environment、runtime capability、first action、output、checkpoint、receipt 或 retry failure 都不是 verifier 返工，不得触发或重置该计数。
 
@@ -50,7 +55,14 @@ Partial checkpoint、continuation receipt、单个 diff、命令成功或 agent 
 - `writer-stage.checkpoint-missing`
 - `writer-stage.receipt-rejected`
 
-任何必需输出缺失，尤其“agent 已返回但没有产物”的 output-missing，都必须签发 `issue-orchestration.writer-stage-failure-receipt.v1`、进入 terminal 并打开 breaker。它既不计 implementation rework，也不触发 human decision；Root 不得把它改写成 verifier blocker、`reworkCount`、人工接管或直接重试。
+任何必需输出缺失，尤其“agent 已返回但没有产物”的 output-missing，都必须签发 `issue-orchestration.writer-stage-failure-receipt.v1`、进入 terminal 并打开 breaker。它既不计 implementation rework，也不触发 human decision；Root 不得把它改写成 verifier blocker、`reworkCount` 或人工接管。
+
+唯一例外是 runtime-created 且完全空白的 transient rollout：没有 tool call、
+message、artifact、checkpoint 或可恢复 cursor，且 request/route/slice/contract
+identity 完全未变时，`transient-rollout-retry.mjs` 可授权同 contract 恰好一次
+fresh retry。首次空 rollout 必须封存 classification 与 authorization；第二次
+空 rollout、任何部分输出、身份漂移或非 transient failure 都立即 terminal，
+不能再试。
 
 `writer-stage.output-missing` 本身不是 profile upgrade evidence。先在 `slice-not-executable`、`compiled-prompt-incomplete`、`runtime invocation/capability failure`、`sandbox/cwd/worktree/permission mismatch`、`agent-first-action-not-executed` 与 `profile-capability-mismatch` 中由机器分类。只有最后一类可进入 `compileExecutionReroute`，并且必须引用旧 route/failure/candidate receipt、breaker reset 和 retry authorization，证明 slice 已是最小合法粒度或有实质修订，且新 candidate identity 不复用旧 receipt。
 
