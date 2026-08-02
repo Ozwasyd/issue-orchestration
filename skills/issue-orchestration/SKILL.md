@@ -35,6 +35,27 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 
 某次修复 issue 对 Sol Ultra 或其它实现者的直接授权只适用于该次实现批次，不能写入永久 `stage-model-pool.v2`、routing、dispatch 或 fallback policy。临时 bootstrap runner、旧 run id、receipt、breaker 和 failure evidence只能作为冻结测试保管、恢复、审计 fixture 与最终退役对象；它们不是永久 dispatcher，也不能阻止当前获授权实现者修改永久源码或成为兼容入口。
 
+## 永久组合 E2E
+
+`scripts/permanent-e2e.mjs` 是永久 package 的组合验收 owner；它不是
+bootstrap dispatcher。单一入口为：
+
+```bash
+FSUSBLOG_E2E_LIVE=1 node --test --test-concurrency=1 tests/tools/issue-orchestration/*.test.mjs
+```
+
+该入口从 `tests/tools/issue-orchestration/` 的固定 lane 读取永久 package
+能力，启动真实 child test processes，执行真实 Git/worktree/landing、
+五种 cwd 安装发现、跨 FsusBlog/FsusUI baseline、test-contract
+output-missing 恢复、UI 双 Skills、human gate、resource 与 quiescence
+轨迹，并产生严格的 `issue-orchestration.permanent-e2e-receipt.v1`。
+Live 模式必须复读 GitHub 依赖和两个默认分支远端 SHA；child rollout
+若没有实际测试、退出非零或只有自然语言报告均失败。Receipt 固定
+`temporaryBootstrapUsed=false`、`falsePositiveDagDispatchCount=0` 和
+`quiescenceViolations=[]`，并验证 #1828 resource lifecycle 文件哈希。
+临时 runner 只能作为 audit-only 历史证据，不能参与这条永久 E2E
+制造绿灯。
+
 ## 总循环
 
 根代理负责 DAG、调用确定性 compiler、槽位调度、完成度复核、最终验收、本地整合、提交、推送、issue 评论与关闭；Root 不编写测试、实现或文档，不手写或修改 compiled prompt。实现者和独立 verifier/adjudicator 不执行远端交付。

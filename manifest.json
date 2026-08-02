@@ -2,10 +2,10 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "d57c2f34b5bb37e3738e981f00dc453a0ad8197f",
-    "sourceTreeDigest": "e02b173fd6eee61006baaf15da2d4a248ddfacd320d458558e41eacc5baaab04",
+    "sourceCommit": "3adda1460ee6061f78f67f4cd2b7a431c7fcb13a",
+    "sourceTreeDigest": "c63f63f7384889a04e13f2c8650b8105a4ccc5d24c6af59084ddfeecb7456ebc",
     "skillIdentity": "issue-orchestration",
-    "skillDigest": "26d32491e2613ae5c7a0025e2a6074270d996c33696d3e4bf449871dea7b34e5",
+    "skillDigest": "5a6e49a4a44429e6f473758d22696cdcea1239ebce10f2e30f97a65ae530fbfa",
     "agentDigests": {
         "code-implementer": "0d327e9215c32a400e85d0b1967e2828c69cd218b513d3eca5b83ee704cdc797",
         "dag-creator-updater": "45519067ef0173a6b6394b13b189915591cd9a7f4ec7f96151f13c40f0c6a7a7",
@@ -118,6 +118,7 @@
         "contracts/landing-receipt.schema.json": "88bc5b2a6c98ac4b0a7680cd3dc329b837ee8fe0eb3072f54bdbb5afa096e7dc",
         "contracts/landing-summary.schema.json": "207f86eaaf0993aefe92f07ba9ca72c3803aa80c92a5baf645424574abd25752",
         "contracts/model-pool-summary.schema.json": "1bc3da9d4b41f0a7e558cf5a0838ace7dc3428b230f29862a0827a9279e707a2",
+        "contracts/permanent-e2e-receipt.schema.json": "f4d07dca6a92bdc4ab8b4d75c7ae44547869d08c46132e500f6585cb7fc97b91",
         "contracts/profile-capability-matrix.schema.json": "7658d6244bfbc84a7b549c15ec6f1283d3f9eea088b8617491975fde82c94347",
         "contracts/quiescence-receipt.schema.json": "2b3b184f02524ca16294e50e58d57d648a7358233b184815f7774792450e5aee",
         "contracts/repository-landing-lane.schema.json": "4dc07f7acc699f477804fc2fc08856ba671397092b1e6822076839ccf30ca680",
@@ -166,6 +167,7 @@
         "skills/issue-orchestration/scripts/frontier-compiler.mjs": "9430b4eea6d0fef57c32b919791fd5fd232a83850b34f606a15f1b0aa6b40e79",
         "skills/issue-orchestration/scripts/human-decision.mjs": "b4c0e1a81da7bd4c5c620c97ed54f9a49983ccc3b6a4ee70342fc372e77a2ef9",
         "skills/issue-orchestration/scripts/investigation-compiler.mjs": "9bd8db272f795e309a7c588ff57511726414a039d17c59a8efacd3de2be65156",
+        "skills/issue-orchestration/scripts/permanent-e2e.mjs": "5c6ed8f50cc27ec50dce3a81291e81af3031613f2a6f0515e444b80caa3fca42",
         "skills/issue-orchestration/scripts/quiescence.mjs": "e2f5b2bc63c94c36d958cbac69fc4ae10580bbb0c2aa4682915139fcbca01837",
         "skills/issue-orchestration/scripts/repository-landing-lane.mjs": "f413c74b626d79ecd3df1121ff36b1c9b272908ed9dad46783b80e3827b7947b",
         "skills/issue-orchestration/scripts/resource-lifecycle.mjs": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1",
@@ -175,8 +177,8 @@
         "skills/issue-orchestration/scripts/telemetry.mjs": "cbbff2b329ea9b9642bd9b535ed602d1a6ae8b84d10b5b01b0d64c2c813efca7",
         "skills/issue-orchestration/scripts/validate-state-root.mjs": "ce9adc2a8b3454fd8e89ca8519d3f059e71603cf3bbea81a15f3d91938b61c6d",
         "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447",
-        "skills/issue-orchestration/SKILL.md": "26d32491e2613ae5c7a0025e2a6074270d996c33696d3e4bf449871dea7b34e5",
+        "skills/issue-orchestration/SKILL.md": "5a6e49a4a44429e6f473758d22696cdcea1239ebce10f2e30f97a65ae530fbfa",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "3228b61f4bf5cd4d03fe9a9a2ce424428246eb0bafbc7890377b4c5920fd0abc"
+    "manifestDigest": "4e6c338ffdd03c33aeef3763d3e5748cfe93f5fde36bdd6e1a6eb1846a58a47a"
 }
