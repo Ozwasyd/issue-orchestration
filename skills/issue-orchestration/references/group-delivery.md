@@ -31,6 +31,30 @@ Landing 时出现的真实 conflict 仍是 writer work，必须编译 `issue-orc
 
 Landing conflict slice 必须绑定冲突 mapping、允许/禁止路径、base/epoch/worktree、required commands 和 material diff evidence。只有该 landing stage 的 final slice gate 通过后才可继续 commit/push；原 member 的旧 terminal receipt 不能替代新冲突基线上的 receipt。
 
+## 跨 epoch landing lane
+
+当验收组的 immutable source tip 落后于远端默认分支时，调用 `repository-landing-lane.mjs`。同一仓库只允许一个 `issue-orchestration.repository-landing-lane.v1` active lease；不同仓库的 lane 互不阻塞。实现 worktree 不因 landing lane 全局串行化。
+
+Source worktree、branch、tip 与 ordered member commits 在 handoff 后只读。禁止在 source 上 rebase、merge、reset、amend 或处理冲突。Fresh landing worktree 必须从刚复读的远端完整 SHA 创建；dirty/untracked source 保持 retained/quarantined，不得直接迁移。
+
+每个 landing writer task 只能是以下一个目标：
+
+```text
+transplant-one-member-commit
+resolve-one-member-one-conflict-cluster
+rebind-one-member-evidence-class
+run-one-member-reverification-class
+finalize-one-source-retirement-disposition
+```
+
+每个 task 必须继续消费永久 `stage-work-plan → executable-slice → compiled-dispatch-prompt`，再由 execution-shape/capability compiler 生成可观察的 verified route。一个 slice 不得覆盖多个 member、source commit 或独立 conflict cluster；continuation 只能从同一 checkpoint 的 `nextRequiredAction` 恢复，不能重新扫描全部 source。
+
+每个 transplant 产生 `issue-orchestration.commit-transplant-receipt.v1`，包含单 member old→new SHA、parent、patch/tree digest、changed paths、冲突差异、slice/prompt/route/checkpoint binding。禁止 squash、跨 member 混合、自动 ours/theirs 或缺 mapping 继续。新基线产生新 candidate；source-bound behavior、UX、documentation、slice 与 route receipt 必须逐 member、逐 evidence class 重绑或重验。
+
+Remote 在重验或 push 前再次移动时，将当前 landing attempt 标记 `remote-drifted`，保留 source 不变，从新 head 创建新 attempt；禁止 force push。普通冲突、测试红、runtime/profile 不可用或切片困难不能创建 human request。只有现有权威无法区分多个合法语义结果时才消费 verified human-decision request；决定沉降后重新切片、路由、生成 candidate 与重验。
+
+最终 `issue-orchestration.landing-receipt.v1` 只接受有序 member 全部 landing-ready、远端 head 未变、普通 fast-forward、逐 member mapping/reverification 完整以及 verified cleanup/retention disposition。Source retirement 前任一 continuation、human pending、dirty、conflict、remote drift 或 cleanup failure 都阻止关闭。
+
 ## CI evidence 与关闭
 
 交付后把自动化结果严格区分为三类：

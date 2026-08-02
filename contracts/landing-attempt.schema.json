@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:landing-attempt:v1",
+    "title": "issue-orchestration.landing-attempt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "attemptId",
+        "repository",
+        "defaultBranch",
+        "sourceEpochId",
+        "sourceBaseSha",
+        "sourceWorktreeIdentity",
+        "sourceBranch",
+        "immutableSourceTip",
+        "sourceMemberOrder",
+        "sourceMemberCommitShas",
+        "latestRemoteHead",
+        "currentLandingTip",
+        "targetEpochId",
+        "landingLeaseId",
+        "landingWorktreeIdentity",
+        "landingBranch",
+        "transplantOperations",
+        "oldToNewCommitShaMap",
+        "memberDisposition",
+        "evidenceDisposition",
+        "reverificationPlan",
+        "reverificationReceipts",
+        "activeLandingSlice",
+        "state",
+        "eventLog",
+        "attemptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.landing-attempt.v1"
+        },
+        "sourceBaseSha": {
+            "$ref": "#/$defs/sha"
+        },
+        "immutableSourceTip": {
+            "$ref": "#/$defs/sha"
+        },
+        "latestRemoteHead": {
+            "$ref": "#/$defs/sha"
+        },
+        "currentLandingTip": {
+            "$ref": "#/$defs/sha"
+        },
+        "attemptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "sha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        }
+    }
+}

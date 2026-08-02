@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:commit-transplant-receipt:v1",
+    "title": "issue-orchestration.commit-transplant-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "repository",
+        "landingAttemptId",
+        "memberIssueId",
+        "sourceCommit",
+        "newCommitSha",
+        "parentSha",
+        "sourcePatchId",
+        "landedPatchId",
+        "sourceTreeDigest",
+        "landedTreeDigest",
+        "changedPaths",
+        "conflictManifest",
+        "candidateSha",
+        "terminalReceiptDigest",
+        "landingWorkPlanDigest",
+        "landingSliceDigest",
+        "compiledLandingPromptDigest",
+        "landingWorkShape",
+        "capabilityRequirementDigest",
+        "executionRouteDecisionDigest",
+        "landingCheckpointDigest",
+        "landingContinuationReceiptDigest",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.commit-transplant-receipt.v1"
+        },
+        "sourceCommit": {
+            "$ref": "#/$defs/sha"
+        },
+        "newCommitSha": {
+            "$ref": "#/$defs/sha"
+        },
+        "parentSha": {
+            "$ref": "#/$defs/sha"
+        },
+        "sourcePatchId": {
+            "$ref": "#/$defs/digest"
+        },
+        "landedPatchId": {
+            "$ref": "#/$defs/digest"
+        },
+        "sourceTreeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "landedTreeDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "candidateSha": {
+            "$ref": "#/$defs/sha"
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "sha": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        }
+    }
+}

@@ -1,0 +1,60 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:landing-receipt:v1",
+    "title": "issue-orchestration.landing-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "repository",
+        "defaultBranch",
+        "landingAttemptId",
+        "sourceEpochId",
+        "sourceBaseSha",
+        "immutableSourceTip",
+        "targetEpochId",
+        "remoteHeadObservedBeforePush",
+        "resultingRemoteSha",
+        "pushMode",
+        "fastForwardVerified",
+        "orderedSourceCommits",
+        "orderedLandedCommits",
+        "oldToNewCommitShaMap",
+        "memberDisposition",
+        "sourceRetirementDisposition",
+        "cleanupReceiptDigest",
+        "sourceHistoryOperations",
+        "attempt",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.landing-receipt.v1"
+        },
+        "pushMode": {
+            "const": "fast-forward"
+        },
+        "fastForwardVerified": {
+            "const": true
+        },
+        "sourceRetirementDisposition": {
+            "enum": [
+                "source-retained",
+                "source-retired"
+            ]
+        },
+        "sourceHistoryOperations": {
+            "type": "array",
+            "maxItems": 0
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

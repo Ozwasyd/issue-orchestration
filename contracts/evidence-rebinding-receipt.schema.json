@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:evidence-rebinding-receipt:v1",
+    "title": "issue-orchestration.evidence-rebinding-receipt.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "repository",
+        "landingAttemptId",
+        "memberIssueId",
+        "evidenceClass",
+        "sourceReceiptDigest",
+        "disposition",
+        "sourceIndependent",
+        "sourceBaseSha",
+        "targetBaseSha",
+        "newCandidateSha",
+        "verifierReceiptDigest",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.evidence-rebinding-receipt.v1"
+        },
+        "disposition": {
+            "enum": [
+                "reverify-required",
+                "source-independent-rebound"
+            ]
+        },
+        "sourceReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "verifierReceiptDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

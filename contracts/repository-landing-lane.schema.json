@@ -1,0 +1,87 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:repository-landing-lane:v1",
+    "title": "issue-orchestration.repository-landing-lane.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "repository",
+        "defaultBranch",
+        "state",
+        "activeLease",
+        "attemptIds",
+        "laneDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.repository-landing-lane.v1"
+        },
+        "repository": {
+            "type": "string",
+            "pattern": "^[^/\\s]+/[^/\\s]+$"
+        },
+        "defaultBranch": {
+            "type": "string",
+            "minLength": 1
+        },
+        "state": {
+            "enum": [
+                "landing-idle",
+                "landing-active"
+            ]
+        },
+        "activeLease": {
+            "oneOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "object",
+                    "required": [
+                        "attemptId",
+                        "landingLeaseId",
+                        "ownerIdentity",
+                        "acquiredAt"
+                    ],
+                    "properties": {
+                        "attemptId": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "landingLeaseId": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "ownerIdentity": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "acquiredAt": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "attemptIds": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1
+            },
+            "uniqueItems": true
+        },
+        "laneDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": true,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

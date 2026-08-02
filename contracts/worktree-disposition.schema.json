@@ -1,0 +1,70 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:worktree-disposition:v1",
+    "title": "issue-orchestration.worktree-disposition.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "repository",
+        "worktreeIdentity",
+        "memberIssueId",
+        "evidenceClass",
+        "disposition",
+        "evidenceDigest",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.worktree-disposition.v1"
+        },
+        "repository": {
+            "type": "string",
+            "pattern": "^[^/\\s]+/[^/\\s]+$"
+        },
+        "worktreeIdentity": {
+            "type": "string",
+            "minLength": 1
+        },
+        "memberIssueId": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "evidenceClass": {
+            "type": [
+                "string",
+                "null"
+            ]
+        },
+        "disposition": {
+            "enum": [
+                "unaffected-other-repository",
+                "source-retained",
+                "clean-transplant-required",
+                "already-applied-equivalent",
+                "dirty-uncollected",
+                "conflicted-invalid",
+                "human-decision-pending",
+                "transplanted-reverify-required",
+                "landing-slice-continuation-pending",
+                "landing-ready",
+                "landed",
+                "source-retired"
+            ]
+        },
+        "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+        },
+        "receiptDigest": {
+            "$ref": "#/$defs/digest"
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

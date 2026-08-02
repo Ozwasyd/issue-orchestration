@@ -463,6 +463,10 @@ export function createLandingHandoff(session, input) {
         currentEpoch: input?.currentEpoch,
         immutableSourceTip: session.immutableSourceTip,
         orderedGreenCommitPrefix: clone(session.orderedGreenCommitPrefix),
+        sourceWorktree: session.frozenSource.sourceWorktree,
+        sourceBranch: session.frozenSource.sourceBranch,
+        dirtyInventory: clone(session.frozenSource.dirtyInventory),
+        untrackedInventory: clone(session.frozenSource.untrackedInventory),
         memberMapping,
         requiredReverificationClasses:
             clone(input?.requiredReverificationClasses ?? []),
