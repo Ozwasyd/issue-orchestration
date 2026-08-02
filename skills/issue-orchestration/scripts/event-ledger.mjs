@@ -49,6 +49,19 @@ const rules = {
     'implementation.contract-disputed': [['implementing-self-testing', 'test-contract-frozen']],
     'implementation.external-blocked': [['implementing-self-testing', 'terminal']],
     'implementation.resource-failed': [['implementing-self-testing', 'test-contract-frozen']],
+    'decision-analysis.started': [
+        ['test-contract-frozen', 'decision-analyzing'],
+        ['implementing-self-testing', 'decision-analyzing']
+    ],
+    'decision-analysis.completed': [['decision-analyzing', 'decision-analysis-completed']],
+    'human-decision.required': [['decision-analysis-completed', 'human-decision-required']],
+    'human-decision.recorded': [['human-decision-required', 'human-decision-recorded']],
+    'human-decision.invalidated': [
+        ['human-decision-required', 'decision-analysis-completed'],
+        ['human-decision-recorded', 'decision-analysis-completed']
+    ],
+    'contract.rebased': [['human-decision-recorded', 'test-contract-frozen']],
+    'node.resumed': [['human-decision-recorded', 'discovered']],
     'independent-verification.started': [['candidate-green', 'independent-verifying']],
     'independent-verification.rejected': [['independent-verifying', 'implementing-self-testing']],
     'independent-verification.passed': [
