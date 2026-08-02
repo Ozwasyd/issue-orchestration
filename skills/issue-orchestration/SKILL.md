@@ -48,6 +48,7 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 7. **分类与独立验证**：按 [`references/review-failure-and-verification.md`](references/review-failure-and-verification.md) 处理 writer failure/breaker/retry 和 verifier blocker。完整 stage candidate 稳定后，按 fresh read-only 条件调用 `test-owner` 的 behavior-verification phase；UI system dispute 先调用 `ui-system-adjudicator`，UX 路径再调用 `ux-acceptance-verifier`。
 8. **立即交付验收组**：一组全部通过后，读取 [`references/group-delivery.md`](references/group-delivery.md)，按其中的 CI evidence 分类与关闭门禁完成提交、主分支推送、远端核验和 issue 关闭；dry-run 时停在明确的首个有副作用动作之前。
 9. **回写运行态并继续**：由根代理在已验证的仓库外状态根追加 verified plan/slice/shape/capability/route/prompt/checkpoint/terminal/failure/retry事件，更新 DAG、证据键、槽位和恢复指纹，然后回到步骤 1；不得靠记忆补全尚未读取的阶段规则。
+10. **最终 quiescence**：全部目标节点已远端关闭后，以新的 observe-only machine inventory 调用 `scripts/quiescence.mjs`。必须同时枚举 issue/stage/attempt/group/actor、work plan/slice/checkpoint/continuation/breaker/route、Git/resource/process/port/Docker/lock/lease/slot、landing/source mapping/human retention、Skill/DAG/telemetry 与 bootstrap retirement。只有可重算的 `issue-orchestration.quiescence-receipt.v1` 为 `quiescent` 且 `violations=[]` 才能结束整轮。该 gate 只观察；发现残留后返回 violation，不能自行清理、恢复 continuation、重路由、landing 或选择人工决定。
 
 ## 状态与停止
 
@@ -58,5 +59,6 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 - 所有本地可完成 issue 均已交付并经远端核验为 closed；
 - DAG 没有 ready、running、independent-verifying、delivery-ready 或 delivering 节点；
 - 其余 open issues 均按 DAG reference 以直接证据进入合法 terminal 状态。
+- 新鲜 machine inventory 生成并验证了与当前远端、baseline、允许保留集合和全部依赖 receipts 绑定的 quiescence receipt；active actor、attempt/group、slice/continuation、landing/human wait、ownerless/dirty/quarantine 与 bootstrap fallback 计数均为零。
 
 连续 60 分钟没有有效产出时，不结束；执行 DAG reference 的恢复动作。任何能力、权限、仓库事实或 prompt 信息不足以安全继续时，保留节点状态和证据，报告缺口及恢复条件，不自行降级。

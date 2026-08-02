@@ -1,0 +1,668 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:quiescence-receipt:v1",
+  "title": "issue-orchestration.quiescence-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "canonicalizationVersion",
+    "runId",
+    "targetIssueSet",
+    "targetIssueSetDigest",
+    "verifier",
+    "verifierIdentityDigest",
+    "completedIssueEvidence",
+    "observationDigest",
+    "sourceEvidenceDigest",
+    "dependencyReceiptDigests",
+    "baselineDigest",
+    "allowedRetentionDigest",
+    "gitInventoryDigest",
+    "remoteLiveSnapshotDigest",
+    "attemptGroupInventoryDigest",
+    "sliceWorkPlanInventoryDigest",
+    "checkpointContinuationInventoryDigest",
+    "outputMissingBreakerInventoryDigest",
+    "executionRouteInventoryDigest",
+    "profileCapabilityMismatchInventoryDigest",
+    "processPortDockerInventoryDigests",
+    "lockLeaseSlotInventoryDigest",
+    "filesystemInventoryDigest",
+    "resourceInventoryDigest",
+    "skillInstallDigest",
+    "skillInventoryDigest",
+    "roleSkillReceiptDigest",
+    "designAuthorityInventoryDigest",
+    "bootstrapDisposition",
+    "landingInventoryDigest",
+    "sourceCandidateDispositionDigest",
+    "commitMappingCompletenessDigest",
+    "humanDecisionInventoryDigest",
+    "humanRetentionDigest",
+    "dagInventoryDigest",
+    "stageInventoryDigest",
+    "telemetryInventoryDigest",
+    "activeActorInventoryDigest",
+    "groupMemberReceiptCompletenessDigest",
+    "retainedAuditArtifactsDigest",
+    "inventoryStateDigest",
+    "observedInventoryDigests",
+    "violations",
+    "status",
+    "verifiedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.quiescence-receipt.v1"
+    },
+    "canonicalizationVersion": {
+      "const": "issue-orchestration.canonical-json.v1"
+    },
+    "runId": {
+      "$ref": "#/$defs/nonEmpty"
+    },
+    "targetIssueSet": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[^/#\\s]+/[^/#\\s]+#[1-9][0-9]*$"
+      }
+    },
+    "targetIssueSetDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "verifier": {
+      "type": "object",
+      "required": [
+        "actorRole",
+        "actorId",
+        "observationMethod",
+        "mode",
+        "readOnly",
+        "machineIdentityDigest",
+        "implementationDigest",
+        "packageDigest",
+        "independent",
+        "rootScheduler"
+      ],
+      "properties": {
+        "actorRole": {
+          "const": "independent-machine-inventory-verifier"
+        },
+        "actorId": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "observationMethod": {
+          "const": "machine-inventory"
+        },
+        "mode": {
+          "const": "observe-only"
+        },
+        "readOnly": {
+          "const": true
+        },
+        "machineIdentityDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "implementationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "packageDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "independent": {
+          "const": true
+        },
+        "rootScheduler": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "verifierIdentityDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "completedIssueEvidence": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "uiNode",
+          "completionEvidenceDigest",
+          "remoteSnapshotDigest",
+          "frozenTestContractDigest",
+          "implementationCandidateDigest",
+          "behaviorGreenReceiptDigest",
+          "uxAcceptedReceiptDigest",
+          "designSkillDigest",
+          "documentationGreenReceiptDigest",
+          "remoteDeliveryEvidenceDigest",
+          "resourceCleanupReceiptDigest",
+          "candidateEpochDigest",
+          "roleSkillReceiptDigest",
+          "issueEvidenceDigest",
+          "stageEvidenceDigest",
+          "evidenceDigest"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "pattern": "^[^/#\\s]+/[^/#\\s]+#[1-9][0-9]*$"
+          },
+          "issueEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "stageEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "uiNode": {
+            "type": "boolean"
+          },
+          "completionEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "remoteSnapshotDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "frozenTestContractDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "implementationCandidateDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "behaviorGreenReceiptDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "uxAcceptedReceiptDigest": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/digest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "designSkillDigest": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/digest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "documentationGreenReceiptDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "remoteDeliveryEvidenceDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "resourceCleanupReceiptDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "candidateEpochDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "roleSkillReceiptDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "evidenceDigest": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "uiNode": {
+                  "const": true
+                }
+              },
+              "required": [
+                "uiNode"
+              ]
+            },
+            "then": {
+              "properties": {
+                "uxAcceptedReceiptDigest": {
+                  "$ref": "#/$defs/digest"
+                },
+                "designSkillDigest": {
+                  "$ref": "#/$defs/digest"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "uxAcceptedReceiptDigest": {
+                  "type": "null"
+                },
+                "designSkillDigest": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "observationDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "sourceEvidenceDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "dependencyReceiptDigests": {
+      "type": "object",
+      "required": [
+        "projection",
+        "receipts",
+        "registries"
+      ],
+      "properties": {
+        "projection": {
+          "$ref": "#/$defs/digest"
+        },
+        "receipts": {
+          "$ref": "#/$defs/digest"
+        },
+        "registries": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "baselineDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "allowedRetentionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "gitInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "remoteLiveSnapshotDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "attemptGroupInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "sliceWorkPlanInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "checkpointContinuationInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "outputMissingBreakerInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "executionRouteInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "profileCapabilityMismatchInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "processPortDockerInventoryDigests": {
+      "type": "object",
+      "required": [
+        "processTreeDigest",
+        "portInventoryDigest",
+        "dockerContainerInventoryDigest",
+        "dockerNetworkInventoryDigest",
+        "dockerVolumeDispositionDigest"
+      ],
+      "properties": {
+        "processTreeDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "portInventoryDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "dockerContainerInventoryDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "dockerNetworkInventoryDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "dockerVolumeDispositionDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "lockLeaseSlotInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "filesystemInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "resourceInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "skillInstallDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "skillInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "roleSkillReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "designAuthorityInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "bootstrapDisposition": {
+      "type": "object",
+      "required": [
+        "status",
+        "fallbackEnabled",
+        "activeStateCount",
+        "activeLockCount",
+        "activeSlotCount",
+        "retirementReceiptDigest"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/nonEmpty"
+        },
+        "fallbackEnabled": {
+          "type": "boolean"
+        },
+        "activeStateCount": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "activeLockCount": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "activeSlotCount": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retirementReceiptDigest": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "landingInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "sourceCandidateDispositionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "commitMappingCompletenessDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "humanDecisionInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "humanRetentionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "dagInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "stageInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "telemetryInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "activeActorInventoryDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "groupMemberReceiptCompletenessDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "retainedAuditArtifactsDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "inventoryStateDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "observedInventoryDigests": {
+      "type": "object",
+      "required": [
+        "issues",
+        "stages",
+        "attempts",
+        "groups",
+        "actors",
+        "workPlans",
+        "slices",
+        "checkpoints",
+        "continuations",
+        "outputMissingBreakers",
+        "routes",
+        "profileCapabilities",
+        "git",
+        "resources",
+        "processes",
+        "ports",
+        "docker",
+        "locks",
+        "leases",
+        "slots",
+        "filesystem",
+        "skills",
+        "bootstrap",
+        "landing",
+        "sourceCandidates",
+        "commitMappings",
+        "humanDecisions",
+        "humanRetentions",
+        "dag",
+        "telemetry"
+      ],
+      "properties": {
+        "issues": {
+          "$ref": "#/$defs/digest"
+        },
+        "stages": {
+          "$ref": "#/$defs/digest"
+        },
+        "attempts": {
+          "$ref": "#/$defs/digest"
+        },
+        "groups": {
+          "$ref": "#/$defs/digest"
+        },
+        "actors": {
+          "$ref": "#/$defs/digest"
+        },
+        "workPlans": {
+          "$ref": "#/$defs/digest"
+        },
+        "slices": {
+          "$ref": "#/$defs/digest"
+        },
+        "checkpoints": {
+          "$ref": "#/$defs/digest"
+        },
+        "continuations": {
+          "$ref": "#/$defs/digest"
+        },
+        "outputMissingBreakers": {
+          "$ref": "#/$defs/digest"
+        },
+        "routes": {
+          "$ref": "#/$defs/digest"
+        },
+        "profileCapabilities": {
+          "$ref": "#/$defs/digest"
+        },
+        "git": {
+          "$ref": "#/$defs/digest"
+        },
+        "resources": {
+          "$ref": "#/$defs/digest"
+        },
+        "processes": {
+          "$ref": "#/$defs/digest"
+        },
+        "ports": {
+          "$ref": "#/$defs/digest"
+        },
+        "docker": {
+          "$ref": "#/$defs/digest"
+        },
+        "locks": {
+          "$ref": "#/$defs/digest"
+        },
+        "leases": {
+          "$ref": "#/$defs/digest"
+        },
+        "slots": {
+          "$ref": "#/$defs/digest"
+        },
+        "filesystem": {
+          "$ref": "#/$defs/digest"
+        },
+        "skills": {
+          "$ref": "#/$defs/digest"
+        },
+        "bootstrap": {
+          "$ref": "#/$defs/digest"
+        },
+        "landing": {
+          "$ref": "#/$defs/digest"
+        },
+        "sourceCandidates": {
+          "$ref": "#/$defs/digest"
+        },
+        "commitMappings": {
+          "$ref": "#/$defs/digest"
+        },
+        "humanDecisions": {
+          "$ref": "#/$defs/digest"
+        },
+        "humanRetentions": {
+          "$ref": "#/$defs/digest"
+        },
+        "dag": {
+          "$ref": "#/$defs/digest"
+        },
+        "telemetry": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "code",
+          "category",
+          "subject"
+        ],
+        "properties": {
+          "code": {
+            "$ref": "#/$defs/nonEmpty"
+          },
+          "category": {
+            "$ref": "#/$defs/nonEmpty"
+          },
+          "subject": {
+            "$ref": "#/$defs/nonEmpty"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "status": {
+      "const": "quiescent"
+    },
+    "verifiedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "allOf": [
+    {
+      "properties": {
+        "violations": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "bootstrapDisposition": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "const": "retired"
+            },
+            "fallbackEnabled": {
+              "const": false
+            },
+            "activeStateCount": {
+              "const": 0
+            },
+            "activeLockCount": {
+              "const": 0
+            },
+            "activeSlotCount": {
+              "const": 0
+            },
+            "retirementReceiptDigest": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "nonEmpty": {
+      "type": "string",
+      "minLength": 1
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
