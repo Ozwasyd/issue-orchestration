@@ -13,5 +13,5 @@
   ],
   "negativeControls": ".agents/skills/fsusblog-design-conformance/contracts/blog-ui-orchestration-negative-controls.json",
   "focusedCommand": "node --test tests/tools/issue-orchestration-blog-ui.test.mjs",
-  "frozenResourceLifecycleSha256": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1"
+  "frozenResourceLifecycleSha256": "3ef997437d61228681f64512295247ff7fdac2092e08381b4e7b3254901b2fdd"
 }

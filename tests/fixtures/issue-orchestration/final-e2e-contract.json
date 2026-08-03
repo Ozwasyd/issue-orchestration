@@ -82,7 +82,7 @@
     "tests/tools/issue-orchestration-telemetry.test.mjs",
     "tests/tools/issue-orchestration-shared-package.test.mjs"
   ],
-  "frozenResourceLifecycleSha256": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1",
+  "frozenResourceLifecycleSha256": "3ef997437d61228681f64512295247ff7fdac2092e08381b4e7b3254901b2fdd",
   "temporaryBootstrapRunId": "cdfdbdbe-d901-4482-bafe-c4ba92c17779",
   "temporaryBootstrapDisposition": "retired-audit-only",
   "mutationControlCount": 19

@@ -12,7 +12,7 @@ const implementationRelative = `${packageScripts}/acceptance-group-session.mjs`
 const implementationPath = resolve(root, implementationRelative)
 const resourceLifecyclePath = resolve(root, `${packageScripts}/resource-lifecycle.mjs`)
 const resourceLifecycleDigest =
-    'e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1'
+    '3ef997437d61228681f64512295247ff7fdac2092e08381b4e7b3254901b2fdd'
 
 const repository = 'Ozwasyd/FsusBlog'
 const baseSha = '2499db9517ec4e340bb475443c6ec2984203323c'
@@ -457,7 +457,7 @@ test('G07 a verified human-pending member remains visible and blocks conflicting
     assert.ok(projection.blockedMembers.includes(issues[2]))
 })
 
-test('G08 #1828 resource lifecycle owner remains byte-for-byte unchanged', () => {
+test('G08 #1828 lifecycle carries the exact #5 authority migration', () => {
     assert.equal(existsSync(resourceLifecyclePath), true)
     assert.equal(digest(readFileSync(resourceLifecyclePath)), resourceLifecycleDigest)
 })
