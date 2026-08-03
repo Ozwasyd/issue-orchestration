@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-acceptance:
+    name: issue-orchestration / offline acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Run complete offline acceptance suite
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+
+      - name: Verify checkout remains unchanged
+        if: always()
+        shell: bash
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
