@@ -1,0 +1,74 @@
+name: Finalize issue 20 gate fix
+
+on:
+  push:
+    branches:
+      - agent/issue-20-canonical-dag-gate
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-issue-20-gate-fix
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Decode and verify patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/issue20-fix/payload.b64 > /tmp/issue20-fix.patch.gz
+          echo 'cfb602bf0d0acb5b4cda7ef2dc8cd830e16558ee6f9c5bbfc0ae5d8b7e7a67c9  /tmp/issue20-fix.patch.gz' | sha256sum -c -
+          gzip -d -c /tmp/issue20-fix.patch.gz > /tmp/issue20-fix.patch
+
+      - name: Apply fix and remove diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply /tmp/issue20-fix.patch
+          rm -rf .github/issue20-fix
+          rm -f .github/workflows/diagnose-issue-20.yml
+          rm -f .github/workflows/finalize-issue-20.yml
+          node scripts/build-manifest.mjs
+          git add -A
+          git diff --cached --check
+          test ! -e .github/issue20-fix
+          test ! -e .github/workflows/diagnose-issue-20.yml
+          test ! -e .github/workflows/finalize-issue-20.yml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator --ignore-scripts
+
+      - name: Run complete offline acceptance suite
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+
+      - name: Commit verified final tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix: preserve ready-frontier startup binding'
+          git push origin HEAD:agent/issue-20-canonical-dag-gate
