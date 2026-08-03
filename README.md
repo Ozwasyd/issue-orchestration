@@ -32,6 +32,10 @@ The isolated install flow remains available through `scripts/install.mjs`,
 
 ## Tests
 
+Product integration tests resolve sibling `FsusBlog` and `FsusUI`
+repositories by default. Set `FSUSBLOG_ROOT` or `FSUSUI_ROOT` to override
+those locations.
+
 ```bash
 npm ci --prefix tools/test-matrix/schema-validator
 node --test --test-concurrency=1 \

@@ -19,8 +19,8 @@ const contract = JSON.parse(readFileSync(resolve(
     'blog-ui-orchestration-contract.json'
 ), 'utf8'))
 const controls = JSON.parse(readFileSync(resolve(
-    fixtureRoot,
-    'blog-ui-orchestration-negative-controls.json'
+    fsusBlogRoot,
+    contract.negativeControls
 ), 'utf8'))
 const runtimePath = resolve(fsusBlogRoot, contract.implementationOwner)
 const hash = (value) => createHash('sha256').update(String(value)).digest('hex')

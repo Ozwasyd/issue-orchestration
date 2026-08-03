@@ -11,7 +11,7 @@
     ".agents/skills/fsusblog-design-conformance/contracts/ui-system-adjudication-receipt.schema.json",
     ".agents/skills/fsusblog-design-conformance/contracts/ux-acceptance-receipt.schema.json"
   ],
-  "negativeControls": "tests/fixtures/issue-orchestration/blog-ui-orchestration-negative-controls.json",
+  "negativeControls": ".agents/skills/fsusblog-design-conformance/contracts/blog-ui-orchestration-negative-controls.json",
   "focusedCommand": "node --test tests/tools/issue-orchestration-blog-ui.test.mjs",
   "frozenResourceLifecycleSha256": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1"
 }
