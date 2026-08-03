@@ -7,6 +7,13 @@ This repository is the only editable source for the Skill, runtime scripts,
 contracts, policies, graph schemas, and agent definitions. Runtime state must
 remain outside this repository and outside every product worktree.
 
+## Install for Codex discovery
+
+Use Codex's built-in `skill-installer` with private repository
+`Ozwasyd/issue-orchestration` and path `skills/issue-orchestration`. It installs
+the Skill into `$CODEX_HOME/skills/issue-orchestration`; a new Codex turn or
+session will then discover it.
+
 ## Install for the shared projects workspace
 
 Build the manifest after source changes, commit the resulting source, and then
