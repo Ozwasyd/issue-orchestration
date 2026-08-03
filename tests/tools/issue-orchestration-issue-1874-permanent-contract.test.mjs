@@ -488,7 +488,6 @@ test('all writer phases, roles and terminal failure events remain explicit', () 
 test('the UI writer has one permanent phase and landing keeps the existing writer roles', async () => {
     const policyFiles = [
         'model-pool.json',
-        'routing-policy.json',
         'stage-permissions.json'
     ].map((name) => path.join(
         root,
@@ -524,6 +523,13 @@ test('the UI writer has one permanent phase and landing keeps the existing write
             )
         }
     }
+    const routingPolicy = JSON.parse(fs.readFileSync(path.join(
+        root,
+        'policy/routing-policy.json'
+    ), 'utf8'))
+    assert.equal(routingPolicy.selectionAuthority, 'none')
+    assert.equal(routingPolicy.canonicalRoutePolicyVersion,
+        'execution-capability-routing.v4')
 
     const profileModule = await import(pathToFileURL(path.join(
         root,
@@ -539,7 +545,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         modelRoutingEvidenceDigest: 'a'.repeat(64),
         routingPolicyVersion: 'stage-model-pool.v3'
     }
-    const route = profileModule.compileStageRoute({
+    const route = profileModule.compileStageRoutingIdentity({
         ...classification,
         stageRole: 'ui-ux-implementer',
         stagePhase: 'ui-implementation'
@@ -547,14 +553,14 @@ test('the UI writer has one permanent phase and landing keeps the existing write
     assert.equal(route.stagePhase, 'ui-implementation')
     assert.deepEqual(route.allowedProfiles, ['sol-low', 'sol-medium'])
     assert.throws(
-        () => profileModule.compileStageRoute({
+        () => profileModule.compileStageRoutingIdentity({
             ...classification,
             stageRole: 'ui-ux-implementer',
             stagePhase: 'implementation'
         }),
         { code: 'routing-stage-role-phase' }
     )
-    const uiLandingRoute = profileModule.compileStageRoute({
+    const uiLandingRoute = profileModule.compileStageRoutingIdentity({
         ...classification,
         stageRole: 'ui-ux-implementer',
         stagePhase: 'landing-conflict-resolution'
@@ -566,7 +572,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         'sol-high',
         'sol-xhigh'
     ])
-    const codeLandingRoute = profileModule.compileStageRoute({
+    const codeLandingRoute = profileModule.compileStageRoutingIdentity({
         ...classification,
         domain: 'generic-code',
         uiDecisionClass: 'none',
@@ -584,7 +590,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         ]
     )
     assert.throws(
-        () => profileModule.compileStageRoute({
+        () => profileModule.compileStageRoutingIdentity({
             ...classification,
             stageRole: 'landing-owner',
             stagePhase: 'landing-conflict-resolution'

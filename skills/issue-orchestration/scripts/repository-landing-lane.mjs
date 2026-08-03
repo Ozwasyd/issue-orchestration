@@ -4,7 +4,7 @@ import {
     validateCompiledDispatchPrompt
 } from './executable-slice-compiler.mjs'
 import {
-    compileExecutionRoute
+    compileCanonicalRoute
 } from './execution-route-compiler.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
@@ -500,7 +500,7 @@ export function bindLandingSlice(attempt, input = {}) {
                 slice.sliceDigest) {
             fail('landing-slice-route-binding-invalid')
         }
-        route = compileExecutionRoute(input.routeInput)
+        route = compileCanonicalRoute(input.routeInput)
     } catch (error) {
         if (error instanceof LandingLaneError) throw error
         fail('landing-slice-route-binding-invalid')

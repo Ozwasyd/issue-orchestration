@@ -8,13 +8,12 @@ import { pathToFileURL } from 'node:url'
 import {
     STAGE_MODEL_POOL_POLICY,
     STAGE_ROUTE_DEFINITIONS,
-    compileStageRoute,
     compileStageRoutingIdentity,
     splitProfile
 } from './stage-profile-policy.mjs'
 import {
     EXECUTION_ROUTING_POLICY_DIGEST,
-    compileExecutionRoute
+    compileCanonicalRoute
 } from './execution-route-compiler.mjs'
 import {
     compileExecutableSlice,
@@ -245,10 +244,35 @@ function expectedV2Route(input) {
         }
         const key = `${input.stageRole}:${input.stagePhase}`
         if (!WRITER_STAGE_KEYS.has(key)) {
-            return compileStageRoute(routeInput)
+            const baseRoute = compileStageRoutingIdentity(routeInput)
+            const decision = compileCanonicalRoute({
+                ...routeInput,
+                routingClassification:
+                    input.routingClassification,
+                dagUpdateClass: input.dagUpdateClass,
+                documentationClass: input.documentationClass,
+                frontierException:
+                    input.frontierException === true,
+                machineFrontierEvidence:
+                    input.machineFrontierEvidence
+            }).executionRouteDecision
+            return {
+                ...baseRoute,
+                allowedProfiles: decision.allowedProfiles,
+                routingAuthority: decision.routingAuthority,
+                selectedProfile: decision.selectedProfile,
+                selectedProfileReason:
+                    decision.selectedProfileReason,
+                routeCellId: decision.routeCellId,
+                canonicalPolicyDigest:
+                    decision.canonicalPolicyDigest,
+                requiredProfile: decision.requiredProfile,
+                routeDecisionDigest:
+                    decision.routeDecisionDigest
+            }
         }
         const baseRoute = compileStageRoutingIdentity(routeInput)
-        const bundle = compileExecutionRoute({
+        const bundle = compileCanonicalRoute({
             stageWorkPlan: input.stageWorkPlan,
             executableSlice: input.executableSlice,
             routingClassification: input.routingClassification,
@@ -281,6 +305,12 @@ function expectedV2Route(input) {
             routingAuthority: decision.routingAuthority,
             selectedProfile: decision.selectedProfile,
             selectedProfileReason: decision.selectedProfileReason,
+            routeCellId: decision.routeCellId,
+            canonicalPolicyDigest:
+                decision.canonicalPolicyDigest,
+            requiredProfile: decision.requiredProfile,
+            routeDecisionDigest:
+                decision.routeDecisionDigest,
             executionRouteDecisionDigest:
                 decision.routeDecisionDigest
         }

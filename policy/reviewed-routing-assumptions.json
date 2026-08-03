@@ -1,0 +1,134 @@
+{
+  "schema": "issue-orchestration.reviewed-routing-assumptions.v1",
+  "policyVersion": "execution-capability-routing.v4",
+  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "authority": "checked-in-reviewed-routing-assumptions",
+  "evidenceClass": "maintained-policy-not-runtime-observation",
+  "runtimeObservationClaim": false,
+  "selectorAuthority": false,
+  "exactRouteValidationOnly": true,
+  "catalogAvailabilitySemantics": "availability-only-not-reasoning-capability",
+  "installationPaidModelInvocationCount": 0,
+  "profiles": {
+    "terra-low": {
+      "model": "gpt-5.6-terra",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "484f5eb465a8946fe269f64247bfa24e7511882c1ae6590727878b9de992c5ae"
+    },
+    "terra-medium": {
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "37070cf5b91551d23228ee44b4a6697138d7263dd1597d3f397f0ac3631d1a74"
+    },
+    "terra-high": {
+      "model": "gpt-5.6-terra",
+      "effort": "high",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "10d8e5d9d54489650aec7d1521f05eb8222fc0afe1d8fca3895094fb92081b65"
+    },
+    "terra-xhigh": {
+      "model": "gpt-5.6-terra",
+      "effort": "xhigh",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "3913eecda209536e1e9dd5ac1d4d48ade7497d5c93a977ce5905117df2ad1bef"
+    },
+    "terra-max": {
+      "model": "gpt-5.6-terra",
+      "effort": "max",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "68c604c44a03fccc6bfcaf165a5056a0c68e6a59f6484ed1a3844f34a61a2609"
+    },
+    "luna-low": {
+      "model": "gpt-5.6-luna",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "2b3a67dd605d93f7b33bd3bad65a4a9a1338141afdca5071ec1a467b87dae835"
+    },
+    "luna-medium": {
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "9c869abeb527eddf05f41a25d639c3c05e2098c90195ca0a7038b485ece0c772"
+    },
+    "luna-high": {
+      "model": "gpt-5.6-luna",
+      "effort": "high",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "04ac50892d240720bd2ce081845b71e6e6b932220a72868302c94bea7156f497"
+    },
+    "luna-xhigh": {
+      "model": "gpt-5.6-luna",
+      "effort": "xhigh",
+      "multiAgentBackend": "v2",
+      "policyStatus": "disabled",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "bc8015781aa41cf2f9719330eaa2627cf76cf49353da10e372d40917faaf0e84"
+    },
+    "luna-max": {
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "2b2565bfda7783706530076afdda1cf321b4694d44e4e0f38834ee6ed7f96236"
+    },
+    "sol-low": {
+      "model": "gpt-5.6-sol",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "497e37f92bc7de9be081742355c5638ee6003cfb88e2ea13a2972d839703ad3a"
+    },
+    "sol-medium": {
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "f7e6b6044707ab44fe0236893a45cd2fc73bc2205bf77b2a25709e8921891f18"
+    },
+    "sol-high": {
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "de2865cb6a0bc3abfa4ee018d52379452aeb8e2b81def0879e10bad282bc3e79"
+    },
+    "sol-xhigh": {
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "multiAgentBackend": "v2",
+      "policyStatus": "normal",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "064603d9c8690f96cee63ea048ed1ef93268f069a98d5473be37cffe507f1d07"
+    },
+    "sol-max": {
+      "model": "gpt-5.6-sol",
+      "effort": "max",
+      "multiAgentBackend": "v2",
+      "policyStatus": "frontier-service-only",
+      "routeValidation": "exact-required-profile-only",
+      "assumptionDigest": "eadd89e892b472fc56827d455fc0d1b5f21fc4ad4dfc6a399c84e91c37082681"
+    }
+  }
+}

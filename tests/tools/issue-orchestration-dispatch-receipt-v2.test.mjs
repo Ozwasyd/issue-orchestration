@@ -160,7 +160,7 @@ async function frozenRoute(changes = {}) {
             ? 'ui-implementation'
             : 'implementation'
     )
-    const route = module.compileStageRoute({
+    const route = module.compileStageRoutingIdentity({
         ...classification,
         stageRole,
         stagePhase,
@@ -237,7 +237,7 @@ async function requestInput(overrides = {}) {
         }),
         ...overrides.machineClassificationEvidence
     }
-    const executionRoute = executionModule.compileExecutionRoute({
+    const executionRoute = executionModule.compileCanonicalRoute({
         stageWorkPlan: artifacts.stageWorkPlan,
         executableSlice: artifacts.executableSlice,
         routingClassification: routeInput.classification,
@@ -391,7 +391,7 @@ async function requestInput(overrides = {}) {
 
 async function bindExecutionRoute(input) {
     const executionModule = await executionPolicy()
-    const bundle = executionModule.compileExecutionRoute({
+    const bundle = executionModule.compileCanonicalRoute({
         stageWorkPlan: input.stageWorkPlan,
         executableSlice: input.executableSlice,
         routingClassification: input.routingClassification,
@@ -756,7 +756,7 @@ test('P01 dispatch-request.v2 seals every route and serial identity field', asyn
     assert.equal(request.stageProfileId, 'sol-high')
     assert.equal(
         request.selectedProfileReason,
-        'runtime-probe-heavy-minimum-capability-fit'
+        'implementation.high-risk-exact-route-cell'
     )
     assert.equal(
         request.stagePermissionsPolicyDigest,
@@ -1079,10 +1079,17 @@ test('P04 unobservable actual metadata cannot be marked verified', async () => {
 
 test('P05 deterministic routing is recomputed and receipt-bound', async () => {
     const { module: policyModule, route } = await frozenRoute()
-    assert.equal(route.selectedProfile, 'sol-high')
-    assert.equal(route.selectedProfileReason, 'engineering-risk-high-risk')
+    assert.equal(Object.hasOwn(route, 'selectedProfile'), false)
     const module = await runtime()
     const request = await module.sealDispatchRequest(await requestInput())
+    assert.equal(
+        request.executionRouteDecision.selectedProfile,
+        'sol-high'
+    )
+    assert.equal(
+        request.executionRouteDecision.routeCellId,
+        'implementation.high-risk'
+    )
     const { dispatchReceipt } = await module.verifyRuntimeDispatch({
         request,
         ...dispatchEvidence(request),
@@ -1090,7 +1097,10 @@ test('P05 deterministic routing is recomputed and receipt-bound', async () => {
     })
     assert.equal(dispatchReceipt.policyVersion, policyModule.ROUTING_POLICY_VERSION)
     assert.equal(dispatchReceipt.routingInputDigest, route.routingInputDigest)
-    assert.equal(dispatchReceipt.selectedProfileId, route.selectedProfile)
+    assert.equal(
+        dispatchReceipt.selectedProfileId,
+        request.executionRouteDecision.selectedProfile
+    )
 })
 
 test('P06 ordinary serial receipt binds exact scope and dependency identity', async () => {

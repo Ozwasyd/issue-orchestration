@@ -22,8 +22,8 @@ import {
     currentRuntimeStartupAuthority
 } from '../../skills/issue-orchestration/scripts/runtime-startup-attestation.mjs'
 import {
-    compileStageRoute
-} from '../../skills/issue-orchestration/scripts/stage-profile-policy.mjs'
+    compileCanonicalRoute
+} from '../../skills/issue-orchestration/scripts/execution-route-compiler.mjs'
 import {
     digest
 } from '../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
@@ -186,20 +186,26 @@ function takeoverFixture() {
 }
 
 test('normal and recovery root phases are disjoint route identities', () => {
-    const normal = compileStageRoute({
+    const normal = compileCanonicalRoute({
         ...classification(),
         stageRole: 'root-scheduler',
         stagePhase: 'scheduling'
     })
-    assert.deepEqual(normal.allowedProfiles, ['terra-low'])
-    assert.equal(normal.selectedProfile, 'terra-low')
-    assert.throws(() => compileStageRoute({
+    assert.deepEqual(
+        normal.executionRouteDecision.allowedProfiles,
+        ['terra-low']
+    )
+    assert.equal(
+        normal.executionRouteDecision.selectedProfile,
+        'terra-low'
+    )
+    assert.throws(() => compileCanonicalRoute({
         ...classification(),
         stageRole: 'root-scheduler',
         stagePhase: 'scheduling',
         controlPlaneRecovery: true
     }), { code: 'routing-root-in-session-upgrade-forbidden' })
-    const recovery = compileStageRoute({
+    const recovery = compileCanonicalRoute({
         ...classification(),
         stageRole: 'root-scheduler',
         stagePhase: 'recovery-takeover',
@@ -208,11 +214,17 @@ test('normal and recovery root phases are disjoint route identities', () => {
         recoveryHandoffDigest: digest('handoff'),
         oldRootFencingReceiptDigest: digest('fencing')
     })
-    assert.deepEqual(recovery.allowedProfiles, ['terra-medium'])
-    assert.equal(recovery.selectedProfile, 'terra-medium')
+    assert.deepEqual(
+        recovery.executionRouteDecision.allowedProfiles,
+        ['terra-medium']
+    )
+    assert.equal(
+        recovery.executionRouteDecision.selectedProfile,
+        'terra-medium'
+    )
     assert.notEqual(
-        recovery.routingInputDigest,
-        normal.routingInputDigest
+        recovery.executionRouteDecision.routeDecisionDigest,
+        normal.executionRouteDecision.routeDecisionDigest
     )
 })
 

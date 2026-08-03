@@ -1,6 +1,8 @@
 {
-  "schema": "issue-orchestration.routing-policy.v3",
+  "schema": "issue-orchestration.routing-policy.v4",
   "version": "stage-model-pool.v3",
+  "selectionAuthority": "none",
+  "canonicalRoutePolicyVersion": "execution-capability-routing.v4",
   "requiredClassificationFields": [
     "domain",
     "effectiveOwnerRepository",
@@ -57,68 +59,6 @@
     "selectedProfile",
     "profileOverride"
   ],
-  "selectors": {
-    "dag-creator-updater:semantic-proposal": {
-      "default": "terra-high",
-      "frontierException": "sol-max",
-      "fullReconstruction": "sol-high",
-      "authorityOrTopologyConflict": "sol-xhigh"
-    },
-    "test-owner:test-contract-planning": {
-      "focused": "terra-high",
-      "runtimeOrLifecycle": "sol-high",
-      "protocolSecurityOrAuthority": "sol-xhigh"
-    },
-    "test-owner:test-contract": {
-      "focused": "terra-medium",
-      "runtimeOrLifecycle": "sol-high",
-      "protocolSecurityOrAuthority": "sol-xhigh"
-    },
-    "test-owner:behavior-verification": {
-      "focused": "terra-high",
-      "runtimeOrLifecycle": "sol-high",
-      "protocolSecurityOrAuthority": "sol-xhigh"
-    },
-    "code-implementer:implementation": {
-      "bounded": "terra-medium",
-      "complex": "terra-high",
-      "high-risk": "sol-high",
-      "frontier": "sol-xhigh"
-    },
-    "code-implementer:landing-conflict-resolution": {
-      "bounded": "terra-medium",
-      "complex": "terra-high",
-      "high-risk": "sol-high",
-      "frontier": "sol-xhigh"
-    },
-    "ui-ux-implementer:ui-implementation": {
-      "prescribed": "sol-low",
-      "bounded-composition": "sol-low",
-      "layout-judgment": "sol-medium",
-      "interaction-judgment": "sol-medium"
-    },
-    "ui-ux-implementer:landing-conflict-resolution": {
-      "prescribed": "terra-medium",
-      "bounded-composition": "sol-medium",
-      "layout-judgment": "sol-medium",
-      "interaction-judgment": "sol-medium",
-      "cross-module": "sol-high",
-      "protocol-security": "sol-xhigh"
-    },
-    "ui-system-adjudicator:adjudication": {
-      "system-design-dispute": "sol-high",
-      "authority-conflict": "sol-xhigh"
-    },
-    "ux-acceptance-verifier:ux-acceptance": {
-      "ux-local": "sol-medium",
-      "ux-path": "sol-high",
-      "ux-system": "sol-xhigh"
-    },
-    "documentation-writer:documentation": {
-      "bounded": "terra-low",
-      "single-module": "terra-medium",
-      "complex": "sol-medium",
-      "architecture-public-contract": "sol-high"
-    }
-  }
+  "stageSemanticsAuthority": "classification-and-permission-only",
+  "profileSelectors": null
 }

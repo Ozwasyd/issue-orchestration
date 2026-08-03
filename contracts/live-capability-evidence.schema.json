@@ -1,0 +1,138 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:live-capability-evidence:v1",
+    "title": "issue-orchestration.live-capability-evidence.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "authority",
+        "runtimeInvocationId",
+        "sessionOrThreadId",
+        "requestedProfile",
+        "effectiveProfile",
+        "requestedModel",
+        "effectiveModel",
+        "requestedEffort",
+        "effectiveEffort",
+        "multiAgentBackend",
+        "runtimeVersion",
+        "fixtureOrTaskIdentity",
+        "sourceCommit",
+        "packageDigest",
+        "policyDigest",
+        "rawEventDigest",
+        "rawSessionDigest",
+        "rawTurnDigest",
+        "executedCommandDigest",
+        "toolTraceDigest",
+        "observedAt",
+        "perFieldDerivation",
+        "receiptDigest"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.live-capability-evidence.v1"
+        },
+        "authority": {
+            "const": "invocation-bound-live-capability-evidence"
+        },
+        "runtimeInvocationId": {"type": "string", "minLength": 1},
+        "sessionOrThreadId": {"type": "string", "minLength": 1},
+        "requestedProfile": {"type": "string", "minLength": 1},
+        "effectiveProfile": {"type": "string", "minLength": 1},
+        "requestedModel": {"type": "string", "minLength": 1},
+        "effectiveModel": {"type": "string", "minLength": 1},
+        "requestedEffort": {"type": "string", "minLength": 1},
+        "effectiveEffort": {"type": "string", "minLength": 1},
+        "multiAgentBackend": {"const": "v2"},
+        "runtimeVersion": {"type": "string", "minLength": 1},
+        "fixtureOrTaskIdentity": {"type": "string", "minLength": 1},
+        "sourceCommit": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{40}$"
+        },
+        "packageDigest": {"$ref": "#/$defs/digest"},
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "rawEventDigest": {"$ref": "#/$defs/digest"},
+        "rawSessionDigest": {"$ref": "#/$defs/digest"},
+        "rawTurnDigest": {"$ref": "#/$defs/digest"},
+        "executedCommandDigest": {"$ref": "#/$defs/digest"},
+        "toolTraceDigest": {"$ref": "#/$defs/digest"},
+        "observedAt": {"type": "string", "minLength": 1},
+        "perFieldDerivation": {
+            "type": "object",
+            "required": [
+                "runtimeInvocationId",
+                "sessionOrThreadId",
+                "requestedProfile",
+                "effectiveProfile",
+                "requestedModel",
+                "effectiveModel",
+                "requestedEffort",
+                "effectiveEffort",
+                "multiAgentBackend",
+                "runtimeVersion",
+                "fixtureOrTaskIdentity",
+                "sourceCommit",
+                "packageDigest",
+                "policyDigest",
+                "rawEventDigest",
+                "rawSessionDigest",
+                "rawTurnDigest",
+                "executedCommandDigest",
+                "toolTraceDigest",
+                "observedAt"
+            ],
+            "properties": {
+                "runtimeInvocationId": {"$ref": "#/$defs/derivation"},
+                "sessionOrThreadId": {"$ref": "#/$defs/derivation"},
+                "requestedProfile": {"$ref": "#/$defs/derivation"},
+                "effectiveProfile": {"$ref": "#/$defs/derivation"},
+                "requestedModel": {"$ref": "#/$defs/derivation"},
+                "effectiveModel": {"$ref": "#/$defs/derivation"},
+                "requestedEffort": {"$ref": "#/$defs/derivation"},
+                "effectiveEffort": {"$ref": "#/$defs/derivation"},
+                "multiAgentBackend": {"$ref": "#/$defs/derivation"},
+                "runtimeVersion": {"$ref": "#/$defs/derivation"},
+                "fixtureOrTaskIdentity": {"$ref": "#/$defs/derivation"},
+                "sourceCommit": {"$ref": "#/$defs/derivation"},
+                "packageDigest": {"$ref": "#/$defs/derivation"},
+                "policyDigest": {"$ref": "#/$defs/derivation"},
+                "rawEventDigest": {"$ref": "#/$defs/derivation"},
+                "rawSessionDigest": {"$ref": "#/$defs/derivation"},
+                "rawTurnDigest": {"$ref": "#/$defs/derivation"},
+                "executedCommandDigest": {"$ref": "#/$defs/derivation"},
+                "toolTraceDigest": {"$ref": "#/$defs/derivation"},
+                "observedAt": {"$ref": "#/$defs/derivation"}
+            },
+            "additionalProperties": false
+        },
+        "receiptDigest": {"$ref": "#/$defs/digest"}
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        },
+        "derivation": {
+            "type": "object",
+            "required": [
+                "derivation",
+                "sourceEvidenceDigests",
+                "valueDigest"
+            ],
+            "properties": {
+                "derivation": {"type": "string", "minLength": 1},
+                "sourceEvidenceDigests": {
+                    "type": "array",
+                    "items": {"$ref": "#/$defs/digest"},
+                    "minItems": 1,
+                    "uniqueItems": true
+                },
+                "valueDigest": {"$ref": "#/$defs/digest"}
+            },
+            "additionalProperties": false
+        }
+    }
+}

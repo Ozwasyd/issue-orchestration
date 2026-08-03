@@ -5,6 +5,7 @@ import path from 'node:path'
 import {
     STAGE_MODEL_POOL_POLICY,
     STAGE_ROUTE_DEFINITIONS,
+    compileStageRoutingIdentity,
     splitProfile,
     validateRoutingClassification,
     verifyRuntimeProfileMetadata
@@ -24,22 +25,21 @@ function readPolicy(name) {
 }
 
 const ROUTING_POLICY = readPolicy('execution-routing-policy.json')
-const CAPABILITY_MATRIX = readPolicy('profile-capability-matrix.json')
-const CAPABILITY_OBSERVATIONS =
-    readPolicy('profile-capability-observations.json')
+const REVIEWED_ASSUMPTIONS =
+    readPolicy('reviewed-routing-assumptions.json')
 
 export const EXECUTION_ROUTING_POLICY_VERSION = ROUTING_POLICY.version
 export const EXECUTION_ROUTING_AUTHORITY = ROUTING_POLICY.routingAuthority
 export const EXECUTION_ROUTING_POLICY_DIGEST = digest({
     policy: ROUTING_POLICY,
-    capabilityMatrixEvidenceDigest:
-        CAPABILITY_MATRIX.evidenceDigest
+    reviewedRoutingAssumptionsDigest:
+        digest(REVIEWED_ASSUMPTIONS)
 })
 export const EXECUTION_ROUTING_POLICY = Object.freeze(
     structuredClone(ROUTING_POLICY)
 )
-export const PROFILE_CAPABILITY_MATRIX = Object.freeze(
-    structuredClone(CAPABILITY_MATRIX)
+export const REVIEWED_ROUTING_ASSUMPTIONS = Object.freeze(
+    structuredClone(REVIEWED_ASSUMPTIONS)
 )
 
 export class ExecutionRouteError extends Error {
@@ -154,9 +154,10 @@ export function verifyInstalledProductionPolicy({
     validateAvailabilityBinding(availabilityBinding)
     const disabled =
         new Set(STAGE_MODEL_POOL_POLICY.disabledProfiles)
-    const ordinaryOutcomes = Object.values(
-        ROUTING_POLICY.selectionPriority
-    ).flat()
+    const routeCells = Object.entries(ROUTING_POLICY.routeCells ?? {})
+    const ordinaryOutcomes = routeCells
+        .filter(([, cell]) => cell.advisorOnly !== true)
+        .map(([, cell]) => cell.requiredProfile)
     if (ordinaryOutcomes.some((profile) =>
         disabled.has(profile) || profile === 'sol-max') ||
         Object.values(STAGE_ROUTE_DEFINITIONS).some((stage) =>
@@ -167,18 +168,14 @@ export function verifyInstalledProductionPolicy({
             key !== 'dag-creator-updater:semantic-proposal')) {
         fail('execution-route-install-authority-invalid')
     }
-    const reachability = Object.fromEntries(
-        Object.entries(ROUTING_POLICY.selectionPriority)
-            .map(([route, profiles]) => [
-                route,
-                profiles.some((profile) =>
-                    availabilityBinding.profiles[profile]?.available ===
-                        true ||
-                    profile === 'luna-max' &&
-                        availabilityBinding.profiles['terra-high']
-                            ?.available === true)
-            ])
-    )
+    const reachability = Object.fromEntries(routeCells.map(
+        ([routeCellId, cell]) => [
+            routeCellId,
+            availabilityBinding.profiles[cell.requiredProfile]?.available ===
+                true ||
+            cell.requiredProfile === 'luna-max' &&
+                availabilityBinding.profiles['terra-high']?.available === true
+        ]))
     if (Object.values(reachability).some((reachable) =>
         reachable !== true)) {
         fail('execution-route-install-route-unreachable')
@@ -202,119 +199,167 @@ export function verifyInstalledProductionPolicy({
     }, 'receiptDigest')
 }
 
-function toolPersistenceLevel(depth) {
-    if (depth >= 16) return 5
-    if (depth >= 12) return 4
-    if (depth >= 8) return 3
-    if (depth >= 4) return 2
-    return 1
+function assumptionBody(value) {
+    const body = structuredClone(value)
+    delete body.assumptionDigest
+    return body
 }
 
-function capabilityFromObservation(observation) {
-    return {
-        planningDepth: observation.observedPlanningDepth,
-        toolChainPersistence:
-            toolPersistenceLevel(observation.successfulToolChainDepth),
-        contextRetentionClass:
-            observation.observedContextRetentionClass,
-        checkpointReliability:
-            observation.observedCheckpointReliability,
-        runtimeProbeCapability:
-            observation.observedRuntimeProbeCapability,
-        crossModuleReasoningClass:
-            observation.observedCrossModuleReasoningClass,
-        allowedContinuationModes:
-            [...observation.supportedContinuationModes],
-        evidenceDigest: digest(observation)
-    }
-}
-
-export function verifyProfileCapabilityMatrix({
-    matrix = CAPABILITY_MATRIX,
-    observations = CAPABILITY_OBSERVATIONS
-} = {}) {
-    if (matrix?.schema !==
-            'issue-orchestration.profile-capability-matrix.v3' ||
-        matrix.policyVersion !== ROUTING_POLICY.version ||
-        matrix.modelPoolPolicyVersion !==
+export function verifyReviewedRoutingAssumptions(
+    assumptions = REVIEWED_ASSUMPTIONS
+) {
+    if (ROUTING_POLICY.schema !==
+            'issue-orchestration.execution-routing-policy.v4' ||
+        ROUTING_POLICY.version !==
+            'execution-capability-routing.v4' ||
+        ROUTING_POLICY.routingAuthority !==
+            'canonical-route-cell-compiler' ||
+        ROUTING_POLICY.selectionMode !==
+            'exact-route-cell-no-profile-search' ||
+        ROUTING_POLICY.capabilityValidationMode !==
+            'accept-required-profile-or-fail-closed' ||
+        ROUTING_POLICY.legacyReceiptPolicy !== 'reject' ||
+        ROUTING_POLICY.failureReroutePolicy !==
+            'profile-advance-forbidden' ||
+        assumptions?.schema !==
+            'issue-orchestration.reviewed-routing-assumptions.v1' ||
+        assumptions.policyVersion !== ROUTING_POLICY.version ||
+        assumptions.modelPoolPolicyVersion !==
             STAGE_MODEL_POOL_POLICY.version ||
-        matrix.evidenceAuthority !==
-            'recomputed-codex-v2-runtime-observations' ||
-        matrix.modelSelfReportAccepted !== false ||
-        observations?.schema !==
-            'issue-orchestration.profile-capability-observations.v3' ||
-        observations.authority !==
-            'codex-v2-runtime-metadata-observer' ||
-        matrix.evidenceDigest !== digest(observations)) {
-        fail('execution-route-capability-matrix-invalid')
+        assumptions.authority !==
+            'checked-in-reviewed-routing-assumptions' ||
+        assumptions.evidenceClass !==
+            'maintained-policy-not-runtime-observation' ||
+        assumptions.runtimeObservationClaim !== false ||
+        assumptions.selectorAuthority !== false ||
+        assumptions.exactRouteValidationOnly !== true ||
+        assumptions.catalogAvailabilitySemantics !==
+            'availability-only-not-reasoning-capability' ||
+        assumptions.installationPaidModelInvocationCount !== 0) {
+        fail('execution-route-reviewed-assumptions-invalid')
     }
-    const requiredObservationFields = [
-        'firstArtifactLatency',
-        'firstWriteLatency',
-        'readOnlyOperationsBeforeArtifact',
-        'successfulToolChainDepth',
-        'checkpointProduced',
-        'continuationRecovered',
-        'visibleCommandLoopCount',
-        'sliceCompletionStatus',
-        'outputMissingClass',
-        'runtimeInvocationFailure',
+    const legacyLabels = [
+        'machine-runtime-observation',
+        'codex-v2-runtime-metadata-observer',
+        'recomputed-codex-v2-runtime-observations'
+    ]
+    const serialized = JSON.stringify(assumptions)
+    if (legacyLabels.some((label) => serialized.includes(label))) {
+        fail('execution-route-legacy-observation-authority')
+    }
+    const modelProfiles = Object.keys(
+        STAGE_MODEL_POOL_POLICY.profiles
+    ).sort()
+    const assumptionProfiles = Object.keys(
+        assumptions.profiles ?? {}
+    ).sort()
+    if (!sameValue(modelProfiles, assumptionProfiles)) {
+        fail('execution-route-reviewed-assumption-coverage')
+    }
+    for (const profileId of modelProfiles) {
+        const profile = STAGE_MODEL_POOL_POLICY.profiles[profileId]
+        const assumption = assumptions.profiles[profileId]
+        if (assumption.model !== profile.model ||
+            assumption.effort !== profile.effort ||
+            assumption.multiAgentBackend !==
+                profile.multiAgentBackend ||
+            assumption.policyStatus !== profile.productionStatus ||
+            assumption.routeValidation !==
+                'exact-required-profile-only' ||
+            assumption.assumptionDigest !==
+                digest(assumptionBody(assumption)) ||
+            profile.reviewedAssumptionDigest !==
+                assumption.assumptionDigest) {
+            fail('execution-route-reviewed-assumption-mismatch')
+        }
+    }
+    for (const [routeCellId, cell] of Object.entries(
+        ROUTING_POLICY.routeCells ?? {}
+    )) {
+        const assumption = assumptions.profiles[cell.requiredProfile]
+        if (!assumption ||
+            assumption.policyStatus === 'disabled' ||
+            cell.advisorOnly === true &&
+                cell.requiredProfile !== 'sol-max' ||
+            cell.advisorOnly !== true &&
+                cell.requiredProfile === 'sol-max') {
+            fail(
+                'execution-route-cell-assumption-invalid',
+                routeCellId
+            )
+        }
+    }
+    return assumptions
+}
+
+export function verifyLiveCapabilityEvidence(value) {
+    const requiredStrings = [
+        'runtimeInvocationId',
+        'sessionOrThreadId',
+        'requestedProfile',
+        'effectiveProfile',
         'requestedModel',
         'effectiveModel',
         'requestedEffort',
         'effectiveEffort',
         'multiAgentBackend',
-        'runtimeMetadataObserved'
+        'runtimeVersion',
+        'fixtureOrTaskIdentity',
+        'observedAt'
     ]
-    const observationProfiles = new Set()
-    for (const observation of observations.observations ?? []) {
-        if (observation.source !== 'machine-runtime-observation' ||
-            requiredObservationFields.some((field) =>
-                !Object.hasOwn(observation, field)) ||
-            observationProfiles.has(observation.profileId)) {
-            fail('execution-route-capability-evidence-invalid')
-        }
-        observationProfiles.add(observation.profileId)
-        try {
-            verifyRuntimeProfileMetadata({
-                selectedProfile: observation.profileId,
-                requestedModel: observation.requestedModel,
-                effectiveModel: observation.effectiveModel,
-                requestedEffort: observation.requestedEffort,
-                effectiveEffort: observation.effectiveEffort,
-                multiAgentBackend: observation.multiAgentBackend
-            }, {
-                allowNonProductionCatalog: true
-            })
-        } catch {
-            fail('execution-route-capability-runtime-metadata-invalid')
-        }
-        if (observation.runtimeMetadataObserved !== true) {
-            fail('execution-route-capability-runtime-metadata-invalid')
-        }
-        if (!sameValue(
-            matrix.profiles?.[observation.profileId],
-            capabilityFromObservation(observation)
+    const requiredDigests = [
+        'packageDigest',
+        'policyDigest',
+        'rawEventDigest',
+        'rawSessionDigest',
+        'rawTurnDigest',
+        'executedCommandDigest',
+        'toolTraceDigest'
+    ]
+    const derivedFields = [
+        ...requiredStrings,
+        'sourceCommit',
+        ...requiredDigests
+    ]
+    if (value?.schema !==
+            'issue-orchestration.live-capability-evidence.v1' ||
+        value.authority !==
+            'invocation-bound-live-capability-evidence' ||
+        requiredStrings.some((field) =>
+            typeof value[field] !== 'string' || !value[field]) ||
+        requiredDigests.some((field) =>
+            !HASH.test(value[field] ?? '')) ||
+        !/^[a-f0-9]{40}$/u.test(value.sourceCommit ?? '') ||
+        value.policyDigest !== EXECUTION_ROUTING_POLICY_DIGEST ||
+        !value.perFieldDerivation ||
+        typeof value.perFieldDerivation !== 'object' ||
+        Array.isArray(value.perFieldDerivation) ||
+        !sameValue(
+            Object.keys(value.perFieldDerivation).sort(),
+            [...derivedFields].sort()
         )) {
-            fail('execution-route-capability-matrix-not-recomputable')
+        fail('execution-route-live-capability-evidence-invalid')
+    }
+    for (const derivation of Object.values(value.perFieldDerivation)) {
+        if (typeof derivation?.derivation !== 'string' ||
+            !derivation.derivation ||
+            !HASH.test(derivation.valueDigest ?? '') ||
+            !Array.isArray(derivation.sourceEvidenceDigests) ||
+            derivation.sourceEvidenceDigests.length === 0 ||
+            derivation.sourceEvidenceDigests.some((entry) =>
+                !HASH.test(entry))) {
+            fail('execution-route-live-capability-derivation-invalid')
         }
     }
-    const matrixProfiles = Object.keys(matrix.profiles ?? {}).sort()
-    const authorizedProfiles = [
-        ...STAGE_MODEL_POOL_POLICY.productionRoster,
-        ...STAGE_MODEL_POOL_POLICY.frontierOnlyProfiles
-    ].sort()
-    if (!sameValue([...observationProfiles].sort(), matrixProfiles) ||
-        authorizedProfiles.some((profile) =>
-            !observationProfiles.has(profile)) ||
-        matrixProfiles.some((profile) =>
-            !STAGE_MODEL_POOL_POLICY.profiles[profile])) {
-        fail('execution-route-capability-profile-coverage')
+    const unsigned = structuredClone(value)
+    delete unsigned.receiptDigest
+    if (value.receiptDigest !== digest(unsigned)) {
+        fail('execution-route-live-capability-receipt-invalid')
     }
-    return matrix
+    return value
 }
 
-verifyProfileCapabilityMatrix()
+verifyReviewedRoutingAssumptions()
 
 function assertNoForbiddenInputs(input) {
     for (const field of ROUTING_POLICY.forbiddenInputs) {
@@ -449,10 +494,6 @@ function shapeCandidates(metrics, slice, stageDefinition) {
         }
         shapes.push('luna-fresh-narrow-deep')
     }
-    if (stageDefinition.writeScope === 'none' ||
-        slice.explicitReadOnlyOutput) {
-        shapes.push('observe-only-adjudication')
-    }
     const longHorizon =
         metrics.toolInteractionDepth >= 16 ||
         (metrics.contextBreadth === 'very-broad' &&
@@ -475,6 +516,11 @@ function shapeCandidates(metrics, slice, stageDefinition) {
     if (metrics.expectedChangedFileCount > 1 ||
         metrics.ownedModuleCount > 1) {
         shapes.push('bounded-multifile')
+    }
+    if (shapes.length === 0 &&
+        (stageDefinition.writeScope === 'none' ||
+            slice.explicitReadOnlyOutput)) {
+        shapes.push('focused-observe-only')
     }
     shapes.push('atomic-edit')
     return [...new Set(shapes)]
@@ -556,12 +602,284 @@ function compileShape(input, slice, classification, stageDefinition) {
     }, 'classificationDigest')
 }
 
-function compileCapabilityRequirement(shape, stageDefinition) {
-    const levels =
-        ROUTING_POLICY.shapeRequirements[shape.dominantWorkShape]
-    if (!Array.isArray(levels) || levels.length !== 6) {
-        fail('execution-route-shape-policy-invalid')
+function routeCell(routeCellId, selectingPredicates) {
+    const cell = ROUTING_POLICY.routeCells?.[routeCellId]
+    if (!cell || typeof cell.requiredProfile !== 'string') {
+        fail('execution-route-cell-missing', routeCellId)
     }
+    return Object.freeze({
+        routeCellId,
+        routeCellDigest: digest({ routeCellId, cell }),
+        requiredProfile: cell.requiredProfile,
+        advisorOnly: cell.advisorOnly === true,
+        selectingPredicates: Object.freeze(
+            structuredClone(selectingPredicates)
+        ),
+        selectingPredicatesDigest: digest(selectingPredicates)
+    })
+}
+
+function canonicalRouteCell({
+    input,
+    shape,
+    classification
+}) {
+    const stageKey = `${shape.stageRole}:${shape.stagePhase}`
+    const predicates = {
+        stageRole: shape.stageRole,
+        stagePhase: shape.stagePhase,
+        domain: classification.domain,
+        engineeringRiskClass:
+            classification.engineeringRiskClass,
+        verificationClass: classification.verificationClass,
+        uiDecisionClass: classification.uiDecisionClass,
+        contractState: classification.contractState,
+        dominantWorkShape: shape.dominantWorkShape,
+        contextBreadth: shape.contextBreadth,
+        continuationRequired:
+            shape.statefulContinuationRequired,
+        checkpointSupportRequired:
+            shape.checkpointSupportRequired,
+        toolInteractionDepth: shape.toolInteractionDepth,
+        runtimeProbeDepth: shape.runtimeProbeDepth,
+        ownedModuleCount: shape.ownedModuleCount,
+        expectedChangedFileCount:
+            shape.expectedChangedFileCount,
+        costSensitivity: shape.costSensitivity,
+        dagUpdateClass: input.dagUpdateClass ?? null,
+        documentationClass: input.documentationClass ?? null,
+        controlPlaneAnomalyClass:
+            input.controlPlaneAnomalyClass ?? null,
+        frontierException: input.frontierException === true
+    }
+    const cell = (id) => routeCell(id, predicates)
+
+    if (stageKey === 'root-scheduler:scheduling') {
+        if (input.controlPlaneAnomalyClass === 'unknown-complex') {
+            if (input.machineAdvisorEvidence?.source !==
+                    'machine-control-anomaly-classifier' ||
+                !HASH.test(
+                    input.machineAdvisorEvidence?.evidenceDigest ?? ''
+                )) {
+                fail('execution-route-control-advisor-evidence')
+            }
+            return cell('control.unknown-complex-advisor')
+        }
+        if (input.controlPlaneRecovery === true ||
+            input.recoveryClassification ||
+            input.recoveryReceiptDigest ||
+            input.takeoverAuthorizationDigest ||
+            input.recoveryHandoffDigest ||
+            input.oldRootFencingReceiptDigest ||
+            input.newParentInvocation !== undefined) {
+            fail('routing-root-in-session-upgrade-forbidden')
+        }
+        return cell('control.normal')
+    }
+    if (stageKey === 'root-scheduler:recovery-takeover') {
+        if (input.controlPlaneRecovery === true ||
+            input.newParentInvocation !== true ||
+            !HASH.test(input.takeoverAuthorizationDigest ?? '') ||
+            !HASH.test(input.recoveryHandoffDigest ?? '') ||
+            !HASH.test(input.oldRootFencingReceiptDigest ?? '')) {
+            fail('routing-root-takeover-authority-required')
+        }
+        return cell('control.recovery-takeover')
+    }
+    if (stageKey === 'dag-creator-updater:semantic-proposal') {
+        if (input.frontierException === true) {
+            if (classification.engineeringRiskClass !== 'frontier' ||
+                input.machineFrontierEvidence?.source !==
+                    'machine-frontier-exception-verifier' ||
+                !HASH.test(
+                    input.machineFrontierEvidence?.evidenceDigest ?? ''
+                ) ||
+                input.frontierExceptionReceipt?.schema !==
+                    'issue-orchestration.frontier-exception-receipt.v1' ||
+                input.frontierExceptionReceipt.sliceMinimal !== true ||
+                input.frontierExceptionReceipt
+                    .solXhighCapabilityInsufficient !== true ||
+                !HASH.test(
+                    input.frontierExceptionReceipt.evidenceDigest ?? ''
+                )) {
+                fail('execution-route-frontier-exception-invalid')
+            }
+            return cell('dag.frontier-advisor')
+        }
+        if (classification.contractState === 'authority-conflict' ||
+            classification.contractState === 'owner-unresolved' ||
+            classification.engineeringRiskClass === 'frontier') {
+            return cell('dag.authority-topology-conflict')
+        }
+        return input.dagUpdateClass === 'full-reconstruction'
+            ? cell('dag.full-reconstruction')
+            : cell('dag.semantic-default')
+    }
+    if (stageKey === 'code-implementer:landing-conflict-resolution') {
+        return cell(`code-landing.${classification.engineeringRiskClass}`)
+    }
+    if (stageKey === 'code-implementer:implementation') {
+        if (classification.domain === 'ui-ux') {
+            fail('routing-ui-owner')
+        }
+        const crossModule = shape.ownedModuleCount > 1 ||
+            ['broad', 'very-broad'].includes(shape.contextBreadth)
+        const durable = shape.statefulContinuationRequired ||
+            shape.checkpointSupportRequired === 'durable'
+        const highTool = [
+            'high-tool-depth',
+            'long-horizon-cross-module'
+        ].includes(shape.dominantWorkShape)
+        if ((classification.engineeringRiskClass === 'frontier' ||
+            highTool && durable && crossModule)) {
+            return cell(
+                'implementation.high-tool-durable-cross-module'
+            )
+        }
+        if (classification.engineeringRiskClass === 'high-risk') {
+            return cell('implementation.high-risk')
+        }
+        if ([
+            'iterative-debug',
+            'runtime-probe-heavy',
+            'context-heavy'
+        ].includes(shape.dominantWorkShape)) {
+            return cell('implementation.iterative-runtime-broad')
+        }
+        if (shape.dominantWorkShape ===
+                'luna-fresh-narrow-deep') {
+            return cell('implementation.narrow-deep-cost-sensitive')
+        }
+        if (shape.costSensitivity === 'latency-sensitive' &&
+            shape.contextBreadth === 'narrow' &&
+            (classification.engineeringRiskClass === 'complex' ||
+                shape.toolInteractionDepth >= 4 ||
+                shape.commandLoopCount >= 2)) {
+            return cell('implementation.narrow-deep-latency-sensitive')
+        }
+        if (shape.statefulContinuationRequired ||
+            shape.ownedModuleCount > 1 ||
+            shape.expectedChangedFileCount > 1) {
+            return cell('implementation.bounded-stateful-multifile')
+        }
+        if (shape.dominantWorkShape === 'atomic-edit' &&
+            shape.expectedChangedFileCount <= 1 &&
+            shape.ownedModuleCount <= 1) {
+            return cell('implementation.atomic-mechanical')
+        }
+        return cell('implementation.ordinary-bounded-single-module')
+    }
+    if (stageKey.startsWith('test-owner:')) {
+        if (['protocol', 'security'].includes(
+            classification.verificationClass
+        ) || classification.contractState === 'authority-conflict') {
+            return cell('verification.protocol-security-authority')
+        }
+        if (classification.verificationClass === 'runtime' ||
+            classification.verificationClass === 'cross-module' ||
+            ['high-risk', 'frontier'].includes(
+                classification.engineeringRiskClass
+            ) ||
+            [
+                'runtime-probe-heavy',
+                'context-heavy',
+                'high-tool-depth',
+                'long-horizon-cross-module'
+            ].includes(shape.dominantWorkShape)) {
+            return cell('verification.runtime-lifecycle-cross-module')
+        }
+        if (shape.dominantWorkShape ===
+                'luna-fresh-narrow-deep') {
+            return cell('verification.narrow-deep-cost-sensitive')
+        }
+        if (stageKey !== 'test-owner:test-contract' ||
+            classification.engineeringRiskClass === 'complex' ||
+            shape.toolInteractionDepth >= 4 ||
+            shape.commandLoopCount >= 2) {
+            return cell('verification.narrow-complex')
+        }
+        return cell('verification.focused-authoring')
+    }
+    if (stageKey === 'ui-ux-implementer:ui-implementation') {
+        if (classification.domain !== 'ui-ux') {
+            fail('routing-ui-domain')
+        }
+        if (classification.uiDecisionClass ===
+                'system-design-dispute' ||
+            [
+                'context-heavy',
+                'high-tool-depth',
+                'long-horizon-cross-module'
+            ].includes(shape.dominantWorkShape)) {
+            fail('execution-route-ui-reslice-or-adjudicate')
+        }
+        if (['prescribed', 'bounded-composition'].includes(
+            classification.uiDecisionClass
+        )) return cell('ui-implementation.prescribed')
+        if (['layout-judgment', 'interaction-judgment'].includes(
+            classification.uiDecisionClass
+        )) return cell('ui-implementation.judgment')
+        fail('routing-ui-classification')
+    }
+    if (stageKey ===
+            'ui-ux-implementer:landing-conflict-resolution') {
+        if (['protocol', 'security'].includes(
+            classification.verificationClass
+        ) || classification.contractState === 'authority-conflict') {
+            return cell('ui-landing.protocol-security')
+        }
+        if (classification.verificationClass === 'cross-module' ||
+            ['context-heavy', 'high-tool-depth',
+                'long-horizon-cross-module']
+                .includes(shape.dominantWorkShape)) {
+            return cell('ui-landing.cross-module')
+        }
+        return classification.uiDecisionClass === 'prescribed'
+            ? cell('ui-landing.prescribed')
+            : cell('ui-landing.composition-judgment')
+    }
+    if (stageKey === 'ui-system-adjudicator:adjudication') {
+        if (classification.domain !== 'ui-ux' ||
+            classification.uiDecisionClass !==
+                'system-design-dispute') {
+            fail('routing-ui-adjudication-not-required')
+        }
+        return classification.contractState === 'authority-conflict'
+            ? cell('ui-adjudication.authority-conflict')
+            : cell('ui-adjudication.system-dispute')
+    }
+    if (stageKey === 'ux-acceptance-verifier:ux-acceptance') {
+        if (classification.domain !== 'ui-ux') {
+            fail('routing-ui-domain')
+        }
+        const id = {
+            'ux-local': 'ux.local',
+            'ux-path': 'ux.path',
+            'ux-system': 'ux.system'
+        }[classification.verificationClass]
+        if (!id) fail('routing-ux-verification-class')
+        return cell(id)
+    }
+    if (stageKey === 'documentation-writer:documentation') {
+        if (classification.domain !== 'documentation') {
+            fail('routing-documentation-domain')
+        }
+        return cell({
+            'mechanical-no-change': 'documentation.mechanical',
+            'cross-module': 'documentation.cross-module',
+            'architecture-public-contract':
+                'documentation.architecture-public-contract'
+        }[input.documentationClass] ??
+            'documentation.current-sync')
+    }
+    fail('execution-route-cell-unmatched')
+}
+
+function compileCapabilityRequirement(
+    shape,
+    stageDefinition,
+    selectedRouteCell
+) {
     const continuationMode =
         shape.checkpointSupportRequired === 'durable'
             ? 'durable-continuation'
@@ -575,118 +893,59 @@ function compileCapabilityRequirement(shape, stageDefinition) {
         sliceId: shape.sliceId,
         sliceDigest: shape.sliceDigest,
         classificationDigest: shape.classificationDigest,
-        minimumPlanningDepth: levels[0],
-        minimumToolChainPersistence: levels[1],
-        minimumContextRetentionClass: levels[2],
-        minimumCheckpointReliability: levels[3],
-        runtimeProbeCapability: levels[4],
-        crossModuleReasoningClass: levels[5],
+        routeCellId: selectedRouteCell.routeCellId,
+        routeCellDigest: selectedRouteCell.routeCellDigest,
+        requiredProfile: selectedRouteCell.requiredProfile,
+        reviewedAssumptionDigest:
+            REVIEWED_ASSUMPTIONS.profiles[
+                selectedRouteCell.requiredProfile
+            ]?.assumptionDigest ?? null,
+        validationMode: 'exact-required-profile-only',
         requiredFreshContext: stageDefinition.freshContext,
         allowedContinuationMode: continuationMode
     }, 'capabilityDigest')
 }
 
-function profileSatisfies(profile, requirement) {
-    return profile.planningDepth >= requirement.minimumPlanningDepth &&
-        profile.toolChainPersistence >=
-            requirement.minimumToolChainPersistence &&
-        profile.contextRetentionClass >=
-            requirement.minimumContextRetentionClass &&
-        profile.checkpointReliability >=
-            requirement.minimumCheckpointReliability &&
-        profile.runtimeProbeCapability >=
-            requirement.runtimeProbeCapability &&
-        profile.crossModuleReasoningClass >=
-            requirement.crossModuleReasoningClass &&
-        profile.allowedContinuationModes.includes(
-            requirement.allowedContinuationMode
-        )
-}
-
-function selectProfile({
+function validateExactRouteProfile({
     input,
-    shape,
+    selectedRouteCell,
     requirement,
-    stageDefinition,
-    classification
+    stageDefinition
 }) {
-    const isUiWriter =
-        shape.stageRole === 'ui-ux-implementer' &&
-        shape.stagePhase === 'ui-implementation'
-    if (isUiWriter && [
-        'context-heavy',
-        'high-tool-depth',
-        'long-horizon-cross-module'
-    ].includes(shape.dominantWorkShape)) {
-        fail('execution-route-ui-reslice-or-adjudicate')
+    const requiredProfile = selectedRouteCell.requiredProfile
+    const assumption = REVIEWED_ASSUMPTIONS.profiles[requiredProfile]
+    if (!stageDefinition.allowedProfiles.includes(requiredProfile) &&
+            selectedRouteCell.advisorOnly !== true ||
+        !assumption ||
+        assumption.policyStatus === 'disabled' ||
+        assumption.routeValidation !==
+            'exact-required-profile-only' ||
+        requirement.reviewedAssumptionDigest !==
+            assumption.assumptionDigest) {
+        fail('execution-route-required-profile-rejected')
     }
-    const stageAllowed = stageDefinition.allowedProfiles
-    const capable = stageAllowed.filter((profileId) =>
-        profileSatisfies(
-            CAPABILITY_MATRIX.profiles[profileId],
-            requirement
-        ))
-    if (isUiWriter) {
-        const selected = ['prescribed', 'bounded-composition']
-            .includes(classification.uiDecisionClass)
-            ? 'sol-low'
-            : ['layout-judgment', 'interaction-judgment']
-                .includes(classification.uiDecisionClass)
-                ? 'sol-medium'
-                : null
-        if (!selected) fail('execution-route-ui-reslice-or-adjudicate')
-        if (!capable.includes(selected) ||
-            !ROUTING_POLICY.uiImplementationProfiles.includes(selected)) {
-            fail('execution-route-ui-reslice-or-adjudicate')
-        }
-        return {
-            allowedProfiles: capable.filter((profileId) =>
-                ROUTING_POLICY.uiImplementationProfiles
-                    .includes(profileId)),
-            selectedProfile: selected,
-            selectedProfileReason:
-                `ui-${classification.uiDecisionClass}-capability-fit`
-        }
+    if (requiredProfile === 'sol-max' &&
+        selectedRouteCell.advisorOnly !== true) {
+        fail('execution-route-frontier-exception-invalid')
     }
-    if (input.frontierException === true) {
-        if (classification.engineeringRiskClass !== 'frontier' ||
-            shape.dominantWorkShape !==
-                'long-horizon-cross-module' ||
-            input.machineFrontierEvidence?.source !==
-                'machine-frontier-exception-verifier' ||
-            !HASH.test(
-                input.machineFrontierEvidence?.evidenceDigest ?? ''
-            ) ||
-            !capable.includes('sol-max')) {
-            fail('execution-route-frontier-exception-invalid')
-        }
-        return {
-            allowedProfiles: capable,
-            selectedProfile: 'sol-max',
-            selectedProfileReason:
-                'frontier-exception-only-capability-fit'
-        }
-    }
-    const priority =
-        ROUTING_POLICY.selectionPriority[shape.dominantWorkShape]
-    const selectedProfile = priority.find((profileId) =>
-        capable.includes(profileId) && profileId !== 'sol-max')
-    if (!selectedProfile) fail('execution-route-no-capable-profile')
-    if (selectedProfile === 'luna-max') {
+    if (requiredProfile === 'luna-max') {
         return resolveLunaAvailability({
             input,
-            capable,
+            requiredProfile,
             stageDefinition,
             selectedProfileReason:
-                `${shape.dominantWorkShape}-strict-contract`
+                `${selectedRouteCell.routeCellId}-strict-contract`
         })
     }
     return {
-        allowedProfiles: capable.filter((profileId) =>
-            profileId !== 'sol-max'),
-        selectedProfile,
+        allowedProfiles: [requiredProfile],
+        requiredProfile,
+        selectedProfile: requiredProfile,
         selectedProfileReason:
-            `${shape.dominantWorkShape}-minimum-capability-fit`
+            `${selectedRouteCell.routeCellId}-exact-route-cell`,
+        capabilityValidationResult: 'accepted',
+        reviewedAssumptionDigest: assumption.assumptionDigest,
+        availabilityHandling: 'not-required'
     }
 }
 
@@ -720,7 +979,7 @@ function validateAvailabilityBinding(binding) {
 
 function resolveLunaAvailability({
     input,
-    capable,
+    requiredProfile,
     stageDefinition,
     selectedProfileReason
 }) {
@@ -730,10 +989,15 @@ function resolveLunaAvailability({
     const luna = binding.profiles['luna-max']
     if (luna.available) {
         return {
-            allowedProfiles: capable.filter((profile) =>
-                profile === 'luna-max'),
+            allowedProfiles: ['luna-max'],
+            requiredProfile,
             selectedProfile: 'luna-max',
             selectedProfileReason,
+            capabilityValidationResult: 'accepted',
+            reviewedAssumptionDigest:
+                REVIEWED_ASSUMPTIONS.profiles['luna-max']
+                    .assumptionDigest,
+            availabilityHandling: 'primary-available',
             availabilityBindingDigest: binding.bindingDigest,
             availabilityFallbackReason: null
         }
@@ -743,20 +1007,48 @@ function resolveLunaAvailability({
     }
     return {
         allowedProfiles: ['luna-max', 'terra-high'],
+        requiredProfile,
         selectedProfile: 'terra-high',
         selectedProfileReason: 'luna-pre-dispatch-unavailable-fixed-fallback',
+        capabilityValidationResult: 'accepted',
+        reviewedAssumptionDigest:
+            REVIEWED_ASSUMPTIONS.profiles['luna-max']
+                .assumptionDigest,
+        availabilityHandling: 'fixed-fallback',
         availabilityBindingDigest: binding.bindingDigest,
         availabilityFallbackReason: luna.reason
     }
 }
 
 function validateRuntimeObservation(observation, selectedProfile) {
-    if (observation === undefined) return 'pending-observation'
+    if (observation === undefined) {
+        return {
+            status: 'pending-observation',
+            runtimeInvocationId: null,
+            runtimeIdentityDigest: null
+        }
+    }
+    const unsigned = structuredClone(observation)
+    delete unsigned.observationDigest
     if (observation?.schema !==
-            'issue-orchestration.runtime-capability-observation.v1' ||
-        observation.source !== 'runtime-capability-registry' ||
+            'issue-orchestration.runtime-capability-observation.v2' ||
+        observation.source !==
+            'per-dispatch-runtime-identity-observer' ||
         observation.observable !== true ||
-        !HASH.test(observation.observationDigest ?? '')) {
+        typeof observation.runtimeInvocationId !== 'string' ||
+        !observation.runtimeInvocationId ||
+        typeof observation.sessionOrThreadId !== 'string' ||
+        !observation.sessionOrThreadId ||
+        typeof observation.runtimeVersion !== 'string' ||
+        !observation.runtimeVersion ||
+        typeof observation.observedAt !== 'string' ||
+        !observation.observedAt ||
+        observation.requestedProfile !== selectedProfile ||
+        observation.effectiveProfile !== selectedProfile ||
+        !HASH.test(observation.rawEventDigest ?? '') ||
+        !HASH.test(observation.rawSessionDigest ?? '') ||
+        !HASH.test(observation.rawTurnDigest ?? '') ||
+        observation.observationDigest !== digest(unsigned)) {
         fail('execution-route-runtime-unobservable')
     }
     try {
@@ -771,7 +1063,11 @@ function validateRuntimeObservation(observation, selectedProfile) {
     } catch {
         fail('execution-route-runtime-profile-mismatch')
     }
-    return 'verified'
+    return {
+        status: 'verified',
+        runtimeInvocationId: observation.runtimeInvocationId,
+        runtimeIdentityDigest: observation.observationDigest
+    }
 }
 
 function compileDecision({
@@ -779,16 +1075,15 @@ function compileDecision({
     shape,
     requirement,
     stageDefinition,
-    classification
+    selectedRouteCell
 }) {
-    const selected = selectProfile({
+    const selected = validateExactRouteProfile({
         input,
-        shape,
+        selectedRouteCell,
         requirement,
-        stageDefinition,
-        classification
+        stageDefinition
     })
-    const runtimeVerificationStatus = validateRuntimeObservation(
+    const runtimeIdentity = validateRuntimeObservation(
         input.runtimeCapabilityObservation,
         selected.selectedProfile
     )
@@ -822,7 +1117,19 @@ function compileDecision({
         stagePhase: shape.stagePhase,
         classificationDigest: shape.classificationDigest,
         capabilityDigest: requirement.capabilityDigest,
-        matrixEvidenceDigest: CAPABILITY_MATRIX.evidenceDigest,
+        routeCellId: selectedRouteCell.routeCellId,
+        routeCellDigest: selectedRouteCell.routeCellDigest,
+        selectingPredicates:
+            selectedRouteCell.selectingPredicates,
+        selectingPredicatesDigest:
+            selectedRouteCell.selectingPredicatesDigest,
+        canonicalPolicyDigest:
+            EXECUTION_ROUTING_POLICY_DIGEST,
+        requiredProfile: selected.requiredProfile,
+        capabilityValidationResult:
+            selected.capabilityValidationResult,
+        reviewedAssumptionDigest:
+            selected.reviewedAssumptionDigest,
         allowedProfiles: selected.allowedProfiles,
         selectedProfile: selected.selectedProfile,
         selectedProfileReason: selected.selectedProfileReason,
@@ -839,7 +1146,13 @@ function compileDecision({
             input.runtimeExecutionBinding === undefined
                 ? 'pending-observation'
                 : 'verified',
-        runtimeVerificationStatus,
+        runtimeVerificationStatus: runtimeIdentity.status,
+        runtimeInvocationId:
+            runtimeIdentity.runtimeInvocationId,
+        runtimeIdentityDigest:
+            runtimeIdentity.runtimeIdentityDigest,
+        availabilityHandling:
+            selected.availabilityHandling,
         availabilityBindingDigest:
             selected.availabilityBindingDigest ?? null,
         availabilityFallbackReason:
@@ -851,108 +1164,143 @@ function compileDecision({
     }, 'routeDecisionDigest')
 }
 
-export function compileExecutionRoute(input = {}) {
+function compileStageOnlyShape(input, classification, stageDefinition) {
+    const stageRole = input.stageRole
+    const stagePhase = input.stagePhase
+    const stageSubject = {
+        stageRole,
+        stagePhase,
+        classification,
+        dagUpdateClass: input.dagUpdateClass ?? null,
+        documentationClass: input.documentationClass ?? null,
+        controlPlaneAnomalyClass:
+            input.controlPlaneAnomalyClass ?? null,
+        frontierException: input.frontierException === true,
+        modelRoutingEvidenceDigest:
+            classification.modelRoutingEvidenceDigest
+    }
+    const sliceDigest = digest(stageSubject)
+    const metrics = {
+        expectedChangedFileCount: 0,
+        ownedModuleCount: 0,
+        commandLoopCount: 0,
+        runtimeProbeDepth:
+            classification.verificationClass === 'runtime' ? 4 : 0,
+        toolInteractionDepth:
+            input.dagUpdateClass === 'full-reconstruction' ? 8 : 1,
+        contextBreadth:
+            classification.verificationClass === 'cross-module'
+                ? 'broad'
+                : 'narrow',
+        statefulContinuationRequired: false,
+        checkpointSupportRequired: 'simple',
+        firstActionDeterministic: true,
+        costSensitivity: input.costSensitivity ?? 'neutral',
+        freshContext: stageDefinition.freshContext,
+        compiledContextTokens: null,
+        exactTokenizerAvailable: false,
+        selfContainedPrompt: false,
+        bulkCrossScopeContext: false
+    }
+    const shapes = []
+    if (metrics.runtimeProbeDepth >= 4) {
+        shapes.push('runtime-probe-heavy')
+    }
+    if (metrics.contextBreadth === 'broad') {
+        shapes.push('context-heavy')
+    }
+    if (stageDefinition.writeScope === 'none') {
+        shapes.push('focused-observe-only')
+    }
+    shapes.push('atomic-edit')
+    const dominantWorkShape = shapes[0]
+    return seal({
+        schema:
+            'issue-orchestration.execution-shape-classification.v1',
+        sliceId: `stage-only:${stageRole}:${stagePhase}`,
+        sliceDigest,
+        stageRole,
+        stagePhase,
+        domain: classification.domain,
+        engineeringRiskClass:
+            classification.engineeringRiskClass,
+        uiDecisionClass: classification.uiDecisionClass,
+        verificationClass: classification.verificationClass,
+        dominantWorkShape,
+        secondaryShapes: [...new Set(shapes)].slice(1),
+        ...metrics,
+        unsplittableReason: null,
+        classificationEvidenceDigest: digest(stageSubject)
+    }, 'classificationDigest')
+}
+
+export function compileCanonicalRoute(input = {}) {
     assertNoForbiddenInputs(input)
-    const slice = verifiedSlice(input)
     let classification
     try {
         classification = validateRoutingClassification(
-            input.routingClassification
+            input.routingClassification ?? input
         )
     } catch {
         fail('execution-route-routing-classification-invalid')
     }
-    if (slice.stageRole !== input.stageWorkPlan.stageRole ||
-        slice.stagePhase !== input.stageWorkPlan.stagePhase) {
+    const hasSlice = input.stageWorkPlan !== undefined ||
+        input.executableSlice !== undefined
+    const slice = hasSlice ? verifiedSlice(input) : null
+    const stageRole = slice?.stageRole ?? input.stageRole
+    const stagePhase = slice?.stagePhase ?? input.stagePhase
+    if (slice && (slice.stageRole !== input.stageWorkPlan.stageRole ||
+        slice.stagePhase !== input.stageWorkPlan.stagePhase)) {
         fail('execution-route-stage-binding')
     }
-    const stageKey = `${slice.stageRole}:${slice.stagePhase}`
+    const stageKey = `${stageRole}:${stagePhase}`
     const stageDefinition = STAGE_ROUTE_DEFINITIONS[stageKey]
     if (!stageDefinition) fail('execution-route-stage-binding')
-    const executionShapeClassification = compileShape(
+    if (!slice && stageDefinition.executionClass === 'leased-writer') {
+        fail('execution-route-verified-slice-required')
+    }
+    if (!slice) {
+        compileStageRoutingIdentity({
+            ...classification,
+            stageRole,
+            stagePhase,
+            requiredSkillDigests:
+                input.requiredSkillDigests ?? []
+        })
+    }
+    const executionShapeClassification = slice
+        ? compileShape(
+            input,
+            slice,
+            classification,
+            stageDefinition
+        )
+        : compileStageOnlyShape(
+            input,
+            classification,
+            stageDefinition
+        )
+    const selectedRouteCell = canonicalRouteCell({
         input,
-        slice,
-        classification,
-        stageDefinition
-    )
+        shape: executionShapeClassification,
+        classification
+    })
     const stageCapabilityRequirement = compileCapabilityRequirement(
         executionShapeClassification,
-        stageDefinition
+        stageDefinition,
+        selectedRouteCell
     )
     const executionRouteDecision = compileDecision({
         input,
         shape: executionShapeClassification,
         requirement: stageCapabilityRequirement,
         stageDefinition,
-        classification
+        selectedRouteCell
     })
     return Object.freeze({
         schema: 'issue-orchestration.execution-route-bundle.v1',
         executionShapeClassification,
         stageCapabilityRequirement,
         executionRouteDecision
-    })
-}
-
-export function compileExecutionReroute({
-    previousDecision,
-    revisedRouteInput,
-    failureReceipt,
-    retryAuthorization,
-    previousCandidateReceiptDigest,
-    nextCandidateReceiptDigest
-} = {}) {
-    if (failureReceipt?.failureClass !==
-        ROUTING_POLICY.rerouteFailureClass) {
-        fail('execution-reroute-profile-mismatch-required')
-    }
-    if (failureReceipt.schema !==
-            'issue-orchestration.writer-stage-failure-receipt.v1' ||
-        !HASH.test(failureReceipt.receiptDigest ?? '') ||
-        failureReceipt.previousRouteDecisionDigest !==
-            previousDecision?.routeDecisionDigest) {
-        fail('execution-reroute-prior-failure-required')
-    }
-    if (retryAuthorization?.schema !==
-            'issue-orchestration.writer-stage-retry-authorization.v1' ||
-        retryAuthorization.failureReceiptDigest !==
-            failureReceipt.receiptDigest ||
-        !HASH.test(
-            retryAuthorization.breakerResetReceiptDigest ?? ''
-        ) ||
-        !HASH.test(retryAuthorization.authorizationDigest ?? '')) {
-        fail('execution-reroute-retry-authorization-required')
-    }
-    if (!HASH.test(previousCandidateReceiptDigest ?? '') ||
-        !HASH.test(nextCandidateReceiptDigest ?? '') ||
-        previousCandidateReceiptDigest !==
-            failureReceipt.candidateReceiptDigest ||
-        previousCandidateReceiptDigest === nextCandidateReceiptDigest) {
-        fail('execution-reroute-candidate-reuse')
-    }
-    if (revisedRouteInput?.runtimeCapabilityObservation === undefined) {
-        fail('execution-route-runtime-unobservable')
-    }
-    const bundle = compileExecutionRoute(revisedRouteInput)
-    const initial = bundle.executionRouteDecision
-    if (initial.selectedProfile === previousDecision.selectedProfile) {
-        fail('execution-reroute-profile-unchanged')
-    }
-    const nextDecision = { ...initial }
-    delete nextDecision.routeDecisionDigest
-    nextDecision.previousRouteDecisionDigest =
-        previousDecision.routeDecisionDigest
-    nextDecision.previousFailureReceiptDigest =
-        failureReceipt.receiptDigest
-    nextDecision.retryAuthorizationDigest =
-        retryAuthorization.authorizationDigest
-    nextDecision.previousCandidateReceiptDigest =
-        previousCandidateReceiptDigest
-    return Object.freeze({
-        ...bundle,
-        executionRouteDecision: seal(
-            nextDecision,
-            'routeDecisionDigest'
-        )
     })
 }

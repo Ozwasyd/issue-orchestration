@@ -34,9 +34,6 @@ const expectedProfiles = [
     'terra-medium',
     'terra-xhigh'
 ]
-const expectedCapabilityProfiles = expectedProfiles.filter((profile) =>
-    !['luna-low', 'luna-medium', 'luna-high', 'luna-xhigh']
-        .includes(profile))
 const expectedStages = {
     'root-scheduler:scheduling': {
         allowedProfiles: ['terra-low'],
@@ -165,23 +162,23 @@ test('V3-01 freezes the reviewed Terra/Luna/Sol production roster', () => {
         assert.equal(profile.model, `gpt-5.6-${family}`)
         assert.equal(profile.effort, effort)
         assert.equal(profile.multiAgentBackend, 'v2')
-        assert.match(profile.capabilityEvidenceDigest, /^[a-f0-9]{64}$/u)
+        assert.match(profile.reviewedAssumptionDigest, /^[a-f0-9]{64}$/u)
     }
     assert.deepEqual(pool.stages, expectedStages)
 })
 
-test('V3-02 upgrades deterministic execution routing to v3', () => {
+test('V3-02 upgrades deterministic execution routing to canonical v4 cells', () => {
     const pool = loadJson('policy/model-pool.json')
     const routing = loadJson('policy/execution-routing-policy.json')
     assert.equal(
         routing.schema,
-        'issue-orchestration.execution-routing-policy.v3'
+        'issue-orchestration.execution-routing-policy.v4'
     )
-    assert.equal(routing.version, 'execution-capability-routing.v3')
+    assert.equal(routing.version, 'execution-capability-routing.v4')
     assert.equal(routing.modelPoolPolicyVersion, pool.version)
     assert.equal(
         routing.routingAuthority,
-        'deterministic-execution-capability-compiler'
+        'canonical-route-cell-compiler'
     )
     for (const forbidden of [
         'balance',
@@ -193,42 +190,39 @@ test('V3-02 upgrades deterministic execution routing to v3', () => {
     ]) assert.ok(routing.forbiddenInputs.includes(forbidden))
 })
 
-test('V3-03 capability evidence covers every registered profile exactly', async () => {
+test('V3-03 reviewed assumptions cover every registered profile exactly', async () => {
     const pool = loadJson('policy/model-pool.json')
-    const matrix = loadJson('policy/profile-capability-matrix.json')
-    const observations = loadJson(
-        'policy/profile-capability-observations.json'
+    const assumptions = loadJson(
+        'policy/reviewed-routing-assumptions.json'
     )
     assert.deepEqual(
-        Object.keys(matrix.profiles).sort(),
-        expectedCapabilityProfiles
+        Object.keys(assumptions.profiles).sort(),
+        expectedProfiles
     )
-    assert.deepEqual(
-        observations.observations.map(({ profileId }) => profileId).sort(),
-        expectedCapabilityProfiles
-    )
-    for (const observation of observations.observations) {
-        assert.equal(observation.requestedModel, observation.effectiveModel)
-        assert.equal(observation.requestedEffort, observation.effectiveEffort)
-        assert.equal(observation.multiAgentBackend, 'v2')
-        assert.equal(observation.runtimeMetadataObserved, true)
+    for (const [profileId, assumption] of
+        Object.entries(assumptions.profiles)) {
+        assert.equal(assumption.multiAgentBackend, 'v2')
+        assert.equal(assumption.routeValidation,
+            'exact-required-profile-only')
         assert.equal(
-            pool.profiles[observation.profileId].capabilityEvidenceDigest,
-            matrix.profiles[observation.profileId].evidenceDigest
+            pool.profiles[profileId].reviewedAssumptionDigest,
+            assumption.assumptionDigest
         )
     }
-    const { verifyProfileCapabilityMatrix } = await importRuntime(
+    const { verifyReviewedRoutingAssumptions } = await importRuntime(
         'execution-route-compiler.mjs'
     )
     assert.equal(
-        verifyProfileCapabilityMatrix({ matrix, observations }),
-        matrix
+        verifyReviewedRoutingAssumptions(assumptions),
+        assumptions
     )
 })
 
 test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async () => {
     const {
-        compileStageRoute,
+        compileCanonicalRoute
+    } = await importRuntime('execution-route-compiler.mjs')
+    const {
         verifyRuntimeProfileMetadata
     } = await importRuntime('stage-profile-policy.mjs')
     const classification = {
@@ -241,14 +235,17 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
         modelRoutingEvidenceDigest: 'a'.repeat(64),
         routingPolicyVersion: 'stage-model-pool.v3'
     }
-    const normal = compileStageRoute({
+    const normal = compileCanonicalRoute({
         ...classification,
         stageRole: 'root-scheduler',
         stagePhase: 'scheduling'
     })
-    assert.equal(normal.selectedProfile, 'terra-low')
+    assert.equal(
+        normal.executionRouteDecision.selectedProfile,
+        'terra-low'
+    )
     assert.throws(
-        () => compileStageRoute({
+        () => compileCanonicalRoute({
             ...classification,
             stageRole: 'root-scheduler',
             stagePhase: 'scheduling',
@@ -256,7 +253,7 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
         }),
         { code: 'routing-root-in-session-upgrade-forbidden' }
     )
-    const recovery = compileStageRoute({
+    const recovery = compileCanonicalRoute({
         ...classification,
         stageRole: 'root-scheduler',
         stagePhase: 'recovery-takeover',
@@ -265,7 +262,10 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
         recoveryHandoffDigest: 'c'.repeat(64),
         oldRootFencingReceiptDigest: 'd'.repeat(64)
     })
-    assert.equal(recovery.selectedProfile, 'terra-medium')
+    assert.equal(
+        recovery.executionRouteDecision.selectedProfile,
+        'terra-medium'
+    )
     assert.equal(verifyRuntimeProfileMetadata({
         selectedProfile: 'terra-low',
         requestedModel: 'gpt-5.6-terra',
@@ -359,8 +359,8 @@ test('V3-07 UI, documentation and cleanup boundaries match the frozen map', () =
 })
 
 test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () => {
-    const { compileStageRoute } = await importRuntime(
-        'stage-profile-policy.mjs'
+    const { compileCanonicalRoute } = await importRuntime(
+        'execution-route-compiler.mjs'
     )
     const base = {
         domain: 'orchestration-core',
@@ -374,12 +374,19 @@ test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () =
         stageRole: 'dag-creator-updater',
         stagePhase: 'semantic-proposal'
     }
-    assert.notEqual(compileStageRoute(base).selectedProfile, 'sol-max')
-    assert.throws(
-        () => compileStageRoute({ ...base, frontierException: true }),
-        { code: 'routing-frontier-exception-receipt' }
+    assert.notEqual(
+        compileCanonicalRoute(base)
+            .executionRouteDecision.selectedProfile,
+        'sol-max'
     )
-    assert.equal(compileStageRoute({
+    assert.throws(
+        () => compileCanonicalRoute({
+            ...base,
+            frontierException: true
+        }),
+        { code: 'execution-route-frontier-exception-invalid' }
+    )
+    assert.equal(compileCanonicalRoute({
         ...base,
         frontierException: true,
         frontierExceptionReceipt: {
@@ -387,8 +394,12 @@ test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () =
             sliceMinimal: true,
             solXhighCapabilityInsufficient: true,
             evidenceDigest: 'd'.repeat(64)
+        },
+        machineFrontierEvidence: {
+            source: 'machine-frontier-exception-verifier',
+            evidenceDigest: 'e'.repeat(64)
         }
-    }).selectedProfile, 'sol-max')
+    }).executionRouteDecision.selectedProfile, 'sol-max')
 })
 
 test('V3-09 production agents consume v3 and never self-select a model', () => {
@@ -429,15 +440,17 @@ test('V3-11 disabled profiles have zero stage or ordinary-route authority', () =
     const selected = [
         ...Object.values(pool.stages)
             .flatMap(({ allowedProfiles }) => allowedProfiles),
-        ...Object.values(routing.selectionPriority).flat()
+        ...Object.values(routing.routeCells)
+            .map(({ requiredProfile }) => requiredProfile)
     ]
     for (const disabled of pool.disabledProfiles) {
         assert.equal(selected.includes(disabled), false, disabled)
     }
     assert.equal(
-        Object.values(routing.selectionPriority).flat()
-            .includes('sol-max'),
-        false
+        Object.entries(routing.routeCells)
+            .filter(([, cell]) => cell.requiredProfile === 'sol-max')
+            .every(([, cell]) => cell.advisorOnly === true),
+        true
     )
 })
 

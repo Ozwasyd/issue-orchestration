@@ -223,10 +223,13 @@ function denied(code, reason, base) {
 function verifiedRoute(value, stageRole, stagePhase) {
     return value?.schema ===
             'issue-orchestration.execution-route-decision.v2' &&
-        value.policyVersion === 'execution-capability-routing.v3' &&
+        value.policyVersion === 'execution-capability-routing.v4' &&
         value.modelPoolPolicyVersion === 'stage-model-pool.v3' &&
         value.routingAuthority ===
-            'deterministic-execution-capability-compiler' &&
+            'canonical-route-cell-compiler' &&
+        typeof value.routeCellId === 'string' &&
+        value.routeCellId.length > 0 &&
+        value.capabilityValidationResult === 'accepted' &&
         value.stageRole === stageRole &&
         value.stagePhase === stagePhase &&
         /^[a-f0-9]{64}$/u.test(value.routeDecisionDigest ?? '') &&

@@ -28,8 +28,8 @@ export const CONTROL_PLANE_ADVISOR_POLICY = Object.freeze(
 )
 export const CONTROL_PLANE_ADVISOR_POLICY_DIGEST =
     digest(CONTROL_PLANE_ADVISOR_POLICY)
-const CAPABILITY_MATRIX = JSON.parse(fs.readFileSync(
-    path.join(POLICY_ROOT, 'profile-capability-matrix.json'),
+const REVIEWED_ASSUMPTIONS = JSON.parse(fs.readFileSync(
+    path.join(POLICY_ROOT, 'reviewed-routing-assumptions.json'),
     'utf8'
 ))
 
@@ -127,11 +127,18 @@ function selectProfile({
     runtimeAvailability
 }) {
     if (capabilityEvidence?.schema !==
-            'issue-orchestration.advisor-capability-evidence.v1' ||
+            'issue-orchestration.advisor-route-cell-evidence.v1' ||
         capabilityEvidence.producerAuthority !==
-            'machine-advisor-capability-selector' ||
+            'canonical-route-cell-compiler' ||
         capabilityEvidence.capabilityClass !==
             CONTROL_PLANE_ADVISOR_POLICY.capabilityClass ||
+        capabilityEvidence.routeCellId !==
+            CONTROL_PLANE_ADVISOR_POLICY.routeCellId ||
+        capabilityEvidence.requiredProfile !==
+            CONTROL_PLANE_ADVISOR_POLICY.requiredProfile ||
+        capabilityEvidence.reviewedAssumptionDigest !==
+            CONTROL_PLANE_ADVISOR_POLICY
+                .reviewedAssumptionDigest ||
         capabilityEvidence.evidenceDigest !==
             unsignedDigest(capabilityEvidence, 'evidenceDigest') ||
         runtimeAvailability?.schema !==
@@ -145,39 +152,23 @@ function selectProfile({
             )) {
         fail('advisor-capability-evidence-invalid')
     }
-    for (const profileId of
-        CONTROL_PLANE_ADVISOR_POLICY.strongestFirst) {
-        const qualification =
-            CONTROL_PLANE_ADVISOR_POLICY.qualifiedProfiles[
-                profileId
-            ]
-        const claimed =
-            capabilityEvidence.profiles?.[profileId]
-        if (!qualification ||
-            qualification.qualificationStatus !== 'qualified' ||
-            qualification.matrixEvidenceDigest !==
-                CAPABILITY_MATRIX.evidenceDigest ||
-            qualification.profileEvidenceDigest !==
-                CAPABILITY_MATRIX.profiles?.[profileId]
-                    ?.evidenceDigest ||
-            claimed?.matrixEvidenceDigest !==
-                qualification.matrixEvidenceDigest ||
-            claimed?.profileEvidenceDigest !==
-                qualification.profileEvidenceDigest) {
-            continue
-        }
-        if (runtimeAvailability.profiles?.[profileId]
-            ?.available === true) {
-            return {
-                selectedProfile: profileId,
-                capabilityEvidenceDigest:
-                    capabilityEvidence.evidenceDigest,
-                runtimeAvailabilityObservationDigest:
-                    runtimeAvailability.observationDigest
-            }
-        }
+    const profileId =
+        CONTROL_PLANE_ADVISOR_POLICY.requiredProfile
+    const assumption = REVIEWED_ASSUMPTIONS.profiles?.[profileId]
+    if (assumption?.assumptionDigest !==
+            CONTROL_PLANE_ADVISOR_POLICY.reviewedAssumptionDigest ||
+        assumption.policyStatus !== 'frontier-service-only' ||
+        runtimeAvailability.profiles?.[profileId]?.available !==
+            true) {
+        fail('advisor-qualified-profile-unavailable')
     }
-    fail('advisor-qualified-profile-unavailable')
+    return {
+        selectedProfile: profileId,
+        routeCellEvidenceDigest:
+            capabilityEvidence.evidenceDigest,
+        runtimeAvailabilityObservationDigest:
+            runtimeAvailability.observationDigest
+    }
 }
 
 function validateBoundedProjection(value) {
@@ -296,8 +287,8 @@ export function compileControlPlaneAdvisorRequest(input = {}) {
         selectedProfile: selection.selectedProfile,
         capabilityClass:
             CONTROL_PLANE_ADVISOR_POLICY.capabilityClass,
-        capabilityEvidenceDigest:
-            selection.capabilityEvidenceDigest,
+        routeCellEvidenceDigest:
+            selection.routeCellEvidenceDigest,
         runtimeAvailabilityObservationDigest:
             selection.runtimeAvailabilityObservationDigest,
         slotReservationDigest:

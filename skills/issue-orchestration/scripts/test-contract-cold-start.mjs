@@ -20,10 +20,13 @@ function validateAcceptanceContract(value) {
 function validateRoute(value, phase) {
     if (value?.schema !==
             'issue-orchestration.execution-route-decision.v2' ||
-        value.policyVersion !== 'execution-capability-routing.v3' ||
+        value.policyVersion !== 'execution-capability-routing.v4' ||
         value.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
         value.routingAuthority !==
-            'deterministic-execution-capability-compiler' ||
+            'canonical-route-cell-compiler' ||
+        typeof value.routeCellId !== 'string' ||
+        !value.routeCellId ||
+        value.capabilityValidationResult !== 'accepted' ||
         value.stageRole !== 'test-owner' ||
         value.stagePhase !== phase ||
         value.executionClass !== (

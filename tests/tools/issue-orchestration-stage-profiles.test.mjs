@@ -11,6 +11,10 @@ const policyPath = path.join(
     root,
     'skills/issue-orchestration/scripts/stage-profile-policy.mjs'
 )
+const canonicalCompilerPath = path.join(
+    root,
+    'skills/issue-orchestration/scripts/execution-route-compiler.mjs'
+)
 const contract = readJson('stage-profile-test-contract.json')
 const acceptance = readJson('stage-profile-acceptance-map.json')
 const controls = readJson('stage-profile-mutation-controls.json').controls
@@ -25,7 +29,9 @@ const REQUIRED_CLASSIFICATION_FIELDS = [
 const REQUIRED_PROFILE_FIELDS = [
     'stageProfilePolicyVersion', 'stageRole', 'stagePhase', 'allowedProfiles',
     'defaultProfile', 'routingAuthority', 'routingInputDigest',
-    'selectedProfile', 'selectedProfileReason', 'executionClass',
+    'selectedProfile', 'selectedProfileReason',
+    'routeCellId', 'canonicalPolicyDigest', 'requiredProfile',
+    'routeDecisionDigest', 'executionClass',
     'stateAuthority', 'outputAuthority', 'remoteAuthority',
     'leaseRequirement', 'mutationContract',
     'requiredPostconditionEvidenceClass', 'mutationPostconditionRequired',
@@ -106,7 +112,7 @@ function classification(overrides = {}) {
 
 function assignment(overrides = {}) {
     return {
-        schema: 'issue-orchestration.stage-assignment.v2',
+        schema: 'issue-orchestration.stage-assignment.v3',
         stageProfilePolicyVersion: 'stage-model-pool.v3',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
@@ -115,10 +121,14 @@ function assignment(overrides = {}) {
             'sol-medium', 'sol-high', 'sol-xhigh'
         ],
         defaultProfile: 'terra-medium',
-        routingAuthority: 'deterministic-execution-capability-compiler',
+        routingAuthority: 'canonical-route-cell-compiler',
         routingInputDigest: hash('b'),
         selectedProfile: 'terra-medium',
         selectedProfileReason: 'engineering-risk-bounded',
+        routeCellId: 'implementation.ordinary-bounded-single-module',
+        canonicalPolicyDigest: hash('7'),
+        requiredProfile: 'terra-medium',
+        routeDecisionDigest: hash('8'),
         executionClass: 'leased-writer',
         stateAuthority: 'none',
         outputAuthority: 'implementation-candidate',
@@ -144,6 +154,20 @@ function assignment(overrides = {}) {
             effectiveEffort: 'medium',
             multiAgentBackend: 'v2',
             available: true
+        },
+        executionRouteDecision: {
+            schema: 'issue-orchestration.execution-route-decision.v2',
+            policyVersion: 'execution-capability-routing.v4',
+            routingAuthority: 'canonical-route-cell-compiler',
+            stageRole: 'code-implementer',
+            stagePhase: 'implementation',
+            selectedProfile: 'terra-medium',
+            selectedProfileReason: 'engineering-risk-bounded',
+            requiredProfile: 'terra-medium',
+            routeCellId:
+                'implementation.ordinary-bounded-single-module',
+            canonicalPolicyDigest: hash('7'),
+            routeDecisionDigest: hash('8')
         },
         candidate: {
             status: 'candidate-green',
@@ -263,80 +287,32 @@ test('P03 one manifest owns every allowed pool and the full stage schema', async
     assert.deepEqual(manifest.requiredStageProfileFields, REQUIRED_PROFILE_FIELDS)
 })
 
-test('P04-P09 deterministic compiler maps every role and classification', async () => {
-    const compile = requireFunction(await policy(), 'compileStageRoute')
-    const cases = [
-        ['root-scheduler', 'scheduling', {}, 'terra-low'],
-        ['root-scheduler', 'recovery-takeover', {
-            newParentInvocation: true,
-            takeoverAuthorizationDigest: hash('4'),
-            recoveryHandoffDigest: hash('5'),
-            oldRootFencingReceiptDigest: hash('6')
-        }, 'terra-medium'],
-        ['dag-creator-updater', 'semantic-proposal', {}, 'terra-high'],
-        ['dag-creator-updater', 'semantic-proposal',
-            { contractState: 'authority-conflict' }, 'sol-xhigh'],
-        ['dag-creator-updater', 'semantic-proposal',
-            {
-                engineeringRiskClass: 'frontier',
-                frontierException: true,
-                frontierExceptionReceipt: {
-                    schema:
-                        'issue-orchestration.frontier-exception-receipt.v1',
-                    sliceMinimal: true,
-                    solXhighCapabilityInsufficient: true,
-                    evidenceDigest: hash('9')
-                }
-            }, 'sol-max'],
-        ['test-owner', 'test-contract-planning',
-            { verificationClass: 'focused' }, 'terra-high'],
-        ['test-owner', 'test-contract',
-            { verificationClass: 'focused' }, 'terra-medium'],
-        ['test-owner', 'test-contract', { verificationClass: 'runtime' }, 'sol-high'],
-        ['test-owner', 'behavior-verification',
-            { verificationClass: 'protocol' }, 'sol-xhigh'],
-        ['code-implementer', 'implementation',
-            { engineeringRiskClass: 'bounded' }, 'terra-medium'],
-        ['code-implementer', 'implementation',
-            { engineeringRiskClass: 'complex' }, 'terra-high'],
-        ['code-implementer', 'implementation',
-            { engineeringRiskClass: 'high-risk' }, 'sol-high'],
-        ['code-implementer', 'implementation',
-            { engineeringRiskClass: 'frontier' }, 'sol-xhigh'],
-        ['code-implementer', 'landing-conflict-resolution',
-            { engineeringRiskClass: 'bounded' }, 'terra-medium'],
-        ['ui-ux-implementer', 'ui-implementation',
-            { domain: 'ui-ux', uiDecisionClass: 'prescribed' }, 'sol-low'],
-        ['ui-ux-implementer', 'ui-implementation',
-            { domain: 'ui-ux', uiDecisionClass: 'layout-judgment' }, 'sol-medium'],
-        ['ui-ux-implementer', 'landing-conflict-resolution',
-            { domain: 'ui-ux', uiDecisionClass: 'prescribed' }, 'terra-medium'],
-        ['ui-system-adjudicator', 'adjudication',
-            { domain: 'ui-ux', uiDecisionClass: 'system-design-dispute' }, 'sol-high'],
-        ['ux-acceptance-verifier', 'ux-acceptance',
-            { domain: 'ui-ux', verificationClass: 'ux-local' }, 'sol-medium'],
-        ['ux-acceptance-verifier', 'ux-acceptance',
-            { domain: 'ui-ux', verificationClass: 'ux-path' }, 'sol-high'],
-        ['ux-acceptance-verifier', 'ux-acceptance',
-            { domain: 'ui-ux', verificationClass: 'ux-system' }, 'sol-xhigh'],
-        ['documentation-writer', 'documentation',
-            { domain: 'documentation', engineeringRiskClass: 'bounded' },
-            'terra-medium'],
-        ['documentation-writer', 'documentation',
-            { domain: 'documentation', engineeringRiskClass: 'complex' },
-            'terra-medium']
-    ]
-    for (const [stageRole, stagePhase, changes, expected] of cases) {
-        const route = compile({
-            ...classification(changes),
+test('P04-P09 stage identity does not select and one canonical compiler owns routing', async () => {
+    const stageModule = await policy()
+    const compileIdentity = requireFunction(
+        stageModule,
+        'compileStageRoutingIdentity'
+    )
+    for (const key of Object.keys(EXPECTED_POOLS)) {
+        const [stageRole, stagePhase] = key.split(':')
+        const identity = compileIdentity({
+            ...classification(),
             stageRole,
             stagePhase
         })
-        assert.equal(route.selectedProfile, expected, `${stageRole}:${stagePhase}`)
-        for (const field of REQUIRED_PROFILE_FIELDS) {
-            assert.ok(Object.hasOwn(route, field), `${stageRole}:${stagePhase}.${field}`)
-        }
+        assert.equal(Object.hasOwn(identity, 'selectedProfile'), false)
+        assert.equal(Object.hasOwn(identity, 'routeCellId'), false)
+        assert.equal(identity.routingAuthority,
+            'canonical-route-cell-compiler')
     }
+    assert.equal(stageModule.compileStageRoute, undefined)
+    const canonicalModule = await import(
+        `${pathToFileURL(canonicalCompilerPath).href}`
+        + `?contract=${Date.now()}-${Math.random()}`
+    )
+    requireFunction(canonicalModule, 'compileCanonicalRoute')
+    assert.equal(canonicalModule.compileExecutionRoute, undefined)
+    assert.equal(canonicalModule.compileExecutionReroute, undefined)
 })
 
 test('P10-P12 self-test, reclassification and member continuity validators exist', async () => {

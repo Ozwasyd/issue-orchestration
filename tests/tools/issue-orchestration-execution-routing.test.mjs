@@ -17,16 +17,18 @@ const {
     createWriterStageGitFixture,
     writerTestDigest
 } = await import('./issue-orchestration-writer-stage-test-helper.mjs')
-const {
-    compileProfileAvailabilityBinding,
-    compileExecutionRoute,
-    compileExecutionReroute,
-    verifyInstalledProductionPolicy,
-    verifyProfileCapabilityMatrix
-} = await import(
+const routingRuntime = await import(
     '../../skills/'
     + 'issue-orchestration/scripts/execution-route-compiler.mjs'
 )
+const {
+    compileProfileAvailabilityBinding,
+    compileCanonicalRoute,
+    verifyInstalledProductionPolicy,
+    verifyReviewedRoutingAssumptions,
+    verifyLiveCapabilityEvidence,
+    EXECUTION_ROUTING_POLICY_DIGEST
+} = routingRuntime
 
 const packageRoot = path.join(
     root,
@@ -36,13 +38,9 @@ const contract = JSON.parse(fs.readFileSync(path.join(
     root,
     'tests/fixtures/issue-orchestration/issue-1875-routing-test-contract.json'
 ), 'utf8'))
-const matrix = JSON.parse(fs.readFileSync(path.join(
+const assumptions = JSON.parse(fs.readFileSync(path.join(
     packageRoot,
-    'policy/profile-capability-matrix.json'
-), 'utf8'))
-const observations = JSON.parse(fs.readFileSync(path.join(
-    packageRoot,
-    'policy/profile-capability-observations.json'
+    'policy/reviewed-routing-assumptions.json'
 ), 'utf8'))
 const fixturePaths = Object.freeze([
     'src/routing/atomic.mjs',
@@ -141,7 +139,7 @@ function route({
         files,
         overrides: sliceOverrides
     })
-    return compileExecutionRoute({
+    return compileCanonicalRoute({
         stageWorkPlan: compiled.stageWorkPlan,
         executableSlice: compiled.executableSlice,
         routingClassification: classification(classificationOverrides),
@@ -159,6 +157,20 @@ function route({
                 metricOverrides
             })
         },
+        ...routeOverrides
+    })
+}
+
+function stageRoute({
+    stageRole,
+    stagePhase,
+    classificationOverrides = {},
+    routeOverrides = {}
+}) {
+    return compileCanonicalRoute({
+        ...classification(classificationOverrides),
+        stageRole,
+        stagePhase,
         ...routeOverrides
     })
 }
@@ -202,7 +214,10 @@ function availabilityBinding({
 }
 
 test('C01 freezes the permanent #1875 contract and four public schemas', () => {
-    assert.equal(contract.issue, 'ExampleOrg/RepositoryA#1875')
+    assert.equal(
+        contract.issue,
+        'Ozwasyd/issue-orchestration#18+#19'
+    )
     for (const identity of contract.schemas) {
         const file = path.join(
             packageRoot,
@@ -215,27 +230,23 @@ test('C01 freezes the permanent #1875 contract and four public schemas', () => {
     }
 })
 
-test('C02 recomputes the sole capability matrix from machine observations', () => {
-    const verified = verifyProfileCapabilityMatrix({
-        matrix,
-        observations
-    })
+test('C02 verifies reviewed assumptions without runtime-observation authority', () => {
+    const verified = verifyReviewedRoutingAssumptions(assumptions)
     assert.equal(verified.schema,
-        'issue-orchestration.profile-capability-matrix.v3')
-    assert.equal(verified.evidenceAuthority,
-        'recomputed-codex-v2-runtime-observations')
-    assert.equal(verified.modelSelfReportAccepted, false)
-    for (const field of contract.requiredEvidenceFields) {
-        assert.ok(observations.observations.every((item) =>
-            Object.hasOwn(item, field)), field)
-    }
+        'issue-orchestration.reviewed-routing-assumptions.v1')
+    assert.equal(verified.authority,
+        'checked-in-reviewed-routing-assumptions')
+    assert.equal(verified.runtimeObservationClaim, false)
+    assert.equal(verified.selectorAuthority, false)
+    assert.equal(verified.exactRouteValidationOnly, true)
 })
 
 test('C03 requires a verified #1874 executable slice and rejects whole issues', () => {
     assert.throws(
-        () => compileExecutionRoute({
-            routingClassification: classification(),
-            executionMetrics: metrics()
+        () => compileCanonicalRoute({
+            ...classification(),
+            stageRole: 'code-implementer',
+            stagePhase: 'implementation'
         }),
         { code: 'execution-route-verified-slice-required' }
     )
@@ -247,16 +258,36 @@ test('C03 requires a verified #1874 executable slice and rejects whole issues', 
     )
 })
 
-test('C04 routes atomic and bounded slices to the minimum capable Terra profile', () => {
+test('C04 high-risk single-file and bounded work cannot be shape-downgraded', () => {
+    const highRiskSingleFile = route({
+        classificationOverrides: {
+            engineeringRiskClass: 'high-risk'
+        }
+    })
+    assert.equal(
+        highRiskSingleFile.executionRouteDecision.selectedProfile,
+        'sol-high'
+    )
+    assert.equal(
+        highRiskSingleFile.executionRouteDecision.routeCellId,
+        'implementation.high-risk'
+    )
     const bounded = route({
         files: 2,
-        classificationOverrides: { engineeringRiskClass: 'high-risk' }
+        metricOverrides: {
+            statefulContinuationRequired: true,
+            checkpointSupportRequired: 'resumable'
+        }
     })
     assert.equal(
         bounded.executionShapeClassification.dominantWorkShape,
         'bounded-multifile'
     )
-    assert.equal(bounded.executionRouteDecision.selectedProfile, 'terra-medium')
+    assert.equal(bounded.executionRouteDecision.selectedProfile, 'sol-medium')
+    assert.equal(
+        bounded.executionRouteDecision.routeCellId,
+        'implementation.bounded-stateful-multifile'
+    )
     assert.notEqual(bounded.executionRouteDecision.selectedProfile, 'terra-max')
 })
 
@@ -329,7 +360,7 @@ test('C06 requires machine partition proof for long-horizon Sol/xhigh', () => {
         compiled.executionShapeClassification.dominantWorkShape,
         'long-horizon-cross-module'
     )
-    assert.equal(compiled.executionRouteDecision.selectedProfile, 'sol-high')
+    assert.equal(compiled.executionRouteDecision.selectedProfile, 'sol-xhigh')
 })
 
 test('C07 keeps Sol/max frontier-only and never uses it as fallback', () => {
@@ -446,95 +477,15 @@ test('C10 requested/effective runtime metadata is part of route verification', (
     )
 })
 
-test('C11 output-missing reroute needs mismatch, prior failure and retry authority', () => {
-    const prior = route()
-    const revisedArtifacts = artifacts()
-    const revised = () => compileExecutionReroute({
-        previousDecision: prior.executionRouteDecision,
-        revisedRouteInput: {
-            stageWorkPlan: revisedArtifacts.stageWorkPlan,
-            executableSlice: revisedArtifacts.executableSlice,
-            routingClassification: classification(),
-            executionMetrics: metrics({
-                toolInteractionDepth: 12,
-                contextBreadth: 'broad',
-                checkpointSupportRequired: 'resumable'
-            })
-        },
-        failureReceipt: {
-            failureClass: 'writer-stage.output-missing'
-        }
-    })
-    assert.throws(revised, {
-        code: 'execution-reroute-profile-mismatch-required'
-    })
-})
-
-test('C12 valid mismatch reroute changes candidate identity and binds authority', () => {
-    const prior = route()
-    const failureReceipt = {
-        schema: 'issue-orchestration.writer-stage-failure-receipt.v1',
-        failureClass: 'route-classification-changed',
-        previousRouteDecisionDigest:
-            prior.executionRouteDecision.routeDecisionDigest,
-        candidateReceiptDigest: hash('old-candidate'),
-        receiptDigest: hash('failure-receipt')
-    }
-    const retryAuthorization = {
-        schema: 'issue-orchestration.writer-stage-retry-authorization.v1',
-        failureReceiptDigest: failureReceipt.receiptDigest,
-        breakerResetReceiptDigest: hash('breaker-reset'),
-        authorizationDigest: hash('retry-authorization')
-    }
-    const revisedArtifacts = artifacts()
-    const next = compileExecutionReroute({
-        previousDecision: prior.executionRouteDecision,
-        revisedRouteInput: {
-            stageWorkPlan: revisedArtifacts.stageWorkPlan,
-            executableSlice: revisedArtifacts.executableSlice,
-            routingClassification: classification(),
-            executionMetrics: metrics({
-                toolInteractionDepth: 12,
-                commandLoopCount: 4,
-                contextBreadth: 'broad',
-                statefulContinuationRequired: true,
-                checkpointSupportRequired: 'resumable'
-            }),
-            machineClassificationEvidence: {
-                schema:
-                    'issue-orchestration.execution-shape-observation.v1',
-                source: 'machine-slice-and-runtime-observer',
-                observedAt: '2026-08-02T00:01:00+08:00',
-                evidenceDigest: hash('revised-shape')
-            },
-            runtimeCapabilityObservation: {
-                schema:
-                    'issue-orchestration.runtime-capability-observation.v1',
-                source: 'runtime-capability-registry',
-                requestedModel: 'gpt-5.6-sol',
-                effectiveModel: 'gpt-5.6-sol',
-                requestedEffort: 'xhigh',
-                effectiveEffort: 'xhigh',
-                multiAgentBackend: 'v2',
-                observable: true,
-                observationDigest: hash('runtime-capability')
-            }
-        },
-        failureReceipt,
-        retryAuthorization,
-        previousCandidateReceiptDigest:
-            failureReceipt.candidateReceiptDigest,
-        nextCandidateReceiptDigest: hash('new-candidate')
-    })
-    assert.equal(next.executionRouteDecision.selectedProfile, 'sol-xhigh')
+test('C11-C12 failure and rework expose no profile-advance API', () => {
     assert.equal(
-        next.executionRouteDecision.previousFailureReceiptDigest,
-        failureReceipt.receiptDigest
+        Object.hasOwn(routingRuntime, 'compileExecutionReroute'),
+        false
     )
-    assert.equal(
-        next.executionRouteDecision.retryAuthorizationDigest,
-        retryAuthorization.authorizationDigest
-    )
+    const routeDecision = route().executionRouteDecision
+    assert.equal(routeDecision.previousRouteDecisionDigest, null)
+    assert.equal(routeDecision.previousFailureReceiptDigest, null)
+    assert.equal(routeDecision.retryAuthorizationDigest, null)
 })
 
 test('C13 Luna/max requires the complete fresh narrow-context contract', () => {
@@ -678,4 +629,258 @@ test('C15 installation binds availability and reachability with zero paid rollou
     assert.equal(receipt.paidModelInvocationCount, 0)
     assert.equal(receipt.comparativeQualificationPerformed, false)
     assert.ok(Object.values(receipt.routeReachability).every(Boolean))
+})
+
+test('C16 latency-sensitive code has an executable terra-high route cell', () => {
+    const compiled = route({
+        classificationOverrides: {
+            engineeringRiskClass: 'complex'
+        },
+        metricOverrides: {
+            costSensitivity: 'latency-sensitive',
+            toolInteractionDepth: 4,
+            contextBreadth: 'narrow'
+        }
+    })
+    assert.equal(
+        compiled.executionRouteDecision.routeCellId,
+        'implementation.narrow-deep-latency-sensitive'
+    )
+    assert.equal(
+        compiled.executionRouteDecision.selectedProfile,
+        'terra-high'
+    )
+})
+
+test('C17 verification routes security and runtime before generic observe-only shape', () => {
+    const security = stageRoute({
+        stageRole: 'test-owner',
+        stagePhase: 'behavior-verification',
+        classificationOverrides: {
+            verificationClass: 'security',
+            engineeringRiskClass: 'complex'
+        }
+    })
+    assert.equal(
+        security.executionRouteDecision.selectedProfile,
+        'sol-xhigh'
+    )
+    assert.equal(
+        security.executionRouteDecision.routeCellId,
+        'verification.protocol-security-authority'
+    )
+    const runtime = stageRoute({
+        stageRole: 'test-owner',
+        stagePhase: 'behavior-verification',
+        classificationOverrides: {
+            verificationClass: 'runtime',
+            engineeringRiskClass: 'complex'
+        }
+    })
+    assert.equal(
+        runtime.executionRouteDecision.selectedProfile,
+        'sol-high'
+    )
+    assert.equal(
+        runtime.executionRouteDecision.routeCellId,
+        'verification.runtime-lifecycle-cross-module'
+    )
+})
+
+test('C18 UX and DAG stage semantics share the canonical compiler', () => {
+    const uxExpected = {
+        'ux-local': 'sol-medium',
+        'ux-path': 'sol-high',
+        'ux-system': 'sol-xhigh'
+    }
+    for (const [verificationClass, expected] of
+        Object.entries(uxExpected)) {
+        const compiled = stageRoute({
+            stageRole: 'ux-acceptance-verifier',
+            stagePhase: 'ux-acceptance',
+            classificationOverrides: {
+                domain: 'ui-ux',
+                uiDecisionClass: 'layout-judgment',
+                verificationClass
+            }
+        })
+        assert.equal(
+            compiled.executionRouteDecision.selectedProfile,
+            expected
+        )
+    }
+    const reconstruction = stageRoute({
+        stageRole: 'dag-creator-updater',
+        stagePhase: 'semantic-proposal',
+        routeOverrides: {
+            dagUpdateClass: 'full-reconstruction'
+        }
+    })
+    assert.equal(
+        reconstruction.executionRouteDecision.selectedProfile,
+        'sol-high'
+    )
+    const conflict = stageRoute({
+        stageRole: 'dag-creator-updater',
+        stagePhase: 'semantic-proposal',
+        classificationOverrides: {
+            contractState: 'authority-conflict'
+        }
+    })
+    assert.equal(
+        conflict.executionRouteDecision.selectedProfile,
+        'sol-xhigh'
+    )
+})
+
+test('C19 route receipts bind one exact cell, all predicates and no search result', () => {
+    const decision = route().executionRouteDecision
+    assert.equal(decision.routingAuthority,
+        'canonical-route-cell-compiler')
+    assert.equal(decision.policyVersion,
+        'execution-capability-routing.v4')
+    assert.match(decision.routeCellId, /^implementation\./u)
+    assert.match(decision.routeCellDigest, /^[a-f0-9]{64}$/u)
+    assert.match(
+        decision.selectingPredicatesDigest,
+        /^[a-f0-9]{64}$/u
+    )
+    assert.equal(
+        decision.canonicalPolicyDigest,
+        EXECUTION_ROUTING_POLICY_DIGEST
+    )
+    assert.equal(decision.requiredProfile, decision.selectedProfile)
+    assert.equal(decision.capabilityValidationResult, 'accepted')
+    assert.deepEqual(decision.allowedProfiles, [
+        decision.requiredProfile
+    ])
+})
+
+test('C20 there is one exported production selector and no global ladder', () => {
+    assert.equal(
+        Object.hasOwn(routingRuntime, 'compileCanonicalRoute'),
+        true
+    )
+    for (const legacy of [
+        'compileExecutionRoute',
+        'compileExecutionReroute',
+        'compileStageRoute'
+    ]) {
+        assert.equal(Object.hasOwn(routingRuntime, legacy), false)
+    }
+    const compilerSource = fs.readFileSync(path.join(
+        packageRoot,
+        'skills/issue-orchestration/scripts/execution-route-compiler.mjs'
+    ), 'utf8')
+    const stageSource = fs.readFileSync(path.join(
+        packageRoot,
+        'skills/issue-orchestration/scripts/stage-profile-policy.mjs'
+    ), 'utf8')
+    assert.doesNotMatch(compilerSource, /selectionPriority/u)
+    assert.doesNotMatch(compilerSource, /profileSatisfies/u)
+    assert.doesNotMatch(
+        stageSource,
+        /export function compileStageRoute/u
+    )
+})
+
+test('C21 legacy unbound observations and hand-edited scores fail closed', () => {
+    const legacy = structuredClone(assumptions)
+    legacy.authority = 'codex-v2-runtime-metadata-observer'
+    assert.throws(
+        () => verifyReviewedRoutingAssumptions(legacy),
+        { code: 'execution-route-reviewed-assumptions-invalid' }
+    )
+    const numeric = structuredClone(assumptions)
+    numeric.profiles['terra-low'].planningDepth = 5
+    assert.throws(
+        () => verifyReviewedRoutingAssumptions(numeric),
+        { code: 'execution-route-reviewed-assumption-mismatch' }
+    )
+})
+
+test('C22 live capability evidence is invocation and raw-evidence bound', () => {
+    const raw = {
+        schema:
+            'issue-orchestration.live-capability-evidence.v1',
+        authority:
+            'invocation-bound-live-capability-evidence',
+        runtimeInvocationId: 'invocation-18-19',
+        sessionOrThreadId: 'thread-18-19',
+        requestedProfile: 'sol-high',
+        effectiveProfile: 'sol-high',
+        requestedModel: 'gpt-5.6-sol',
+        effectiveModel: 'gpt-5.6-sol',
+        requestedEffort: 'high',
+        effectiveEffort: 'high',
+        multiAgentBackend: 'v2',
+        runtimeVersion: 'codex-v2-test',
+        fixtureOrTaskIdentity: 'issues-18-19-route-fixture',
+        sourceCommit: 'a'.repeat(40),
+        packageDigest: hash('package-18-19'),
+        policyDigest: EXECUTION_ROUTING_POLICY_DIGEST,
+        rawEventDigest: hash('events'),
+        rawSessionDigest: hash('session'),
+        rawTurnDigest: hash('turn'),
+        executedCommandDigest: hash('commands'),
+        toolTraceDigest: hash('tools'),
+        observedAt: '2026-08-03T20:30:00+08:00',
+        perFieldDerivation: {}
+    }
+    const derivedFields = [
+        'runtimeInvocationId',
+        'sessionOrThreadId',
+        'requestedProfile',
+        'effectiveProfile',
+        'requestedModel',
+        'effectiveModel',
+        'requestedEffort',
+        'effectiveEffort',
+        'multiAgentBackend',
+        'runtimeVersion',
+        'fixtureOrTaskIdentity',
+        'sourceCommit',
+        'packageDigest',
+        'policyDigest',
+        'rawEventDigest',
+        'rawSessionDigest',
+        'rawTurnDigest',
+        'executedCommandDigest',
+        'toolTraceDigest',
+        'observedAt'
+    ]
+    raw.perFieldDerivation = Object.fromEntries(
+        derivedFields.map((field) => [field, {
+            derivation:
+                `deterministic derivation of ${field} from raw evidence`,
+            sourceEvidenceDigests: [hash('events')],
+            valueDigest: hash(raw[field])
+        }])
+    )
+    const evidence = {
+        ...raw,
+        receiptDigest: hash(raw)
+    }
+    assert.equal(
+        verifyLiveCapabilityEvidence(evidence),
+        evidence
+    )
+    for (const field of contract.requiredLiveEvidenceFields) {
+        assert.equal(Object.hasOwn(evidence, field), true, field)
+    }
+    const replay = structuredClone(evidence)
+    replay.runtimeInvocationId = 'other-invocation'
+    assert.throws(
+        () => verifyLiveCapabilityEvidence(replay),
+        { code: 'execution-route-live-capability-receipt-invalid' }
+    )
+    const partial = structuredClone(evidence)
+    delete partial.perFieldDerivation.requestedModel
+    const unsignedPartial = structuredClone(partial)
+    delete unsignedPartial.receiptDigest
+    partial.receiptDigest = hash(unsignedPartial)
+    assert.throws(
+        () => verifyLiveCapabilityEvidence(partial),
+        { code: 'execution-route-live-capability-evidence-invalid' }
+    )
 })

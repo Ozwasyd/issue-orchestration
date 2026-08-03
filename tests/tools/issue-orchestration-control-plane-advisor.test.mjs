@@ -59,16 +59,17 @@ function advisorFixture(overrides = {}) {
     })
     const capabilityEvidence = sealed({
         schema:
-            'issue-orchestration.advisor-capability-evidence.v1',
+            'issue-orchestration.advisor-route-cell-evidence.v1',
         producerAuthority:
-            'machine-advisor-capability-selector',
+            'canonical-route-cell-compiler',
         capabilityClass: 'frontier-control-plane-advisor',
-        profiles: {
-            'sol-max': structuredClone(
-                CONTROL_PLANE_ADVISOR_POLICY
-                    .qualifiedProfiles['sol-max']
-            )
-        }
+        routeCellId:
+            CONTROL_PLANE_ADVISOR_POLICY.routeCellId,
+        requiredProfile:
+            CONTROL_PLANE_ADVISOR_POLICY.requiredProfile,
+        reviewedAssumptionDigest:
+            CONTROL_PLANE_ADVISOR_POLICY
+                .reviewedAssumptionDigest
     }, 'evidenceDigest')
     const runtimeAvailability = sealed({
         schema:
@@ -252,7 +253,7 @@ function advisorFixture(overrides = {}) {
     }
 }
 
-test('one strongest-qualified observe-only advisor compiles and low root executes exactly', () => {
+test('one exact route-cell observe-only advisor compiles and low root executes exactly', () => {
     const fixture = advisorFixture()
     assert.equal(fixture.request.selectedProfile, 'sol-max')
     assert.equal(fixture.request.executionClass, 'observe-only')

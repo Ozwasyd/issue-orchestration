@@ -82,9 +82,10 @@ const LANE_EVIDENCE = {
     'execution-shape-routing.test.mjs': [
         'tests/tools/issue-orchestration-execution-routing.test.mjs'
     ],
-    'profile-capability-matrix.test.mjs': [
+    'reviewed-routing-assumptions.test.mjs': [
         'tests/tools/issue-orchestration-execution-routing.test.mjs',
-        'contracts/profile-capability-matrix.schema.json'
+        'contracts/reviewed-routing-assumptions.schema.json',
+        'contracts/live-capability-evidence.schema.json'
     ],
     'implementer-self-test-v2.test.mjs': [
         'tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs'

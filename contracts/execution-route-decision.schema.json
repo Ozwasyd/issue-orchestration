@@ -14,7 +14,14 @@
         "stagePhase",
         "classificationDigest",
         "capabilityDigest",
-        "matrixEvidenceDigest",
+        "routeCellId",
+        "routeCellDigest",
+        "selectingPredicates",
+        "selectingPredicatesDigest",
+        "canonicalPolicyDigest",
+        "requiredProfile",
+        "capabilityValidationResult",
+        "reviewedAssumptionDigest",
         "allowedProfiles",
         "selectedProfile",
         "selectedProfileReason",
@@ -25,6 +32,9 @@
         "runtimeExecutionBindingDigest",
         "runtimeExecutionBindingStatus",
         "runtimeVerificationStatus",
+        "runtimeInvocationId",
+        "runtimeIdentityDigest",
+        "availabilityHandling",
         "availabilityBindingDigest",
         "availabilityFallbackReason",
         "previousRouteDecisionDigest",
@@ -38,72 +48,44 @@
             "const": "issue-orchestration.execution-route-decision.v2"
         },
         "policyVersion": {
-            "const": "execution-capability-routing.v3"
+            "const": "execution-capability-routing.v4"
         },
         "modelPoolPolicyVersion": {
             "const": "stage-model-pool.v3"
         },
         "routingAuthority": {
-            "const": "deterministic-execution-capability-compiler"
+            "const": "canonical-route-cell-compiler"
         },
-        "sliceId": {
-            "type": "string",
-            "minLength": 1
+        "sliceId": {"type": "string", "minLength": 1},
+        "sliceDigest": {"$ref": "#/$defs/digest"},
+        "stageRole": {"type": "string", "minLength": 1},
+        "stagePhase": {"type": "string", "minLength": 1},
+        "classificationDigest": {"$ref": "#/$defs/digest"},
+        "capabilityDigest": {"$ref": "#/$defs/digest"},
+        "routeCellId": {"type": "string", "minLength": 1},
+        "routeCellDigest": {"$ref": "#/$defs/digest"},
+        "selectingPredicates": {
+            "type": "object",
+            "minProperties": 1
         },
-        "sliceDigest": {
-            "$ref": "#/$defs/digest"
-        },
-        "stageRole": {
-            "type": "string",
-            "minLength": 1
-        },
-        "stagePhase": {
-            "type": "string",
-            "minLength": 1
-        },
-        "classificationDigest": {
-            "$ref": "#/$defs/digest"
-        },
-        "capabilityDigest": {
-            "$ref": "#/$defs/digest"
-        },
-        "matrixEvidenceDigest": {
-            "$ref": "#/$defs/digest"
-        },
+        "selectingPredicatesDigest": {"$ref": "#/$defs/digest"},
+        "canonicalPolicyDigest": {"$ref": "#/$defs/digest"},
+        "requiredProfile": {"type": "string", "minLength": 1},
+        "capabilityValidationResult": {"const": "accepted"},
+        "reviewedAssumptionDigest": {"$ref": "#/$defs/digest"},
         "allowedProfiles": {
             "type": "array",
-            "items": {
-                "type": "string",
-                "minLength": 1
-            },
+            "items": {"type": "string", "minLength": 1},
             "minItems": 1,
             "uniqueItems": true
         },
-        "selectedProfile": {
-            "type": "string",
-            "minLength": 1
-        },
-        "selectedProfileReason": {
-            "type": "string",
-            "minLength": 1
-        },
-        "requestedModel": {
-            "type": "string",
-            "minLength": 1
-        },
-        "requestedEffort": {
-            "type": "string",
-            "minLength": 1
-        },
-        "multiAgentBackend": {
-            "const": "v2"
-        },
+        "selectedProfile": {"type": "string", "minLength": 1},
+        "selectedProfileReason": {"type": "string", "minLength": 1},
+        "requestedModel": {"type": "string", "minLength": 1},
+        "requestedEffort": {"type": "string", "minLength": 1},
+        "multiAgentBackend": {"const": "v2"},
         "executionClass": {
-            "enum": [
-                "root-control",
-                "observe-only",
-                "leased-writer"
-            ]
+            "enum": ["root-control", "observe-only", "leased-writer"]
         },
         "runtimeExecutionBindingDigest": {
             "$ref": "#/$defs/nullableDigest"
@@ -112,9 +94,22 @@
             "enum": ["pending-observation", "verified"]
         },
         "runtimeVerificationStatus": {
+            "enum": ["pending-observation", "verified"]
+        },
+        "runtimeInvocationId": {
+            "oneOf": [
+                {"type": "string", "minLength": 1},
+                {"type": "null"}
+            ]
+        },
+        "runtimeIdentityDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "availabilityHandling": {
             "enum": [
-                "pending-observation",
-                "verified"
+                "not-required",
+                "primary-available",
+                "fixed-fallback"
             ]
         },
         "availabilityBindingDigest": {
@@ -139,9 +134,7 @@
         "previousCandidateReceiptDigest": {
             "$ref": "#/$defs/nullableDigest"
         },
-        "routeDecisionDigest": {
-            "$ref": "#/$defs/digest"
-        }
+        "routeDecisionDigest": {"$ref": "#/$defs/digest"}
     },
     "additionalProperties": false,
     "$defs": {
@@ -151,12 +144,8 @@
         },
         "nullableDigest": {
             "oneOf": [
-                {
-                    "$ref": "#/$defs/digest"
-                },
-                {
-                    "type": "null"
-                }
+                {"$ref": "#/$defs/digest"},
+                {"type": "null"}
             ]
         }
     }

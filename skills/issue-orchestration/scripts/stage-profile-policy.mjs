@@ -16,7 +16,7 @@ const STAGE_PERMISSIONS = loadPolicy('stage-permissions.json')
 
 if (MODEL_POOL.schema
         !== 'issue-orchestration.stage-model-pool-policy.v3'
-    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v3'
+    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v4'
     || STAGE_PERMISSIONS.schema
         !== 'issue-orchestration.stage-permissions.v2'
     || MODEL_POOL.version !== ROUTING_POLICY.version) {
@@ -129,6 +129,10 @@ export const REQUIRED_STAGE_PROFILE_FIELDS = Object.freeze([
     'routingInputDigest',
     'selectedProfile',
     'selectedProfileReason',
+    'routeCellId',
+    'canonicalPolicyDigest',
+    'requiredProfile',
+    'routeDecisionDigest',
     'executionClass',
     'stateAuthority',
     'outputAuthority',
@@ -338,173 +342,6 @@ export function validateRoutingClassification(value) {
     return value
 }
 
-function selectDagProfile(input) {
-    const selector = ROUTING_POLICY.selectors[
-        'dag-creator-updater:semantic-proposal'
-    ]
-    if (input.engineeringRiskClass === 'frontier'
-        && input.frontierException === true) {
-        const receipt = input.frontierExceptionReceipt
-        if (receipt?.schema !==
-                'issue-orchestration.frontier-exception-receipt.v1' ||
-            receipt.sliceMinimal !== true ||
-            receipt.solXhighCapabilityInsufficient !== true ||
-            !HASH.test(receipt.evidenceDigest ?? '')) {
-            fail('routing-frontier-exception-receipt')
-        }
-        return [selector.frontierException, 'dag-frontier-exception']
-    }
-    if (input.contractState === 'authority-conflict'
-        || input.contractState === 'owner-unresolved'
-        || input.engineeringRiskClass === 'frontier') {
-        return [
-            selector.authorityOrTopologyConflict,
-            'dag-authority-or-topology-conflict'
-        ]
-    }
-    if (input.dagUpdateClass === 'full-reconstruction') {
-        return [selector.fullReconstruction, 'dag-full-reconstruction']
-    }
-    return [selector.default, 'dag-semantic-proposal-default']
-}
-
-function selectTestOwnerProfile(input, key) {
-    const selector = ROUTING_POLICY.selectors[key]
-    if (['protocol', 'security'].includes(input.verificationClass)
-        || input.contractState === 'authority-conflict') {
-        return [
-            selector.protocolSecurityOrAuthority,
-            'verification-protocol-security-or-authority'
-        ]
-    }
-    if (input.verificationClass === 'runtime'
-        || input.engineeringRiskClass === 'high-risk'
-        || input.engineeringRiskClass === 'frontier') {
-        return [
-            selector.runtimeOrLifecycle,
-            'verification-runtime-or-lifecycle-risk'
-        ]
-    }
-    return [selector.focused, 'verification-focused-or-cross-module']
-}
-
-function selectCodeProfile(input, key) {
-    const selected =
-        ROUTING_POLICY.selectors[key][input.engineeringRiskClass]
-    return selected
-        ? [selected, `engineering-risk-${input.engineeringRiskClass}`]
-        : undefined
-}
-
-function selectUiProfile(input, key) {
-    if (input.domain !== 'ui-ux') fail('routing-ui-domain')
-    if (input.uiDecisionClass === 'system-design-dispute') {
-        fail('routing-ui-adjudication-required')
-    }
-    const selected = ROUTING_POLICY.selectors[key][input.uiDecisionClass]
-    if (selected) return [selected, `ui-${input.uiDecisionClass}`]
-    fail('routing-ui-classification')
-}
-
-function selectAdjudicatorProfile(input) {
-    if (input.domain !== 'ui-ux'
-        || input.uiDecisionClass !== 'system-design-dispute') {
-        fail('routing-ui-adjudication-not-required')
-    }
-    const selector = ROUTING_POLICY.selectors[
-        'ui-system-adjudicator:adjudication'
-    ]
-    if (input.contractState === 'authority-conflict') {
-        return [selector['authority-conflict'], 'ui-system-authority-conflict']
-    }
-    return [
-        selector['system-design-dispute'],
-        'ui-system-design-dispute'
-    ]
-}
-
-function selectUxProfile(input) {
-    if (input.domain !== 'ui-ux') fail('routing-ui-domain')
-    const selected = ROUTING_POLICY.selectors[
-        'ux-acceptance-verifier:ux-acceptance'
-    ][input.verificationClass]
-    const route = selected
-        ? [selected, input.verificationClass]
-        : undefined
-    if (!route) fail('routing-ux-verification-class')
-    return route
-}
-
-function selectDocumentationProfile(input) {
-    if (input.domain !== 'documentation') fail('routing-documentation-domain')
-    if (input.documentationClass === 'mechanical-no-change') {
-        return ['terra-low', 'documentation-mechanical-no-change']
-    }
-    if (input.documentationClass === 'architecture-public-contract') {
-        return ['sol-high', 'documentation-architecture-public-contract']
-    }
-    if (input.documentationClass === 'cross-module') {
-        return ['sol-medium', 'documentation-cross-module']
-    }
-    return ['terra-medium', 'documentation-current-sync']
-}
-
-function selectProfile(input, key) {
-    if (key === 'root-scheduler:scheduling') {
-        if (input.controlPlaneRecovery === true ||
-            input.recoveryClassification ||
-            input.recoveryReceiptDigest ||
-            input.takeoverAuthorizationDigest ||
-            input.recoveryHandoffDigest ||
-            input.oldRootFencingReceiptDigest ||
-            input.newParentInvocation !== undefined) {
-            fail('routing-root-in-session-upgrade-forbidden')
-        }
-        return ['terra-low', 'root-mechanical-control']
-    }
-    if (key === 'root-scheduler:recovery-takeover') {
-        if (input.controlPlaneRecovery === true ||
-            input.newParentInvocation !== true ||
-            !HASH.test(
-                input.takeoverAuthorizationDigest ?? ''
-            ) ||
-            !HASH.test(input.recoveryHandoffDigest ?? '') ||
-            !HASH.test(
-                input.oldRootFencingReceiptDigest ?? ''
-            )) {
-            fail('routing-root-takeover-authority-required')
-        }
-        return ['terra-medium', 'root-recovery-takeover']
-    }
-    if (key === 'dag-creator-updater:semantic-proposal') {
-        return selectDagProfile(input)
-    }
-    if (key === 'test-owner:test-contract-planning'
-        || key === 'test-owner:test-contract'
-        || key === 'test-owner:behavior-verification') {
-        return selectTestOwnerProfile(input, key)
-    }
-    if (key === 'code-implementer:implementation' ||
-        key === 'code-implementer:landing-conflict-resolution') {
-        if (input.domain === 'ui-ux') fail('routing-ui-owner')
-        return selectCodeProfile(input, key)
-    }
-    if (key === 'ui-ux-implementer:ui-implementation' ||
-        key === 'ui-ux-implementer:landing-conflict-resolution') {
-        return selectUiProfile(input, key)
-    }
-    if (key === 'ui-system-adjudicator:adjudication') {
-        return selectAdjudicatorProfile(input)
-    }
-    if (key === 'ux-acceptance-verifier:ux-acceptance') {
-        return selectUxProfile(input)
-    }
-    if (key === 'documentation-writer:documentation') {
-        return selectDocumentationProfile(input)
-    }
-    fail('routing-stage-role-phase')
-}
-
 export function compileStageRoutingIdentity(input) {
     assertNoLegacyAuthority(input)
     validateRoutingClassification(input)
@@ -565,18 +402,6 @@ export function compileStageRoutingIdentity(input) {
     })
 }
 
-export function compileStageRoute(input) {
-    const identity = compileStageRoutingIdentity(input)
-    const key = routeKey(input.stageRole, input.stagePhase)
-    const [selectedProfile, selectedProfileReason] =
-        selectProfile(input, key)
-    return Object.freeze({
-        ...identity,
-        selectedProfile,
-        selectedProfileReason
-    })
-}
-
 function validateFreshContext(value, definition) {
     if (!definition.freshContext) return
     if (value.freshContext !== true
@@ -621,7 +446,7 @@ function validateCandidate(value) {
 
 export function validateStageAssignment(value) {
     assertNoLegacyAuthority(value)
-    if (value?.schema !== 'issue-orchestration.stage-assignment.v2') {
+    if (value?.schema !== 'issue-orchestration.stage-assignment.v3') {
         fail('routing-assignment-schema')
     }
     for (const field of REQUIRED_STAGE_PROFILE_FIELDS) {
@@ -637,27 +462,53 @@ export function validateStageAssignment(value) {
     if (value.routingAuthority !== STAGE_MODEL_POOL_POLICY.routingAuthority) {
         fail('routing-authority')
     }
+    if (value.stageRole === 'root-scheduler' &&
+        value.selectedProfile !== (
+            value.stagePhase === 'recovery-takeover'
+                ? 'terra-medium'
+                : 'terra-low'
+        )) {
+        fail('routing-root-profile')
+    }
     if (value.stageRole === 'ui-ux-implementer'
         && !definition.allowedProfiles.includes(value.selectedProfile)) {
         fail('routing-ui-profile')
     }
+    if (value.stageRole === 'ui-ux-implementer' &&
+        value.classification.uiDecisionClass ===
+            'system-design-dispute' &&
+        !HASH.test(value.adjudicationReceiptDigest ?? '')) {
+        fail('routing-ui-adjudication-required')
+    }
     validateFreshContext(value, definition)
-    const expected = compileStageRoute({
+    const expected = compileStageRoutingIdentity({
         ...value.classification,
         stageRole: value.stageRole,
         stagePhase: value.stagePhase,
-        frontierException: value.frontierException,
         requiredSkillDigests: value.requiredSkillDigests,
         capabilityDigest: value.capabilityDigest
     })
-    if (value.stageRole === 'root-scheduler'
-        && value.selectedProfile !== expected.selectedProfile) {
-        fail('routing-root-profile')
-    }
     if (!sameValues(value.allowedProfiles, expected.allowedProfiles)
-        || value.defaultProfile !== expected.defaultProfile
-        || value.selectedProfile !== expected.selectedProfile
-        || value.selectedProfileReason !== expected.selectedProfileReason) {
+        || value.defaultProfile !== expected.defaultProfile) {
+        fail('routing-stage-identity')
+    }
+    const decision = value.executionRouteDecision
+    if (decision?.schema !==
+            'issue-orchestration.execution-route-decision.v2' ||
+        decision.policyVersion !==
+            'execution-capability-routing.v4' ||
+        decision.routingAuthority !==
+            'canonical-route-cell-compiler' ||
+        decision.stageRole !== value.stageRole ||
+        decision.stagePhase !== value.stagePhase ||
+        decision.selectedProfile !== value.selectedProfile ||
+        decision.selectedProfileReason !== value.selectedProfileReason ||
+        decision.requiredProfile !== value.requiredProfile ||
+        decision.routeCellId !== value.routeCellId ||
+        decision.canonicalPolicyDigest !==
+            value.canonicalPolicyDigest ||
+        decision.routeDecisionDigest !== value.routeDecisionDigest ||
+        !HASH.test(value.routeDecisionDigest ?? '')) {
         fail('routing-selected-profile')
     }
     if (value.executionClass !== expected.executionClass ||

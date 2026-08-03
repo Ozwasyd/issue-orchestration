@@ -2,7 +2,7 @@
   "schema": "issue-orchestration.stage-model-pool-policy.v3",
   "version": "stage-model-pool.v3",
   "policyRevision": "frozen-production-roster-2026-08-03",
-  "routingAuthority": "deterministic-execution-capability-compiler",
+  "routingAuthority": "canonical-route-cell-compiler",
   "productionRoster": [
     "terra-low",
     "terra-medium",
@@ -28,105 +28,105 @@
       "effort": "low",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "69f9eb7617c47769d27e9582be05947ea69ba0245f424eb6d97ec69fb335ab3e"
+      "reviewedAssumptionDigest": "484f5eb465a8946fe269f64247bfa24e7511882c1ae6590727878b9de992c5ae"
     },
     "terra-medium": {
       "model": "gpt-5.6-terra",
       "effort": "medium",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "571bf4bd6d8c960b3eebfb4e90b60cc01be3d6e5df476fc9572b9fd22793d167"
+      "reviewedAssumptionDigest": "37070cf5b91551d23228ee44b4a6697138d7263dd1597d3f397f0ac3631d1a74"
     },
     "terra-high": {
       "model": "gpt-5.6-terra",
       "effort": "high",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "1fea79a2d6ec528875199eacbf40b835c2d8866ce057a21e8cba3677b67b005f"
+      "reviewedAssumptionDigest": "10d8e5d9d54489650aec7d1521f05eb8222fc0afe1d8fca3895094fb92081b65"
     },
     "terra-xhigh": {
       "model": "gpt-5.6-terra",
       "effort": "xhigh",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "70ca296aedeba17a46df8cda3d7172ee9c1d7f8cf3f2e6edb14358cd3918e7b8"
+      "reviewedAssumptionDigest": "3913eecda209536e1e9dd5ac1d4d48ade7497d5c93a977ce5905117df2ad1bef"
     },
     "terra-max": {
       "model": "gpt-5.6-terra",
       "effort": "max",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "d804b977b4282c5e4e00b1cd6da002dc3c790d3e59baea60c4655b3ab6028108"
+      "reviewedAssumptionDigest": "68c604c44a03fccc6bfcaf165a5056a0c68e6a59f6484ed1a3844f34a61a2609"
     },
     "luna-low": {
       "model": "gpt-5.6-luna",
       "effort": "low",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "37334e96ce370dd1c934fa5121bd6118dee3ee5e981acab47b60f19d84cae6ae"
+      "reviewedAssumptionDigest": "2b3a67dd605d93f7b33bd3bad65a4a9a1338141afdca5071ec1a467b87dae835"
     },
     "luna-medium": {
       "model": "gpt-5.6-luna",
       "effort": "medium",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "af013cf3ea3acd9d648683f4d8df9e97b1480363980a6bd3c7085091aea27dc1"
+      "reviewedAssumptionDigest": "9c869abeb527eddf05f41a25d639c3c05e2098c90195ca0a7038b485ece0c772"
     },
     "luna-high": {
       "model": "gpt-5.6-luna",
       "effort": "high",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "3715c2c8aab83a60c9e0cd968838010b8d9348369080e00156e3eeea2ed0c387"
+      "reviewedAssumptionDigest": "04ac50892d240720bd2ce081845b71e6e6b932220a72868302c94bea7156f497"
     },
     "luna-xhigh": {
       "model": "gpt-5.6-luna",
       "effort": "xhigh",
       "multiAgentBackend": "v2",
       "productionStatus": "disabled",
-      "capabilityEvidenceDigest": "02a1bc846392e152a4bf71b66a9837994841564138a83d30a5a142e4e64510a4"
+      "reviewedAssumptionDigest": "bc8015781aa41cf2f9719330eaa2627cf76cf49353da10e372d40917faaf0e84"
     },
     "luna-max": {
       "model": "gpt-5.6-luna",
       "effort": "max",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "a9cb81b26f1d255e5f20ae2f8fcf6477bde27d63775dddfd659b33bbcdc6aefc"
+      "reviewedAssumptionDigest": "2b2565bfda7783706530076afdda1cf321b4694d44e4e0f38834ee6ed7f96236"
     },
     "sol-low": {
       "model": "gpt-5.6-sol",
       "effort": "low",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "2621fb1e5a04806190b158dd7a5f703dba3c73917552c229d5b3c716466a4f9f"
+      "reviewedAssumptionDigest": "497e37f92bc7de9be081742355c5638ee6003cfb88e2ea13a2972d839703ad3a"
     },
     "sol-medium": {
       "model": "gpt-5.6-sol",
       "effort": "medium",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "7b35e4ca6aca51b1ace27ae4705c4f51bb17a377c0f85e1db33c003804a1eeea"
+      "reviewedAssumptionDigest": "f7e6b6044707ab44fe0236893a45cd2fc73bc2205bf77b2a25709e8921891f18"
     },
     "sol-high": {
       "model": "gpt-5.6-sol",
       "effort": "high",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "dacb20dfb07d53bf9a4b7f38cd30cc1f2ebd0ae889498d495754cea18dc193be"
+      "reviewedAssumptionDigest": "de2865cb6a0bc3abfa4ee018d52379452aeb8e2b81def0879e10bad282bc3e79"
     },
     "sol-xhigh": {
       "model": "gpt-5.6-sol",
       "effort": "xhigh",
       "multiAgentBackend": "v2",
       "productionStatus": "normal",
-      "capabilityEvidenceDigest": "34c0685cfe7accc390cd2d7ec0ca94d25ffb89e756f41aa49a6bbd618f637485"
+      "reviewedAssumptionDigest": "064603d9c8690f96cee63ea048ed1ef93268f069a98d5473be37cffe507f1d07"
     },
     "sol-max": {
       "model": "gpt-5.6-sol",
       "effort": "max",
       "multiAgentBackend": "v2",
       "productionStatus": "frontier-service-only",
-      "capabilityEvidenceDigest": "d505fb421b4aafa7253b218971fa37e8cb965e2e50b582f18e5edfd1cfc8fd7c"
+      "reviewedAssumptionDigest": "eadd89e892b472fc56827d455fc0d1b5f21fc4ad4dfc6a399c84e91c37082681"
     }
   },
   "lunaMaxContract": {

@@ -20,7 +20,7 @@ const {
     writerTestDigest
 } = await import('./issue-orchestration-writer-stage-test-helper.mjs')
 const {
-    compileExecutionRoute
+    compileCanonicalRoute
 } = await import(
     '../../skills/'
     + 'issue-orchestration/scripts/execution-route-compiler.mjs'
@@ -186,24 +186,32 @@ function routeInput(index, metricOverrides = {}) {
             evidenceDigest: hash({ index, metricOverrides })
         }
     }
-    const initial = compileExecutionRoute(base)
+    const initial = compileCanonicalRoute(base)
     const selected =
         initial.executionRouteDecision.selectedProfile
     const [family, effort] = selected.split('-')
-    return {
-        ...base,
-        runtimeCapabilityObservation: {
-            schema: 'issue-orchestration.runtime-capability-observation.v1',
-            source: 'runtime-capability-registry',
-            observable: true,
-            requestedModel: `gpt-5.6-${family}`,
-            effectiveModel: `gpt-5.6-${family}`,
-            requestedEffort: effort,
-            effectiveEffort: effort,
-            multiAgentBackend: 'v2',
-            observationDigest: hash({ index, selected })
-        }
+    const runtimeCapabilityObservation = {
+        schema: 'issue-orchestration.runtime-capability-observation.v2',
+        source: 'per-dispatch-runtime-identity-observer',
+        observable: true,
+        runtimeInvocationId: `landing-runtime-${index}`,
+        sessionOrThreadId: `landing-thread-${index}`,
+        runtimeVersion: 'codex-v2-test',
+        requestedProfile: selected,
+        effectiveProfile: selected,
+        requestedModel: `gpt-5.6-${family}`,
+        effectiveModel: `gpt-5.6-${family}`,
+        requestedEffort: effort,
+        effectiveEffort: effort,
+        multiAgentBackend: 'v2',
+        rawEventDigest: hash(`landing-events-${index}`),
+        rawSessionDigest: hash(`landing-session-${index}`),
+        rawTurnDigest: hash(`landing-turn-${index}`),
+        observedAt: '2026-08-03T20:45:00+08:00'
     }
+    runtimeCapabilityObservation.observationDigest =
+        hash(runtimeCapabilityObservation)
+    return { ...base, runtimeCapabilityObservation }
 }
 
 function laneAndAttempt(handoffOverrides = {}) {
@@ -392,7 +400,7 @@ test('L04 each writer slice binds one member, one source commit, #1874 prompt an
     )
     assert.equal(
         active.activeLandingSlice.executionRouteDecisionDigest,
-        compileExecutionRoute(routeInput(0))
+        compileCanonicalRoute(routeInput(0))
             .executionRouteDecision.routeDecisionDigest
     )
     assert.throws(() => bindSlice(attempt, 0, {

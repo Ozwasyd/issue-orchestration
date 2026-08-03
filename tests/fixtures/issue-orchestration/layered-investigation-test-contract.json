@@ -164,7 +164,7 @@
   "baseDependencyFiles": [
     {
       "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
-      "sha256": "269150380a9679e40c0e6c315e186210fd58d5ec5b2434d87cb0a467a3b3c77e",
+      "sha256": "cc4f13ca20ac7b7242e5019535134c82324912756152b566570de22f0e5ff8e1",
       "gitMode": "100644",
       "ownerIssue": "ExampleOrg/RepositoryA#1818",
       "disposition": "base-dependency-not-candidate"
@@ -172,12 +172,12 @@
   ],
   "hashAlgorithm": "sha256-raw-file-bytes",
   "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
-  "contractDigest": "f6bd8d7900e93803537976c29d287177dd58bdfa0f3403f9781cfc7343de5a84",
+  "contractDigest": "8f85d90ee181f0f9aaac537e4241ba55401617511a5a5ad7cda8b4313d1f217b",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
-    "contractDigest": "f6bd8d7900e93803537976c29d287177dd58bdfa0f3403f9781cfc7343de5a84",
+    "contractDigest": "8f85d90ee181f0f9aaac537e4241ba55401617511a5a5ad7cda8b4313d1f217b",
     "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
     "implementationFiles": [
       {
@@ -195,7 +195,7 @@
       {
         "path": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
         "presence": "present",
-        "sha256": "13f40bc5e1d4cd7bda30848b9973923f7016aebddfb1f27d69ef1ff3037caa1b",
+        "sha256": "ed1ce20c450ab1d91960f39540362aa1b55ad7bf16664cffa5176ff6c69d5c8d",
         "gitMode": "100644"
       },
       {
@@ -217,6 +217,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "bf3ed143760fc9d9114b208da53f804f3e9ec80929633e85a67f22c053342a86"
+    "candidateDigest": "e133cf4f21940a3f071e1b3d4053126c36f53644f3ae1c56722b9282ff33afa4"
   }
 }

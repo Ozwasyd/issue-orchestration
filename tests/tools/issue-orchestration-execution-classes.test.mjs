@@ -8,7 +8,7 @@ import { validateJsonSchema } from '../../tools/test-matrix/schema-validator/val
 import {
     STAGE_MODEL_POOL_POLICY,
     STAGE_ROUTE_DEFINITIONS,
-    compileStageRoute
+    compileStageRoutingIdentity
 } from '../../skills/issue-orchestration/scripts/stage-profile-policy.mjs'
 import {
     compileRuntimeExecutionBinding
@@ -20,7 +20,7 @@ import {
     digest
 } from '../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
 import {
-    PROFILE_CAPABILITY_MATRIX
+    REVIEWED_ROUTING_ASSUMPTIONS
 } from '../../skills/issue-orchestration/scripts/execution-route-compiler.mjs'
 import {
     verifiedRuntimeStartup
@@ -167,7 +167,7 @@ test('stage-permissions.v2 defines every stage by semantic execution class', () 
 })
 
 test('logical stage routes contain execution semantics but no runtime sandbox authority', () => {
-    const route = compileStageRoute({
+    const route = compileStageRoutingIdentity({
         domain: 'generic-code',
         effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
@@ -184,7 +184,7 @@ test('logical stage routes contain execution semantics but no runtime sandbox au
     assert.equal(route.writeScope, 'implementation-only')
     assert.equal(route.leaseRequirement, 'stage-write-lease')
     assert.equal(Object.hasOwn(route, 'sandbox'), false)
-    assert.throws(() => compileStageRoute({
+    assert.throws(() => compileStageRoutingIdentity({
         domain: 'generic-code',
         effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
@@ -304,14 +304,14 @@ test('leases and legacy sandbox claims cannot change execution class', () => {
     })
 })
 
-test('model capability evidence and logical eligibility contain no sandbox dimension', () => {
+test('reviewed routing assumptions and logical eligibility contain no sandbox dimension', () => {
     assert.equal(
-        JSON.stringify(PROFILE_CAPABILITY_MATRIX)
+        JSON.stringify(REVIEWED_ROUTING_ASSUMPTIONS)
             .includes('Sandbox'),
         false
     )
     assert.equal(
-        JSON.stringify(PROFILE_CAPABILITY_MATRIX)
+        JSON.stringify(REVIEWED_ROUTING_ASSUMPTIONS)
             .includes('sandbox'),
         false
     )

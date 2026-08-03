@@ -19,7 +19,7 @@
     "compiled-dispatch-prompt.test.mjs",
     "progress-checkpoint-continuation.test.mjs",
     "execution-shape-routing.test.mjs",
-    "profile-capability-matrix.test.mjs",
+    "reviewed-routing-assumptions.test.mjs",
     "implementer-self-test-v2.test.mjs",
     "stage-model-pool-policy.test.mjs",
     "ui-ux-skill-routing.test.mjs",

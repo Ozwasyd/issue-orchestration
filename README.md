@@ -63,7 +63,7 @@ lease and slice allowlist. Remote mutation is exclusive to root-control and
 requires a fresh delivery-control receipt plus verified before/after remote
 snapshots.
 
-Unknown complex control-plane failures may use one fresh, strongest-qualified
+Unknown complex control-plane failures may use one fresh, exact-route `sol-max`
 observe-only Advisor consultation. The Advisor can emit only a bounded
 proposal; the low root may execute only the byte-identical deterministic
 recovery plan. Root takeover remains a separate external-supervisor path for

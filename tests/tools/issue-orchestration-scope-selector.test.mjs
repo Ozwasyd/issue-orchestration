@@ -145,13 +145,17 @@ function launchRequest(role) {
         executionClass
     ) => ({
         schema: 'issue-orchestration.execution-route-decision.v2',
-        policyVersion: 'execution-capability-routing.v3',
+        policyVersion: 'execution-capability-routing.v4',
         modelPoolPolicyVersion: 'stage-model-pool.v3',
-        routingAuthority: 'deterministic-execution-capability-compiler',
+        routingAuthority: 'canonical-route-cell-compiler',
         stageRole,
         stagePhase,
         executionClass,
         selectedProfile,
+        routeCellId: stageRole === 'root-scheduler'
+            ? 'control.normal'
+            : 'dag.semantic-default',
+        capabilityValidationResult: 'accepted',
         runtimeVerificationStatus: 'verified',
         routeDecisionDigest: 'a'.repeat(64)
     })

@@ -1,0 +1,82 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "urn:issue-orchestration:reviewed-routing-assumptions:v1",
+    "title": "issue-orchestration.reviewed-routing-assumptions.v1",
+    "type": "object",
+    "required": [
+        "schema",
+        "policyVersion",
+        "modelPoolPolicyVersion",
+        "authority",
+        "evidenceClass",
+        "runtimeObservationClaim",
+        "selectorAuthority",
+        "exactRouteValidationOnly",
+        "catalogAvailabilitySemantics",
+        "installationPaidModelInvocationCount",
+        "profiles"
+    ],
+    "properties": {
+        "schema": {
+            "const": "issue-orchestration.reviewed-routing-assumptions.v1"
+        },
+        "policyVersion": {
+            "const": "execution-capability-routing.v4"
+        },
+        "modelPoolPolicyVersion": {
+            "const": "stage-model-pool.v3"
+        },
+        "authority": {
+            "const": "checked-in-reviewed-routing-assumptions"
+        },
+        "evidenceClass": {
+            "const": "maintained-policy-not-runtime-observation"
+        },
+        "runtimeObservationClaim": {"const": false},
+        "selectorAuthority": {"const": false},
+        "exactRouteValidationOnly": {"const": true},
+        "catalogAvailabilitySemantics": {
+            "const": "availability-only-not-reasoning-capability"
+        },
+        "installationPaidModelInvocationCount": {"const": 0},
+        "profiles": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+                "type": "object",
+                "required": [
+                    "model",
+                    "effort",
+                    "multiAgentBackend",
+                    "policyStatus",
+                    "routeValidation",
+                    "assumptionDigest"
+                ],
+                "properties": {
+                    "model": {"type": "string", "minLength": 1},
+                    "effort": {"type": "string", "minLength": 1},
+                    "multiAgentBackend": {"const": "v2"},
+                    "policyStatus": {
+                        "enum": [
+                            "normal",
+                            "disabled",
+                            "frontier-service-only"
+                        ]
+                    },
+                    "routeValidation": {
+                        "const": "exact-required-profile-only"
+                    },
+                    "assumptionDigest": {"$ref": "#/$defs/digest"}
+                },
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false,
+    "$defs": {
+        "digest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+        }
+    }
+}

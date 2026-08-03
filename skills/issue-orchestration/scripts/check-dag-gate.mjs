@@ -98,14 +98,22 @@ function validateV3Route({
     policyDigest
 }) {
     if (route?.routingAuthority !==
-            'deterministic-execution-capability-compiler') {
+            'canonical-route-cell-compiler') {
         contractFail('dag-gate-route-authority')
     }
     if (route?.schema !==
             'issue-orchestration.execution-route-decision.v2' ||
-        route.policyVersion !== 'execution-capability-routing.v3' ||
+        route.policyVersion !== 'execution-capability-routing.v4' ||
         route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
         route.modelPoolPolicyDigest !== policyDigest ||
+        !/^[a-f0-9]{64}$/u.test(
+            route.canonicalPolicyDigest ?? ''
+        ) ||
+        typeof route.routeCellId !== 'string' ||
+        !route.routeCellId ||
+        route.requiredProfile !== route.selectedProfile &&
+            route.availabilityHandling !== 'fixed-fallback' ||
+        route.capabilityValidationResult !== 'accepted' ||
         route.stageRole !== node.stageRole ||
         route.stagePhase !== node.stagePhase ||
         route.executionClass !==

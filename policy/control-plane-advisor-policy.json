@@ -9,20 +9,11 @@
   "stateAuthority": "none",
   "remoteAuthority": "none",
   "capabilityClass": "frontier-control-plane-advisor",
-  "selectionAuthority": "machine-advisor-capability-selector",
-  "strongestFirst": [
-    "sol-max",
-    "sol-xhigh",
-    "terra-max",
-    "terra-xhigh"
-  ],
-  "qualifiedProfiles": {
-    "sol-max": {
-      "qualificationStatus": "qualified",
-      "matrixEvidenceDigest": "561b9b190fee942057070b847441d4054729701769c77ec52d6fbc5daa50438d",
-      "profileEvidenceDigest": "d505fb421b4aafa7253b218971fa37e8cb965e2e50b582f18e5edfd1cfc8fd7c"
-    }
-  },
+  "selectionAuthority": "canonical-route-cell-compiler",
+  "routeCellId": "control.unknown-complex-advisor",
+  "requiredProfile": "sol-max",
+  "reviewedAssumptionDigest": "eadd89e892b472fc56827d455fc0d1b5f21fc4ad4dfc6a399c84e91c37082681",
+  "profileSearchForbidden": true,
   "allowedFailureDomain": "orchestration-control-plane",
   "maxAffectedTargets": 32,
   "maxDiagnosticQuestions": 16,
@@ -42,7 +33,7 @@
     "invalidate-receipt": "machine-receipt-invalidator",
     "refresh-remote-snapshot": "trusted-remote-observer",
     "rebuild-member-projection": "machine-runtime-projector",
-    "recompile-route": "deterministic-execution-capability-compiler",
+    "recompile-route": "canonical-route-cell-compiler",
     "rebuild-continuation": "machine-continuation-compiler",
     "resume-from-checkpoint": "machine-continuation-controller",
     "terminalize-member": "machine-terminal-controller",

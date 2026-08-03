@@ -15,8 +15,10 @@
     "remoteAuthority",
     "capabilityClass",
     "selectionAuthority",
-    "strongestFirst",
-    "qualifiedProfiles",
+    "routeCellId",
+    "requiredProfile",
+    "reviewedAssumptionDigest",
+    "profileSearchForbidden",
     "allowedFailureDomain",
     "maxAffectedTargets",
     "maxDiagnosticQuestions",
@@ -42,26 +44,11 @@
     "stateAuthority": {"const": "none"},
     "remoteAuthority": {"const": "none"},
     "capabilityClass": {"const": "frontier-control-plane-advisor"},
-    "selectionAuthority": {"const": "machine-advisor-capability-selector"},
-    "strongestFirst": {"$ref": "#/$defs/strings"},
-    "qualifiedProfiles": {
-      "type": "object",
-      "minProperties": 1,
-      "additionalProperties": {
-        "type": "object",
-        "required": [
-          "qualificationStatus",
-          "matrixEvidenceDigest",
-          "profileEvidenceDigest"
-        ],
-        "properties": {
-          "qualificationStatus": {"const": "qualified"},
-          "matrixEvidenceDigest": {"$ref": "#/$defs/digest"},
-          "profileEvidenceDigest": {"$ref": "#/$defs/digest"}
-        },
-        "additionalProperties": false
-      }
-    },
+    "selectionAuthority": {"const": "canonical-route-cell-compiler"},
+    "routeCellId": {"const": "control.unknown-complex-advisor"},
+    "requiredProfile": {"const": "sol-max"},
+    "reviewedAssumptionDigest": {"$ref": "#/$defs/digest"},
+    "profileSearchForbidden": {"const": true},
     "allowedFailureDomain": {"const": "orchestration-control-plane"},
     "maxAffectedTargets": {"type": "integer", "minimum": 1},
     "maxDiagnosticQuestions": {"type": "integer", "minimum": 1},

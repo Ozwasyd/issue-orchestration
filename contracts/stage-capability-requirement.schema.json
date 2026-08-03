@@ -8,12 +8,11 @@
         "sliceId",
         "sliceDigest",
         "classificationDigest",
-        "minimumPlanningDepth",
-        "minimumToolChainPersistence",
-        "minimumContextRetentionClass",
-        "minimumCheckpointReliability",
-        "runtimeProbeCapability",
-        "crossModuleReasoningClass",
+        "routeCellId",
+        "routeCellDigest",
+        "requiredProfile",
+        "reviewedAssumptionDigest",
+        "validationMode",
         "requiredFreshContext",
         "allowedContinuationMode",
         "capabilityDigest"
@@ -22,37 +21,17 @@
         "schema": {
             "const": "issue-orchestration.stage-capability-requirement.v2"
         },
-        "sliceId": {
-            "type": "string",
-            "minLength": 1
+        "sliceId": {"type": "string", "minLength": 1},
+        "sliceDigest": {"$ref": "#/$defs/digest"},
+        "classificationDigest": {"$ref": "#/$defs/digest"},
+        "routeCellId": {"type": "string", "minLength": 1},
+        "routeCellDigest": {"$ref": "#/$defs/digest"},
+        "requiredProfile": {"type": "string", "minLength": 1},
+        "reviewedAssumptionDigest": {"$ref": "#/$defs/digest"},
+        "validationMode": {
+            "const": "exact-required-profile-only"
         },
-        "sliceDigest": {
-            "$ref": "#/$defs/digest"
-        },
-        "classificationDigest": {
-            "$ref": "#/$defs/digest"
-        },
-        "minimumPlanningDepth": {
-            "$ref": "#/$defs/level"
-        },
-        "minimumToolChainPersistence": {
-            "$ref": "#/$defs/level"
-        },
-        "minimumContextRetentionClass": {
-            "$ref": "#/$defs/level"
-        },
-        "minimumCheckpointReliability": {
-            "$ref": "#/$defs/level"
-        },
-        "runtimeProbeCapability": {
-            "$ref": "#/$defs/level"
-        },
-        "crossModuleReasoningClass": {
-            "$ref": "#/$defs/level"
-        },
-        "requiredFreshContext": {
-            "type": "boolean"
-        },
+        "requiredFreshContext": {"type": "boolean"},
         "allowedContinuationMode": {
             "enum": [
                 "none",
@@ -60,20 +39,13 @@
                 "durable-continuation"
             ]
         },
-        "capabilityDigest": {
-            "$ref": "#/$defs/digest"
-        }
+        "capabilityDigest": {"$ref": "#/$defs/digest"}
     },
     "additionalProperties": false,
     "$defs": {
         "digest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
-        },
-        "level": {
-            "type": "integer",
-            "minimum": 0,
-            "maximum": 5
         }
     }
 }

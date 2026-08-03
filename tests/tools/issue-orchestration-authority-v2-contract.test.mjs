@@ -131,7 +131,7 @@ function route({
     phase = 'implementation',
     profile = 'terra-medium',
     sliceDigest = digest('slice'),
-    authority = 'deterministic-execution-capability-compiler'
+    authority = 'canonical-route-cell-compiler'
 } = {}) {
     const [family, effort] = profile.split('-')
     const executionClass = role === 'root-scheduler'
@@ -145,15 +145,29 @@ function route({
                 phase !== 'test-contract'
             ? 'observe-only'
             : 'leased-writer'
+    const routeCellId = {
+        'root-scheduler:scheduling': 'control.normal',
+        'dag-creator-updater:semantic-proposal': 'dag.semantic-default',
+        'test-owner:test-contract-planning':
+            'verification.narrow-complex',
+        'test-owner:test-contract': 'verification.focused-authoring',
+        'code-implementer:implementation':
+            'implementation.ordinary-bounded-single-module'
+    }[`${role}:${phase}`] ?? 'implementation.ordinary-bounded-single-module'
     const value = {
         schema: 'issue-orchestration.execution-route-decision.v2',
-        policyVersion: 'execution-capability-routing.v3',
+        policyVersion: 'execution-capability-routing.v4',
         modelPoolPolicyVersion: 'stage-model-pool.v3',
         modelPoolPolicyDigest,
         routingAuthority: authority,
         stageRole: role,
         stagePhase: phase,
         sliceDigest,
+        routeCellId,
+        canonicalPolicyDigest: digest('canonical-policy-v4'),
+        requiredProfile: profile,
+        capabilityValidationResult: 'accepted',
+        availabilityHandling: 'exact-required-profile',
         selectedProfile: profile,
         requestedModel: `gpt-5.6-${family}`,
         requestedEffort: effort,
@@ -289,6 +303,7 @@ test('A77-02 rejects all frozen startup-gate mutation classes', async () => {
         }, 'dag-gate-completed-tombstone'],
         ['forbidden-profile-or-backend', (v) => {
             v.dag.nodes[0].routeDecision.selectedProfile = 'sol-ultra'
+            v.dag.nodes[0].routeDecision.requiredProfile = 'sol-ultra'
         }, 'dag-gate-profile'],
         ['medium-root-without-recovery', (v) => {
             v.rootRuntime = {

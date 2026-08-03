@@ -64,7 +64,7 @@ fresh retry。首次空 rollout 必须封存 classification 与 authorization；
 空 rollout、任何部分输出、身份漂移或非 transient failure 都立即 terminal，
 不能再试。
 
-`writer-stage.output-missing` 本身不是 profile upgrade evidence。先在 `slice-not-executable`、`compiled-prompt-incomplete`、`runtime invocation/capability failure`、`sandbox/cwd/worktree/permission mismatch`、`agent-first-action-not-executed` 与 `profile-capability-mismatch` 中由机器分类。只有最后一类可进入 `compileExecutionReroute`，并且必须引用旧 route/failure/candidate receipt、breaker reset 和 retry authorization，证明 slice 已是最小合法粒度或有实质修订，且新 candidate identity 不复用旧 receipt。
+`writer-stage.output-missing` 本身不是 profile upgrade evidence。先在 `slice-not-executable`、`compiled-prompt-incomplete`、`runtime invocation/capability failure`、`sandbox/cwd/worktree/permission mismatch`、`agent-first-action-not-executed` 与 `profile-capability-mismatch` 中由机器分类。任何 failure、retry 或 rework 都不能推进 profile，runtime 不导出 reroute API。只有 independently revised semantic classification 或 executable slice 才能作为新 dispatch 输入重新调用 canonical compiler；它必须引用旧 route/failure/candidate receipt、breaker reset 和 retry authorization，且新 candidate identity 不复用旧 receipt。
 
 Breaker 的语义 identity 绑定 repository/issue/node/base/epoch、plan/slice/route、stage role/phase、event type 与 evidence，而不依赖可替换的 shell identity。改变 attempt id、agent id、prompt 措辞、worktree、slice id、等待时间或重复同一命令都不能清除 breaker。
 
