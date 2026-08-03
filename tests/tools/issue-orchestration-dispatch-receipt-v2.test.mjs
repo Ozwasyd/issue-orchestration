@@ -52,20 +52,43 @@ const worktree = fs.mkdtempSync(path.join(
     os.tmpdir(),
     'issue-orchestration-dispatch-v2-'
 ))
+// Runtime trust needs a real Git worktree whose observed HEAD remains
+// equal to the frozen contract SHA. Build that identity locally instead of
+// relying on an unreachable object left in a developer's object database.
+execFileSync('git', ['init', '--quiet', worktree])
 execFileSync('git', [
-    'clone',
+    'config',
+    'user.name',
+    'issue-orchestration fixture'
+], { cwd: worktree })
+execFileSync('git', [
+    'config',
+    'user.email',
+    'fixture@example.invalid'
+], { cwd: worktree })
+execFileSync('git', [
+    'commit',
     '--quiet',
-    '--shared',
-    '--no-checkout',
-    root,
-    worktree
-])
-execFileSync('git', ['checkout', '--quiet', '--detach', baseSha], {
-    cwd: worktree
-})
+    '--allow-empty',
+    '-m',
+    'synthetic frozen base'
+], { cwd: worktree })
+const syntheticBaseSha = execFileSync('git', ['rev-parse', 'HEAD'], {
+    cwd: worktree,
+    encoding: 'utf8'
+}).trim()
+execFileSync('git', [
+    'update-ref',
+    'refs/replace/' + baseSha,
+    syntheticBaseSha
+], { cwd: worktree })
+fs.writeFileSync(
+    path.join(worktree, '.git', 'HEAD'),
+    baseSha + '\n'
+)
 execFileSync('git', [
     'remote',
-    'set-url',
+    'add',
     'origin',
     'https://github.com/ExampleOrg/RepositoryA.git'
 ], { cwd: worktree })
