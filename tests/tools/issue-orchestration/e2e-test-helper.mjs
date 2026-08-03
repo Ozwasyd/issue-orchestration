@@ -213,15 +213,24 @@ export async function assertPermanentLane(laneFile) {
 
 export async function assertPermanentCrossRepoE2E() {
     const loaded = await runtime()
-    const result = await loaded.runPermanentCrossRepoE2E({
-        evidenceBundle: fixtureEvidenceBundle()
-    })
-    assert.equal(result.status, 'fixture-verified')
-    assert.equal(result.productionReady, false)
+    const live = process.env.FSUSBLOG_E2E_LIVE === '1'
+    const result = await loaded.runPermanentCrossRepoE2E(live
+        ? {
+            mode: 'live',
+            repositoryRoot: root
+        }
+        : {
+            mode: 'fixture',
+            evidenceBundle: fixtureEvidenceBundle()
+        })
+    assert.equal(result.status, live
+        ? 'production-verified'
+        : 'fixture-verified')
+    assert.equal(result.productionReady, live)
     assert.equal(result.temporaryBootstrapUsed, false)
     assert.equal(result.temporarySchedulerUsed, false)
     assert.deepEqual(result.quiescenceViolations, [])
-    assert.equal(result.mutationControlsKilled, 14)
+    assert.equal(result.mutationControlsKilled, live ? 19 : 14)
     assert.match(result.receiptDigest, /^[a-f0-9]{64}$/u)
     const schema = JSON.parse(readFileSync(resolve(
         root,

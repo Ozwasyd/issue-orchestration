@@ -1,29 +1,603 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:issue-orchestration:codex-runtime-canary-receipt:v1",
-  "title": "issue-orchestration.codex-runtime-canary-receipt.v1",
+  "$id": "urn:issue-orchestration:codex-runtime-canary-receipt:v2",
+  "title": "issue-orchestration.codex-runtime-canary-receipt.v2",
   "type": "object",
   "required": [
-    "schema", "status", "source", "packageDigest", "policyDigest",
-    "sourceCommit", "runId", "rootReceipt", "rollouts", "cwdDiscovery",
-    "coldStart", "cleanup", "runtimeTrace", "receiptDigest"
+    "schema",
+    "status",
+    "source",
+    "packageDigest",
+    "sourceTreeDigest",
+    "skillDigest",
+    "policyDigest",
+    "sourceCommit",
+    "runId",
+    "installation",
+    "discoveryProbes",
+    "machineObservation",
+    "cleanup",
+    "runtimeTrace",
+    "receiptDigest"
   ],
   "properties": {
-    "schema": {"const": "issue-orchestration.codex-runtime-canary-receipt.v1"},
-    "status": {"const": "production-verified"},
-    "source": {"const": "real-codex-v2-runtime"},
-    "packageDigest": {"$ref": "#/$defs/digest"},
-    "policyDigest": {"$ref": "#/$defs/digest"},
-    "sourceCommit": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
-    "runId": {"type": "string"},
-    "rootReceipt": {"type": "object"},
-    "rollouts": {"type": "array", "minItems": 3},
-    "cwdDiscovery": {"type": "array", "minItems": 5},
-    "coldStart": {"type": "object"},
-    "cleanup": {"type": "object"},
-    "runtimeTrace": {"type": "object"},
-    "receiptDigest": {"$ref": "#/$defs/digest"}
+    "schema": {
+      "const": "issue-orchestration.codex-runtime-canary-receipt.v2"
+    },
+    "status": {
+      "const": "production-verified"
+    },
+    "source": {
+      "const": "real-codex-v2-runtime"
+    },
+    "packageDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "sourceTreeDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "skillDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "sourceCommit": {
+      "$ref": "#/$defs/commit"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "installation": {
+      "$ref": "#/$defs/installation"
+    },
+    "discoveryProbes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "$ref": "#/$defs/discoveryProbe"
+      }
+    },
+    "machineObservation": {
+      "$ref": "#/$defs/machineObservation"
+    },
+    "cleanup": {
+      "$ref": "#/$defs/cleanup"
+    },
+    "runtimeTrace": {
+      "$ref": "#/$defs/runtimeTrace"
+    },
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    }
   },
   "additionalProperties": false,
-  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "installation": {
+      "type": "object",
+      "required": [
+        "installMethod",
+        "installRootDigest",
+        "fileBindings",
+        "manifestDigest",
+        "sourceTreeDigest",
+        "installDigest"
+      ],
+      "properties": {
+        "installMethod": {
+          "const": "isolated-codex-home-standard-skill-path"
+        },
+        "installRootDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "fileBindings": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "sourceRelative",
+              "installedDigest"
+            ],
+            "properties": {
+              "sourceRelative": {
+                "type": "string",
+                "pattern": "^skills/issue-orchestration/"
+              },
+              "installedDigest": {
+                "$ref": "#/$defs/digest"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "manifestDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "sourceTreeDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "installDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "model",
+        "effort",
+        "cwd",
+        "sandbox",
+        "multiAgentBackend"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sandbox": {
+          "type": "string",
+          "minLength": 1
+        },
+        "multiAgentBackend": {
+          "const": "v2"
+        }
+      },
+      "additionalProperties": false
+    },
+    "labels": {
+      "type": "object",
+      "required": [
+        "requestedRole",
+        "requestedPhase",
+        "actionBoundary"
+      ],
+      "properties": {
+        "requestedRole": {
+          "const": "package-discovery-probe"
+        },
+        "requestedPhase": {
+          "const": "installed-skill-discovery"
+        },
+        "actionBoundary": {
+          "const": "installed-skill-and-canary-marker-read"
+        }
+      },
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "model",
+        "effort",
+        "cwd",
+        "sandbox",
+        "multiAgentBackend",
+        "threadId"
+      ],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sandbox": {
+          "type": "string",
+          "minLength": 1
+        },
+        "multiAgentBackend": {
+          "const": "v2"
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "comparison": {
+      "type": "object",
+      "required": [
+        "model",
+        "effort",
+        "cwd",
+        "sandbox",
+        "multiAgentBackend"
+      ],
+      "properties": {
+        "model": {
+          "const": true
+        },
+        "effort": {
+          "const": true
+        },
+        "cwd": {
+          "const": true
+        },
+        "sandbox": {
+          "const": true
+        },
+        "multiAgentBackend": {
+          "const": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "rawEvidence": {
+      "type": "object",
+      "required": [
+        "sessionRecordDigests",
+        "turnRecordDigests"
+      ],
+      "properties": {
+        "sessionRecordDigests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "turnRecordDigests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeMetadata": {
+      "type": "object",
+      "required": [
+        "schema",
+        "status",
+        "profile",
+        "invocationRequest",
+        "orchestrationLabels",
+        "runtimeObservation",
+        "comparison",
+        "rawEvidence",
+        "rawEvidenceDigest",
+        "metadataDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.codex-runtime-metadata-evidence.v2"
+        },
+        "status": {
+          "const": "verified"
+        },
+        "profile": {
+          "type": "string",
+          "pattern": "^(terra|sol)-(low|medium|high|xhigh|max)$"
+        },
+        "invocationRequest": {
+          "$ref": "#/$defs/request"
+        },
+        "orchestrationLabels": {
+          "$ref": "#/$defs/labels"
+        },
+        "runtimeObservation": {
+          "$ref": "#/$defs/observation"
+        },
+        "comparison": {
+          "$ref": "#/$defs/comparison"
+        },
+        "rawEvidence": {
+          "$ref": "#/$defs/rawEvidence"
+        },
+        "rawEvidenceDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "metadataDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "command": {
+      "type": "object",
+      "required": [
+        "commandDigest"
+      ],
+      "properties": {
+        "commandDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "actionObservation": {
+      "type": "object",
+      "required": [
+        "observationScope",
+        "catalogObserved",
+        "skillReadObserved",
+        "markerReadObserved",
+        "markerOutputObserved",
+        "commands",
+        "toolCallRecordDigests",
+        "forbidden",
+        "unobservableClaims",
+        "observationDigest"
+      ],
+      "properties": {
+        "observationScope": {
+          "const": "registered-codex-tool-calls"
+        },
+        "catalogObserved": {
+          "const": true
+        },
+        "skillReadObserved": {
+          "const": true
+        },
+        "markerReadObserved": {
+          "const": true
+        },
+        "markerOutputObserved": {
+          "const": true
+        },
+        "commands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/command"
+          }
+        },
+        "toolCallRecordDigests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "forbidden": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "unobservableClaims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "observationDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "discoveryProbe": {
+      "type": "object",
+      "required": [
+        "schema",
+        "discoveryMethod",
+        "cwd",
+        "threadId",
+        "freshContext",
+        "inheritedThreadId",
+        "callerSuppliedPathInPrompt",
+        "installRootDigest",
+        "packageDigest",
+        "skillDigest",
+        "sourceCommit",
+        "runtimeMetadata",
+        "actionObservation",
+        "terminalEventDigest",
+        "stdoutDigest",
+        "probeDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.codex-skill-discovery-probe.v1"
+        },
+        "discoveryMethod": {
+          "const": "codex-runtime-catalog-and-tool-read"
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        },
+        "threadId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "freshContext": {
+          "const": true
+        },
+        "inheritedThreadId": {
+          "type": "null"
+        },
+        "callerSuppliedPathInPrompt": {
+          "const": false
+        },
+        "installRootDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "packageDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "skillDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "sourceCommit": {
+          "$ref": "#/$defs/commit"
+        },
+        "runtimeMetadata": {
+          "$ref": "#/$defs/runtimeMetadata"
+        },
+        "actionObservation": {
+          "$ref": "#/$defs/actionObservation"
+        },
+        "terminalEventDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "stdoutDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "probeDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "repoLocalCopy": {
+      "type": "object",
+      "required": [
+        "pathDigest",
+        "present"
+      ],
+      "properties": {
+        "pathDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "present": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "machineObservation": {
+      "type": "object",
+      "required": [
+        "observationMethod",
+        "repoLocalCopies",
+        "observationDigest"
+      ],
+      "properties": {
+        "observationMethod": {
+          "const": "post-run-lstat"
+        },
+        "repoLocalCopies": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "$ref": "#/$defs/repoLocalCopy"
+          }
+        },
+        "observationDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanupResource": {
+      "type": "object",
+      "required": [
+        "kind",
+        "pathDigest",
+        "existsAfterDelete"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "isolated-codex-home",
+            "isolated-cwd"
+          ]
+        },
+        "pathDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "existsAfterDelete": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cleanup": {
+      "type": "object",
+      "required": [
+        "observationMethod",
+        "resources",
+        "resourcesAfter",
+        "receiptDigest"
+      ],
+      "properties": {
+        "observationMethod": {
+          "const": "post-delete-lstat"
+        },
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/cleanupResource"
+          }
+        },
+        "resourcesAfter": {
+          "const": 0
+        },
+        "receiptDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtimeTrace": {
+      "type": "object",
+      "required": [
+        "observationScope",
+        "mutatingToolCallCount",
+        "observedCommandDigests",
+        "unobservableClaims",
+        "traceDigest"
+      ],
+      "properties": {
+        "observationScope": {
+          "const": "registered-codex-tool-calls"
+        },
+        "mutatingToolCallCount": {
+          "const": 0
+        },
+        "observedCommandDigests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "unobservableClaims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "traceDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

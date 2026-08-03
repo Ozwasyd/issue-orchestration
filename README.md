@@ -50,5 +50,26 @@ node --test --test-concurrency=1 \
   tests/tools/issue-orchestration/*.test.mjs
 ```
 
-Live Codex and remote acceptance lanes remain opt-in through their documented
-environment variables.
+The default command is fixture-only: it does not launch Codex, consume a paid
+model, or mutate a remote:
+
+```bash
+node --test --test-concurrency=1 \
+  tests/tools/issue-orchestration/*.test.mjs
+```
+
+The permanent live acceptance is explicitly opt-in:
+
+```bash
+FSUSBLOG_E2E_LIVE=1 node --test --test-concurrency=1 \
+  tests/tools/issue-orchestration/*.test.mjs
+```
+
+Live mode requires authenticated Codex and read-only GitHub access plus clean,
+single-worktree, single-branch, remote-synchronized checkouts of this
+repository, FsusBlog, and FsusUI. It installs the current committed Skill into
+an isolated standard Codex home and proves discovery from five fresh sessions.
+It also executes non-zero child test groups, an isolated local Git/bare-remote
+landing, a live observe-only quiescence collection, and all mutation controls.
+It deletes its isolated home, workspaces, Git remote, and state root, then
+proves all three repositories are unchanged. No product remote is mutated.

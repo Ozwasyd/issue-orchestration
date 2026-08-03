@@ -10,6 +10,11 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 
 把根代理保留为调度者，把详细规则按阶段加载。此 Skill 只定义入口、循环和状态路由，不重定义 FsusBlog 或 FsusUI 的产品协议、设计、安全、测试、文档生命周期或发布事实。
 
+## Runtime discovery canary
+
+当且仅当输入包含 `ISSUE_ORCHESTRATION_DISCOVERY_CANARY` 时，不进入下方适用边界和总循环。完整读取
+[`references/runtime-discovery-canary.md`](references/runtime-discovery-canary.md)，严格执行其中的只读探针并立即退出。该入口只证明 Codex 从标准安装位置实际发现并读取了本 Skill，不授予调度、仓库读取、写入、联网或 agent 权限。
+
 ## 适用边界
 
 仅在输入同时给出以下内容时启动：

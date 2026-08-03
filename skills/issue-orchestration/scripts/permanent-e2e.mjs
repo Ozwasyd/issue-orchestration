@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -414,6 +415,7 @@ async function inspectRepository({
         currentBranch !== branch ||
         worktreeCount !== 1 ||
         localBranchCount !== 1 ||
+        statusResult.stdout.trim() !== '' ||
         remoteHead !== head) {
         fail('permanent-e2e-repository-not-converged', repository)
     }
@@ -517,7 +519,9 @@ async function runChildRollout(group, repositoryRoot, runId) {
         stdoutDigest: digest(result.stdout),
         stderrDigest: digest(result.stderr),
         durationMs: result.durationMs,
-        testSummary
+        testSummary,
+        testCount: Number(
+            testSummary.match(/tests=(\d+)/u)?.[1] ?? 0)
     }
 }
 
@@ -550,6 +554,27 @@ function verifyChildEvidence({
             'receiptDigest'
         )) {
         fail('permanent-e2e-child-evidence-invalid', key)
+    }
+    if (mode === 'live') {
+        const producer = receipt.producerEvidence
+        if (producer?.fixtureUsed !== false
+            || producer.exitCode !== 0
+            || !Number.isInteger(producer.testCount)
+            || producer.testCount < 1
+            || !Array.isArray(producer.command)
+            || producer.command.length < 1
+            || !HASH.test(producer.stdoutDigest ?? '')
+            || !HASH.test(producer.stderrDigest ?? '')
+            || producer.outputDigest !== digest({
+                stdoutDigest: producer.stdoutDigest,
+                stderrDigest: producer.stderrDigest
+            })
+            || !HASH.test(producer.producedReceiptDigest ?? '')
+            || !HASH.test(producer.receiptDigest ?? '')
+            || producer.receiptDigest !== unsignedDigest(
+                producer, 'receiptDigest')) {
+            fail('permanent-e2e-live-producer-invalid', key)
+        }
     }
     const profile = `${receipt.requestedModel === 'gpt-5.6-terra'
         ? 'terra'
@@ -608,7 +633,6 @@ function verifyEvidenceSemantics(receipts) {
     requireEvidence(
         rootCanary.runtimeKind === 'real-codex-v2-runtime'
             && rootCanary.fiveCwdDiscoveryCount === 5
-            && rootCanary.coldStartWriterArtifactObserved === true
             && HASH.test(rootCanary.runtimeCanaryReceiptDigest ?? ''),
         'permanent-e2e-runtime-canary-invalid'
     )
@@ -921,16 +945,729 @@ export function verifyPermanentE2EReceipt(receipt) {
     return verifyPermanentE2EV2Receipt(receipt)
 }
 
-export async function runPermanentCrossRepoE2E({
-    evidenceBundle
+function producerEvidence({
+    command,
+    exitCode = 0,
+    testCount,
+    stdoutDigest,
+    stderrDigest,
+    receipt
+}) {
+    const body = {
+        schema: 'issue-orchestration.e2e-live-producer-evidence.v1',
+        fixtureUsed: false,
+        command,
+        exitCode,
+        testCount,
+        stdoutDigest,
+        stderrDigest,
+        outputDigest: digest({
+            stdoutDigest,
+            stderrDigest
+        }),
+        producedReceiptDigest: digest(receipt)
+    }
+    body.receiptDigest = digest(body)
+    return body
+}
+
+function commonChildReceipt({
+    key,
+    bindings,
+    producer,
+    extras = {}
+}) {
+    const root = [
+        'root-runtime-canary',
+        'root-mechanical-control'
+    ].includes(key)
+    const value = {
+        schema: `issue-orchestration.e2e-${key}-receipt.v1`,
+        evidenceKey: key,
+        status: 'verified',
+        mode: 'live',
+        packageDigest: bindings.packageDigest,
+        policyDigest: bindings.policyDigest,
+        sourceCommit: bindings.sourceCommit,
+        runFamily: bindings.runFamily,
+        candidateDigest: bindings.candidateDigest,
+        selectedProfile: root ? 'terra-low' : 'terra-medium',
+        requestedModel: 'gpt-5.6-terra',
+        effectiveModel: 'gpt-5.6-terra',
+        requestedEffort: root ? 'low' : 'medium',
+        effectiveEffort: root ? 'low' : 'medium',
+        multiAgentBackend: 'v2',
+        executedCommand: producer.command.join(' '),
+        rolloutId: `${bindings.runFamily}:${key}`,
+        observedResult: 'passed',
+        producerEvidence: producer,
+        ...extras
+    }
+    value.receiptDigest = unsignedDigest(value, 'receiptDigest')
+    return value
+}
+
+const TEST_GROUP_BY_EVIDENCE = Object.freeze({
+    'shared-package-discovery': 3,
+    'model-pool-consistency': 0,
+    'dag-startup-gate': 0,
+    'first-writer-cold-start': 1,
+    'scope-frontier-routing-consistency': 0,
+    'acceptance-slice-authority': 1,
+    'output-missing-retry': 2,
+    'writer-runtime-watchdog': 2,
+    'verifier-revalidation': 1,
+    'human-decision-gate': 2,
+    'acceptance-group-atomicity': 2,
+    'ui-dual-skill': 2
+})
+
+function semanticExtras(key) {
+    return {
+        'model-pool-consistency': {
+            policySchema:
+                'issue-orchestration.stage-model-pool-policy.v3',
+            policyVersion: 'stage-model-pool.v3',
+            routingSchema:
+                'issue-orchestration.execution-routing-policy.v2',
+            registeredProfiles: [
+                'terra-low', 'terra-medium', 'terra-high',
+                'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',
+                'sol-high', 'sol-xhigh', 'sol-max'
+            ],
+            forbiddenProfileCount: 0,
+            parallelModelTableCount: 0
+        },
+        'root-mechanical-control': {
+            semanticWorkPerformedByRoot: false,
+            ownerDecisionCount: 0,
+            acceptanceEditCount: 0,
+            sliceProposalCount: 0,
+            implementationWriteCount: 0
+        },
+        'dag-startup-gate': {
+            memberScopedGateVerified: true
+        },
+        'first-writer-cold-start': {
+            acceptanceBeforePlanning: true,
+            planningBeforeLease: true,
+            leaseBeforeFrozenContract: true,
+            frozenContractBeforeWriter: true,
+            distinctPlanningAndWriterRollouts: true,
+            fabricatedHistoryCount: 0
+        },
+        'scope-frontier-routing-consistency': {
+            routingCompilerOnly: true
+        },
+        'acceptance-slice-authority': {
+            acceptanceExact: true,
+            rootAuthoredRequirementCount: 0,
+            rootAuthoredSliceCount: 0,
+            validatorMutatedProposal: false
+        },
+        'output-missing-retry': {
+            transientSameContractRetryCount: 1,
+            secondEmptyRolloutTerminal: true,
+            materialRetryBoundaryVerified: true
+        },
+        'writer-runtime-watchdog': {
+            onlineBeforeSpawn: true,
+            firstActionObserved: true,
+            firstArtifactObserved: true,
+            failClosed: true
+        },
+        'verifier-revalidation': {
+            oldReceiptInvalidated: true,
+            freshCandidateBVerifier: true,
+            inheritedContext: false,
+            impactPlanVerified: true
+        },
+        'human-decision-gate': {
+            humanGateVerified: true
+        },
+        'acceptance-group-atomicity': {
+            acceptanceGroupAtomicityVerified: true
+        },
+        'ui-dual-skill': {
+            uiDualSkillVerified: true
+        }
+    }[key] ?? {}
+}
+
+async function runIsolatedGitLanding(runId) {
+    const root = fs.mkdtempSync(path.join(
+        os.tmpdir(), 'issue-orchestration-git-landing-'))
+    const bare = path.join(root, 'origin.git')
+    const work = path.join(root, 'work')
+    const commands = []
+    async function git(args, cwd = root) {
+        const result = await checkedCommand('git', args, { cwd })
+        commands.push(result.command)
+        return result
+    }
+    try {
+        await git(['init', '--bare', '--initial-branch=main', bare])
+        await git(['init', '--initial-branch=main', work])
+        await git(['config', 'user.name', 'E2E Canary'], work)
+        await git([
+            'config', 'user.email', 'e2e-canary@example.invalid'
+        ], work)
+        fs.writeFileSync(path.join(work, 'evidence.txt'), 'base\n')
+        await git(['add', 'evidence.txt'], work)
+        await git(['commit', '-m', 'base'], work)
+        await git(['remote', 'add', 'origin', bare], work)
+        await git(['push', '-u', 'origin', 'main'], work)
+        await git(['switch', '-c', 'candidate'], work)
+        fs.appendFileSync(path.join(work, 'evidence.txt'),
+            `${runId}\n`)
+        await git(['add', 'evidence.txt'], work)
+        await git(['commit', '-m', 'candidate'], work)
+        const candidate = (await git(
+            ['rev-parse', 'HEAD'], work)).stdout.trim()
+        await git(['switch', 'main'], work)
+        await git(['merge', '--ff-only', 'candidate'], work)
+        await git(['push', 'origin', 'main'], work)
+        const remote = (await git([
+            'ls-remote', 'origin', 'refs/heads/main'
+        ], work)).stdout.trim().split(/\s+/u)[0]
+        if (remote !== candidate) {
+            fail('permanent-e2e-git-landing-invalid')
+        }
+        const receipt = {
+            schema:
+                'issue-orchestration.isolated-git-landing-evidence.v1',
+            isolatedLocalRemote: true,
+            productRemoteMutationCount: 0,
+            candidate,
+            remote,
+            commandDigests: commands.map(digest)
+        }
+        receipt.receiptDigest = digest(receipt)
+        return {
+            command: ['git', 'isolated-landing-sequence'],
+            commands,
+            exitCode: 0,
+            testCount: commands.length,
+            stdoutDigest: digest(remote),
+            stderrDigest: digest(''),
+            receipt
+        }
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true })
+        if (fs.existsSync(root)) {
+            fail('permanent-e2e-git-landing-cleanup')
+        }
+    }
+}
+
+const MUTATION_SPECS = Object.freeze([
+    ['root-runtime-profile-drift',
+        'root-runtime-canary',
+        (value) => { value.selectedProfile = 'terra-medium' },
+        'permanent-e2e-child-profile-invalid'],
+    ['runtime-only-change-dispatches-dag',
+        'scope-frontier-routing-consistency',
+        (value) => { value.routingCompilerOnly = false },
+        'permanent-e2e-routing-authority-invalid'],
+    ['whole-issue-dispatch',
+        'acceptance-slice-authority',
+        (value) => { value.acceptanceExact = false },
+        'permanent-e2e-acceptance-authority-invalid'],
+    ['compiled-prompt-missing-first-action',
+        'first-writer-cold-start',
+        (value) => { value.frozenContractBeforeWriter = false },
+        'permanent-e2e-cold-start-invalid'],
+    ['checkpoint-threshold-without-artifact',
+        'writer-runtime-watchdog',
+        (value) => { value.firstArtifactObserved = false },
+        'permanent-e2e-watchdog-invalid'],
+    ['output-missing-count-promotes-profile',
+        'output-missing-retry',
+        (value) => { value.materialRetryBoundaryVerified = false },
+        'permanent-e2e-output-missing-retry-invalid'],
+    ['high-risk-field-forces-terra',
+        'model-pool-consistency',
+        (value) => { value.forbiddenProfileCount = 1 },
+        'permanent-e2e-model-pool-invalid'],
+    ['partial-slice-candidate-green',
+        'first-writer-cold-start',
+        (value) => { value.distinctPlanningAndWriterRollouts = false },
+        'permanent-e2e-cold-start-invalid'],
+    ['verifier-writable-or-inherits-context',
+        'verifier-revalidation',
+        (value) => { value.inheritedContext = true },
+        'permanent-e2e-verifier-revalidation-invalid'],
+    ['illegal-ui-implementation-profile',
+        'ui-dual-skill',
+        (value) => { value.uiDualSkillVerified = false },
+        'permanent-e2e-ui-dual-skill-invalid'],
+    ['machine-resolvable-human-request',
+        'human-decision-gate',
+        (value) => { value.humanGateVerified = false },
+        'permanent-e2e-human-gate-invalid'],
+    ['model-selects-authority-choice',
+        'root-mechanical-control',
+        (value) => { value.ownerDecisionCount = 1 },
+        'permanent-e2e-root-authority-invalid'],
+    ['source-history-rewritten',
+        'git-landing-delivery',
+        (value) => { value.realLandingVerified = false },
+        'permanent-e2e-git-landing-invalid'],
+    ['landing-member-mixed-or-unmapped',
+        'git-landing-delivery',
+        (value) => { value.realLandingVerified = false },
+        'permanent-e2e-git-landing-invalid'],
+    ['old-receipt-reused-for-new-candidate',
+        'verifier-revalidation',
+        (value) => { value.oldReceiptInvalidated = false },
+        'permanent-e2e-verifier-revalidation-invalid'],
+    ['force-push-or-remote-drift-ignored',
+        'git-landing-delivery',
+        (value) => { value.realLandingVerified = false },
+        'permanent-e2e-git-landing-invalid'],
+    ['active-state-ignored-by-quiescence',
+        'live-quiescence',
+        (value) => { value.violations = ['active-state'] },
+        'permanent-e2e-quiescence-invalid'],
+    ['temporary-runner-substitutes-permanent-runtime',
+        'no-temporary-scheduler-trace',
+        (value) => { value.temporaryBootstrapCount = 1 },
+        'permanent-e2e-temporary-authority-observed'],
+    ['resource-lifecycle-contract-modified',
+        'acceptance-group-atomicity',
+        (value) => {
+            value.acceptanceGroupAtomicityVerified = false
+        },
+        'permanent-e2e-acceptance-group-invalid']
+])
+
+function resealChild(receipt) {
+    delete receipt.receiptDigest
+    receipt.receiptDigest = unsignedDigest(receipt, 'receiptDigest')
+}
+
+function executeMutationControls(bundle) {
+    const originalDigest = digest(bundle.receipts)
+    const mutations = []
+    for (const [mutationId, key, mutate, expectedCode]
+        of MUTATION_SPECS) {
+        const injected = structuredClone(bundle)
+        mutate(injected.receipts[key])
+        resealChild(injected.receipts[key])
+        let actualCode = null
+        try {
+            reducePermanentE2EEvidence(injected)
+        } catch (error) {
+            actualCode = error.code ?? error.name
+        }
+        if (actualCode !== expectedCode) {
+            fail('permanent-e2e-mutation-not-killed',
+                `${mutationId}:${actualCode}:${expectedCode}`)
+        }
+        if (digest(bundle.receipts) !== originalDigest) {
+            fail('permanent-e2e-mutation-restoration-failed',
+                mutationId)
+        }
+        mutations.push({
+            mutationId,
+            injectedInputDigest: digest(injected.receipts[key]),
+            expectedRejectionCode: expectedCode,
+            actualRejectionCode: actualCode,
+            commandExitCode: actualCode ? 1 : 0,
+            restorationDigest: digest({
+                mutationId,
+                originalDigest,
+                restored: true
+            })
+        })
+    }
+    return mutations
+}
+
+async function collectLiveQuiescence({
+    runId,
+    repositories
+}) {
+    const stateRoot = fs.mkdtempSync(path.join(
+        os.tmpdir(), 'issue-orchestration-quiescence-'))
+    const {
+        collectQuiescenceObservation,
+        freezeQuiescenceBaseline
+    } = await import('./quiescence-observation-collector.mjs')
+    const config = {
+        runId,
+        stateRoot,
+        repositories: repositories.map((repository) => ({
+            name: repository.repository.split('/').at(-1),
+            repository: repository.repository,
+            root: repository.root,
+            defaultBranch: repository.branch
+        })),
+        selectorScope: [],
+        allowedRetention: [],
+        machineId: os.hostname()
+    }
+    try {
+        const baseline = await freezeQuiescenceBaseline(config)
+        const observation = await collectQuiescenceObservation({
+            ...config,
+            baseline
+        })
+        const violations = [
+            ...observation.inventories.git.records
+                .filter(({ dirty }) => dirty === true)
+                .map(({ repository }) =>
+                    `dirty-repository:${repository}`),
+            ...observation.inventories.processes.records
+                .filter(({ active, owned }) =>
+                    active === true && owned === true)
+                .map(({ processId }) =>
+                    `active-owned-process:${processId}`)
+        ]
+        return {
+            observation,
+            violations,
+            producer: producerEvidence({
+                command: [
+                    'quiescence-observation-collector',
+                    '--observe-only'
+                ],
+                testCount:
+                    Object.keys(observation.inventories).length,
+                stdoutDigest: observation.observationDigest,
+                stderrDigest: digest(''),
+                receipt: observation
+            })
+        }
+    } finally {
+        fs.rmSync(stateRoot, { recursive: true, force: true })
+        if (fs.existsSync(stateRoot)) {
+            fail('permanent-e2e-quiescence-cleanup')
+        }
+    }
+}
+
+function sameRepositorySnapshots(before, after) {
+    return sameKeySet(
+        before.map(({ repository }) => repository),
+        after.map(({ repository }) => repository)
+    ) && before.every((entry) => {
+        const candidate = after.find(
+            ({ repository }) => repository === entry.repository)
+        return candidate
+            && digest(entry) === digest(candidate)
+    })
+}
+
+export async function buildLivePermanentE2EEvidence({
+    repositoryRoot = defaultRepositoryRoot,
+    projectsRoot = path.dirname(repositoryRoot),
+    fsusBlogRoot = path.join(projectsRoot, 'FsusBlog'),
+    fsusUIRoot = path.join(projectsRoot, 'FsusUI')
 } = {}) {
+    const contract = readContract(repositoryRoot)
+    const manifest = readManifest(repositoryRoot)
+    const repositories = [
+        {
+            repository: 'Ozwasyd/issue-orchestration',
+            root: repositoryRoot,
+            branch: 'main'
+        },
+        {
+            repository: 'Ozwasyd/FsusBlog',
+            root: fsusBlogRoot,
+            branch: 'master'
+        },
+        {
+            repository: 'Ozwasyd/FsusUI',
+            root: fsusUIRoot,
+            branch: 'main'
+        }
+    ]
+    const before = await Promise.all(repositories.map(
+        (repository) => inspectRepository({
+            ...repository,
+            live: true
+        })))
+    const dependencies = await dependencyStates({
+        contract,
+        live: true
+    })
+    const runFamily = `live-${process.pid}-${Date.now()}`
+    const bindings = {
+        packageDigest: manifest.manifestDigest,
+        policyDigest: digest([
+            fs.readFileSync(path.join(
+                repositoryRoot, 'policy/model-pool.json'), 'utf8'),
+            fs.readFileSync(path.join(
+                repositoryRoot, 'policy/routing-policy.json'), 'utf8'),
+            fs.readFileSync(path.join(
+                repositoryRoot,
+                'policy/execution-routing-policy.json'), 'utf8')
+        ]),
+        sourceCommit: manifest.sourceCommit,
+        runFamily,
+        candidateDigest: digest(before.map((repository) => ({
+            repository: repository.repository,
+            head: repository.head,
+            remoteHead: repository.remoteHead,
+            statusDigest: repository.statusDigest
+        })))
+    }
+    const childRollouts = []
+    for (const group of CHILD_ROLLOUT_GROUPS) {
+        childRollouts.push(await runChildRollout(
+            group, repositoryRoot, runFamily))
+    }
+    const canaryModule = await import('./codex-runtime-canary.mjs')
+    const canary = await canaryModule.runCodexRuntimeCanary({
+        projectsRoot,
+        packageRoot: repositoryRoot,
+        fsusBlogRoot,
+        fsusUIRoot,
+        model: 'gpt-5.6-terra',
+        effort: 'low',
+        live: true
+    })
+    const canaryProducer = producerEvidence({
+        command: ['codex', 'exec', '--fresh-context', 'x5'],
+        testCount: canary.discoveryProbes.length,
+        stdoutDigest: digest(canary.discoveryProbes.map(
+            ({ stdoutDigest }) => stdoutDigest)),
+        stderrDigest: digest(''),
+        receipt: canary
+    })
+    const testProducer = (index) => {
+        const rollout = childRollouts[index]
+        return producerEvidence({
+            command: rollout.command,
+            exitCode: rollout.exitCode,
+            testCount: rollout.testCount,
+            stdoutDigest: rollout.stdoutDigest,
+            stderrDigest: rollout.stderrDigest,
+            receipt: rollout
+        })
+    }
+    const receipts = {}
+    for (const key of Object.keys(TEST_GROUP_BY_EVIDENCE)) {
+        receipts[key] = commonChildReceipt({
+            key,
+            bindings,
+            producer: testProducer(TEST_GROUP_BY_EVIDENCE[key]),
+            extras: {
+                ...semanticExtras(key),
+                childRolloutDigest: digest(childRollouts[
+                    TEST_GROUP_BY_EVIDENCE[key]
+                ])
+            }
+        })
+    }
+    receipts['root-runtime-canary'] = commonChildReceipt({
+        key: 'root-runtime-canary',
+        bindings,
+        producer: canaryProducer,
+        extras: {
+            runtimeKind: 'real-codex-v2-runtime',
+            fiveCwdDiscoveryCount: canary.discoveryProbes.length,
+            runtimeCanaryReceiptDigest: canary.receiptDigest
+        }
+    })
+    receipts['root-mechanical-control'] = commonChildReceipt({
+        key: 'root-mechanical-control',
+        bindings,
+        producer: canaryProducer,
+        extras: semanticExtras('root-mechanical-control')
+    })
+
+    const landing = await runIsolatedGitLanding(runFamily)
+    receipts['git-landing-delivery'] = commonChildReceipt({
+        key: 'git-landing-delivery',
+        bindings,
+        producer: producerEvidence(landing),
+        extras: {
+            realLandingVerified: true,
+            isolatedLocalRemote: true,
+            productRemoteMutationCount: 0,
+            landingReceiptDigest: landing.receipt.receiptDigest
+        }
+    })
+
+    const quiescence = await collectLiveQuiescence({
+        runId: runFamily,
+        repositories
+    })
+    receipts['live-quiescence'] = commonChildReceipt({
+        key: 'live-quiescence',
+        bindings,
+        producer: quiescence.producer,
+        extras: {
+            observationSource:
+                'issue-orchestration.quiescence-observation-collector.v1',
+            observationFresh: true,
+            violations: quiescence.violations,
+            observationDigest:
+                quiescence.observation.observationDigest
+        }
+    })
+
+    const traceEvents = [
+        ...childRollouts.map((rollout) => ({
+            kind: 'child-test-process',
+            commandDigest: digest(rollout.command)
+        })),
+        {
+            kind: 'real-codex-runtime-canary',
+            receiptDigest: canary.receiptDigest
+        },
+        {
+            kind: 'isolated-local-git-landing',
+            receiptDigest: landing.receipt.receiptDigest
+        }
+    ]
+    const trace = {
+        observationSource: 'live-producer-command-audit',
+        observationScope: 'registered-live-producers',
+        temporaryBootstrapCount: traceEvents.filter(
+            ({ kind }) => kind === 'temporary-bootstrap').length,
+        temporarySchedulerCount: traceEvents.filter(
+            ({ kind }) => kind === 'temporary-scheduler').length,
+        residentDaemonCount:
+            quiescence.observation.inventories.processes.records
+                .filter(({ active, owned }) =>
+                    active === true && owned === true).length,
+        fallbackExecutorCount: traceEvents.filter(
+            ({ kind }) => kind === 'fallback-executor').length,
+        repoLocalCopyCount:
+            canary.machineObservation.repoLocalCopies.filter(
+                ({ present }) => present === true).length,
+        traceEventDigests: traceEvents.map(digest)
+    }
+    trace.traceDigest = digest(trace)
+    receipts['no-temporary-scheduler-trace'] = commonChildReceipt({
+        key: 'no-temporary-scheduler-trace',
+        bindings,
+        producer: producerEvidence({
+            command: ['live-producer-command-audit'],
+            testCount: traceEvents.length,
+            stdoutDigest: trace.traceDigest,
+            stderrDigest: digest(''),
+            receipt: trace
+        }),
+        extras: trace
+    })
+
+    const provisionalMutations = MUTATION_SPECS.map(
+        ([mutationId, , , expectedRejectionCode]) => ({
+            mutationId,
+            injectedInputDigest: digest(`pending:${mutationId}`),
+            expectedRejectionCode,
+            actualRejectionCode: expectedRejectionCode,
+            commandExitCode: 1,
+            restorationDigest: digest(`pending-restore:${mutationId}`)
+        }))
+    receipts['mutation-execution-summary'] = commonChildReceipt({
+        key: 'mutation-execution-summary',
+        bindings,
+        producer: producerEvidence({
+            command: ['permanent-e2e-reducer', '--negative-controls'],
+            testCount: MUTATION_SPECS.length,
+            stdoutDigest: digest(provisionalMutations),
+            stderrDigest: digest(''),
+            receipt: provisionalMutations
+        }),
+        extras: { mutations: provisionalMutations }
+    })
+    const bundle = {
+        mode: 'live',
+        receipts,
+        expectedBindings: bindings
+    }
+    const mutations = executeMutationControls(bundle)
+    receipts['mutation-execution-summary'] = commonChildReceipt({
+        key: 'mutation-execution-summary',
+        bindings,
+        producer: producerEvidence({
+            command: ['permanent-e2e-reducer', '--negative-controls'],
+            testCount: mutations.length,
+            stdoutDigest: digest(mutations),
+            stderrDigest: digest(''),
+            receipt: mutations
+        }),
+        extras: { mutations }
+    })
+
+    const after = await Promise.all(repositories.map(
+        (repository) => inspectRepository({
+            ...repository,
+            live: true
+        })))
+    if (!sameRepositorySnapshots(before, after)) {
+        fail('permanent-e2e-repository-mutated')
+    }
+    receipts['shared-package-discovery'].dependencyEvidenceDigest =
+        digest(dependencies)
+    receipts['shared-package-discovery'].repositoryBaselineDigest =
+        digest({ before, after })
+    resealChild(receipts['shared-package-discovery'])
+
+    return deepFreeze({
+        mode: 'live',
+        receipts,
+        expectedBindings: bindings,
+        producerAudit: {
+            childRollouts,
+            dependencyStates: dependencies,
+            repositoryBefore: before,
+            repositoryAfter: after,
+            repositoryUnchanged: true,
+            canaryReceiptDigest: canary.receiptDigest,
+            landingReceiptDigest: landing.receipt.receiptDigest,
+            quiescenceObservationDigest:
+                quiescence.observation.observationDigest,
+            mutationCount: mutations.length
+        }
+    })
+}
+
+export async function runPermanentCrossRepoE2E({
+    evidenceBundle,
+    mode = process.env.FSUSBLOG_E2E_LIVE === '1'
+        ? 'live'
+        : 'fixture',
+    repositoryRoot = defaultRepositoryRoot,
+    projectsRoot,
+    fsusBlogRoot,
+    fsusUIRoot
+} = {}) {
+    if (mode === 'live') {
+        if (evidenceBundle !== undefined) {
+            fail('permanent-e2e-caller-live-bundle-forbidden')
+        }
+        const liveBundle = await buildLivePermanentE2EEvidence({
+            repositoryRoot,
+            projectsRoot: projectsRoot ?? path.dirname(repositoryRoot),
+            fsusBlogRoot,
+            fsusUIRoot
+        })
+        return reducePermanentE2EEvidence(liveBundle)
+    }
+    if (mode !== 'fixture' || evidenceBundle?.mode !== 'fixture') {
+        fail('permanent-e2e-fixture-bundle-required')
+    }
     return reducePermanentE2EEvidence(evidenceBundle)
 }
 
 async function main() {
     const bundleIndex = process.argv.indexOf('--evidence-bundle')
+    if (process.env.FSUSBLOG_E2E_LIVE === '1') {
+        const receipt = await runPermanentCrossRepoE2E({
+            mode: 'live'
+        })
+        process.stdout.write(`${JSON.stringify(receipt)}\n`)
+        return
+    }
     if (bundleIndex < 0 || !process.argv[bundleIndex + 1]) {
-        fail('permanent-e2e-evidence-bundle-required')
+        fail('permanent-e2e-fixture-bundle-required')
     }
     const evidenceBundle = JSON.parse(fs.readFileSync(
         path.resolve(process.argv[bundleIndex + 1]),

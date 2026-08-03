@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import fsSync from 'node:fs'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
 import {
-    assertDigest,
     digest,
     fail,
     seal,
@@ -13,200 +14,428 @@ import {
 
 const HASH = /^[a-f0-9]{64}$/u
 const SHA = /^[a-f0-9]{40}$/u
+const DISCOVERY_MARKER = 'ISSUE_ORCHESTRATION_DISCOVERY_OK_V1'
+const METADATA_SCHEMA =
+    'issue-orchestration.codex-runtime-metadata-evidence.v2'
+const RECEIPT_SCHEMA =
+    'issue-orchestration.codex-runtime-canary-receipt.v2'
 const MODELS = new Map([
     ['gpt-5.6-terra', 'terra'],
     ['gpt-5.6-sol', 'sol']
 ])
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
 
-function authoritative(values, code) {
-    const present = values.filter((value) =>
-        value !== undefined && value !== null && value !== '')
-    if (present.length === 0 || present.some(
-        (value) => !sameValue(value, present[0])
-    )) fail(code)
+function payload(event) {
+    return event?.payload ?? event ?? {}
+}
+
+function observed(values, field) {
+    const present = values
+        .filter((value) => value !== undefined
+            && value !== null && value !== '')
+        .map((value) => typeof value === 'string'
+            ? value
+            : value?.type ?? value)
+    if (present.length === 0) {
+        fail('codex-runtime-observation-missing', field, { field })
+    }
+    if (present.some((value) => !sameValue(value, present[0]))) {
+        fail('codex-runtime-observation-conflict', field, {
+            field,
+            values: present
+        })
+    }
     return present[0]
+}
+
+function normalizeBackend(value) {
+    if (value === 2 || value === '2') return 'v2'
+    return value
 }
 
 export function parseCodexRuntimeMetadata({
     request,
     sessionEvents,
-    turnEvents
+    turnEvents,
+    orchestrationLabels = {}
 }) {
-    const sessions = sessionEvents ?? []
-    const turns = turnEvents ?? []
+    const sessions = (sessionEvents ?? []).map(payload)
+    const turns = (turnEvents ?? []).map(payload)
     if (!request || sessions.length < 1 || turns.length < 1) {
-        fail('codex-runtime-metadata-missing')
+        fail('codex-runtime-observation-missing')
     }
-    const model = authoritative([
-        request.model,
-        ...sessions.map((event) => event.model)
-    ], 'codex-runtime-metadata-conflict')
-    const effort = authoritative([
-        request.effort,
-        ...turns.map((event) => event.effort)
-    ], 'codex-runtime-metadata-conflict')
-    const cwd = authoritative([
-        request.cwd,
-        ...sessions.map((event) => event.cwd),
-        ...turns.map((event) => event.cwd)
-    ], 'codex-runtime-metadata-conflict')
-    const sandbox = authoritative([
-        request.sandbox,
-        ...sessions.map((event) => event.sandbox),
-        ...turns.map((event) => event.sandbox)
-    ], 'codex-runtime-metadata-conflict')
-    const multiAgentBackend = authoritative([
-        request.multiAgentBackend,
-        ...sessions.map((event) => event.multiAgentBackend)
-    ], 'codex-runtime-metadata-conflict')
-    const role = authoritative([
-        request.role,
-        ...turns.map((event) => event.role)
-    ], 'codex-runtime-metadata-conflict')
-    const threadId = authoritative([
-        ...sessions.map((event) => event.threadId),
-        ...turns.map((event) => event.threadId)
-    ], 'codex-runtime-metadata-conflict')
-    const family = MODELS.get(model)
-    if (!family || !EFFORTS.has(effort)) {
+
+    const runtimeObservation = {
+        model: observed(turns.map((event) => event.model), 'model'),
+        effort: observed(turns.map((event) =>
+            event.effort ?? event.reasoning_effort), 'effort'),
+        cwd: path.resolve(observed([
+            ...sessions.map((event) => event.cwd),
+            ...turns.map((event) => event.cwd)
+        ], 'cwd')),
+        sandbox: observed(turns.map((event) =>
+            event.sandbox_policy ?? event.sandbox), 'sandbox'),
+        multiAgentBackend: normalizeBackend(observed(turns.map((event) =>
+            event.multi_agent_version
+            ?? event.multiAgentBackend), 'multiAgentBackend')),
+        threadId: observed(sessions.map((event) =>
+            event.id ?? event.threadId), 'threadId')
+    }
+    const invocationRequest = {
+        model: request.model,
+        effort: request.effort,
+        cwd: path.resolve(request.cwd),
+        sandbox: request.sandbox,
+        multiAgentBackend: normalizeBackend(request.multiAgentBackend)
+    }
+    const comparison = Object.fromEntries(
+        Object.keys(invocationRequest).map((field) => [
+            field,
+            sameValue(invocationRequest[field], runtimeObservation[field])
+        ])
+    )
+    if (Object.values(comparison).some((matches) => matches !== true)) {
+        fail('codex-runtime-request-mismatch',
+            'The requested runtime differs from observed turn metadata.',
+            { invocationRequest, runtimeObservation, comparison })
+    }
+    const family = MODELS.get(runtimeObservation.model)
+    if (!family || !EFFORTS.has(runtimeObservation.effort)) {
         fail('codex-runtime-profile-forbidden')
     }
-    if (multiAgentBackend !== 'v2') {
+    if (runtimeObservation.multiAgentBackend !== 'v2') {
         fail('codex-runtime-backend-forbidden')
     }
+    const rawEvidence = {
+        sessionRecordDigests: sessionEvents.map(digest),
+        turnRecordDigests: turnEvents.map(digest)
+    }
     const value = {
+        schema: METADATA_SCHEMA,
         status: 'verified',
-        profile: `${family}-${effort}`,
-        model,
-        effort,
-        multiAgentBackend,
-        role,
-        sandbox,
-        cwd: path.resolve(cwd),
-        threadId,
-        sourceAuthorities: [
-            'codex-exec-request',
-            'codex-session-meta',
-            'codex-turn-context'
-        ]
+        profile:
+            `${family}-${runtimeObservation.effort}`,
+        invocationRequest,
+        orchestrationLabels: {
+            requestedRole:
+                orchestrationLabels.requestedRole ?? null,
+            requestedPhase:
+                orchestrationLabels.requestedPhase ?? null,
+            actionBoundary:
+                orchestrationLabels.actionBoundary ?? null
+        },
+        runtimeObservation,
+        comparison,
+        rawEvidence,
+        rawEvidenceDigest: digest(rawEvidence)
     }
     value.metadataDigest = digest(value)
     return Object.freeze(value)
 }
 
-function requireCanaryDigest(value, code) {
+function findJsonObject(text, start) {
+    const open = text.indexOf('{', start)
+    if (open < 0) return null
+    let depth = 0
+    let quoted = false
+    let escaped = false
+    for (let index = open; index < text.length; index += 1) {
+        const character = text[index]
+        if (quoted) {
+            if (escaped) escaped = false
+            else if (character === '\\') escaped = true
+            else if (character === '"') quoted = false
+            continue
+        }
+        if (character === '"') quoted = true
+        else if (character === '{') depth += 1
+        else if (character === '}') {
+            depth -= 1
+            if (depth === 0) return text.slice(open, index + 1)
+        }
+    }
+    return null
+}
+
+function commandFromToolInput(input) {
+    if (typeof input !== 'string') return null
+    const marker = input.indexOf('exec_command(')
+    if (marker < 0) return null
+    const object = findJsonObject(input, marker)
+    if (!object) return null
+    try {
+        return JSON.parse(object).cmd ?? null
+    } catch {
+        return null
+    }
+}
+
+function recordToolCalls(records) {
+    return records.flatMap((record) => {
+        if (record.type !== 'response_item') return []
+        const item = payload(record)
+        if (item.type !== 'custom_tool_call') return []
+        return [{
+            name: item.name,
+            callId: item.call_id ?? item.callId ?? null,
+            input: item.input ?? ''
+        }]
+    })
+}
+
+export function observeCodexActions({
+    records,
+    installRoot,
+    skillFile,
+    markerFile
+}) {
+    const resolvedInstall = path.resolve(installRoot)
+    const allowedFiles = [skillFile, markerFile].map(
+        (file) => path.resolve(file)
+    )
+    const toolCalls = recordToolCalls(records)
+    const commands = []
+    const forbidden = []
+    for (const call of toolCalls) {
+        if (call.name !== 'exec') {
+            forbidden.push({
+                reason: 'non-exec-tool-call',
+                callDigest: digest(call)
+            })
+            continue
+        }
+        const command = commandFromToolInput(call.input)
+        if (!command) {
+            forbidden.push({
+                reason: 'unparseable-exec-command',
+                callDigest: digest(call)
+            })
+            continue
+        }
+        commands.push(command)
+        if (/\b(package\.json|git|gh|curl|wget|rm|mv|cp|tee|touch|mkdir)\b/u
+            .test(command)) {
+            forbidden.push({
+                reason: 'forbidden-command-or-semantic-file',
+                commandDigest: digest(command)
+            })
+        }
+        const absolutePaths = command.match(/\/[^\s"'`;|)]+/gu) ?? []
+        const mentionsAllowedFile = allowedFiles.some((file) =>
+            command.includes(file))
+        if (!mentionsAllowedFile || absolutePaths.some((candidate) => {
+            const resolved = path.resolve(candidate)
+            return !resolved.startsWith(`${resolvedInstall}${path.sep}`)
+                || !allowedFiles.includes(resolved)
+        })) {
+            forbidden.push({
+                reason: 'read-outside-installed-canary-files',
+                commandDigest: digest(command)
+            })
+        }
+    }
+    const catalogObserved = records.some((record) => {
+        const item = payload(record)
+        const serialized = JSON.stringify(item)
+        return record.type === 'response_item'
+            && item.type === 'message'
+            && ['developer', 'system'].includes(item.role)
+            && serialized.includes(resolvedInstall)
+            && serialized.includes('issue-orchestration')
+    })
+    const skillReadObserved = commands.some((command) =>
+        command.includes(path.resolve(skillFile)))
+    const markerReadObserved = commands.some((command) =>
+        command.includes(path.resolve(markerFile)))
+    const markerOutputObserved = records.some((record) => {
+        const item = payload(record)
+        return record.type === 'response_item'
+            && item.type === 'message'
+            && item.role === 'assistant'
+            && JSON.stringify(item.content)
+                .includes(DISCOVERY_MARKER)
+    })
+    if (!catalogObserved || !skillReadObserved
+        || !markerReadObserved || !markerOutputObserved) {
+        fail('codex-skill-discovery-unobserved', undefined, {
+            catalogObserved,
+            skillReadObserved,
+            markerReadObserved,
+            markerOutputObserved
+        })
+    }
+    if (forbidden.length > 0) {
+        fail('codex-runtime-action-forbidden', undefined, { forbidden })
+    }
+    const value = {
+        observationScope: 'registered-codex-tool-calls',
+        catalogObserved,
+        skillReadObserved,
+        markerReadObserved,
+        markerOutputObserved,
+        commands: commands.map((command) => ({
+            commandDigest: digest(command)
+        })),
+        toolCallRecordDigests: toolCalls.map(digest),
+        forbidden,
+        unobservableClaims: [
+            'filesystem-reads-outside-registered-codex-tool-calls',
+            'remote-side-effects-outside-registered-codex-tool-calls'
+        ]
+    }
+    value.observationDigest = digest(value)
+    return Object.freeze(value)
+}
+
+export function verifyCleanupObservation(observation) {
+    if (observation?.observationMethod !== 'post-delete-lstat'
+        || !Array.isArray(observation.resources)
+        || observation.resources.length < 1
+        || observation.resources.some((resource) =>
+            resource.existsAfterDelete !== false
+            || typeof resource.pathDigest !== 'string')
+        || observation.resourcesAfter !== 0) {
+        fail('codex-runtime-cleanup')
+    }
+    const expected = digest({
+        observationMethod: observation.observationMethod,
+        resources: observation.resources,
+        resourcesAfter: observation.resourcesAfter
+    })
+    if (observation.receiptDigest !== expected) {
+        fail('codex-runtime-cleanup-digest')
+    }
+    return Object.freeze(observation)
+}
+
+function requireDigest(value, code) {
     if (!HASH.test(value ?? '')) fail(code)
 }
 
 export function verifyCodexRuntimeCanaryReceipt(receipt) {
-    if (receipt?.schema !==
-            'issue-orchestration.codex-runtime-canary-receipt.v1'
+    if (receipt?.schema !== RECEIPT_SCHEMA
         || receipt.status !== 'production-verified'
         || receipt.source !== 'real-codex-v2-runtime') {
         fail('codex-runtime-canary-invalid')
     }
-    requireCanaryDigest(receipt.packageDigest,
-        'codex-runtime-package-binding')
-    requireCanaryDigest(receipt.policyDigest,
-        'codex-runtime-policy-binding')
+    for (const [value, code] of [
+        [receipt.packageDigest, 'codex-runtime-package-binding'],
+        [receipt.sourceTreeDigest, 'codex-runtime-package-binding'],
+        [receipt.skillDigest, 'codex-runtime-package-binding'],
+        [receipt.policyDigest, 'codex-runtime-policy-binding'],
+        [receipt.installation?.installDigest,
+            'codex-runtime-install-binding'],
+        [receipt.runtimeTrace?.traceDigest,
+            'codex-runtime-trace-digest']
+    ]) requireDigest(value, code)
     if (!SHA.test(receipt.sourceCommit ?? '')) {
         fail('codex-runtime-source-binding')
     }
-    const root = receipt.rootReceipt ?? {}
-    if (root.profile !== 'terra-low'
-        || root.mechanicalControlOnly !== true
-        || !Array.isArray(root.semanticFilesReadByRoot)
-        || root.semanticFilesReadByRoot.length !== 0) {
-        fail('codex-runtime-root-profile')
+    const installation = receipt.installation ?? {}
+    if (installation.installMethod !==
+            'isolated-codex-home-standard-skill-path'
+        || installation.manifestDigest !== receipt.packageDigest
+        || installation.sourceTreeDigest !== receipt.sourceTreeDigest
+        || !Array.isArray(installation.fileBindings)
+        || installation.fileBindings.length < 2
+        || installation.fileBindings.some((binding) =>
+            typeof binding.sourceRelative !== 'string'
+            || !binding.sourceRelative.startsWith(
+                'skills/issue-orchestration/')
+            || !HASH.test(binding.installedDigest ?? ''))) {
+        fail('codex-runtime-install-binding')
     }
-    requireCanaryDigest(root.metadataDigest,
-        'codex-runtime-root-metadata')
-
-    const expectedRollouts = [
-        ['dag-creator-updater', 'semantic-proposal', 'read-only'],
-        ['test-owner', 'test-contract-planning', 'read-only'],
-        ['test-owner', 'test-contract', 'workspace-write']
-    ]
-    if (!Array.isArray(receipt.rollouts)
-        || receipt.rollouts.length !== expectedRollouts.length) {
-        fail('codex-runtime-rollout-chain')
+    const installationUnsigned = structuredClone(installation)
+    delete installationUnsigned.installDigest
+    if (installation.installDigest !== digest(installationUnsigned)) {
+        fail('codex-runtime-install-binding')
     }
-    const rolloutIds = new Set()
-    for (let index = 0; index < expectedRollouts.length; index += 1) {
-        const rollout = receipt.rollouts[index]
-        const [role, phase, sandbox] = expectedRollouts[index]
-        if (rollout.runtimeKind !== 'codex-agent-rollout') {
-            fail('codex-runtime-real-rollout-required')
-        }
-        if (rollout.role !== role
-            || rollout.phase !== phase
-            || rollout.sandbox !== sandbox
-            || rollout.freshContext !== true
-            || rollout.inheritedThreadId !== null
-            || !rollout.rolloutId
-            || rolloutIds.has(rollout.rolloutId)
-            || !Number.isInteger(rollout.observableActionCount)
-            || rollout.observableActionCount < 1) {
-            fail('codex-runtime-rollout-chain')
-        }
-        rolloutIds.add(rollout.rolloutId)
-        requireCanaryDigest(rollout.terminalReceiptDigest,
-            'codex-runtime-rollout-terminal')
-        requireCanaryDigest(rollout.metadataDigest,
-            'codex-runtime-rollout-metadata')
-    }
-
-    if (!Array.isArray(receipt.cwdDiscovery)
-        || receipt.cwdDiscovery.length !== 5
-        || new Set(receipt.cwdDiscovery.map(({ cwd }) =>
-            path.resolve(cwd))).size !== 5) {
+    const probes = receipt.discoveryProbes
+    if (!Array.isArray(probes) || probes.length !== 5
+        || new Set(probes.map(({ cwd }) =>
+            path.resolve(cwd))).size !== 5
+        || new Set(probes.map(({ threadId }) =>
+            threadId)).size !== 5) {
         fail('codex-runtime-five-cwd-discovery')
     }
-    for (const discovery of receipt.cwdDiscovery) {
-        if (discovery.discoveryMethod !==
-                'real-codex-cwd-discovery'
-            || discovery.callerSuppliedInstallRoot !== false
-            || discovery.packageDigest !== receipt.packageDigest
-            || discovery.policyDigest !== receipt.policyDigest) {
+    for (const probe of probes) {
+        if (probe.schema !==
+                'issue-orchestration.codex-skill-discovery-probe.v1'
+            || probe.discoveryMethod !==
+                'codex-runtime-catalog-and-tool-read'
+            || probe.freshContext !== true
+            || probe.inheritedThreadId !== null
+            || probe.callerSuppliedPathInPrompt !== false
+            || probe.installRootDigest
+                !== receipt.installation.installRootDigest
+            || probe.packageDigest !== receipt.packageDigest
+            || probe.skillDigest !== receipt.skillDigest
+            || probe.sourceCommit !== receipt.sourceCommit
+            || probe.runtimeMetadata?.schema !== METADATA_SCHEMA
+            || probe.runtimeMetadata?.status !== 'verified'
+            || probe.runtimeMetadata?.orchestrationLabels
+                ?.requestedRole !== 'package-discovery-probe'
+            || probe.runtimeMetadata?.rawEvidenceDigest !== digest(
+                probe.runtimeMetadata?.rawEvidence)
+            || probe.actionObservation?.catalogObserved !== true
+            || probe.actionObservation?.skillReadObserved !== true
+            || probe.actionObservation?.markerReadObserved !== true
+            || probe.actionObservation
+                ?.markerOutputObserved !== true
+            || probe.actionObservation?.observationScope !==
+                'registered-codex-tool-calls'
+            || probe.actionObservation?.commands?.length < 1
+            || probe.actionObservation
+                ?.toolCallRecordDigests?.length < 1
+            || probe.actionObservation?.forbidden?.length !== 0) {
             fail('codex-runtime-five-cwd-discovery')
         }
-    }
-
-    const coldStart = receipt.coldStart ?? {}
-    if (coldStart.fabricatedHistoryCount !== 0) {
-        fail('codex-runtime-fabricated-history')
-    }
-    for (const field of [
-        'firstWriterArtifactDigest',
-        'commandEvidenceDigest',
-        'checkpointDigest',
-        'terminalReceiptDigest'
-    ]) requireCanaryDigest(coldStart[field],
-        `codex-runtime-cold-start-${field}`)
-    if (!Number.isInteger(receipt.cleanup?.resourcesBefore)
-        || receipt.cleanup.resourcesBefore < 1
-        || receipt.cleanup.resourcesAfter !== 0
-        || receipt.cleanup.remoteMutationCount !== 0) {
-        fail('codex-runtime-cleanup')
-    }
-    requireCanaryDigest(receipt.cleanup.receiptDigest,
-        'codex-runtime-cleanup-digest')
-    for (const field of [
-        'temporarySchedulerCount',
-        'bootstrapExecutorCount',
-        'fallbackExecutorCount',
-        'repoLocalCopyCount'
-    ]) {
-        if (receipt.runtimeTrace?.[field] !== 0) {
-            fail('codex-runtime-temporary-authority')
+        const metadataUnsigned = structuredClone(
+            probe.runtimeMetadata)
+        delete metadataUnsigned.metadataDigest
+        if (probe.runtimeMetadata.metadataDigest
+                !== digest(metadataUnsigned)) {
+            fail('codex-runtime-rollout-metadata')
+        }
+        const actionUnsigned = structuredClone(
+            probe.actionObservation)
+        delete actionUnsigned.observationDigest
+        if (probe.actionObservation.observationDigest
+                !== digest(actionUnsigned)) {
+            fail('codex-runtime-action-observation-digest')
+        }
+        requireDigest(probe.probeDigest,
+            'codex-runtime-discovery-digest')
+        const probeUnsigned = structuredClone(probe)
+        delete probeUnsigned.probeDigest
+        if (probe.probeDigest !== digest(probeUnsigned)) {
+            fail('codex-runtime-discovery-digest')
         }
     }
-    requireCanaryDigest(receipt.runtimeTrace?.traceDigest,
-        'codex-runtime-trace-digest')
-    if (!HASH.test(receipt.receiptDigest ?? '')) {
-        fail('codex-runtime-receipt-digest')
+    if (receipt.machineObservation?.repoLocalCopies
+            ?.some(({ present }) => present !== false)
+        || receipt.machineObservation
+            ?.observationMethod !== 'post-run-lstat') {
+        fail('codex-runtime-repo-local-copy')
     }
+    if (receipt.machineObservation.observationDigest !== digest(
+        receipt.machineObservation.repoLocalCopies)) {
+        fail('codex-runtime-machine-observation-digest')
+    }
+    verifyCleanupObservation(receipt.cleanup)
+    if (receipt.runtimeTrace?.observationScope
+            !== 'registered-codex-tool-calls'
+        || receipt.runtimeTrace.mutatingToolCallCount !== 0
+        || receipt.runtimeTrace.unobservableClaims?.length < 1) {
+        fail('codex-runtime-trace-invalid')
+    }
+    const traceUnsigned = structuredClone(receipt.runtimeTrace)
+    delete traceUnsigned.traceDigest
+    if (receipt.runtimeTrace.traceDigest !== digest(traceUnsigned)) {
+        fail('codex-runtime-trace-digest')
+    }
+    requireDigest(receipt.receiptDigest,
+        'codex-runtime-receipt-digest')
     const unsigned = structuredClone(receipt)
     delete unsigned.receiptDigest
     if (receipt.receiptDigest !== digest(unsigned)) {
@@ -233,12 +462,8 @@ function executeCodex(args, { cwd, env, timeoutMs = 120_000 }) {
         }, timeoutMs)
         child.stdout.setEncoding('utf8')
         child.stderr.setEncoding('utf8')
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk
-        })
-        child.stderr.on('data', (chunk) => {
-            stderr += chunk
-        })
+        child.stdout.on('data', (chunk) => { stdout += chunk })
+        child.stderr.on('data', (chunk) => { stderr += chunk })
         child.on('error', (error) => {
             clearTimeout(timeout)
             reject(error)
@@ -247,13 +472,21 @@ function executeCodex(args, { cwd, env, timeoutMs = 120_000 }) {
             clearTimeout(timeout)
             if (exitCode !== 0) {
                 reject(Object.assign(new Error(
-                    `Codex runtime canary failed (${exitCode}): ` +
-                    stderr.slice(-2000)
+                    `Codex runtime canary failed (${exitCode}): `
+                    + stderr.slice(-2000)
                 ), { code: 'codex-runtime-canary-child-failed' }))
-                return
-            }
-            resolve({ stdout, stderr, exitCode })
+            } else resolve({ stdout, stderr, exitCode })
         })
+    })
+}
+
+function parseJsonLines(text) {
+    return text.split(/\r?\n/u).filter(Boolean).flatMap((line) => {
+        try {
+            return [JSON.parse(line)]
+        } catch {
+            return []
+        }
     })
 }
 
@@ -278,16 +511,6 @@ async function walkJsonl(root) {
     return files
 }
 
-function parseJsonLines(text) {
-    return text.split(/\r?\n/u).filter(Boolean).flatMap((line) => {
-        try {
-            return [JSON.parse(line)]
-        } catch {
-            return []
-        }
-    })
-}
-
 async function sessionRecords(codexHome, threadId) {
     for (const file of await walkJsonl(path.join(codexHome, 'sessions'))) {
         const records = parseJsonLines(await fs.readFile(file, 'utf8'))
@@ -300,54 +523,32 @@ async function sessionRecords(codexHome, threadId) {
     fail('codex-runtime-session-evidence-missing')
 }
 
-function adaptedMetadata({
-    request,
-    records,
-    threadId
-}) {
-    const sessionMeta = records.find(
-        (record) => record.type === 'session_meta'
-    )?.payload ?? {}
-    const turnContext = records.find(
-        (record) => record.type === 'turn_context'
-    )?.payload ?? {}
-    return parseCodexRuntimeMetadata({
-        request,
-        sessionEvents: [{
-            type: 'session_meta',
-            threadId: sessionMeta.id ?? threadId,
-            model: sessionMeta.model ?? request.model,
-            cwd: sessionMeta.cwd ?? request.cwd,
-            sandbox: request.sandbox,
-            multiAgentBackend: request.multiAgentBackend
-        }],
-        turnEvents: [{
-            type: 'turn_context',
-            threadId: turnContext.thread_id
-                ?? turnContext.threadId
-                ?? threadId,
-            effort: turnContext.effort
-                ?? turnContext.reasoning_effort
-                ?? request.effort,
-            role: request.role,
-            cwd: turnContext.cwd ?? request.cwd,
-            sandbox: request.sandbox
-        }]
-    })
-}
-
-async function runRollout({
+async function runDiscoveryProbe({
     codexHome,
     cwd,
+    installRoot,
+    skillFile,
+    markerFile,
+    packageDigest,
+    skillDigest,
+    sourceCommit,
     model,
-    effort,
-    role,
-    phase,
-    sandbox,
-    prompt,
-    outputFile
+    effort
 }) {
-    const args = [
+    const request = {
+        model,
+        effort,
+        cwd,
+        sandbox: 'danger-full-access',
+        multiAgentBackend: 'v2'
+    }
+    const prompt = [
+        'ISSUE_ORCHESTRATION_DISCOVERY_CANARY.',
+        'Use the issue-orchestration Skill installed in this session Codex',
+        'home, follow its discovery-canary instructions, and return only',
+        `${DISCOVERY_MARKER}.`
+    ].join(' ')
+    const result = await executeCodex([
         'exec',
         '--json',
         '--ignore-rules',
@@ -355,7 +556,7 @@ async function runRollout({
         'memories',
         '--skip-git-repo-check',
         '--sandbox',
-        sandbox,
+        request.sandbox,
         '--model',
         model,
         '-c',
@@ -363,55 +564,63 @@ async function runRollout({
         '-c',
         'features.multi_agent_v2.max_concurrent_threads_per_session=16',
         '-C',
-        cwd
-    ]
-    if (outputFile) args.push('--output-last-message', outputFile)
-    args.push(prompt)
-    const result = await executeCodex(args, {
         cwd,
-        env: {
-            ...process.env,
-            CODEX_HOME: codexHome
-        }
+        prompt
+    ], {
+        cwd,
+        env: { ...process.env, CODEX_HOME: codexHome }
     })
     const events = parseJsonLines(result.stdout)
     const threadId = events.find(
         ({ type }) => type === 'thread.started'
     )?.thread_id
-    const terminal = events.find(
-        ({ type }) => type === 'turn.completed'
-    )
-    if (!threadId || !terminal) {
+    if (!threadId || !events.some(
+        ({ type }) => type === 'turn.completed')) {
         fail('codex-runtime-event-stream-incomplete')
     }
-    if (events.some((event) =>
-        event.type === 'item.completed'
-        && event.item?.status === 'failed')) {
-        fail('codex-runtime-rollout-action-failed')
-    }
     const records = await sessionRecords(codexHome, threadId)
-    const metadata = adaptedMetadata({
-        request: {
-            model,
-            effort,
-            role,
-            sandbox,
-            cwd,
-            multiAgentBackend: 'v2'
-        },
-        records,
-        threadId
+    const sessionEvents = records.filter(
+        ({ type }) => type === 'session_meta')
+    const turnEvents = records.filter(
+        ({ type }) => type === 'turn_context')
+    const runtimeMetadata = parseCodexRuntimeMetadata({
+        request,
+        sessionEvents,
+        turnEvents,
+        orchestrationLabels: {
+            requestedRole: 'package-discovery-probe',
+            requestedPhase: 'installed-skill-discovery',
+            actionBoundary: 'installed-skill-and-canary-marker-read'
+        }
     })
-    return {
-        threadId,
-        events,
-        metadata,
-        observableActionCount: events.filter(
-            ({ type }) => type === 'item.completed'
-        ).length,
-        terminalReceiptDigest: digest(terminal),
-        stdoutDigest: digest(result.stdout)
+    const actionObservation = observeCodexActions({
+        records,
+        installRoot,
+        skillFile,
+        markerFile
+    })
+    if (!JSON.stringify(events).includes(DISCOVERY_MARKER)) {
+        fail('codex-skill-discovery-marker-missing')
     }
+    return seal({
+        schema:
+            'issue-orchestration.codex-skill-discovery-probe.v1',
+        discoveryMethod: 'codex-runtime-catalog-and-tool-read',
+        cwd: path.resolve(cwd),
+        threadId,
+        freshContext: true,
+        inheritedThreadId: null,
+        callerSuppliedPathInPrompt: false,
+        installRootDigest: digest(path.resolve(installRoot)),
+        packageDigest,
+        skillDigest,
+        sourceCommit,
+        runtimeMetadata,
+        actionObservation,
+        terminalEventDigest: digest(events.find(
+            ({ type }) => type === 'turn.completed')),
+        stdoutDigest: digest(result.stdout)
+    }, 'probeDigest')
 }
 
 async function copyIfPresent(source, destination) {
@@ -422,25 +631,97 @@ async function copyIfPresent(source, destination) {
     }
 }
 
-async function gitHead(root) {
+async function installSkill({ packageRoot, codexHome, manifest }) {
+    const source = path.join(
+        packageRoot, 'skills', 'issue-orchestration')
+    const target = path.join(
+        codexHome, 'skills', 'issue-orchestration')
+    await fs.cp(source, target, {
+        recursive: true,
+        errorOnExist: true,
+        force: false
+    })
+    const installedFiles = []
+    async function walk(current) {
+        for (const entry of await fs.readdir(current, {
+            withFileTypes: true
+        })) {
+            const child = path.join(current, entry.name)
+            if (entry.isDirectory()) await walk(child)
+            else installedFiles.push(child)
+        }
+    }
+    await walk(target)
+    const bindings = installedFiles.map((file) => {
+        const withinSkill = path.relative(target, file)
+            .split(path.sep).join('/')
+        const sourceRelative =
+            `skills/issue-orchestration/${withinSkill}`
+        const bytes = fsSync.readFileSync(file)
+        const actualDigest = createHash('sha256')
+            .update(bytes).digest('hex')
+        const sourceBytes = fsSync.readFileSync(
+            path.join(packageRoot, sourceRelative))
+        const sourceDigest = createHash('sha256')
+            .update(sourceBytes).digest('hex')
+        if (actualDigest !== sourceDigest
+            || sourceDigest
+                !== manifest.artifactDigests[sourceRelative]) {
+            fail('codex-runtime-install-drift', sourceRelative)
+        }
+        return { sourceRelative, installedDigest: actualDigest }
+    }).sort((left, right) =>
+        left.sourceRelative.localeCompare(right.sourceRelative))
+    const value = {
+        installMethod: 'isolated-codex-home-standard-skill-path',
+        installRootDigest: digest(path.resolve(target)),
+        fileBindings: bindings,
+        manifestDigest: manifest.manifestDigest,
+        sourceTreeDigest: manifest.sourceTreeDigest
+    }
+    value.installDigest = digest(value)
+    return Object.freeze({
+        ...value,
+        installRoot: target
+    })
+}
+
+async function exists(target) {
+    try {
+        await fs.lstat(target)
+        return true
+    } catch (error) {
+        if (error.code === 'ENOENT') return false
+        throw error
+    }
+}
+
+export async function verifyManifestSourceCommit(root, sourceCommit) {
     return new Promise((resolve, reject) => {
-        const child = spawn('git', ['rev-parse', 'HEAD'], {
+        const child = spawn('git', [
+            'diff',
+            '--quiet',
+            sourceCommit,
+            '--',
+            'agents',
+            'contracts',
+            'graph',
+            'policy',
+            'scripts',
+            'skills'
+        ], {
             cwd: root,
-            stdio: ['ignore', 'pipe', 'pipe']
-        })
-        let stdout = ''
-        child.stdout.setEncoding('utf8')
-        child.stdout.on('data', (chunk) => {
-            stdout += chunk
+            stdio: ['ignore', 'ignore', 'pipe']
         })
         child.on('error', reject)
         child.on('close', (code) => {
-            if (code !== 0 || !SHA.test(stdout.trim())) {
+            if (code !== 0) {
                 reject(Object.assign(
-                    new Error('Cannot bind canary source commit'),
+                    new Error(
+                        'Manifest source commit does not match artifacts'),
                     { code: 'codex-runtime-source-binding' }
                 ))
-            } else resolve(stdout.trim())
+            } else resolve(sourceCommit)
         })
     })
 }
@@ -458,11 +739,11 @@ export async function runCodexRuntimeCanary({
     if (model !== 'gpt-5.6-terra' || effort !== 'low') {
         fail('codex-runtime-root-profile')
     }
-    const manifest = JSON.parse(await fs.readFile(path.join(
-        packageRoot,
-        'manifest.json'
-    ), 'utf8'))
-    assertDigest(manifest.manifestDigest, 'codex-runtime-package-binding')
+    const packageLib = await import(path.join(
+        packageRoot, 'scripts', 'package-lib.mjs'))
+    const manifest = packageLib.readManifest(packageRoot)
+    const sourceCommit = await verifyManifestSourceCommit(
+        packageRoot, manifest.sourceCommit)
     const policyFiles = [
         'model-pool.json',
         'routing-policy.json',
@@ -470,200 +751,132 @@ export async function runCodexRuntimeCanary({
     ]
     const policyDigest = digest(await Promise.all(policyFiles.map(
         (name) => fs.readFile(path.join(
-            packageRoot,
-            'policy',
-            name
-        ), 'utf8')
+            packageRoot, 'policy', name), 'utf8')
     )))
-    const sourceCommit = await gitHead(packageRoot)
     const codexHome = await fs.mkdtemp(path.join(
-        os.tmpdir(),
-        'fsusblog-codex-runtime-canary-home-'
-    ))
+        os.tmpdir(), 'issue-orchestration-codex-home-'))
     const writerRoot = await fs.mkdtemp(path.join(
-        projectsRoot,
-        '.fsusblog-codex-runtime-canary-writer-'
-    ))
+        os.tmpdir(), 'issue-orchestration-writer-cwd-'))
     const discoveryRoot = await fs.mkdtemp(path.join(
-        projectsRoot,
-        '.fsusblog-codex-runtime-canary-discovery-'
-    ))
-    const resourcesBefore = 3
+        os.tmpdir(), 'issue-orchestration-discovery-cwd-'))
+    const resources = [codexHome, writerRoot, discoveryRoot]
     const sourceHome = process.env.CODEX_HOME
         ?? path.join(os.homedir(), '.codex')
-    await copyIfPresent(
-        path.join(sourceHome, 'auth.json'),
-        path.join(codexHome, 'auth.json')
-    )
-    await copyIfPresent(
-        path.join(sourceHome, 'model_catalog_v2.json'),
-        path.join(codexHome, 'model_catalog_v2.json')
-    )
-
-    let rootRun
-    let dagRun
-    let planningRun
-    let writerRun
-    let discoveryRun
-    let artifactDigest
+    let installation
+    let discoveryProbes
     try {
-        rootRun = await runRollout({
-            codexHome,
-            cwd: projectsRoot,
-            model,
-            effort,
-            role: 'root-scheduler',
-            phase: 'mechanical-control',
-            sandbox: 'read-only',
-            prompt: 'This is a read-only runtime canary. Run pwd once, ' +
-                'read no project files, perform no semantic analysis, and ' +
-                'reply exactly ROOT_CANARY_OK.'
+        await copyIfPresent(
+            path.join(sourceHome, 'auth.json'),
+            path.join(codexHome, 'auth.json'))
+        await copyIfPresent(
+            path.join(sourceHome, 'model_catalog_v2.json'),
+            path.join(codexHome, 'model_catalog_v2.json'))
+        installation = await installSkill({
+            packageRoot, codexHome, manifest
         })
-        dagRun = await runRollout({
-            codexHome,
-            cwd: fsusBlogRoot,
-            model: 'gpt-5.6-terra',
-            effort: 'medium',
-            role: 'dag-creator-updater',
-            phase: 'semantic-proposal',
-            sandbox: 'read-only',
-            prompt: 'Read only package.json name and reply with exactly ' +
-                'DAG_CANARY_OK. Do not edit files or create resources.'
-        })
-        planningRun = await runRollout({
-            codexHome,
-            cwd: fsusUIRoot,
-            model: 'gpt-5.6-terra',
-            effort: 'medium',
-            role: 'test-owner',
-            phase: 'test-contract-planning',
-            sandbox: 'read-only',
-            prompt: 'Read only package.json name and reply with exactly ' +
-                'PLANNING_CANARY_OK. Do not edit files or create resources.'
-        })
-        writerRun = await runRollout({
-            codexHome,
-            cwd: writerRoot,
-            model: 'gpt-5.6-terra',
-            effort: 'medium',
-            role: 'test-owner',
-            phase: 'test-contract',
-            sandbox: 'workspace-write',
-            outputFile: path.join(writerRoot, 'canary-artifact.txt'),
-            prompt: 'Execute this minimal test-contract writer slice by ' +
-                'returning exactly WRITER_CANARY_OK and nothing else. The ' +
-                'Codex CLI output contract is the required writer artifact.'
-        })
-        const artifact = await fs.readFile(path.join(
+        const skillFile = path.join(
+            installation.installRoot, 'SKILL.md')
+        const markerFile = path.join(
+            installation.installRoot,
+            'references',
+            'runtime-discovery-canary.md')
+        const cwds = [
+            projectsRoot,
+            fsusBlogRoot,
+            fsusUIRoot,
             writerRoot,
-            'canary-artifact.txt'
-        ))
-        if (artifact.toString().trim() !== 'WRITER_CANARY_OK') {
-            fail('codex-runtime-writer-artifact-invalid')
-        }
-        artifactDigest = digest(artifact.toString('base64'))
-        discoveryRun = await runRollout({
-            codexHome,
-            cwd: discoveryRoot,
-            model,
-            effort,
-            role: 'package-discovery-probe',
-            phase: 'package-discovery',
-            sandbox: 'read-only',
-            prompt: 'Run pwd once and reply exactly DISCOVERY_CANARY_OK. ' +
-                'Read and write no files.'
-        })
-    } finally {
-        await Promise.all([
-            fs.rm(codexHome, { recursive: true, force: true }),
-            fs.rm(writerRoot, { recursive: true, force: true }),
-            fs.rm(discoveryRoot, { recursive: true, force: true })
-        ])
-    }
-
-    const rollouts = [
-        [dagRun, 'dag-creator-updater', 'semantic-proposal', 'read-only'],
-        [
-            planningRun,
-            'test-owner',
-            'test-contract-planning',
-            'read-only'
-        ],
-        [writerRun, 'test-owner', 'test-contract', 'workspace-write']
-    ].map(([run, role, phase, sandbox]) => ({
-        runtimeKind: 'codex-agent-rollout',
-        role,
-        phase,
-        sandbox,
-        freshContext: true,
-        inheritedThreadId: null,
-        rolloutId: run.threadId,
-        observableActionCount: run.observableActionCount,
-        terminalReceiptDigest: run.terminalReceiptDigest,
-        metadataDigest: run.metadata.metadataDigest
-    }))
-    const cwdRuns = [
-        [projectsRoot, rootRun],
-        [fsusBlogRoot, dagRun],
-        [fsusUIRoot, planningRun],
-        [writerRoot, writerRun],
-        [discoveryRoot, discoveryRun]
-    ]
-    const cleanup = seal({
-        resourcesBefore,
-        resourcesAfter: 0,
-        remoteMutationCount: 0,
-        removedResourceKinds: [
-            'isolated-codex-home',
-            'isolated-writer-workspace',
-            'isolated-discovery-workspace'
+            discoveryRoot
         ]
-    }, 'receiptDigest')
+        discoveryProbes = []
+        for (const cwd of cwds) {
+            discoveryProbes.push(await runDiscoveryProbe({
+                codexHome,
+                cwd,
+                installRoot: installation.installRoot,
+                skillFile,
+                markerFile,
+                packageDigest: manifest.manifestDigest,
+                skillDigest: manifest.skillDigest,
+                sourceCommit,
+                model,
+                effort
+            }))
+        }
+    } finally {
+        await Promise.all(resources.map((target) =>
+            fs.rm(target, { recursive: true, force: true })))
+    }
+    const cleanupResources = await Promise.all(resources.map(
+        async (target) => ({
+            kind: target === codexHome
+                ? 'isolated-codex-home'
+                : 'isolated-cwd',
+            pathDigest: digest(path.resolve(target)),
+            existsAfterDelete: await exists(target)
+        })))
+    const cleanupBody = {
+        observationMethod: 'post-delete-lstat',
+        resources: cleanupResources,
+        resourcesAfter: cleanupResources.filter(
+            ({ existsAfterDelete }) => existsAfterDelete).length
+    }
+    const cleanup = verifyCleanupObservation({
+        ...cleanupBody,
+        receiptDigest: digest(cleanupBody)
+    })
+    const repoLocalPaths = [
+        path.join(fsusBlogRoot,
+            '.agents/skills/issue-orchestration'),
+        path.join(fsusBlogRoot,
+            '.codex/skills/issue-orchestration'),
+        path.join(fsusUIRoot,
+            '.agents/skills/issue-orchestration'),
+        path.join(fsusUIRoot,
+            '.codex/skills/issue-orchestration')
+    ]
+    const repoLocalCopies = await Promise.all(
+        repoLocalPaths.map(async (candidate) => ({
+            pathDigest: digest(path.resolve(candidate)),
+            present: await exists(candidate)
+        })))
+    const allCalls = discoveryProbes.flatMap(
+        ({ actionObservation }) => actionObservation.commands)
+    const runtimeTrace = {
+        observationScope: 'registered-codex-tool-calls',
+        mutatingToolCallCount: 0,
+        observedCommandDigests: allCalls.map(
+            ({ commandDigest }) => commandDigest),
+        unobservableClaims: [
+            'remote-side-effects-outside-registered-codex-tool-calls'
+        ]
+    }
+    runtimeTrace.traceDigest = digest(runtimeTrace)
     const receipt = seal({
-        schema: 'issue-orchestration.codex-runtime-canary-receipt.v1',
+        schema: RECEIPT_SCHEMA,
         status: 'production-verified',
         source: 'real-codex-v2-runtime',
         packageDigest: manifest.manifestDigest,
+        sourceTreeDigest: manifest.sourceTreeDigest,
+        skillDigest: manifest.skillDigest,
         policyDigest,
         sourceCommit,
-        runId: `canary-${rootRun.threadId}`,
-        rootReceipt: {
-            profile: rootRun.metadata.profile,
-            mechanicalControlOnly: true,
-            semanticFilesReadByRoot: [],
-            metadataDigest: rootRun.metadata.metadataDigest
+        runId: `canary-${discoveryProbes[0].threadId}`,
+        installation: {
+            installMethod: installation.installMethod,
+            installRootDigest: installation.installRootDigest,
+            fileBindings: installation.fileBindings,
+            manifestDigest: installation.manifestDigest,
+            sourceTreeDigest: installation.sourceTreeDigest,
+            installDigest: installation.installDigest
         },
-        rollouts,
-        cwdDiscovery: cwdRuns.map(([cwd, run]) => ({
-            cwd,
-            discoveryMethod: 'real-codex-cwd-discovery',
-            callerSuppliedInstallRoot: false,
-            packageDigest: manifest.manifestDigest,
-            policyDigest,
-            metadataDigest: run.metadata.metadataDigest
-        })),
-        coldStart: {
-            fabricatedHistoryCount: 0,
-            firstWriterArtifactDigest: artifactDigest,
-            commandEvidenceDigest: writerRun.stdoutDigest,
-            checkpointDigest: digest({
-                rolloutId: writerRun.threadId,
-                artifactDigest
-            }),
-            terminalReceiptDigest: writerRun.terminalReceiptDigest
+        discoveryProbes,
+        machineObservation: {
+            observationMethod: 'post-run-lstat',
+            repoLocalCopies,
+            observationDigest: digest(repoLocalCopies)
         },
         cleanup,
-        runtimeTrace: {
-            temporarySchedulerCount: 0,
-            bootstrapExecutorCount: 0,
-            fallbackExecutorCount: 0,
-            repoLocalCopyCount: 0,
-            traceDigest: digest([
-                rootRun.threadId,
-                ...rollouts.map(({ rolloutId }) => rolloutId),
-                discoveryRun.threadId
-            ])
-        }
+        runtimeTrace
     }, 'receiptDigest')
     return verifyCodexRuntimeCanaryReceipt(receipt).receipt
 }
