@@ -665,14 +665,26 @@ function createWriterAuthority({
             repositoryFingerprint
         }))
     }
-    const ledger = [existingLedger?.header ?? {
-        schema: 'issue-orchestration.ledger.v2',
+    const nodeHeaderUnsigned = {
+        schema: 'issue-orchestration.node-ledger.v1',
         transitionSchema: 'issue-orchestration.transition.v2',
         runId,
+        nodeId: node,
+        memberId: node,
+        repository,
+        issueNumber: Number(String(issue).match(/(\d+)$/u)?.[1] ?? issue),
+        selectorReceiptDigest: writerTestDigest({ runId, node, kind: 'selector' }),
+        remoteMemberDigest: writerTestDigest({ runId, node, kind: 'remote-member' }),
+        nodeEpoch: 1,
+        stateRootCanonical: path.dirname(path.dirname(location.runRoot)),
         baseSha,
         issueSnapshotFingerprint,
         repositoryFingerprint,
         createdAt: new Date(firstCreatedAt - 1_000).toISOString()
+    }
+    const ledger = [existingLedger?.header ?? {
+        ...nodeHeaderUnsigned,
+        headerDigest: writerTestDigest(nodeHeaderUnsigned)
     }, ...events]
     fs.mkdirSync(path.dirname(location.sourceLedgerPath), {
         mode: 0o700,

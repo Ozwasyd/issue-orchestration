@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.node-ledger-header.schema.json",
+  "title": "Issue orchestration node ledger header",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "transitionSchema", "runId", "nodeId", "memberId",
+    "repository", "issueNumber", "selectorReceiptDigest",
+    "remoteMemberDigest", "nodeEpoch", "stateRootCanonical", "baseSha",
+    "issueSnapshotFingerprint", "repositoryFingerprint", "createdAt",
+    "headerDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.node-ledger.v1"},
+    "transitionSchema": {"const": "issue-orchestration.transition.v2"},
+    "runId": {"type": "string", "minLength": 1},
+    "nodeId": {"type": "string", "minLength": 1},
+    "memberId": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "issueNumber": {"type": "integer", "minimum": 1},
+    "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+    "remoteMemberDigest": {"$ref": "#/$defs/digest"},
+    "nodeEpoch": {"type": "integer", "minimum": 1},
+    "stateRootCanonical": {"type": "string", "minLength": 1},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "issueSnapshotFingerprint": {"$ref": "#/$defs/digest"},
+    "repositoryFingerprint": {"$ref": "#/$defs/digest"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "headerDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

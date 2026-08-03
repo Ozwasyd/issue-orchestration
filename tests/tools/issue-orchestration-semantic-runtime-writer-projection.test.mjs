@@ -489,11 +489,11 @@ test('active writer events reject the legacy immutable-ledger wrapper', (current
         schema: 'issue-orchestration.immutable-runtime-ledger.v1',
         events: active.events
     }), {
-        code: 'runtime-projector-active-writer-ledger-v2-required'
+        code: 'runtime-projector-node-ledger-v1-required'
     })
 })
 
-test('canonical ledger v2 projects the exact active writer attempt', (current) => {
+test('canonical node ledger v1 projects the exact active writer attempt', (current) => {
     const fixture = createWriterStageGitFixture({
         filePaths: [
             'src/projection-v2-active-1.mjs',

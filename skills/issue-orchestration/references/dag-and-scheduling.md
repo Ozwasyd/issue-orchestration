@@ -28,6 +28,13 @@ node .agents/skills/issue-orchestration/scripts/validate-state-root.mjs \
 
 根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v3` semantic-proposal route 的 fresh-context、observe-only DAG updater 提议，经 mutation postcondition 和机器门禁校验后纳入 v2 DAG。
 
+
+### 两级运行态账本
+
+每个 run 使用 `<state-root>/runs/<run-key>/control-ledger.jsonl` 保存唯一 run-level authority，并使用 `nodes/<node-key>/event-ledger.jsonl` 保存每个节点自己的 stage history。Control ledger 不接受 checkpoint、writer failure、candidate 或 verification event；node ledger 不接受 scope、batch、acceptance-group delivery 或 run terminal effect。每个 node ledger 独立绑定 repository/base/epoch/selector/remote identity，并拥有自己的 sequence、hash chain、`projection.json` 与 `writer-attempts/`。
+
+`node-index.json` 只能登记 replay-verifiable 的 ledger head 和 node projection digest。Root 通过 `multi-node-state.mjs` replay control ledger 和每个 indexed node ledger，生成 `aggregate-runtime-projection.json`；不得把未验证 JSON summary 当作运行态。单节点损坏只 quarantine 该节点，除非 dependency 或 acceptance-group invariant 要求传播 blocker。Push、issue close、delivery completion 与 cleanup finalization 仍由 control ledger exactly-once 序列化。
+
 ## Member/node 启动门禁
 
 读取适用指令链并确认两仓路径、远端、默认分支、HEAD 和 dirty state 后，按以下状态机启动：

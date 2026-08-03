@@ -1918,16 +1918,23 @@ export function writerStageAuthorityLocation({
     nonEmptyString(stageAttemptId, 'writer-authority.stageAttemptId')
     const runtime = activeWriterAuthorityRuntime()
     const runKey = digest({ runId })
+    const nodeKey = digest({ runId, node })
     const attemptKey = digest({ runId, node, stageAttemptId })
     const runRoot = path.join(runtime.root, 'runs', runKey)
+    const nodeRoot = path.join(runRoot, 'nodes', nodeKey)
     const attemptRoot = path.join(
-        runRoot,
+        nodeRoot,
         'writer-attempts',
         attemptKey
     )
     return Object.freeze({
         runtimeStateRootDigest: runtime.validationDigest,
-        sourceLedgerPath: path.join(runRoot, 'event-ledger.jsonl'),
+        runKey,
+        nodeKey,
+        runRoot,
+        nodeRoot,
+        sourceLedgerPath: path.join(nodeRoot, 'event-ledger.jsonl'),
+        sourceProjectionPath: path.join(nodeRoot, 'projection.json'),
         frozenStageContractPath:
             path.join(attemptRoot, 'frozen-stage-contract.json'),
         resourceRegistryPath:
@@ -2479,16 +2486,26 @@ function validateFrozenStageSourceLedger(
     const location = writerStageAuthorityLocation(input)
     const sourceObservation = readActiveSourceLedger(location)
     const { ledger } = sourceObservation
-    if (ledger?.header?.schema !== 'issue-orchestration.ledger.v2' ||
-        ledger.header.transitionSchema !==
-            'issue-orchestration.transition.v2' ||
-        ledger.header.runId !== input.runId ||
-        ledger.header.baseSha !== input.baseSha ||
+    const header = ledger?.header
+    const unsignedHeader = header && { ...header }
+    if (unsignedHeader) delete unsignedHeader.headerDigest
+    const issueNumber = Number(String(input.issue).match(/(\d+)$/u)?.[1])
+    if (header?.schema !== 'issue-orchestration.node-ledger.v1' ||
+        header.transitionSchema !== 'issue-orchestration.transition.v2' ||
+        header.runId !== input.runId ||
+        header.nodeId !== input.node ||
+        header.memberId !== input.node ||
+        header.repository !== input.repository ||
+        header.issueNumber !== issueNumber ||
+        header.baseSha !== input.baseSha ||
+        header.headerDigest !== digest(unsignedHeader) ||
+        path.resolve(header.stateRootCanonical ?? '') !==
+            path.resolve(path.dirname(path.dirname(location.runRoot))) ||
         !Array.isArray(ledger.events) ||
         ledger.events.length === 0) {
         fail(
             'frozen-stage-source-ledger',
-            'frozen stage source requires the complete active ledger'
+            'frozen stage source requires the complete canonical node ledger'
         )
     }
     let previousDigest = LEDGER_GENESIS_DIGEST

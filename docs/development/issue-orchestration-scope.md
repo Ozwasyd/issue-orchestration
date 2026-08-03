@@ -110,7 +110,7 @@ Breaker 使用 failure receipt 的 semantic identity，绑定 repository/issue/n
 
 ## Semantic graph 与 runtime projection 分层
 
-语义图和运行态投影是两份独立、可分别校验和持久化的事实。`issue-orchestration.semantic-graph.v1` 只承载节点的 semantic facts（依赖、owner、conflict key、risk/UI class、acceptance group 和 contract digest），并以 `semanticGraphDigest` 封存；`issue-orchestration.runtime-projection.v1` 只承载 immutable runtime ledger 与 runtime facts 的确定性 replay 结果，并以 `runtimeProjectionDigest` 封存。两者必须分别通过 validator，写入 state root 的 `semantic-graph.json` 与 `runtime-projection.json`；不得把运行态字段写回 semantic graph，也不得把 `graphPatch`、`semanticGraph` 或其它语义 payload 嵌入 runtime projection。旧的合并对象或 compatibility fallback 一律拒绝。
+语义图和运行态投影是两份独立、可分别校验和持久化的事实。`issue-orchestration.semantic-graph.v2` 只承载节点的 semantic facts（依赖、owner、conflict key、risk/UI class、acceptance group 和 contract digest），并以 `semanticGraphDigest` 封存；`issue-orchestration.runtime-projection.v1` 只承载 immutable runtime ledger 与 runtime facts 的确定性 replay 结果，并以 `runtimeProjectionDigest` 封存。两者必须分别通过 validator，写入 state root 的 `semantic-graph.json` 与 `runtime-projection.json`；不得把运行态字段写回 semantic graph，也不得把 `graphPatch`、`semanticGraph` 或其它语义 payload 嵌入 runtime projection。旧的合并对象或 compatibility fallback 一律拒绝。
 
 三层 digest 的 ownership 不可互换：
 
@@ -199,129 +199,33 @@ Documentation 仅在 behavior-green，且 UI work 已 ux-accepted 后启动；�
 
 dispatch receipt `issue-orchestration.dispatch-receipt.v2` 只有在 request digest、runtime metadata digest、thread/rollout identity、prompt/DAG/frontier/base/candidate/epoch、routing policy/input、execution class/mutation contract、runtime execution binding、effective model/effort/permission/fork/cwd/profile、Skills/capability 和 group/member/lease 全部一致时才是 `verified`。`implementation.started` 必须引用 verified v2 dispatch receipt；`implementation.candidate-green` 必须引用同一 request/base/candidate/attempt/epoch 的 `issue-orchestration.implementer-self-test-receipt.v2`，其 visible matrix、命令结果、failure history/fix cycle、frozen test tree、working-tree 和 modified paths 均由 deterministic machine verifier 封存。`independent-verification.passed` 只能引用 `issue-orchestration.behavior-receipt.v3`，且必须由 fresh、observe-only 的 `test-owner` 产生并绑定 passed mutation postcondition；不得用 self-test receipt、implementer 自述或旧 verifier 代替。旧 dispatch/self-test/behavior receipts 仅可读取为 historical evidence，不能授权 current transition。
 
-## Append-only event ledger 与 projection
+## Run control ledger、per-node ledger 与 aggregate projection
 
-Issue execution history 的唯一事实源是仓库外状态根中的追加式事件账本；`dag.json` 只保存由账本重放得到的 projection，不再是可独立编辑的状态事实。账本不进入任何目标仓库、共同工作区或 worktree。
-
-### Versioned schemas 与 hash chain
-
-账本首行使用 `issue-orchestration.ledger.v1`，至少绑定 `runId`、规范化 `stateRootCanonical`、`baseSha`、`issueSnapshotFingerprint`、`repositoryFingerprint` 和 `createdAt`；其后每行是 `issue-orchestration.event.v1`。事件必须带有以下机器字段：
+运行状态采用两级持久化模型，普通 stage 事件不再写入 run-wide ledger：
 
 ```text
-eventId / sequence / runId / nodeId / eventType / fromState / toState
-attemptId / actorRole / sourceDagDigest / issueSnapshotFingerprint
-repositoryFingerprint / baseSha / payloadDigest / evidenceRefs[]
-createdAt / previousEventDigest / eventDigest
+<state-root>/runs/<run-key>/
+  control-ledger.jsonl
+  control-projection.json
+  node-index.json
+  aggregate-runtime-projection.json
+  nodes/<node-key>/
+    event-ledger.jsonl
+    projection.json
+    writer-attempts/<attempt-key>/...
 ```
 
-`sequence` 从 1 连续递增，第一事件的 `previousEventDigest` 是 64 个零组成的 genesis digest；之后必须严格等于上一事件的 `eventDigest`。对象在计算 SHA-256 前按 key 递归 canonicalize，`payloadDigest` 覆盖 payload，`eventDigest` 覆盖去掉自身 digest 后的完整事件。缺字段、重复 `eventId`、run/node/base 身份漂移、序列缺口、重排、删除、payload 或 hash-chain 篡改均 fail closed。
+`issue-orchestration.control-ledger.v1` 只允许 scope/remote refresh、node registration/removal/tombstone、dependency/acceptance-group 更新、slot/batch 决策、delivery freeze/effect、cleanup finalization 和 run terminalization。Implementation checkpoint、writer failure、slice terminal、candidate、behavior 或其它 node-local event 写入 control ledger 时必须在任何字节追加前失败。
 
-历史事件不可编辑或覆盖。纠错必须追加 `ledger.correction-recorded`，并引用既有 `targetEventId` 与其原始 `targetEventDigest`；目标缺失或 digest 不匹配时拒绝。自然语言说明不能替代状态、身份、sequence 或 evidence 字段。
+每个普通节点拥有独立的 `issue-orchestration.node-ledger.v1`。Header 不可变地绑定 run/node/member、repository、issue number、selector receipt、remote member、node epoch、external state root、base SHA 和 remote/repository fingerprints，并由 `headerDigest` 封存。节点事件使用 `issue-orchestration.event.v2`；event 的 node identity 必须等于 header，跨节点 append 必须在写入前拒绝。旧 `issue-orchestration.ledger.v2` run-wide writer ledger 仅返回一次性迁移错误，不存在兼容写入模式。
 
-### Deterministic projection 与 recovery
+每个 node ledger 有自己的 sequence、hash-chain head、projection 和 writer-attempt directory。两个节点可并发 append，且不得共享序列或 authority path。节点 projection 使用 `issue-orchestration.node-projection.v1`，只由该节点 ledger replay 产生。
 
-`issue-orchestration.projection.v1` 从空 projection 和有序 ledger replay 确定性生成，至少包含每个 node 的 `status`、`activeAttemptId`、`reworkCount`、`terminal`、`evidenceRefs`、`timestamps`，以及 `lastSequence`、`lastEventDigest` 和 `projectionDigest`。相同 ledger 必须得到相同 projection digest；DAG gate 比较 `runId`、`projectionDigest` 及上述 node 字段，手工修改 `dag.json` 而不追加合法事件一律拒绝。
+`node-index.json` 使用 `issue-orchestration.node-index.v1`，把每个 active node 绑定到规范 ledger/projection 相对路径、ledger head digest、projection digest 和 verified/quarantined 状态。`issue-orchestration.aggregate-runtime-projection.v1` 只能消费已重放验证的 control projection 与 index 中逐个验证的 node projection，确定性暴露全部节点 lifecycle、active attempt、dependency readiness、acceptance group、candidate/delivery 和 slot 状态。它不能信任调用方提供的 projection JSON 摘要。
 
-恢复只信任已提交的 ledger：
+恢复时先 replay control ledger，再按 node index replay 每个 node ledger。单一 node ledger 损坏只 quarantine 该节点；无依赖的其它 ready node 仍可派发，依赖该节点的后继必须带 typed evidence blocked。Push、issue close、delivery completion 和 cleanup finalization 等 exactly-once run effect 只通过 control ledger 序列化；相同 effect key 的重放或重试不得重复执行远端副作用。
 
-| 现场 | 恢复动作 | 派发边界 |
-| --- | --- | --- |
-| event 已提交、projection 缺失或落后 | 从 ledger forward replay 并原子写回 projection | replay 成功前不得派发 |
-| projection 超前 ledger | 丢弃 projection，按 ledger 重建 | 不执行 projection 中未提交动作 |
-| projection digest 已相同 | 保持 `projection-already-current` | 不重复 attempt、delivery、commit 或 cleanup side effect |
-| JSONL tail 截断或损坏 | 报告最后有效 sequence，返回 `ledger-tail-corrupt` | `dispatchEnabled=false`，不得跳过坏事件 |
-
-event append 与 projection 写回使用外部状态根内的受控写入和 fsync/atomic rename；delivery、commit、cleanup 的 side-effect key 重复时拒绝，而不是再次执行。
-
-### Stage events、same-attempt loop 与 receipts
-
-唯一正常事件链为：
-
-```text
-discovered
-  → test-contracting → test-contract-frozen
-  → implementing-self-testing → candidate-green
-  → independent-verifying → behavior-green
-  → documenting → documentation-green
-  → delivery-ready → delivering → cleaning → closed
-```
-
-UI/UX issue 在 `behavior-green` 与 `documenting` 之间必须追加：
-
-```text
-behavior-green → ux-acceptance → ux-accepted
-```
-
-事件类型由唯一 machine transition table 约束。当前 authority 使用 `test-contract.*`、`implementation.*`、`independent-verification.*`、`ux-acceptance.*`、`documentation.*`、`delivery.*`、`cleanup.*`、`issue.closed/reopened` 及 terminal/attempt/correction 事件；旧 `review.*`、通用 `verification.*`、direct `node.status-updated` 不得作为兼容权威。
-
-`implementation.started` 建立一个 active attempt 和实现 owner，但必须同时绑定 `issue-orchestration.dispatch-receipt.v2` 且 `verificationStatus=verified`。实现者可以在 `implementing-self-testing` 内反复修改实现、运行冻结合同允许的可见矩阵并记录 attempt-local red/green cycles；这些内部循环不创建新的全局 attempt、不递增 `reworkCount`，也不触发 semantic DAG update。
-
-`implementation.candidate-green` 必须绑定同一 active attempt、request/base/candidate/epoch/test-contract identity 和 `issue-orchestration.implementer-self-test-receipt.v2`。self-test receipt 必须由 deterministic verifier 根据完整 visible test matrix、每个命令的 exit/result digest、lint/typecheck/build policy、非空 failure history/fix cycles、`firstFailureRefs`、implementation diff digest、working-tree digest 和 before/after 相同的 frozen test-tree digest 生成；所有命令通过、`remainingFailures` 为空、冻结 tests/fixtures/snapshots/thresholds 未改动时才可为 `verified`。旧 `issue-orchestration.verified-candidate-receipt.v1`、`issue-orchestration.implementer-self-test-receipt.v1`、focused subset、skipped 命令、snapshot/断言放宽或 root/implementer 自述均不能满足 candidate-green。
-
-`candidate-green` 不能直接成为 `behavior-green`。必须先由独立 `test-owner` 启动 `independent-verification`，重新运行关键检查并签发 fresh receipt，且 receipt 与事件都绑定同一 candidate SHA；实现者本人、root narration 或旧 verifier 不能宣告 pass。独立 verifier 拒绝时，`independent-verification.rejected` 必须绑定原 active attempt 或明确的 continuation attempt，只递增一次全局 `reworkCount`，并保留最早 `firstFailure` evidence；后续自测、文档或 cleanup 成功不得覆盖它。
-
-文档 writer 只能在非 UI issue 的 `behavior-green` 或 UI issue 的 `ux-accepted` 后启动；delivery 只能在 `documentation-green` 后启动，关闭还要求 delivery 与 machine cleanup 都已完成。`issue.reopened` 会清除 delivery authority/completion，并标记 semantic DAG/frontier 重新计算。
-
-### Authority 与 fail-closed 边界
-
-- root scheduler（`root-scheduler`）是唯一可调用 ledger append 的 writer；所有 implementer、test owner、UX verifier、UI system adjudicator、documentation writer、machine resource verifier、independent verifier、subagent 都只能返回 receipt/evidence，尝试写 ledger 必须返回 `ledger-writer-role`。
-- DAG creator/updater 只产生 proposal；只有 root 在 remote live snapshot digest 确实变化、proposal 身份匹配且 actor 绑定 canonical `dag-creator-updater:semantic-proposal` route 时，才能追加 `dag.proposal-accepted`。本地 stage/rework event 不触发 semantic DAG update。
-- `stateRoot` 必须与 authoring source、caller 提供的全部目标仓库、启动工作区和所有 worktree 完全分离；保护根重叠、路径逃逸、祖先 symlink 或 ledger/projection 位于受保护目录时拒绝。ledger path 不能通过 symlink 绕过该边界。
-- terminal 进入必须有合法 category（`externally_blocked`、`resource_failed` 或 `contract_disputed`）和 direct evidence；recovery fingerprint 未变化时不得恢复或重派。cleanup failure 不能释放 lease/slot，也不能覆盖 first failure。
-- group session 与每个 member 独立 replay；group green 不能替代 member 的 contract、independent verification、commit 或 delivery。非法成员顺序、重复 active member、一个 lease 绑定多个 member 均 fail closed。
-
-这些拒绝是合同失败，不应通过重试未变化的 ledger、projection、candidate SHA、remote snapshot 或权限请求绕过。
-
-## Resource registry、retention 与 cleanup
-
-每个运行使用 `issue-orchestration.resource-registry.v1` 登记唯一 resource identity、owner class、run/attempt/member、worktree、slot、writer/read lease、service descendants、ports 和 state。Implementer 内部 red/green cycle 保留同一 attempt、issue worktree、slot 和 writer；普通测试失败只追加 self-test cycle 与不可覆盖的 first-failure evidence，不创建全局 attempt、重建 worktree 或启动 cleanup。
-
-`candidate-green` 原子撤销 implementer writer，并只为同一 candidate 授予 independent verifier observe-only authority。verification rejection 撤销 verifier authority，并在同一 worktree/attempt 上恢复唯一 writer；双 writer、新 worktree 或丢失 retained service descendant/port owner 都 fail closed。
-
-Cleanup 只在合法 disposition 后启动。Worktree 与 child branch 必须经过 `active → frozen → inventoried → candidate-disposition-proven → actors-and-processes-stopped → worktree-removed → local-ref-retired|quarantined → lease-and-slot-released → post-cleanup-verified` 的完整 Git-resource 状态链。Inventory 绑定 canonical path/filesystem identity、Git common-dir/registry entry、branch/HEAD/index/tree、staged/dirty/untracked evidence、candidate/base/epoch、actor/process cwd/open-resource 与 lease。Merge ancestry 使用安全 `branch -d`；非 ancestry landing 只有 exact patch mapping 后才能 `branch -D`。未映射或 dirty 内容先保存 namespaced quarantine ref、patch、tree/index 和 untracked-content manifests，再允许 Git-aware force removal；quarantine 不能冒充 delivery。
-
-旧的 `cleanupAttemptResources` 不再直接运行 worktree/branch 删除，只能复核 `git-resource-cleanup-verification.v1` 的实时 path/ref/process/default-branch/quarantine/lease 后状态。没有该回执时，通用 cleanup 在任何 lock/lease/temp side effect 前失败。最终 `issue-orchestration.resource-cleanup-receipt.v1` 仍必须由 machine resource verifier 签发，状态为 `resources-clean`，包含空的 machine-observed `postInventory` 和自洽 digest；agent 自述、缺 inventory 或仍有 owned resource 都不能释放 slot/lease 或授权 delivery。Cleanup 执行与 quiescence 不使用 LLM profile；任何模型都不能签发绿色 receipt。
-
-Member cleanup 只删除 member-owned resources；group-owned worktree/service 必须保持 `retained`，直到所有 member cleanup 后的 group cleanup。Crash recovery 对比 baseline/observed registry：unknown/orphan owner 使恢复失败，externally-owned resource 必须保留且不得删除；外部资源缺失同样是 cleanup failure。
-
-## DAG update authority
-
-初始 DAG 只能由通过 startup attestation 的 `terra-low` root scheduler 显式启动一次 `stage-model-pool.v3` semantic-proposal route 的 `dag-creator-updater`，action 为 `semantic-create`。后续 root scheduler 先对 live remote snapshot 重算本节的三层 digest 和 expected-mutation registry；只有 `semanticGraphInputDigest` 出现未预期变化时，才显式启动同样 fresh-context、observe-only、非 resident 的 `dag-creator-updater`，action 为 `semantic-update`，且其唯一允许的普通 proposal 是一次最小 `semantic-patch`。scope、runtime projection、expected delivery mutation 或本地 execution ledger 变化都保持 `projection-only`，不得启动 updater；三层 digest 均未变化时 semantic action 为 `none`。profile 只能由 v3 routing policy 与冻结分类证据选择，Sol/max 只保留给合法 frontier exception。即使 execution ledger 有失败或返工事件也不得更新 semantic DAG。
-
-启动请求必须声明 `explicit=true`，requester role 为 `root-scheduler`；任何非 root requester、与 canonical route decision 不一致的 policy/profile/runtime metadata、错误 execution class/mutation contract、继承 context、resident agent 或错误 agent role 都以稳定 denial 返回。更新 agent 生成的 proposal 必须由 root scheduler 原样接受，且 proposal、selector receipt、remote snapshot、runtime execution binding、mutation postcondition 和 resolved issue set 的 digest/内容逐项相等；root 不得在接受时改写 issue set 或 selector。
-
-Subagent 的本地发现只作为 `possible-remote-contract-impact` execution-ledger event 返回并附直接 evidence。要纳入 scope，root 必须先让事实成为远端 issue 或现有 issue 的正文/评论变化；下一轮真实 remote snapshot 变化后才可更新 DAG。无关优化建议不创建 issue，也不扩大 scope。
-
-## Shared package、安装与发现
-
-调度 Skill、运行脚本、策略、图 schema、writer plan/slice/prompt/checkpoint/failure 与 execution-routing schemas、模板和 agent 定义只有一个可编辑 authoring source：本仓库。`manifest.json` 是该 package 的身份和完整性边界，绑定 `sourceCommit`、`sourceTreeDigest`、每个 artifact digest、`manifestDigest`、stage/model permission、execution-routing policy、reviewed routing assumptions 与 live evidence contracts、semantic graph/runtime projection、writer compiler/progress API 及永久 writer/routing schemas、projector和所需 capabilities。manifest 不能把自己列入 `artifactDigests`；任一绑定或 canonical SHA-256 不匹配都必须拒绝。
-
-Package 对外只发布七个角色：`code-implementer`、`dag-creator-updater`、`documentation-writer`、`test-owner`、`ui-system-adjudicator`、`ui-ux-implementer` 和 `ux-acceptance-verifier`。Control-plane Advisor 是 proposal-only service actor，外部 takeover supervisor 是 machine component，二者都不是第八个产品角色。Landing conflict resolution 只能复用 code/UI writer，不发布 `landing-owner`。角色与 profile 由单一 `stage-model-pool.v3` 和 deterministic routing compiler 选择：normal root 固定 `terra-low`，只有新 parent 的 recovery-takeover 可使用 `terra-medium`；documentation 只使用 `terra-medium` 或 `terra-high`，cleanup 的 green authority 是 machine resource verifier。旧的 `.agents/skills/issue-orchestration`、`.codex/agents` issue aliases、review/cleanup-verifier aliases、临时 bootstrap dispatcher 和 fixed-Sol/node-local profile authority 都不是可发现的兼容来源；产品 API、design、documentation 和 runtime authority 仍由各仓库 current 文档/AGENTS 在运行时提供，不能复制进 package。
-
-安装目标必须是 caller-supplied、位于 authoring source、caller 提供的保护根和全部 worktree 之外的 external install root；runtime state root 也必须独立于 authoring source 和 install root。安装通过 staging sibling 后原子 rename，并写入 `.issue-orchestration-install.json` ownership manifest。验证逐文件比较 source/install/manifest/install digests；未知手工编辑、半安装残留、symlink、protected-root overlap 和 ownership drift 都 fail closed，不能覆盖未知编辑。卸载只在 ownership manifest 完全匹配时删除 package-owned install root，外部 sibling 或 sentinel 保留。
-
-使用 `install.mjs`、`verify-install.mjs` 和 `discover.mjs` 时，应从五个自包含 cwd 复核同一身份：当前 package root 与四个隔离临时目录。每个 discovery receipt 必须返回相同的 `packageIdentity`/`packageDigest`、Skill identity/digest、七角色集合、model-pool、routing、remote-mutation、graph/patch/runtime-projection、writer compiler/progress/schema 和 projector digests；任何 cwd-specific drift 都拒绝。典型验证（所有 install/state/probe 路径均为外部临时目录）如下：
-
-```bash
-PACKAGE_ROOT=.
-INSTALL_ROOT=/external/issue-orchestration-install
-STATE_ROOT=/external/issue-orchestration-state
-node "$PACKAGE_ROOT/scripts/install.mjs" \
-  --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT" \
-  --protected-root "$PWD"
-node "$PACKAGE_ROOT/scripts/verify-install.mjs" \
-  --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT" \
-  --runtime-state-root "$STATE_ROOT" \
-  --probe-cwd "$PWD" \
-  --probe-cwd /tmp/issue-orchestration-probe-1 \
-  --probe-cwd /tmp/issue-orchestration-probe-2 \
-  --probe-cwd /tmp/issue-orchestration-probe-3 \
-  --probe-cwd /tmp/issue-orchestration-probe-4
-node "$PACKAGE_ROOT/scripts/uninstall.mjs" \
-  --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT"
-```
-
-Semantic graph（`semantic-graph.json`）、immutable ledger、runtime projection（`runtime-projection.json`）、work plans、slices、compiled prompts、checkpoints、continuations、terminal/failure/retry receipts 和 resource registry 只能写入 `STATE_ROOT`；不得进入 source 或 installed artifact。`semanticGraphDigest` 与 `runtimeProjectionDigest` 各自由对应 validator/projector 产生；writer lifecycle event 只能引用通过验证的 plan/slice/prompt/checkpoint/terminal/failure/retry digest。Receipt 同时绑定 manifest/package/install digests、candidate/base、epoch、canonical route decision、runtime execution binding、cwd、Skill/capability、mutation postcondition 和 runtime-state-root identity；actor 不得自声明独立的 model/profile/effort authority。
+所有写入都位于 external state root，使用受控 JSONL append 与 fsync/atomic rename。仓库 source、install root、工作区和任何 worktree 中出现 `control-ledger.jsonl`、`node-index.json`、node `event-ledger.jsonl`、projection 或 writer-attempt state 都视为 runtime-state leak。
 
 ## Grouped delivery window
 

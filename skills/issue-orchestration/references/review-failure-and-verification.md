@@ -85,7 +85,7 @@ Breaker 的语义 identity 绑定 repository/issue/node/base/epoch、plan/slice/
 
 ## 执行 ledger 与重跑
 
-由根代理把验证执行记录到 [`dag-and-scheduling.md`](dag-and-scheduling.md) 已验证状态根中 DAG `runtimeFiles.ledger` 指向的唯一 ledger；不得另建仓库内 ignored ledger。执行键是：
+由根代理把验证执行记录到 [`dag-and-scheduling.md`](dag-and-scheduling.md) 已验证状态根中 当前 node index 指向的该节点唯一 `event-ledger.jsonl`；run-level effect 只写 `control-ledger.jsonl`，不得另建仓库内 ignored ledger。执行键是：
 
 ```text
 不可变 source SHA + 环境指纹 + 规范化 cwd/命令/参数

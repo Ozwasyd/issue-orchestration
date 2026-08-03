@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.run-control-projection.schema.json",
+  "title": "Issue orchestration run control projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runId",
+    "selectorReceiptDigest",
+    "remoteSnapshotDigest",
+    "nodes",
+    "dependencies",
+    "acceptanceGroups",
+    "slots",
+    "dispatchBatches",
+    "deliveryFreezes",
+    "deliveryEffects",
+    "cleanupFinalizations",
+    "terminal",
+    "lastSequence",
+    "lastEventDigest",
+    "controlProjectionDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.run-control-projection.v1"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "selectorReceiptDigest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "remoteSnapshotDigest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nodes": {
+      "type": "object"
+    },
+    "dependencies": {
+      "type": "object"
+    },
+    "acceptanceGroups": {
+      "type": "object"
+    },
+    "slots": {
+      "type": "object",
+      "required": [
+        "capacity",
+        "active"
+      ],
+      "properties": {
+        "capacity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "dispatchBatches": {
+      "type": "array"
+    },
+    "deliveryFreezes": {
+      "type": "object"
+    },
+    "deliveryEffects": {
+      "type": "object"
+    },
+    "cleanupFinalizations": {
+      "type": "object"
+    },
+    "terminal": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "lastSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastEventDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "controlProjectionDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

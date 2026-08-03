@@ -54,7 +54,7 @@ const PROJECTOR_DIGEST = digest({
     projectorVersion: PROJECTOR_VERSION,
     inputs: [
         'immutable-runtime-ledger.v1-non-writer-historical',
-        'ledger.v2-canonical-active-writer-replay',
+        'node-ledger.v1-canonical-active-writer-replay',
         'semantic-graph.v2',
         'runtime-facts.v1'
     ],
@@ -736,10 +736,10 @@ function activeWriterLedgerRequested(ledger) {
 
 function replayCanonicalWriterLedger(ledger) {
     if (!activeWriterLedgerRequested(ledger)) return null
-    if (ledger?.header?.schema !== 'issue-orchestration.ledger.v2' ||
+    if (ledger?.header?.schema !== 'issue-orchestration.node-ledger.v1' ||
         ledger.header.transitionSchema !==
             'issue-orchestration.transition.v2') {
-        fail('runtime-projector-active-writer-ledger-v2-required')
+        fail('runtime-projector-node-ledger-v1-required')
     }
     try {
         return replayEventLedgerSync(ledger)
@@ -1528,11 +1528,11 @@ function projectWriterTerminal(stage, event) {
 function validateCanonicalWriterProjection(stages, ledgerProjection) {
     if (!ledgerProjection) {
         if (Object.keys(stages).length > 0) {
-            fail('runtime-projector-active-writer-ledger-v2-required')
+            fail('runtime-projector-node-ledger-v1-required')
         }
         return
     }
-    if (ledgerProjection.schema !== 'issue-orchestration.projection.v2') {
+    if (ledgerProjection.schema !== 'issue-orchestration.node-projection.v1') {
         fail('runtime-projector-writer-ledger-projection-mismatch')
     }
     for (const [nodeId, stage] of Object.entries(stages)) {

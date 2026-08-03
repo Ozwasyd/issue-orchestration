@@ -564,9 +564,13 @@ export function assertExternalRuntimeRoot({
 
 export function assertNoRuntimeState(root) {
     const names = new Set([
+        'aggregate-runtime-projection.json',
+        'control-ledger.jsonl',
+        'control-projection.json',
         'dag.json',
         'event-ledger.jsonl',
         'ledger.jsonl',
+        'node-index.json',
         'projection.json',
         'receipts',
         'resource-registry.json',

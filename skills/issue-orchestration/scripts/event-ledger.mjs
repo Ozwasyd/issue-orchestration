@@ -837,7 +837,7 @@ function historicalEventUsesV2Semantics(event, context) {
 }
 
 function usesV2Semantics(event, context) {
-    return context.mode === 'active-v2' ||
+    return context.mode === 'active-node-v1' ||
         historicalEventUsesV2Semantics(event, context)
 }
 
@@ -2050,29 +2050,91 @@ function reduceGroup(projection, event, context) {
     if (event.eventType === 'group.member.delivery-completed') member.deliveryCompleted = true
 }
 
+function validateNodeLedgerHeader(header) {
+    if (!header || typeof header !== 'object' || Array.isArray(header)) {
+        fail('node-ledger-header-invalid')
+    }
+    if (header.schema === 'issue-orchestration.ledger.v2') {
+        fail('ledger-v2-run-wide-migration-required')
+    }
+    if (header.schema !== 'issue-orchestration.node-ledger.v1' ||
+        header.transitionSchema !== 'issue-orchestration.transition.v2') {
+        fail('node-ledger-v1-required')
+    }
+    for (const field of [
+        'runId', 'nodeId', 'memberId', 'repository',
+        'selectorReceiptDigest', 'remoteMemberDigest', 'baseSha',
+        'createdAt', 'stateRootCanonical', 'issueSnapshotFingerprint',
+        'repositoryFingerprint'
+    ]) {
+        if (typeof header[field] !== 'string' || !header[field]) {
+            fail('node-ledger-header-invalid')
+        }
+    }
+    if (header.nodeId !== header.memberId) fail('node-ledger-member-identity')
+    if (!Number.isInteger(header.issueNumber) || header.issueNumber < 1 ||
+        !Number.isInteger(header.nodeEpoch) || header.nodeEpoch < 1) {
+        fail('node-ledger-header-invalid')
+    }
+    if (!/^[a-f0-9]{64}$/u.test(header.selectorReceiptDigest) ||
+        !/^[a-f0-9]{64}$/u.test(header.remoteMemberDigest) ||
+        !/^[a-f0-9]{40}$/u.test(header.baseSha)) {
+        fail('node-ledger-header-invalid')
+    }
+    if (typeof header.headerDigest !== 'string') {
+        fail('node-ledger-header-digest-invalid')
+    }
+    const unsigned = { ...header }
+    delete unsigned.headerDigest
+    if (digest(unsigned) !== header.headerDigest) {
+        fail('node-ledger-header-digest-mismatch')
+    }
+    return header
+}
+
+export function sealNodeLedgerHeader(input = {}) {
+    const unsigned = {
+        schema: 'issue-orchestration.node-ledger.v1',
+        transitionSchema: 'issue-orchestration.transition.v2',
+        runId: input.runId,
+        nodeId: input.nodeId,
+        memberId: input.memberId ?? input.nodeId,
+        repository: input.repository,
+        issueNumber: input.issueNumber,
+        selectorReceiptDigest: input.selectorReceiptDigest,
+        remoteMemberDigest: input.remoteMemberDigest,
+        nodeEpoch: input.nodeEpoch,
+        stateRootCanonical: input.stateRootCanonical,
+        baseSha: input.baseSha,
+        issueSnapshotFingerprint: input.issueSnapshotFingerprint,
+        repositoryFingerprint: input.repositoryFingerprint,
+        createdAt: input.createdAt
+    }
+    const header = { ...unsigned, headerDigest: digest(unsigned) }
+    validateNodeLedgerHeader(header)
+    return deepFreeze(header)
+}
+
 function replayLedger(
     ledger,
     mode,
     { liveAppendEventId = null } = {}
 ) {
     if (!ledger?.header || !Array.isArray(ledger.events)) fail('ledger-schema')
-    if (mode === 'active-v2') {
-        if (ledger.header.schema === 'issue-orchestration.ledger.v1') {
-            fail('ledger-v1-historical-only')
-        }
-        if (ledger.header.schema !== 'issue-orchestration.ledger.v2' ||
-            ledger.header.transitionSchema !==
-                'issue-orchestration.transition.v2') {
-            fail('ledger-v2-required')
-        }
+    if (mode === 'active-node-v1') {
+        validateNodeLedgerHeader(ledger.header)
     } else if (ledger.header.schema !== 'issue-orchestration.ledger.v1') {
         fail('historical-ledger-v1-required')
     }
     const projection = {
-        schema: mode === 'active-v2'
-            ? 'issue-orchestration.projection.v2'
+        schema: mode === 'active-node-v1'
+            ? 'issue-orchestration.node-projection.v1'
             : 'issue-orchestration.projection.v1',
         runId: ledger.header.runId,
+        nodeId: mode === 'active-node-v1' ? ledger.header.nodeId : null,
+        nodeIdentityDigest: mode === 'active-node-v1'
+            ? ledger.header.headerDigest
+            : null,
         nodes: {},
         groups: {},
         corrections: [],
@@ -2090,16 +2152,15 @@ function replayLedger(
         liveAppendEventId,
         mode,
         verifiedEvents: [],
-        transitionSchema: mode === 'active-v2'
+        transitionSchema: mode === 'active-node-v1'
             ? 'issue-orchestration.transition.v2'
             : ledger.header.transitionSchema ?? null
     }
     let expectedDigest = GENESIS
-    let primaryNodeId = null
     for (let index = 0; index < ledger.events.length; index += 1) {
         const event = ledger.events[index]
         if (!event || EVENT_FIELDS.some((field) => !Object.hasOwn(event, field))) fail('event-schema')
-        if (mode === 'active-v2' &&
+        if (mode === 'active-node-v1' &&
             event.schema !== 'issue-orchestration.event.v2') {
             fail('event-v2-required')
         }
@@ -2107,9 +2168,13 @@ function replayLedger(
         if (context.eventsById.has(event.eventId)) fail('event-id-duplicate')
         if (event.runId !== ledger.header.runId) fail('event-run-id')
         if (event.baseSha !== ledger.header.baseSha) fail('event-base-sha')
-        if (!event.eventType.startsWith('group.')) {
-            primaryNodeId ??= event.nodeId
-            if (event.nodeId !== primaryNodeId) fail('event-node-identity')
+        if (mode === 'active-node-v1') {
+            if (event.eventType.startsWith('group.')) {
+                fail('node-ledger-run-level-event')
+            }
+            if (event.nodeId !== ledger.header.nodeId) {
+                fail('event-node-identity')
+            }
         }
         if (event.previousEventDigest !== expectedDigest) fail('ledger-hash-chain')
         if (event.payloadDigest !== digest(event.payload)) {
@@ -2161,7 +2226,7 @@ export async function replayEventLedger(ledger) {
 }
 
 export function replayEventLedgerSync(ledger) {
-    return replayLedger(ledger, 'active-v2')
+    return replayLedger(ledger, 'active-node-v1')
 }
 
 export async function auditHistoricalEventLedger(ledger) {
@@ -2204,14 +2269,10 @@ export function canonicalEventLedgerLocation({
         node: nodeId,
         stageAttemptId
     })
-    const runRoot = path.dirname(writerLocation.sourceLedgerPath)
     return Object.freeze({
-        stateRoot: path.dirname(path.dirname(runRoot)),
+        stateRoot: path.dirname(path.dirname(writerLocation.runRoot)),
         ledgerPath: writerLocation.sourceLedgerPath,
-        projectionPath: path.join(
-            runRoot,
-            'event-ledger-projection.json'
-        ),
+        projectionPath: writerLocation.sourceProjectionPath,
         runtimeStateRootDigest:
             writerLocation.runtimeStateRootDigest
     })
@@ -2233,13 +2294,11 @@ function assertCanonicalEventLedgerPaths(options, event = null) {
     } catch {
         fail('event-ledger-authority-unavailable')
     }
-    const actualStateRoot = fs.realpathSync(options.stateRoot)
-    const expectedStateRoot = fs.realpathSync(expected.stateRoot)
     if (path.resolve(options.ledgerPath) !==
             path.resolve(expected.ledgerPath) ||
         path.resolve(options.projectionPath) !==
             path.resolve(expected.projectionPath) ||
-        actualStateRoot !== expectedStateRoot) {
+        path.resolve(options.stateRoot) !== path.resolve(expected.stateRoot)) {
         fail('event-ledger-authority-path-mismatch')
     }
     return expected
@@ -2275,8 +2334,8 @@ function atomicWrite(file, source) {
 
 export async function appendEventAtomic(options) {
     const { event, ledgerPath, projectionPath, writerRole } = options
-    assertCanonicalEventLedgerPaths(options, event)
     assertExternalPaths(options)
+    assertCanonicalEventLedgerPaths(options, event)
     if (writerRole !== 'root-scheduler') fail('ledger-writer-role')
     if (event.eventType === 'independent-verification.started' &&
         !event.payload?.receipt && !event.payload?.proposalReceipt) {
@@ -2286,7 +2345,7 @@ export async function appendEventAtomic(options) {
     ledger.events.push(event)
     const projection = replayLedger(
         ledger,
-        'active-v2',
+        'active-node-v1',
         { liveAppendEventId: event.eventId }
     )
     fs.appendFileSync(ledgerPath, `${JSON.stringify(event)}\n`, { flush: true })
@@ -2295,8 +2354,8 @@ export async function appendEventAtomic(options) {
 }
 
 export async function recoverEventLedger(options) {
-    assertCanonicalEventLedgerPaths(options)
     assertExternalPaths(options)
+    assertCanonicalEventLedgerPaths(options)
     const { ledgerPath, projectionPath } = options
     if (!fs.existsSync(ledgerPath)) {
         return { recoveryAction: 'ledger-absent', projection: null, repeatedSideEffects: [] }
@@ -2318,8 +2377,8 @@ export async function validateDagProjection({ dag, projection }) {
     if (projection?.schema === 'issue-orchestration.projection.v1') {
         fail('projection-v1-historical-only')
     }
-    if (projection?.schema !== 'issue-orchestration.projection.v2') {
-        fail('projection-v2-required')
+    if (projection?.schema !== 'issue-orchestration.node-projection.v1') {
+        fail('node-projection-v1-required')
     }
     if (dag.runId !== projection.runId || dag.projectionDigest !== projection.projectionDigest) {
         fail('dag-projection-mismatch')
