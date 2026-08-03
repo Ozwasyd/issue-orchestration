@@ -2,7 +2,7 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "0cec62ed50610a49e5a1d4a881b408e5b9a5bd18",
+    "sourceCommit": "e6cc24d59491118bf79535029041dc187dc23d57",
     "sourceTreeDigest": "daf9517b3f99fc66b517bb9a7a9e2df0fa5650fba4651a5c84982ac1f3d1f23b",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "170c83eb93fe5208954a31e3c51bca9abd21afb2d52f3d8328ca5feb06b73502",
@@ -215,5 +215,5 @@
         "skills/issue-orchestration/SKILL.md": "170c83eb93fe5208954a31e3c51bca9abd21afb2d52f3d8328ca5feb06b73502",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "959e58e28d7da06bb4e90a83d5d4032e875b08bb316092e44cb003d55f43e6c9"
+    "manifestDigest": "2a183434d893d70ebddf57d86fab78d1804f6407964d142ba1ef75df10f22bd0"
 }
