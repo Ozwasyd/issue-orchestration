@@ -44,7 +44,7 @@ jobs:
           phase=decode
           trap 'code=$?; { echo "phase=$phase"; echo "exit_code=$code"; tail -n 120 /tmp/issue20-finalize.log; } > /tmp/issue20-finalize-report.txt; exit $code' ERR
           base64 -d .github/issue20-fix/payload.b64 > /tmp/issue20-fix.patch.gz
-          echo 'cfb602bf0d0acb5b4cda7ef2dc8cd830e16558ee6f9c5bbfc0ae5d8b7e7a67c9  /tmp/issue20-fix.patch.gz' | sha256sum -c -
+          echo '680190067f0b572c15ba3235a117b404e10ed3358e6d40277b347e5037683d7f  /tmp/issue20-fix.patch.gz' | sha256sum -c -
           gzip -d -c /tmp/issue20-fix.patch.gz > /tmp/issue20-fix.patch
 
           phase=apply
