@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:stage-mutation-postcondition-receipt:v1",
+  "title": "issue-orchestration.stage-mutation-postcondition-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "runId",
+    "actorInvocationId",
+    "actorSessionId",
+    "attemptId",
+    "stageRole",
+    "stagePhase",
+    "executionClass",
+    "mutationContract",
+    "runtimeExecutionBindingDigest",
+    "preSnapshotDigest",
+    "postSnapshotDigest",
+    "routeDecisionDigest",
+    "compiledPromptDigest",
+    "resourceIdentityDigest",
+    "baseSha",
+    "deliveryEpoch",
+    "candidateIdentity",
+    "candidateDigest",
+    "leaseDigest",
+    "sliceDigest",
+    "allowedPathsDigest",
+    "changedPaths",
+    "changedPathsDigest",
+    "stateRootChanged",
+    "remoteSnapshotChanged",
+    "prohibitedReceiptEmitted",
+    "outputClass",
+    "outputDigest",
+    "violationCodes",
+    "recoveryDisposition",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.stage-mutation-postcondition-receipt.v1"
+    },
+    "producerAuthority": {"const": "machine-stage-runtime-guard"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"enum": ["verified", "rejected"]},
+    "runId": {"type": "string", "minLength": 1},
+    "actorInvocationId": {"type": "string", "minLength": 1},
+    "actorSessionId": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "stageRole": {"type": "string", "minLength": 1},
+    "stagePhase": {"type": "string", "minLength": 1},
+    "executionClass": {
+      "enum": ["root-control", "observe-only", "leased-writer"]
+    },
+    "mutationContract": {"type": "string", "minLength": 1},
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+    "preSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "postSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "compiledPromptDigest": {"$ref": "#/$defs/digest"},
+    "resourceIdentityDigest": {"$ref": "#/$defs/digest"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "candidateIdentity": {"type": "string", "minLength": 1},
+    "candidateDigest": {"$ref": "#/$defs/digest"},
+    "leaseDigest": {"$ref": "#/$defs/nullableDigest"},
+    "sliceDigest": {"$ref": "#/$defs/nullableDigest"},
+    "allowedPathsDigest": {"$ref": "#/$defs/digest"},
+    "changedPaths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "changedPathsDigest": {"$ref": "#/$defs/digest"},
+    "stateRootChanged": {"type": "boolean"},
+    "remoteSnapshotChanged": {"type": "boolean"},
+    "prohibitedReceiptEmitted": {"type": "boolean"},
+    "outputClass": {"type": "string", "minLength": 1},
+    "outputDigest": {"$ref": "#/$defs/digest"},
+    "violationCodes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "recoveryDisposition": {
+      "enum": ["accept", "quarantine-attempt", "run-fatal"]
+    },
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"}
+  }
+}

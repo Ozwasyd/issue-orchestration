@@ -1,0 +1,50 @@
+{
+  "schema": "issue-orchestration.stage-mutation-guard-policy.v1",
+  "version": "stage-mutation-guard.v1",
+  "producerAuthority": "machine-stage-runtime-guard",
+  "snapshotAuthority": "machine-filesystem-and-git-observer",
+  "executionClasses": {
+    "root-control": {
+      "mutationContract": "control-plane-and-delivery-gated",
+      "allowedResultClasses": ["mechanical-control-receipt"],
+      "violationDisposition": "run-fatal"
+    },
+    "observe-only": {
+      "mutationContract": "no-protected-mutation",
+      "allowedResultClasses": [
+        "proposal",
+        "finding",
+        "adjudication",
+        "verification-evidence"
+      ],
+      "violationDisposition": "quarantine-attempt"
+    },
+    "leased-writer": {
+      "mutationContract": "lease-and-slice-allowlist",
+      "allowedResultClasses": [
+        "test-contract-candidate",
+        "implementation-candidate",
+        "ui-candidate",
+        "documentation-candidate",
+        "landing-candidate"
+      ],
+      "violationDisposition": "quarantine-attempt"
+    }
+  },
+  "protectedRepositoryFacts": [
+    "head",
+    "refs",
+    "index",
+    "tracked-content",
+    "non-ignored-untracked"
+  ],
+  "protectedControlFacts": [
+    "state-root",
+    "remote-snapshot",
+    "actor-attribution"
+  ],
+  "runtimeGeneratedPathPrefixes": [],
+  "legacyPromptClaimsAccepted": false,
+  "gitStatusAloneAccepted": false,
+  "rootWaiverAccepted": false
+}

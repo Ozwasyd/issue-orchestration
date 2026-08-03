@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:stage-result-acceptance-receipt:v1",
+  "title": "issue-orchestration.stage-result-acceptance-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "status",
+    "runId",
+    "attemptId",
+    "stageRole",
+    "stagePhase",
+    "executionClass",
+    "resultClass",
+    "resultDigest",
+    "postconditionReceiptDigest",
+    "acceptedAsWriterEvidence",
+    "acceptedAsIndependentEvidence",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.stage-result-acceptance-receipt.v1"
+    },
+    "producerAuthority": {"const": "machine-stage-runtime-guard"},
+    "status": {"const": "accepted"},
+    "runId": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "stageRole": {"type": "string", "minLength": 1},
+    "stagePhase": {"type": "string", "minLength": 1},
+    "executionClass": {
+      "enum": ["root-control", "observe-only", "leased-writer"]
+    },
+    "resultClass": {"type": "string", "minLength": 1},
+    "resultDigest": {"$ref": "#/$defs/digest"},
+    "postconditionReceiptDigest": {"$ref": "#/$defs/digest"},
+    "acceptedAsWriterEvidence": {"type": "boolean"},
+    "acceptedAsIndependentEvidence": {"type": "boolean"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

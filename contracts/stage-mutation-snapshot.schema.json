@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:stage-mutation-snapshot:v1",
+  "title": "issue-orchestration.stage-mutation-snapshot.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "snapshotKind",
+    "capturedAt",
+    "runId",
+    "actorInvocationId",
+    "actorSessionId",
+    "attemptId",
+    "stageRole",
+    "stagePhase",
+    "executionClass",
+    "runtimeExecutionBindingDigest",
+    "startupAttestationDigest",
+    "routeDecisionDigest",
+    "compiledPromptDigest",
+    "repository",
+    "repositoryPathDigest",
+    "resourceIdentityDigest",
+    "baseSha",
+    "deliveryEpoch",
+    "candidateIdentity",
+    "leaseDigest",
+    "sliceDigest",
+    "allowedPaths",
+    "allowedPathsDigest",
+    "headSha",
+    "refsDigest",
+    "indexDigest",
+    "trackedContentDigest",
+    "trackedEntries",
+    "untrackedDigest",
+    "untrackedEntries",
+    "gitStatusDigest",
+    "gitStatusEntries",
+    "stateRootDigest",
+    "remoteSnapshotDigest",
+    "snapshotDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.stage-mutation-snapshot.v1"},
+    "producerAuthority": {"const": "machine-stage-runtime-guard"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "snapshotKind": {"enum": ["pre-dispatch", "post-execution"]},
+    "capturedAt": {"type": "string", "format": "date-time"},
+    "runId": {"type": "string", "minLength": 1},
+    "actorInvocationId": {"type": "string", "minLength": 1},
+    "actorSessionId": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "stageRole": {"type": "string", "minLength": 1},
+    "stagePhase": {"type": "string", "minLength": 1},
+    "executionClass": {
+      "enum": ["root-control", "observe-only", "leased-writer"]
+    },
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "compiledPromptDigest": {"$ref": "#/$defs/digest"},
+    "repository": {"type": "string", "minLength": 1},
+    "repositoryPathDigest": {"$ref": "#/$defs/digest"},
+    "resourceIdentityDigest": {"$ref": "#/$defs/digest"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "candidateIdentity": {"type": "string", "minLength": 1},
+    "leaseDigest": {"$ref": "#/$defs/nullableDigest"},
+    "sliceDigest": {"$ref": "#/$defs/nullableDigest"},
+    "allowedPaths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "allowedPathsDigest": {"$ref": "#/$defs/digest"},
+    "headSha": {"$ref": "#/$defs/sha"},
+    "refsDigest": {"$ref": "#/$defs/digest"},
+    "indexDigest": {"$ref": "#/$defs/digest"},
+    "trackedContentDigest": {"$ref": "#/$defs/digest"},
+    "trackedEntries": {"$ref": "#/$defs/entries"},
+    "untrackedDigest": {"$ref": "#/$defs/digest"},
+    "untrackedEntries": {"$ref": "#/$defs/entries"},
+    "gitStatusDigest": {"$ref": "#/$defs/digest"},
+    "gitStatusEntries": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "stateRootDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "snapshotDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "kind", "digest"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["file", "symlink", "missing"]},
+          "digest": {"$ref": "#/$defs/digest"}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
