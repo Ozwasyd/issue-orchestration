@@ -42,55 +42,36 @@ instructions_loaded
   -> dispatch_enabled
 ```
 
-这条状态机按 member/node 独立运行，不是阻断整个 scope 的全局许可门。每个
-member 的 `dag-startup-gate-receipt.v2` 只能消费自己的 bounded projection：
-route/actual runtime identity、lease、member receipts 与 completed-prerequisite
-tombstones；`stageReceipts`、`testContractDigest`、节点 `model`/`effort`、
-难度或 rework promotion 都没有启动权威。该 member 的 `dispatch_enabled`
-之前不得为它创建写入型 attempt。顺序如下：
+这条状态机按 member/node 独立运行，不是阻断整个 scope 的全局许可门。唯一可写图合同是 `issue-orchestration.semantic-graph.v2`，唯一生产启动门是 `validateDagStartupGate`；CLI 直接读取同一个 `dag-startup-gate-request.v2` JSON 并调用该函数，不再维护第二套文件探针或旧 DAG validator。
 
-1. 在状态根查找当前仓库组合和 issue 范围对应的 DAG；不存在、不可读或损坏时标记需要重建，不得继续派发。
-2. 重新读取本次范围全部远端 open issues 和会改变范围或验收的评论，生成当前启动时间之后的 issue snapshot。
-3. 读取相邻代码、直接测试、适用 current 文档和依赖事实，核对责任仓、依赖、执行顺序、验收组和 terminal 恢复条件。
-4. 校验 DAG schema、状态根、仓库路径和远端、默认分支、base/HEAD、dirty fingerprint、issue 精确集合及更新时间、评论 fingerprint、节点依赖和验收组。
-5. 缺失、损坏、过期、范围不完整、出现新 issue、仓库身份或 base SHA 不同、评论变化、owner/依赖/验收组失真时，在状态根重建或完成一致性恢复；恢复失败保持 `dispatchEnabled=false`。
-6. 有效 DAG 仍须刷新远端 snapshot。事实和 fingerprint 未变时只更新 freshness/consistency evidence，复用节点、terminal 指纹、执行 ledger 和有效 evidence，不无理由重建或重复探针。
+图顶层必须绑定 selector receipt、remote snapshot、scope、semantic input、安装 policy、仓库 base/binding 和规范图摘要。每个 node 必须绑定同一 selector/remote/repository identity、已验证 semantic facts 和一个由共享 `lifecycle-state-machine.mjs` 定义的 lifecycle state。阶段证据只存在于 node 自己的 `receipts` 中，不存在全局 `testContractDigest` 或全局 `stageReceipts`。
 
-DAG 和 issue snapshot 均必须在已验证状态根内。所有 `runtimeFiles` 路径必须相对状态根，且不得包含父目录跳转或穿过 symlink。至少使用以下 schema 字段：
+启动门按当前 lifecycle state 验证可达证据：
 
-- DAG：`issue-orchestration.dag.v2`、run id、规范状态根、刷新时间、仓库 facts/fingerprint、active issue fingerprint、包含 active issue 与 prerequisite observation 的 `remoteSnapshotDigest`、节点、验收组、运行态相对路径、阶段 receipts 和 consistency evidence；
-- issue snapshot：`issue-orchestration.issue-snapshot.v1`、刷新时间、只包含本次 scope 的 open executable issues（仓库、编号、状态、更新时间和评论 fingerprint），以及独立的 `prerequisiteObservations`。observation 不是 active issue node，而是远端复核投影，至少绑定 `dependencyKey`、仓库/issue identity、`remoteState`、`stateReason`、`closedAt`、`deliveredCommit`、`remoteDefaultBranch`、完成 evidence 和 `evidenceDigest`、`verifiedAt`；
-- 节点：精确 issue identity、owner、`dependencyKeys`、互斥的 `activeDependencies` 与 `satisfiedDependencies`、验收组、状态、难度、调查过的代码/测试/current 文档/约束；terminal 节点另含类别、直接证据和恢复 fingerprint。不得再使用 v1 的隐式 `dependencies` 删除即满足语义。
+- `discovered`：只允许 selector/remote/repository/semantic-fact bindings，不要求未来阶段收据；
+- `acceptance-frozen`：requirement inventory 与 acceptance contract；
+- `test-contract-planning`：acceptance chain 加 planning route/attempt；
+- `test-contract-frozen`：planning result、slice proposal/validation、work plan、first slice、route、compiled prompt 与 resource acquisition；
+- `implementing`：distinct writer dispatch/attempt 与 active write lease；
+- `candidate-green`：terminal implementation 与 candidate receipt；
+- `behavior-green`：candidate 与 independent behavior receipt；
+- 后续 UI、documentation、delivery、cleanup、closure state：只要求其已可产生的完整前序证据。
 
-### Completed prerequisite tombstone authority
+任何不在当前 state allowlist 内的 future receipt 都以 `dag-gate-premature-receipt` 拒绝。任何已出现的 receipt 都必须通过 schema、规范 digest、member/selector/remote/repository binding、actor 或 deterministic compiler authority、route/runtime/mutation-postcondition 和 predecessor digest chain 验证；只带 member ID 与任意 64-hex 的 candidate/behavior placeholder 无效。
 
-`issue-orchestration.dag.v2` 把一条依赖的声明和分类分开：`dependencyKeys` 保留完整边；仍需执行的边放在 `activeDependencies`，已由远端完成事实满足的边放在 `satisfiedDependencies`。同一个 key 不得同时出现在两组，且每个 key 必须出现在其中一组；未知 key、删除边或把 closed issue 塞进 active `nodes` 都 fail closed。
+`issue-orchestration.dag.v2`、`issue-orchestration.semantic-graph.v1`、全局 `testContractDigest`、全局 `stageReceipts` 和旧 gate fallback 统一以 `dag-gate-canonical-migration-required` 拒绝，不存在兼容模式。
 
-每个 satisfied entry 是不可变 tombstone，必须与 snapshot 中同 key 的 observation 完全一致，并绑定：
-
-- `issue`、`repository`、`issueNumber` 三者一致的远端身份；
-- `remoteState=CLOSED`、`stateReason=completed`、已发生且不晚于 snapshot `refreshedAt` 的 `closedAt`；
-- 默认分支上的完整 40-hex `deliveredCommit`，且该 commit 可由当前仓库 default branch 的 ancestry 证明；
-- `remoteDefaultBranch`、完成 evidence payload、其规范化 SHA-256 `evidenceDigest` 和 `verifiedAt`。
-
-`closed:not_planned`、`duplicate`（没有明确合法替代节点）、缺少交付 commit、commit 不可达或 evidence 缺失/篡改均不得自动满足依赖。远端 issue reopen、state reason、默认分支、交付 ancestry 或 evidence digest 任一漂移，会让旧 tombstone 在下一次远端 snapshot 刷新时失效；dependent 必须恢复为 unsatisfied，不能继续 `ready`、`implementing`、`independent-verifying`、`delivery-ready` 或 `delivering`。completed prerequisite 不进入 active issue snapshot、DAG `nodes`、`readyFrontier` 或 `activeAttempts`，也不消耗执行槽位。
-
-门禁对依赖解析输出稳定 reason code：`dependency-active`、`dependency-satisfied`、`dependency-unknown`；不合法 tombstone 使用对应的 `tombstone-*` 或 `dependency-classification-overlap` / `dependency-edge-deleted` 错误码。`dag.v1` 只能作为诊断输入；启动时必须重新读取远端 issue、默认分支和完成 evidence 重建 v2，禁止填空 tombstone、只写 `status=closed` 或把缺失 dependency 当作已满足。
-
-远端 snapshot 写入状态根后，先用下列命令加 `--facts-only`，取得规范仓库 facts、issue fingerprint 和 repository fingerprint；该阶段固定输出 `dispatchEnabled=false`，只用于新建或核对 DAG。写入或恢复 DAG 后，去掉 `--facts-only` 运行完整门禁：
+规范 CLI 只接受一个 request JSON 文件，或从 stdin 读取同一 JSON：
 
 ```bash
 node .agents/skills/issue-orchestration/scripts/check-dag-gate.mjs \
-  --state-root <state-root> \
-  --dag <state-root>/dag.json \
-  --issues-snapshot <state-root>/issue-snapshot.json \
-  --repository <repository-id>=<repository-root> \
-  --default-branch <repository-id>=<resolved-default-branch> \
-  --workspace <common-or-launch-workspace> \
-  --startup-time <ISO-8601>
+  <state-root>/dag-startup-gate-request.json
+# 或
+cat <state-root>/dag-startup-gate-request.json | \
+  node .agents/skills/issue-orchestration/scripts/check-dag-gate.mjs
 ```
 
-只有 member receipt 输出 `valid=true` 且 `dispatchEnabled=true` 才能让该节点进入 `ready`；另一个 member 的失败不得把已满足投影的节点全局阻塞。该机器检查不替代语义调查；仅从 issue 标题、数量或时间猜测依赖不构成一致性。
+CLI stdout 是 `validateDagStartupGate(request)` 的逐字节 JSON 序列化结果。只有 receipt `status=verified` 的 node 才可继续；一个 node 的失败不得伪造为另一个 node 的全局失败或全局成功。
 
 ## 运行态图
 

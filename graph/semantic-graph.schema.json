@@ -4,32 +4,195 @@
   "title": "Issue orchestration semantic graph",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "scopeDigest", "semanticGraphInputDigest", "nodes", "semanticGraphDigest"],
+  "required": [
+    "schema",
+    "selectorReceiptDigest",
+    "remoteSnapshotDigest",
+    "scopeDigest",
+    "semanticGraphInputDigest",
+    "policyDigest",
+    "repositories",
+    "nodes",
+    "semanticGraphDigest"
+  ],
   "properties": {
-    "schema": {"const": "issue-orchestration.semantic-graph.v1"},
-    "scopeDigest": {"$ref": "#/$defs/digest"},
-    "semanticGraphInputDigest": {"$ref": "#/$defs/digest"},
-    "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+    "schema": {
+      "const": "issue-orchestration.semantic-graph.v2"
+    },
+    "selectorReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "remoteSnapshotDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "scopeDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "semanticGraphInputDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "semanticGraphDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/repository"
+      }
+    },
     "nodes": {
       "type": "array",
-      "items": {"$ref": "#/$defs/node"}
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/node"
+      }
     }
   },
   "$defs": {
-    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "stringArray": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "baseSha",
+        "bindingDigest"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseSha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "bindingDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
     "node": {
       "type": "object",
-      "required": ["id", "owner", "riskClass", "uiClass", "contractDigest", "dependencyKeys", "conflictKeys", "acceptanceGroup"],
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "memberId",
+        "repository",
+        "issueNumber",
+        "owner",
+        "dependencyKeys",
+        "conflictKeys",
+        "riskClass",
+        "uiClass",
+        "acceptanceGroup",
+        "lifecycleState",
+        "selectorReceiptDigest",
+        "remoteSnapshotDigest",
+        "repositoryBindingDigest",
+        "semanticFactsDigest",
+        "receipts"
+      ],
       "properties": {
-        "id": {"type": "string", "minLength": 1},
-        "owner": {"type": "string", "minLength": 1},
-        "riskClass": {"type": "string", "minLength": 1},
-        "uiClass": {"type": "string", "minLength": 1},
-        "contractDigest": {"$ref": "#/$defs/digest"},
-        "dependencyKeys": {"$ref": "#/$defs/stringArray"},
-        "conflictKeys": {"$ref": "#/$defs/stringArray"},
-        "acceptanceGroup": {"type": ["string", "null"]}
+        "memberId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dependencyKeys": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "conflictKeys": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "riskClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uiClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "acceptanceGroup": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lifecycleState": {
+          "enum": [
+            "discovered",
+            "acceptance-frozen",
+            "test-contract-planning",
+            "test-contract-frozen",
+            "implementing",
+            "candidate-green",
+            "behavior-green",
+            "ui-adjudicating",
+            "ux-acceptance",
+            "ux-accepted",
+            "documenting",
+            "documentation-green",
+            "delivery-ready",
+            "delivering",
+            "cleaning",
+            "closed",
+            "terminal"
+          ]
+        },
+        "selectorReceiptDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteSnapshotDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "repositoryBindingDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "semanticFactsDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "receipts": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contractDigest": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        }
       }
     }
   }

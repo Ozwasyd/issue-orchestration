@@ -2197,10 +2197,10 @@ for (const control of mutationControls) {
     })
 }
 
-test('check-dag-gate is the unique runtime consumer of the batch validator', async () => {
+test('canonical startup gate is stage-aware and does not duplicate batch selection', async () => {
     await implementation()
     const source = readFileSync(gatePath, 'utf8')
-    assert.match(source, /dispatch-batch-selector\.mjs/u)
+    assert.doesNotMatch(source, /dispatch-batch-selector\.mjs/u)
     assert.match(source, /validateDispatchProjectionPresence/u)
-    assert.match(source, /validateDispatchBatch/u)
+    assert.match(source, /lifecycle-state-machine\.mjs/u)
 })

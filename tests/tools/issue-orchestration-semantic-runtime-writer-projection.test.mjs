@@ -132,19 +132,39 @@ function assertSanitizedCheckpointProjection(
 }
 
 function graphFor(nodeId) {
+    const selectorReceiptDigest = digest('writer-projection-selector')
+    const remoteSnapshotDigest = digest('writer-projection-remote')
+    const repositoryBindingDigest = digest('writer-projection-repository')
     return createSemanticGraph({
+        selectorReceiptDigest,
+        remoteSnapshotDigest,
         scopeDigest: digest('writer-projection-scope'),
         semanticGraphInputDigest:
             digest('writer-projection-semantic-input'),
+        policyDigest: digest('writer-projection-policy'),
+        repositories: [{
+            repository: nodeId.split('#')[0],
+            baseSha: 'a'.repeat(40),
+            bindingDigest: repositoryBindingDigest
+        }],
         nodes: [{
             id: nodeId,
+            memberId: nodeId,
+            repository: nodeId.split('#')[0],
+            issueNumber: Number(nodeId.match(/#(\d+)/u)?.[1]),
             owner: 'issue-orchestration',
             dependencyKeys: [],
             conflictKeys: ['issue-orchestration'],
             riskClass: 'high',
             uiClass: 'none',
             acceptanceGroup: null,
-            contractDigest: digest('writer-projection-contract')
+            lifecycleState: 'discovered',
+            selectorReceiptDigest,
+            remoteSnapshotDigest,
+            repositoryBindingDigest,
+            semanticFactsDigest: digest('writer-projection-facts'),
+            contractDigest: digest('writer-projection-contract'),
+            receipts: {}
         }]
     })
 }
