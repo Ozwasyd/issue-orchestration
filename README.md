@@ -7,6 +7,10 @@ This repository is the only editable source for the Skill, runtime scripts,
 contracts, policies, graph schemas, and agent definitions. Runtime state must
 remain outside this repository and outside every product worktree.
 
+It builds, tests, installs, and runs its permanent acceptance suite from this
+checkout alone. FsusBlog and FsusUI are supported runtime target identities,
+not source, test, installation, issue-API, or sibling-checkout dependencies.
+
 ## Runtime trust model
 
 The supported unattended mode is `trusted-owner-repositories`. The root
@@ -68,6 +72,22 @@ recovery plan. Root takeover remains a separate external-supervisor path for
 root liveness or parent-invocation failure, with old-root fencing and a
 single root-control lease.
 
+## Git resource retirement
+
+Worktrees and child branches are retired only through
+`scripts/git-resource-cleanup.mjs`. The machine-owned lifecycle freezes the
+resource, inventories exact Git/filesystem/process identities, proves one
+candidate disposition, stops and re-observes actors/processes, performs an
+exact Git-aware worktree removal, retires or quarantines the local ref, then
+releases the lease/slot and independently verifies the post-state.
+
+Merge ancestry uses safe branch deletion. Squash/rebase/cherry-pick retirement
+requires an exact candidate-to-landing mapping. Dirty, staged, untracked, or
+otherwise unmapped work is preserved under a protected quarantine ref with
+patch/index/untracked manifests before the physical worktree is removed. The
+generic resource lifecycle cannot delete Git resources or release their lease
+without the final Git-resource verification receipt.
+
 ## Install for Codex discovery
 
 Use Codex's built-in `skill-installer` with private repository
@@ -100,9 +120,9 @@ The isolated install flow remains available through `scripts/install.mjs`,
 
 ## Tests
 
-Product integration tests resolve sibling `FsusBlog` and `FsusUI`
-repositories by default. Set `FSUSBLOG_ROOT` or `FSUSUI_ROOT` to override
-those locations.
+The repository test suite is self-contained. It uses committed fixtures,
+the current checkout, and isolated temporary Git repositories; no sibling
+product checkout is required.
 
 ```bash
 npm ci --prefix tools/test-matrix/schema-validator
@@ -122,15 +142,16 @@ node --test --test-concurrency=1 \
 The permanent live acceptance is explicitly opt-in:
 
 ```bash
-FSUSBLOG_E2E_LIVE=1 node --test --test-concurrency=1 \
+ISSUE_ORCHESTRATION_E2E_LIVE=1 node --test --test-concurrency=1 \
   tests/tools/issue-orchestration/*.test.mjs
 ```
 
-Live mode requires authenticated Codex and read-only GitHub access plus clean,
-single-worktree, single-branch, remote-synchronized checkouts of this
-repository, FsusBlog, and FsusUI. It installs the current committed Skill into
-an isolated standard Codex home and proves discovery from five fresh sessions.
-It also executes non-zero child test groups, an isolated local Git/bare-remote
-landing, a live observe-only quiescence collection, and all mutation controls.
-It deletes its isolated home, workspaces, Git remote, and state root, then
-proves all three repositories are unchanged. No product remote is mutated.
+Live mode requires authenticated Codex and read-only GitHub access plus a
+clean, single-worktree, single-branch, remote-synchronized checkout of this
+repository only. It installs the current committed Skill into an isolated
+standard Codex home and proves discovery from five fresh sessions. It also
+executes non-zero child test groups, an isolated local Git/bare-remote landing,
+a live observe-only quiescence collection, and all mutation controls. It
+deletes its isolated home, temporary workspaces, Git remote, and state root,
+then proves this repository is unchanged. Product repositories and product
+issues are not queried or required.

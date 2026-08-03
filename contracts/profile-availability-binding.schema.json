@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:profile-availability-binding:v1",
+  "title": "issue-orchestration.profile-availability-binding.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "source",
+    "phase",
+    "runtimeInvocationId",
+    "packageDigest",
+    "policyDigest",
+    "observedAt",
+    "profiles",
+    "bindingDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.profile-availability-binding.v1"
+    },
+    "source": {
+      "const": "trusted-runtime-catalog-observer"
+    },
+    "phase": {
+      "const": "pre-dispatch"
+    },
+    "runtimeInvocationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "packageDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "observedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "profiles": {
+      "type": "object",
+      "minProperties": 9,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["available", "reason"],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              null,
+              "runtime-unsupported",
+              "runtime-unavailable"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "bindingDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

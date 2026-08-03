@@ -89,11 +89,15 @@ function fixtureChildReceipt(key) {
             routingSchema:
                 'issue-orchestration.execution-routing-policy.v3',
             registeredProfiles: [
+                'luna-low', 'luna-medium', 'luna-high',
+                'luna-xhigh', 'luna-max',
                 'terra-low', 'terra-medium', 'terra-high',
                 'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',
                 'sol-high', 'sol-xhigh', 'sol-max'
             ],
-            forbiddenProfileCount: 0,
+            productionProfileCount: 8,
+            frontierProfileCount: 1,
+            disabledProfileCount: 6,
             parallelModelTableCount: 0
         }),
         ...(key === 'root-runtime-canary' && {
@@ -211,10 +215,10 @@ export async function assertPermanentLane(laneFile) {
     assert.match(result.evidenceDigest, /^[a-f0-9]{64}$/u)
 }
 
-export async function assertPermanentCrossRepoE2E() {
+export async function assertPermanentRepositoryE2E() {
     const loaded = await runtime()
-    const live = process.env.FSUSBLOG_E2E_LIVE === '1'
-    const result = await loaded.runPermanentCrossRepoE2E(live
+    const live = process.env.ISSUE_ORCHESTRATION_E2E_LIVE === '1'
+    const result = await loaded.runPermanentRepositoryE2E(live
         ? {
             mode: 'live',
             repositoryRoot: root

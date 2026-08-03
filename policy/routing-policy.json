@@ -61,33 +61,34 @@
     "dag-creator-updater:semantic-proposal": {
       "default": "terra-high",
       "frontierException": "sol-max",
-      "authorityOrTopologyConflict": "terra-xhigh"
+      "fullReconstruction": "sol-high",
+      "authorityOrTopologyConflict": "sol-xhigh"
     },
     "test-owner:test-contract-planning": {
       "focused": "terra-high",
-      "runtimeOrLifecycle": "terra-max",
+      "runtimeOrLifecycle": "sol-high",
       "protocolSecurityOrAuthority": "sol-xhigh"
     },
     "test-owner:test-contract": {
       "focused": "terra-medium",
-      "runtimeOrLifecycle": "terra-max",
+      "runtimeOrLifecycle": "sol-high",
       "protocolSecurityOrAuthority": "sol-xhigh"
     },
     "test-owner:behavior-verification": {
       "focused": "terra-high",
-      "runtimeOrLifecycle": "terra-max",
+      "runtimeOrLifecycle": "sol-high",
       "protocolSecurityOrAuthority": "sol-xhigh"
     },
     "code-implementer:implementation": {
       "bounded": "terra-medium",
       "complex": "terra-high",
-      "high-risk": "terra-max",
+      "high-risk": "sol-high",
       "frontier": "sol-xhigh"
     },
     "code-implementer:landing-conflict-resolution": {
-      "bounded": "terra-high",
+      "bounded": "terra-medium",
       "complex": "terra-high",
-      "high-risk": "terra-max",
+      "high-risk": "sol-high",
       "frontier": "sol-xhigh"
     },
     "ui-ux-implementer:ui-implementation": {
@@ -97,10 +98,12 @@
       "interaction-judgment": "sol-medium"
     },
     "ui-ux-implementer:landing-conflict-resolution": {
-      "prescribed": "sol-medium",
+      "prescribed": "terra-medium",
       "bounded-composition": "sol-medium",
       "layout-judgment": "sol-medium",
-      "interaction-judgment": "sol-medium"
+      "interaction-judgment": "sol-medium",
+      "cross-module": "sol-high",
+      "protocol-security": "sol-xhigh"
     },
     "ui-system-adjudicator:adjudication": {
       "system-design-dispute": "sol-high",
@@ -113,7 +116,9 @@
     },
     "documentation-writer:documentation": {
       "bounded": "terra-low",
-      "complex": "terra-high"
+      "single-module": "terra-medium",
+      "complex": "sol-medium",
+      "architecture-public-contract": "sol-high"
     }
   }
 }

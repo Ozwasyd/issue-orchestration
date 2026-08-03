@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:git-resource-inventory:v1",
+  "title": "issue-orchestration.git-resource-inventory.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "actorInvocationId",
+    "attemptId",
+    "stageRole",
+    "sliceId",
+    "resourceActorInvocationIds",
+    "leaseId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "repositoryId",
+    "repositoryPath",
+    "repositoryFilesystemIdentity",
+    "repositoryIdentity",
+    "worktreePath",
+    "worktreeFilesystemIdentity",
+    "gitCommonDir",
+    "worktreeRegistryEntry",
+    "branchRef",
+    "headSha",
+    "indexTree",
+    "trackedTree",
+    "statusDigest",
+    "dirty",
+    "stagedPatchDigest",
+    "unstagedPatchDigest",
+    "indexManifestDigest",
+    "untrackedManifest",
+    "baseSha",
+    "candidateSha",
+    "candidateTree",
+    "candidatePatchDigest",
+    "deliveryEpoch",
+    "defaultBranchRef",
+    "defaultBranchSha",
+    "repositoryHeadSha",
+    "repositoryIndexTree",
+    "repositoryStatusDigest",
+    "refs",
+    "processObservation",
+    "remoteRef",
+    "remoteExpectedSha",
+    "observedAt",
+    "inventoryDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.git-resource-inventory.v1"},
+    "producerAuthority": {"const": "machine-git-resource-inventory"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "actorInvocationId": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "stageRole": {"$ref": "#/$defs/text"},
+    "sliceId": {"$ref": "#/$defs/text"},
+    "resourceActorInvocationIds": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/text"}
+    },
+    "leaseId": {"$ref": "#/$defs/text"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "repositoryPath": {"$ref": "#/$defs/text"},
+    "repositoryFilesystemIdentity": {"$ref": "#/$defs/fsIdentity"},
+    "repositoryIdentity": {
+      "type": "object",
+      "required": ["objectFormat", "originUrl"],
+      "properties": {
+        "objectFormat": {"type": "string", "minLength": 1},
+        "originUrl": {
+          "oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
+        }
+      },
+      "additionalProperties": false
+    },
+    "worktreePath": {"$ref": "#/$defs/text"},
+    "worktreeFilesystemIdentity": {"$ref": "#/$defs/fsIdentity"},
+    "gitCommonDir": {"$ref": "#/$defs/text"},
+    "worktreeRegistryEntry": {"$ref": "#/$defs/text"},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "headSha": {"$ref": "#/$defs/sha"},
+    "indexTree": {"$ref": "#/$defs/sha"},
+    "trackedTree": {"$ref": "#/$defs/sha"},
+    "statusDigest": {"$ref": "#/$defs/digest"},
+    "dirty": {"type": "boolean"},
+    "stagedPatchDigest": {"$ref": "#/$defs/digest"},
+    "unstagedPatchDigest": {"$ref": "#/$defs/digest"},
+    "indexManifestDigest": {"$ref": "#/$defs/digest"},
+    "untrackedManifest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relative", "kind", "size", "contentDigest"],
+        "properties": {
+          "relative": {"$ref": "#/$defs/text"},
+          "kind": {"enum": ["file", "symlink"]},
+          "size": {"type": "integer", "minimum": 0},
+          "contentDigest": {"$ref": "#/$defs/digest"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "candidateTree": {"$ref": "#/$defs/sha"},
+    "candidatePatchDigest": {"$ref": "#/$defs/digest"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "defaultBranchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "defaultBranchSha": {"$ref": "#/$defs/sha"},
+    "repositoryHeadSha": {"$ref": "#/$defs/sha"},
+    "repositoryIndexTree": {"$ref": "#/$defs/sha"},
+    "repositoryStatusDigest": {"$ref": "#/$defs/digest"},
+    "refs": {
+      "type": "object",
+      "propertyNames": {"pattern": "^refs/"},
+      "additionalProperties": {"$ref": "#/$defs/sha"}
+    },
+    "processObservation": {"type": "object"},
+    "remoteRef": {
+      "oneOf": [{"type": "string", "pattern": "^refs/heads/"}, {"type": "null"}]
+    },
+    "remoteExpectedSha": {
+      "oneOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]
+    },
+    "observedAt": {"type": "string", "format": "date-time"},
+    "inventoryDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1},
+    "fsIdentity": {
+      "type": "object",
+      "required": ["dev", "inode"],
+      "properties": {
+        "dev": {"type": "integer", "minimum": 0},
+        "inode": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  }
+}

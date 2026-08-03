@@ -43,7 +43,7 @@ const PERMANENT_E2E_EVIDENCE_KEYS = Object.freeze([
 const LANE_EVIDENCE = {
     'scope-remote-refresh.test.mjs': [
         'tests/tools/issue-orchestration-scope-selector.test.mjs',
-        'tests/tools/issue-orchestration-completed-prerequisite-live.test.mjs'
+        'tests/tools/issue-orchestration-completed-prerequisite.test.mjs'
     ],
     'semantic-graph-patch.test.mjs': [
         'tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs'
@@ -52,7 +52,7 @@ const LANE_EVIDENCE = {
         'tests/tools/issue-orchestration-semantic-runtime-writer-projection.test.mjs'
     ],
     'remote-mutation-classification.test.mjs': [
-        'tests/tools/issue-orchestration-completed-prerequisite-live.test.mjs'
+        'tests/tools/issue-orchestration-completed-prerequisite.test.mjs'
     ],
     'dag-classification-routing.test.mjs': [
         'tests/tools/issue-orchestration-stage-profiles.test.mjs'
@@ -94,12 +94,12 @@ const LANE_EVIDENCE = {
         'policy/model-pool.json'
     ],
     'ui-ux-skill-routing.test.mjs': [
-        'tests/tools/issue-orchestration-blog-ui.test.mjs',
-        '../FsusBlog/.agents/skills/fsusblog-design-conformance/contracts/blog-ui-stage-policy.json'
+        'tests/tools/issue-orchestration-stage-profiles.test.mjs',
+        'agents/ui-ux-implementer.toml'
     ],
     'ui-system-adjudication.test.mjs': [
-        'tests/tools/issue-orchestration-blog-ui.test.mjs',
-        '../FsusBlog/.agents/skills/fsusblog-design-conformance/contracts/ui-system-adjudication-receipt.schema.json'
+        'tests/tools/issue-orchestration-stage-profiles.test.mjs',
+        'agents/ui-system-adjudicator.toml'
     ],
     'human-decision-gate.test.mjs': [
         'tests/tools/issue-orchestration-human-decision.test.mjs'
@@ -132,7 +132,7 @@ const CHILD_ROLLOUT_GROUPS = [
             'tests/tools/issue-orchestration-scope-selector.test.mjs',
             'tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs',
             'tests/tools/issue-orchestration-semantic-runtime-writer-projection.test.mjs',
-            'tests/tools/issue-orchestration-completed-prerequisite-live.test.mjs',
+            'tests/tools/issue-orchestration-completed-prerequisite.test.mjs',
             'tests/tools/issue-orchestration-stage-profiles.test.mjs',
             'tests/tools/issue-orchestration-ready-frontier.test.mjs',
             'tests/tools/issue-orchestration-delivery-epoch.test.mjs',
@@ -154,7 +154,6 @@ const CHILD_ROLLOUT_GROUPS = [
     {
         rolloutId: 'ui-human-group-test-contract',
         tests: [
-            'tests/tools/issue-orchestration-blog-ui.test.mjs',
             'tests/tools/issue-orchestration-human-decision.test.mjs',
             'tests/tools/issue-orchestration-acceptance-group.test.mjs',
             'tests/tools/issue-orchestration-stage-artifact-manifest.test.mjs',
@@ -166,6 +165,7 @@ const CHILD_ROLLOUT_GROUPS = [
         tests: [
             'tests/tools/issue-orchestration-landing-lane.test.mjs',
             'tests/tools/issue-orchestration-resource-lifecycle.test.mjs',
+            'tests/tools/issue-orchestration-git-resource-cleanup.test.mjs',
             'tests/tools/issue-orchestration-quiescence.test.mjs',
             'tests/tools/issue-orchestration-shared-package.test.mjs'
         ]
@@ -222,7 +222,9 @@ function readContract(repositoryRoot) {
     const contract = readJson(repositoryRoot, contractRelative)
     if (contract.schema !==
             'issue-orchestration.final-e2e-contract.v1' ||
-        contract.issue !== 'Ozwasyd/FsusBlog#1824' ||
+        contract.issue !== 'Ozwasyd/issue-orchestration#1' ||
+        !Array.isArray(contract.dependencies) ||
+        contract.dependencies.length !== 0 ||
         contract.runtimeOwner !== path.relative(
             repositoryRoot,
             path.resolve(import.meta.filename)
@@ -263,7 +265,7 @@ export async function verifyPermanentE2ELane(
     { repositoryRoot = defaultRepositoryRoot } = {}
 ) {
     const contract = readContract(repositoryRoot)
-    if (laneFile === 'cross-repo-e2e.test.mjs' ||
+    if (laneFile === 'repository-e2e.test.mjs' ||
         !contract.laneFiles.includes(laneFile) ||
         !Object.hasOwn(LANE_EVIDENCE, laneFile)) {
         fail('permanent-e2e-lane-unknown')
@@ -431,52 +433,6 @@ async function inspectRepository({
     }
 }
 
-async function liveIssueSnapshot(repository) {
-    const response = await checkedCommand('gh', [
-        'api',
-        `repos/Ozwasyd/${repository}/issues?state=all&per_page=100`
-    ])
-    return JSON.parse(response.stdout)
-}
-
-async function dependencyStates({
-    contract,
-    live
-}) {
-    let liveByTarget = new Map()
-    if (live) {
-        const [blogIssues, uiIssues] = await Promise.all([
-            liveIssueSnapshot('FsusBlog'),
-            liveIssueSnapshot('FsusUI')
-        ])
-        liveByTarget = new Map([
-            ...blogIssues.map((issue) => [
-                `Ozwasyd/FsusBlog#${issue.number}`,
-                issue.state.toUpperCase()
-            ]),
-            ...uiIssues.map((issue) => [
-                `Ozwasyd/FsusUI#${issue.number}`,
-                issue.state.toUpperCase()
-            ])
-        ])
-    }
-    return contract.dependencies.map((target) => {
-        const state = live ? liveByTarget.get(target) : 'CLOSED'
-        if (state !== 'CLOSED') {
-            fail('permanent-e2e-dependency-open', target)
-        }
-        return {
-            target,
-            state,
-            evidenceDigest: digest({
-                target,
-                state,
-                source: live ? 'github-live' : 'contract-fixture'
-            })
-        }
-    })
-}
-
 function summarizeNodeTest(stdout) {
     const tests = stdout.match(/(?:ℹ|#) tests (\d+)/gu)
         ?.map((entry) => Number(entry.match(/\d+/u)?.[0] ?? 0))
@@ -583,7 +539,7 @@ function verifyChildEvidence({
     if (receipt.selectedProfile !== profile
         || receipt.effectiveModel !== receipt.requestedModel
         || receipt.effectiveEffort !== receipt.requestedEffort
-        || !/^(?:terra|sol)-(?:low|medium|high|xhigh|max)$/u.test(
+        || !/^(?:terra|luna|sol)-(?:low|medium|high|xhigh|max)$/u.test(
             receipt.selectedProfile
         )) {
         fail('permanent-e2e-child-profile-invalid', key)
@@ -597,6 +553,11 @@ function requireEvidence(value, code) {
 
 function exactRegisteredProfiles(receipt) {
     const expected = [
+        'luna-high',
+        'luna-low',
+        'luna-max',
+        'luna-medium',
+        'luna-xhigh',
         'sol-high',
         'sol-low',
         'sol-max',
@@ -624,7 +585,9 @@ function verifyEvidenceSemantics(receipts) {
             && pool.routingSchema ===
                 'issue-orchestration.execution-routing-policy.v3'
             && exactRegisteredProfiles(pool)
-            && pool.forbiddenProfileCount === 0
+            && pool.productionProfileCount === 8
+            && pool.frontierProfileCount === 1
+            && pool.disabledProfileCount === 6
             && pool.parallelModelTableCount === 0,
         'permanent-e2e-model-pool-invalid'
     )
@@ -1031,11 +994,15 @@ function semanticExtras(key) {
             routingSchema:
                 'issue-orchestration.execution-routing-policy.v3',
             registeredProfiles: [
+                'luna-low', 'luna-medium', 'luna-high',
+                'luna-xhigh', 'luna-max',
                 'terra-low', 'terra-medium', 'terra-high',
                 'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',
                 'sol-high', 'sol-xhigh', 'sol-max'
             ],
-            forbiddenProfileCount: 0,
+            productionProfileCount: 8,
+            frontierProfileCount: 1,
+            disabledProfileCount: 6,
             parallelModelTableCount: 0
         },
         'root-mechanical-control': {
@@ -1187,7 +1154,7 @@ const MUTATION_SPECS = Object.freeze([
         'permanent-e2e-output-missing-retry-invalid'],
     ['high-risk-field-forces-terra',
         'model-pool-consistency',
-        (value) => { value.forbiddenProfileCount = 1 },
+        (value) => { value.disabledProfileCount = 5 },
         'permanent-e2e-model-pool-invalid'],
     ['partial-slice-candidate-green',
         'first-writer-cold-start',
@@ -1360,10 +1327,7 @@ function sameRepositorySnapshots(before, after) {
 }
 
 export async function buildLivePermanentE2EEvidence({
-    repositoryRoot = defaultRepositoryRoot,
-    projectsRoot = path.dirname(repositoryRoot),
-    fsusBlogRoot = path.join(projectsRoot, 'FsusBlog'),
-    fsusUIRoot = path.join(projectsRoot, 'FsusUI')
+    repositoryRoot = defaultRepositoryRoot
 } = {}) {
     const contract = readContract(repositoryRoot)
     const manifest = readManifest(repositoryRoot)
@@ -1372,16 +1336,6 @@ export async function buildLivePermanentE2EEvidence({
             repository: 'Ozwasyd/issue-orchestration',
             root: repositoryRoot,
             branch: 'main'
-        },
-        {
-            repository: 'Ozwasyd/FsusBlog',
-            root: fsusBlogRoot,
-            branch: 'master'
-        },
-        {
-            repository: 'Ozwasyd/FsusUI',
-            root: fsusUIRoot,
-            branch: 'main'
         }
     ]
     const before = await Promise.all(repositories.map(
@@ -1389,10 +1343,6 @@ export async function buildLivePermanentE2EEvidence({
             ...repository,
             live: true
         })))
-    const dependencies = await dependencyStates({
-        contract,
-        live: true
-    })
     const runFamily = `live-${process.pid}-${Date.now()}`
     const bindings = {
         packageDigest: manifest.manifestDigest,
@@ -1421,10 +1371,7 @@ export async function buildLivePermanentE2EEvidence({
     }
     const canaryModule = await import('./codex-runtime-canary.mjs')
     const canary = await canaryModule.runCodexRuntimeCanary({
-        projectsRoot,
         packageRoot: repositoryRoot,
-        fsusBlogRoot,
-        fsusUIRoot,
         model: 'gpt-5.6-terra',
         effort: 'low',
         live: true
@@ -1604,8 +1551,6 @@ export async function buildLivePermanentE2EEvidence({
     if (!sameRepositorySnapshots(before, after)) {
         fail('permanent-e2e-repository-mutated')
     }
-    receipts['shared-package-discovery'].dependencyEvidenceDigest =
-        digest(dependencies)
     receipts['shared-package-discovery'].repositoryBaselineDigest =
         digest({ before, after })
     resealChild(receipts['shared-package-discovery'])
@@ -1616,7 +1561,6 @@ export async function buildLivePermanentE2EEvidence({
         expectedBindings: bindings,
         producerAudit: {
             childRollouts,
-            dependencyStates: dependencies,
             repositoryBefore: before,
             repositoryAfter: after,
             repositoryUnchanged: true,
@@ -1629,25 +1573,19 @@ export async function buildLivePermanentE2EEvidence({
     })
 }
 
-export async function runPermanentCrossRepoE2E({
+export async function runPermanentRepositoryE2E({
     evidenceBundle,
-    mode = process.env.FSUSBLOG_E2E_LIVE === '1'
+    mode = process.env.ISSUE_ORCHESTRATION_E2E_LIVE === '1'
         ? 'live'
         : 'fixture',
-    repositoryRoot = defaultRepositoryRoot,
-    projectsRoot,
-    fsusBlogRoot,
-    fsusUIRoot
+    repositoryRoot = defaultRepositoryRoot
 } = {}) {
     if (mode === 'live') {
         if (evidenceBundle !== undefined) {
             fail('permanent-e2e-caller-live-bundle-forbidden')
         }
         const liveBundle = await buildLivePermanentE2EEvidence({
-            repositoryRoot,
-            projectsRoot: projectsRoot ?? path.dirname(repositoryRoot),
-            fsusBlogRoot,
-            fsusUIRoot
+            repositoryRoot
         })
         return reducePermanentE2EEvidence(liveBundle)
     }
@@ -1659,8 +1597,8 @@ export async function runPermanentCrossRepoE2E({
 
 async function main() {
     const bundleIndex = process.argv.indexOf('--evidence-bundle')
-    if (process.env.FSUSBLOG_E2E_LIVE === '1') {
-        const receipt = await runPermanentCrossRepoE2E({
+    if (process.env.ISSUE_ORCHESTRATION_E2E_LIVE === '1') {
+        const receipt = await runPermanentRepositoryE2E({
             mode: 'live'
         })
         process.stdout.write(`${JSON.stringify(receipt)}\n`)
@@ -1673,7 +1611,7 @@ async function main() {
         path.resolve(process.argv[bundleIndex + 1]),
         'utf8'
     ))
-    const receipt = await runPermanentCrossRepoE2E({ evidenceBundle })
+    const receipt = await runPermanentRepositoryE2E({ evidenceBundle })
     process.stdout.write(`${JSON.stringify(receipt)}\n`)
 }
 

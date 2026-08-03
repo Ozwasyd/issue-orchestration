@@ -124,6 +124,10 @@ export function compileDeliveryControlReceipt({
     validateRuntimeExecutionBinding(runtimeExecutionBinding, {
         stageRole: 'root-scheduler',
         stagePhase: startupBinding.rootPhase,
+        selectedProfile:
+            runtimeExecutionBinding.selectedProfile,
+        routeDecisionDigest:
+            runtimeExecutionBinding.routeDecisionDigest,
         startup,
         runtimeTrustBinding,
         repositoryTargets

@@ -253,8 +253,11 @@ export function validateStateRoot({
     cwd = process.cwd()
 }) {
     if (!candidate) fail('missing-candidate', 'A state-root candidate is required.')
-    if (!Array.isArray(repositories) || repositories.length < 2) {
-        fail('missing-repositories', 'Both FsusBlog and FsusUI repository paths are required.')
+    if (!Array.isArray(repositories) || repositories.length < 1) {
+        fail(
+            'missing-repositories',
+            'At least one protected repository path is required.'
+        )
     }
     if (!Array.isArray(workspaces) || workspaces.length === 0) {
         fail('missing-workspace', 'At least one launch or common workspace path is required.')

@@ -18,8 +18,10 @@ const {
     writerTestDigest
 } = await import('./issue-orchestration-writer-stage-test-helper.mjs')
 const {
+    compileProfileAvailabilityBinding,
     compileExecutionRoute,
     compileExecutionReroute,
+    verifyInstalledProductionPolicy,
     verifyProfileCapabilityMatrix
 } = await import(
     '../../skills/'
@@ -62,10 +64,12 @@ function artifacts({
     files = 1,
     overrides = {}
 } = {}) {
-    const cacheKey = `${stageRole}:${stagePhase}`
+    const cacheKey =
+        `${stageRole}:${stagePhase}:${files}:${JSON.stringify(overrides)}`
     if (artifactCache.has(cacheKey)) return artifactCache.get(cacheKey)
+    const selectedFixturePaths = fixturePaths.slice(0, files)
     const fixture = createWriterStageGitFixture({
-        filePaths: [...fixturePaths]
+        filePaths: [...selectedFixturePaths]
     })
     fixtures.add(fixture)
     const requiredFiles = fixture.filePaths.slice(0, 1)
@@ -84,7 +88,7 @@ function artifacts({
         requiredCommands: requiredFiles.map((file) =>
             `node --check ${file}`),
         sliceOverrides: [{
-            maxOwnedModules: 3,
+            maxOwnedModules: Math.max(1, files),
             ...overrides
         }]
     })
@@ -159,6 +163,44 @@ function route({
     })
 }
 
+const authorizedProfiles = [
+    'terra-low',
+    'terra-medium',
+    'terra-high',
+    'luna-max',
+    'sol-low',
+    'sol-medium',
+    'sol-high',
+    'sol-xhigh',
+    'sol-max'
+]
+
+function availabilityBinding({
+    lunaAvailable = true,
+    lunaReason = lunaAvailable ? null : 'runtime-unavailable'
+} = {}) {
+    return compileProfileAvailabilityBinding({
+        packageDigest: hash('package'),
+        runtimeInvocationId: 'runtime-invocation-routing-test',
+        observedAt: '2026-08-03T08:30:00.000Z',
+        catalogObservation: {
+            schema:
+                'issue-orchestration.runtime-profile-catalog-observation.v1',
+            source: 'trusted-runtime-catalog-observer',
+            paidInvocationCount: 0,
+            profiles: authorizedProfiles.map((profileId) => ({
+                profileId,
+                available: profileId === 'luna-max'
+                    ? lunaAvailable
+                    : true,
+                reason: profileId === 'luna-max'
+                    ? lunaReason
+                    : null
+            }))
+        }
+    })
+}
+
 test('C01 freezes the permanent #1875 contract and four public schemas', () => {
     assert.equal(contract.issue, 'Ozwasyd/FsusBlog#1875')
     for (const identity of contract.schemas) {
@@ -218,7 +260,7 @@ test('C04 routes atomic and bounded slices to the minimum capable Terra profile'
     assert.notEqual(bounded.executionRouteDecision.selectedProfile, 'terra-max')
 })
 
-test('C05 selects the minimum capable Terra profiles for runtime and deep tools', () => {
+test('C05 routes runtime and deep-tool work only to the enabled Sol roster', () => {
     const runtime = route({
         classificationOverrides: {
             engineeringRiskClass: 'high-risk',
@@ -236,7 +278,7 @@ test('C05 selects the minimum capable Terra profiles for runtime and deep tools'
         runtime.executionShapeClassification.dominantWorkShape,
         'runtime-probe-heavy'
     )
-    assert.equal(runtime.executionRouteDecision.selectedProfile, 'terra-max')
+    assert.equal(runtime.executionRouteDecision.selectedProfile, 'sol-high')
 
     const deep = route({
         files: 3,
@@ -253,7 +295,7 @@ test('C05 selects the minimum capable Terra profiles for runtime and deep tools'
             checkpointSupportRequired: 'resumable'
         }
     })
-    assert.equal(deep.executionRouteDecision.selectedProfile, 'terra-xhigh')
+    assert.equal(deep.executionRouteDecision.selectedProfile, 'sol-xhigh')
 })
 
 test('C06 requires machine partition proof for long-horizon Sol/xhigh', () => {
@@ -432,7 +474,7 @@ test('C12 valid mismatch reroute changes candidate identity and binds authority'
     const prior = route()
     const failureReceipt = {
         schema: 'issue-orchestration.writer-stage-failure-receipt.v1',
-        failureClass: 'profile-capability-mismatch',
+        failureClass: 'route-classification-changed',
         previousRouteDecisionDigest:
             prior.executionRouteDecision.routeDecisionDigest,
         candidateReceiptDigest: hash('old-candidate'),
@@ -469,8 +511,8 @@ test('C12 valid mismatch reroute changes candidate identity and binds authority'
                 schema:
                     'issue-orchestration.runtime-capability-observation.v1',
                 source: 'runtime-capability-registry',
-                requestedModel: 'gpt-5.6-terra',
-                effectiveModel: 'gpt-5.6-terra',
+                requestedModel: 'gpt-5.6-sol',
+                effectiveModel: 'gpt-5.6-sol',
                 requestedEffort: 'xhigh',
                 effectiveEffort: 'xhigh',
                 multiAgentBackend: 'v2',
@@ -484,7 +526,7 @@ test('C12 valid mismatch reroute changes candidate identity and binds authority'
             failureReceipt.candidateReceiptDigest,
         nextCandidateReceiptDigest: hash('new-candidate')
     })
-    assert.equal(next.executionRouteDecision.selectedProfile, 'terra-xhigh')
+    assert.equal(next.executionRouteDecision.selectedProfile, 'sol-xhigh')
     assert.equal(
         next.executionRouteDecision.previousFailureReceiptDigest,
         failureReceipt.receiptDigest
@@ -493,4 +535,147 @@ test('C12 valid mismatch reroute changes candidate identity and binds authority'
         next.executionRouteDecision.retryAuthorizationDigest,
         retryAuthorization.authorizationDigest
     )
+})
+
+test('C13 Luna/max requires the complete fresh narrow-context contract', () => {
+    const strictMetrics = {
+        costSensitivity: 'cost-sensitive-deep',
+        freshContext: true,
+        contextBreadth: 'narrow',
+        statefulContinuationRequired: false,
+        checkpointSupportRequired: 'simple',
+        ownedModuleCount: 1,
+        commandLoopCount: 2,
+        toolInteractionDepth: 4,
+        runtimeProbeDepth: 1,
+        firstActionDeterministic: true,
+        compiledContextTokens: 32768,
+        exactTokenizerAvailable: true,
+        selfContainedPrompt: true,
+        bulkCrossScopeContext: false
+    }
+    const selected = route({
+        files: 1,
+        sliceOverrides: { maxOwnedModules: 1 },
+        metricOverrides: strictMetrics,
+        routeOverrides: {
+            runtimeAvailabilityBinding: availabilityBinding()
+        }
+    })
+    assert.equal(
+        selected.executionShapeClassification.dominantWorkShape,
+        'luna-fresh-narrow-deep'
+    )
+    assert.equal(
+        selected.executionRouteDecision.selectedProfile,
+        'luna-max'
+    )
+    const mutations = [
+        { freshContext: false },
+        { contextBreadth: 'broad' },
+        { statefulContinuationRequired: true },
+        { checkpointSupportRequired: 'resumable' },
+        { ownedModuleCount: 2 },
+        { commandLoopCount: 3 },
+        { toolInteractionDepth: 5 },
+        { runtimeProbeDepth: 2 },
+        { compiledContextTokens: 32769 },
+        { exactTokenizerAvailable: false },
+        { selfContainedPrompt: false },
+        { bulkCrossScopeContext: true }
+    ]
+    for (const mutation of mutations) {
+        assert.throws(() => route({
+            files: mutation.ownedModuleCount === 2 ? 2 : 1,
+            sliceOverrides: {
+                maxOwnedModules:
+                    mutation.ownedModuleCount === 2 ? 2 : 1
+            },
+            metricOverrides: {
+                ...strictMetrics,
+                ...mutation
+            },
+            routeOverrides: {
+                runtimeAvailabilityBinding: availabilityBinding()
+            }
+        }), { code: 'execution-route-luna-contract' })
+    }
+})
+
+test('C14 Luna has only the trusted pre-dispatch terra-high fallback', () => {
+    const metricOverrides = {
+        costSensitivity: 'cost-sensitive-deep',
+        freshContext: true,
+        compiledContextTokens: 20000,
+        exactTokenizerAvailable: true,
+        selfContainedPrompt: true,
+        bulkCrossScopeContext: false
+    }
+    assert.throws(() => route({
+        sliceOverrides: { maxOwnedModules: 1 },
+        metricOverrides
+    }), {
+        code: 'execution-route-availability-binding-invalid'
+    })
+    const fallback = route({
+        sliceOverrides: { maxOwnedModules: 1 },
+        metricOverrides,
+        routeOverrides: {
+            runtimeAvailabilityBinding: availabilityBinding({
+                lunaAvailable: false,
+                lunaReason: 'runtime-unsupported'
+            })
+        }
+    })
+    assert.equal(
+        fallback.executionRouteDecision.selectedProfile,
+        'terra-high'
+    )
+    assert.equal(
+        fallback.executionRouteDecision.availabilityFallbackReason,
+        'runtime-unsupported'
+    )
+    const forged = structuredClone(availabilityBinding())
+    forged.profiles['luna-max'] = {
+        available: false,
+        reason: 'task-failed'
+    }
+    assert.throws(() => route({
+        sliceOverrides: { maxOwnedModules: 1 },
+        metricOverrides,
+        routeOverrides: { runtimeAvailabilityBinding: forged }
+    }), {
+        code: 'execution-route-availability-binding-invalid'
+    })
+})
+
+test('C15 installation binds availability and reachability with zero paid rollouts', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(
+        packageRoot,
+        'manifest.json'
+    ), 'utf8'))
+    const binding = compileProfileAvailabilityBinding({
+        packageDigest: manifest.manifestDigest,
+        runtimeInvocationId: 'runtime-install-observation',
+        observedAt: '2026-08-03T08:31:00.000Z',
+        catalogObservation: {
+            schema:
+                'issue-orchestration.runtime-profile-catalog-observation.v1',
+            source: 'trusted-runtime-catalog-observer',
+            paidInvocationCount: 0,
+            profiles: authorizedProfiles.map((profileId) => ({
+                profileId,
+                available: true,
+                reason: null
+            }))
+        }
+    })
+    const receipt = verifyInstalledProductionPolicy({
+        manifest,
+        availabilityBinding: binding
+    })
+    assert.equal(receipt.status, 'verified')
+    assert.equal(receipt.paidModelInvocationCount, 0)
+    assert.equal(receipt.comparativeQualificationPerformed, false)
+    assert.ok(Object.values(receipt.routeReachability).every(Boolean))
 })

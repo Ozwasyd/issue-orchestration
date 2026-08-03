@@ -12,7 +12,7 @@ const implementationRelative = `${packageScripts}/acceptance-group-session.mjs`
 const implementationPath = resolve(root, implementationRelative)
 const resourceLifecyclePath = resolve(root, `${packageScripts}/resource-lifecycle.mjs`)
 const resourceLifecycleDigest =
-    '3ef997437d61228681f64512295247ff7fdac2092e08381b4e7b3254901b2fdd'
+    '099d5939984140770eec24521084ac956381a21bab28a2a1b6ecfe789f1febb2'
 
 const repository = 'Ozwasyd/FsusBlog'
 const baseSha = '2499db9517ec4e340bb475443c6ec2984203323c'

@@ -7,14 +7,14 @@
             "repository": "Ozwasyd/FsusBlog",
             "defaultBranch": "master",
             "headSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
-            "command": "gh api repos/Ozwasyd/FsusBlog/commits/master --jq .sha"
+            "command": "committed-fixture: historical repository SHA; no live repository access"
         },
         {
             "id": "RP-FSUSUI-BASE",
             "repository": "Ozwasyd/FsusUI",
             "defaultBranch": "main",
             "headSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
-            "command": "gh api repos/Ozwasyd/FsusUI/commits/main --jq .sha"
+            "command": "committed-fixture: historical repository SHA; no live repository access"
         },
         {
             "id": "RP-FSUSUI-ISSUES",
@@ -24,7 +24,7 @@
             "issueCount": 13,
             "onlyCommentedIssue": 268,
             "commentId": 5138603602,
-            "command": "for n in $(seq 267 279); do gh issue view \"$n\" --repo Ozwasyd/FsusUI --json number,state,updatedAt,body,comments; done"
+            "command": "committed-fixture: historical issue-set snapshot; no live repository access"
         },
         {
             "id": "RP-FSUSUI-OWNER-SURFACE",
@@ -47,7 +47,7 @@
             "issue": 268,
             "evidenceCommentId": 5138603602,
             "observedRequirement": "native IME verification remains outstanding and is modeled by resource:browser:native-ime; it does not block unrelated stage tasks",
-            "command": "gh api repos/Ozwasyd/FsusUI/issues/comments/5138603602 --jq .body"
+            "command": "committed-fixture: historical evidence comment; no live repository access"
         }
     ],
     "resourceObservation": {

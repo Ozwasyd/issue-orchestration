@@ -10,7 +10,7 @@
     "commands": [
       "git rev-parse HEAD",
       "git status --short --branch",
-      "gh api repos/Ozwasyd/FsusBlog/commits/master --jq '{sha:.sha}'"
+      "committed-fixture: historical default-branch SHA; no live repository access"
     ]
   },
   "authorityProbes": [
@@ -22,8 +22,8 @@
       "commentCount": 5,
       "correctiveAuthorityCommentId": 5147386703,
       "commands": [
-        "gh issue view 1816 --repo Ozwasyd/FsusBlog --comments",
-        "gh api repos/Ozwasyd/FsusBlog/issues/comments/5147386703"
+        "committed-fixture: historical issue snapshot",
+        "committed-fixture: historical authority comment"
       ]
     },
     {
@@ -33,7 +33,7 @@
       "updatedAt": "2026-07-31T14:03:33Z",
       "commentCount": 3,
       "commands": [
-        "gh issue view 1822 --repo Ozwasyd/FsusBlog --comments"
+        "committed-fixture: historical issue snapshot"
       ]
     }
   ],

@@ -17,8 +17,6 @@ import {
 } from '../../skills/issue-orchestration/scripts/dispatch-batch-selector.mjs'
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..')
-const workspaceRoot = path.dirname(repositoryRoot)
-const siblingRepository = path.join(workspaceRoot, 'FsusUI')
 const writerAuthorityStateRoot = fs.mkdtempSync(path.join(
     os.tmpdir(),
     'issue-orchestration-writer-authority-'
@@ -27,13 +25,10 @@ fs.chmodSync(writerAuthorityStateRoot, 0o700)
 process.env.FSUS_ISSUE_ORCHESTRATION_STATE_ROOT ??=
     writerAuthorityStateRoot
 process.env.FSUS_ISSUE_ORCHESTRATION_REPOSITORIES ??= JSON.stringify([
-    repositoryRoot,
-    fs.existsSync(siblingRepository)
-        ? siblingRepository
-        : repositoryRoot
+    repositoryRoot
 ])
 process.env.FSUS_ISSUE_ORCHESTRATION_WORKSPACES ??=
-    JSON.stringify([workspaceRoot])
+    JSON.stringify([repositoryRoot])
 process.once('exit', () => {
     fs.rmSync(writerAuthorityStateRoot, {
         force: true,

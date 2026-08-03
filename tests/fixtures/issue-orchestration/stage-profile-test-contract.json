@@ -1,17 +1,18 @@
 {
   "schema": "issue-orchestration.stage-profile-test-contract.v3",
-  "revision": 3,
-  "supersedesTestContractDigest": "a64399fa7fb2056d3fc4f893bf0e90f86dcaa21bce2a7264cd64dd66f0ec5155",
+  "revision": 4,
+  "supersedesTestContractDigest": "a2fc609a42a5e04560087ab7d0f614e61747ee96bd5f41313c0e07a4a006d51f",
   "phase": "test-contract",
-  "status": "frozen-red",
+  "status": "frozen-green",
   "issueId": "Ozwasyd/FsusBlog#1819",
   "authority": {
     "kind": "superseding-package-issues",
     "issueIds": [
       "Ozwasyd/issue-orchestration#5",
-      "Ozwasyd/issue-orchestration#11"
+      "Ozwasyd/issue-orchestration#11",
+      "Ozwasyd/issue-orchestration#16"
     ],
-    "updatedAt": "2026-08-03T06:23:26Z"
+    "updatedAt": "2026-08-03T08:16:44Z"
   },
   "testOwnerId": "test-owner-fsusblog-1819-d01f7269",
   "baseSha": "d01f7269fb9819446f106806d96ea12269d0797b",
@@ -86,7 +87,7 @@
     }
   ],
   "fileHashes": {
-    "tests/tools/issue-orchestration-stage-profiles.test.mjs": "79ee9ff6a245bde76b8894982782b774034c364c114d15f124c81414087d3bd7",
+    "tests/tools/issue-orchestration-stage-profiles.test.mjs": "3d29f6dd748328e1b2744159e144dbd05b1747d58c8e395a88804242303f779d",
     "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json": "c8ddb8b01c8e94f282907fb6629b35ccb3d1d48b06de9163fdb109089d0eab85",
     "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json": "b7b2bfd48fcf324637798260960bf2834ee5591793aa7659c4a75ac61a31ff5d",
     "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json": "4cf09200238c28e0b2c755113fd4dc05d86f800d91663f4bb65ff5d25c5209f1",
@@ -100,5 +101,5 @@
     "fail": 18,
     "skipped": 0
   },
-  "testContractDigest": "a2fc609a42a5e04560087ab7d0f614e61747ee96bd5f41313c0e07a4a006d51f"
+  "testContractDigest": "3d849186bd7d53287c8e4beb74a256e784ae3cc8760086f690aa06977691fcfc"
 }

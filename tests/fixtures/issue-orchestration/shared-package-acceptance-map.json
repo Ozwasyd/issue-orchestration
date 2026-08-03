@@ -32,7 +32,7 @@
     },
     {
       "id": "INSTALL-01",
-      "requirement": "Install, verify and uninstall are deterministic, atomic, external to both repositories/common workspace/worktrees and ownership-safe; unknown edits fail closed and no half install or unrelated deletion is allowed.",
+      "requirement": "Install, verify and uninstall are deterministic, atomic, external to the authoring checkout and all caller-supplied protected roots, and ownership-safe; unknown edits fail closed and no half install or unrelated deletion is allowed.",
       "tests": ["P04", "P05", "P06", "P07"],
       "mutations": [
         "N05-protected-install-target",
@@ -42,7 +42,7 @@
     },
     {
       "id": "DISCOVERY-01",
-      "requirement": "FsusBlog root, FsusUI root, common workspace and one worktree from each repository discover the same skill identity/digest, exact seven-agent set and model/routing/remote-mutation/graph/projector digests.",
+      "requirement": "The current package root and four isolated temporary cwd probes discover the same skill identity/digest, exact seven-agent set and model/routing/remote-mutation/graph/projector digests.",
       "tests": ["P04"],
       "mutations": [
         "N08-cwd-specific-digest-or-agent-drift"

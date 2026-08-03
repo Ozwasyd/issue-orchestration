@@ -18,6 +18,11 @@ const scriptsRoot = path.join(
     'skills/issue-orchestration/scripts'
 )
 const expectedProfiles = [
+    'luna-high',
+    'luna-low',
+    'luna-max',
+    'luna-medium',
+    'luna-xhigh',
     'sol-high',
     'sol-low',
     'sol-max',
@@ -29,6 +34,9 @@ const expectedProfiles = [
     'terra-medium',
     'terra-xhigh'
 ]
+const expectedCapabilityProfiles = expectedProfiles.filter((profile) =>
+    !['luna-low', 'luna-medium', 'luna-high', 'luna-xhigh']
+        .includes(profile))
 const expectedStages = {
     'root-scheduler:scheduling': {
         allowedProfiles: ['terra-low'],
@@ -41,8 +49,7 @@ const expectedStages = {
     'dag-creator-updater:semantic-proposal': {
         allowedProfiles: [
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
+            'sol-high',
             'sol-xhigh',
             'sol-max'
         ],
@@ -51,8 +58,7 @@ const expectedStages = {
     'test-owner:test-contract-planning': {
         allowedProfiles: [
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
+            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -62,8 +68,7 @@ const expectedStages = {
         allowedProfiles: [
             'terra-medium',
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
+            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -72,8 +77,7 @@ const expectedStages = {
     'test-owner:behavior-verification': {
         allowedProfiles: [
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
+            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -84,8 +88,8 @@ const expectedStages = {
             'terra-low',
             'terra-medium',
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
+            'luna-max',
+            'sol-medium',
             'sol-high',
             'sol-xhigh'
         ],
@@ -95,20 +99,24 @@ const expectedStages = {
         allowedProfiles: [
             'terra-medium',
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
             'sol-high',
             'sol-xhigh'
         ],
-        defaultProfile: 'terra-high'
+        defaultProfile: 'terra-medium'
     },
     'ui-ux-implementer:ui-implementation': {
         allowedProfiles: ['sol-low', 'sol-medium'],
         defaultProfile: 'sol-low'
     },
     'ui-ux-implementer:landing-conflict-resolution': {
-        allowedProfiles: ['sol-low', 'sol-medium'],
-        defaultProfile: 'sol-medium'
+        allowedProfiles: [
+            'terra-medium',
+            'terra-high',
+            'sol-medium',
+            'sol-high',
+            'sol-xhigh'
+        ],
+        defaultProfile: 'terra-medium'
     },
     'ui-system-adjudicator:adjudication': {
         allowedProfiles: ['sol-high', 'sol-xhigh'],
@@ -119,7 +127,12 @@ const expectedStages = {
         defaultProfile: 'sol-medium'
     },
     'documentation-writer:documentation': {
-        allowedProfiles: ['terra-low', 'terra-medium', 'terra-high'],
+        allowedProfiles: [
+            'terra-low',
+            'terra-medium',
+            'sol-medium',
+            'sol-high'
+        ],
         defaultProfile: 'terra-medium'
     }
 }
@@ -130,7 +143,7 @@ const importRuntime = (name) => import(pathToFileURL(
     path.join(scriptsRoot, name)
 ).href)
 
-test('V3-01 freezes the sole Terra/Sol production pool and V2 evidence', () => {
+test('V3-01 freezes the reviewed Terra/Luna/Sol production roster', () => {
     const pool = loadJson('policy/model-pool.json')
     assert.equal(
         pool.schema,
@@ -138,6 +151,15 @@ test('V3-01 freezes the sole Terra/Sol production pool and V2 evidence', () => {
     )
     assert.equal(pool.version, 'stage-model-pool.v3')
     assert.deepEqual(Object.keys(pool.profiles).sort(), expectedProfiles)
+    assert.deepEqual(pool.productionRoster, [
+        'terra-low', 'terra-medium', 'terra-high', 'luna-max',
+        'sol-low', 'sol-medium', 'sol-high', 'sol-xhigh'
+    ])
+    assert.deepEqual(pool.frontierOnlyProfiles, ['sol-max'])
+    assert.deepEqual(pool.disabledProfiles, [
+        'terra-xhigh', 'terra-max', 'luna-low', 'luna-medium',
+        'luna-high', 'luna-xhigh'
+    ])
     for (const [profileId, profile] of Object.entries(pool.profiles)) {
         const [family, effort] = profileId.split('-')
         assert.equal(profile.model, `gpt-5.6-${family}`)
@@ -177,10 +199,13 @@ test('V3-03 capability evidence covers every registered profile exactly', async 
     const observations = loadJson(
         'policy/profile-capability-observations.json'
     )
-    assert.deepEqual(Object.keys(matrix.profiles).sort(), expectedProfiles)
+    assert.deepEqual(
+        Object.keys(matrix.profiles).sort(),
+        expectedCapabilityProfiles
+    )
     assert.deepEqual(
         observations.observations.map(({ profileId }) => profileId).sort(),
-        expectedProfiles
+        expectedCapabilityProfiles
     )
     for (const observation of observations.observations) {
         assert.equal(observation.requestedModel, observation.effectiveModel)
@@ -277,15 +302,19 @@ test('V3-05 requested/effective runtime mismatches fail closed', async () => {
     }
 })
 
-test('V3-06 Luna, Ultra, aliases and unregistered profiles are rejected', async () => {
+test('V3-06 only Luna/max is dispatchable while disabled and unknown profiles reject', async () => {
     const {
         splitProfile,
         verifyRuntimeProfileMetadata
     } = await importRuntime('stage-profile-policy.mjs')
+    assert.equal(splitProfile('luna-max').model, 'gpt-5.6-luna')
     for (const profile of [
         'luna-low',
+        'luna-medium',
         'luna-high',
-        'luna-max',
+        'luna-xhigh',
+        'terra-xhigh',
+        'terra-max',
         'sol-ultra',
         'terra-ultra',
         'gpt-5.6-terra/low',
@@ -307,16 +336,21 @@ test('V3-06 Luna, Ultra, aliases and unregistered profiles are rejected', async 
 
 test('V3-07 UI, documentation and cleanup boundaries match the frozen map', () => {
     const pool = loadJson('policy/model-pool.json')
-    for (const key of [
-        'ui-ux-implementer:ui-implementation',
-        'ui-ux-implementer:landing-conflict-resolution'
-    ]) {
-        assert.ok(pool.stages[key].allowedProfiles.every((profile) =>
-            ['sol-low', 'sol-medium'].includes(profile)))
-    }
+    assert.deepEqual(
+        pool.stages['ui-ux-implementer:ui-implementation']
+            .allowedProfiles,
+        ['sol-low', 'sol-medium']
+    )
+    assert.deepEqual(
+        pool.stages['ui-ux-implementer:landing-conflict-resolution']
+            .allowedProfiles,
+        ['terra-medium', 'terra-high', 'sol-medium', 'sol-high', 'sol-xhigh']
+    )
     assert.ok(pool.stages[
         'documentation-writer:documentation'
-    ].allowedProfiles.every((profile) => profile.startsWith('terra-')))
+    ].allowedProfiles.every((profile) =>
+        ['terra-low', 'terra-medium', 'sol-medium', 'sol-high']
+            .includes(profile)))
     assert.deepEqual(pool.cleanup, {
         greenAuthority: 'machine-resource-verifier',
         llmProfile: null,
@@ -389,20 +423,22 @@ test('V3-10 selector, frontier and gate do not own model selection', () => {
     }
 })
 
-test('V3-11 no positive production policy retains Luna or Ultra', () => {
-    for (const relative of [
-        'policy/model-pool.json',
-        'policy/routing-policy.json',
-        'policy/execution-routing-policy.json',
-        'policy/profile-capability-matrix.json',
-        'policy/profile-capability-observations.json'
-    ]) {
-        const source = fs.readFileSync(path.join(packageRoot, relative), 'utf8')
-        assert.doesNotMatch(
-            source,
-            /gpt-5\.6-luna|luna-(?:low|high|max)|(?:sol|terra)-ultra/u
-        )
+test('V3-11 disabled profiles have zero stage or ordinary-route authority', () => {
+    const pool = loadJson('policy/model-pool.json')
+    const routing = loadJson('policy/execution-routing-policy.json')
+    const selected = [
+        ...Object.values(pool.stages)
+            .flatMap(({ allowedProfiles }) => allowedProfiles),
+        ...Object.values(routing.selectionPriority).flat()
+    ]
+    for (const disabled of pool.disabledProfiles) {
+        assert.equal(selected.includes(disabled), false, disabled)
     }
+    assert.equal(
+        Object.values(routing.selectionPriority).flat()
+            .includes('sol-max'),
+        false
+    )
 })
 
 test('V3-12 one policy digest is bound by manifest and all five cwd installs', () => {

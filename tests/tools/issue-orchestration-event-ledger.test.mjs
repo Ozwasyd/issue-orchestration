@@ -2656,7 +2656,11 @@ test('R03 corrupt tail reports the final valid sequence and keeps dispatch disab
 
 test('R05/R06 append authority leaves protected repository and workspace inventories unchanged', async () => {
     const module = await runtime()
-    const protectedRoots = ['FsusBlog', 'FsusUI', 'workspace', 'FsusBlog-worktree', 'FsusUI-worktree']
+    const protectedRoots = [
+        'target-repository',
+        'launch-workspace',
+        'linked-worktree'
+    ]
         .map((name) => {
             const directory = path.join(scratch, name)
             fs.mkdirSync(directory)

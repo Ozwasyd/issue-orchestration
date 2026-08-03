@@ -560,6 +560,15 @@ function dispatchEvidence(request) {
         effectiveModel: request.requestedModel,
         requestedEffort: request.requestedEffort,
         effectiveEffort: request.requestedEffort,
+        routeDecisionDigest:
+            request.executionRouteDecisionDigest,
+        packageDigest:
+            authority.startup.observation.packageDigest,
+        modelPoolPolicyDigest:
+            authority.startup.observation.policyDigests.modelPool,
+        executionRoutingPolicyDigest:
+            authority.startup.observation.policyDigests
+                .executionRouting,
         effectiveMultiAgentBackend: 'v2',
         effectivePermissionProfile: 'danger-full-access',
         permissionInheritance: 'inherited-parent-profile',
@@ -744,7 +753,7 @@ test('P01 dispatch-request.v2 seals every route and serial identity field', asyn
     assert.equal(request.schema, 'issue-orchestration.dispatch-request.v2')
     assert.equal(request.groupId, null)
     assert.equal(request.memberIssueId, issueId)
-    assert.equal(request.stageProfileId, 'terra-max')
+    assert.equal(request.stageProfileId, 'sol-high')
     assert.equal(
         request.selectedProfileReason,
         'runtime-probe-heavy-minimum-capability-fit'
@@ -1070,7 +1079,7 @@ test('P04 unobservable actual metadata cannot be marked verified', async () => {
 
 test('P05 deterministic routing is recomputed and receipt-bound', async () => {
     const { module: policyModule, route } = await frozenRoute()
-    assert.equal(route.selectedProfile, 'terra-max')
+    assert.equal(route.selectedProfile, 'sol-high')
     assert.equal(route.selectedProfileReason, 'engineering-risk-high-risk')
     const module = await runtime()
     const request = await module.sealDispatchRequest(await requestInput())

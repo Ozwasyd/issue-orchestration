@@ -8,10 +8,10 @@
 
 所有 DAG、执行 ledger、槽位、锁、issue 状态、恢复指纹和临时 evidence 只能位于同一个本机状态根。其规范化真实路径必须与以下保护根完全分离，既不能位于其中，也不能成为其父目录：
 
-- FsusBlog 仓库；
-- FsusUI 仓库；
-- 两仓共同工作区及本次启动工作区；
-- `git worktree list --porcelain` 从两仓发现的每个 worktree。
+- 当前 package authoring source；
+- caller 明确提供的每个目标仓库；
+- 本次启动工作区；
+- `git worktree list --porcelain` 从这些目标仓库发现的每个 worktree。
 
 优先从操作系统用户状态目录或系统临时目录选择本轮独立子目录。禁止使用任一仓库或共同工作区内的 `.tmp`、cache、ignored 子目录；不得新增 ignored fallback、读取旧仓库内状态作为权威，或把本地状态路径写成产品事实。
 
@@ -20,9 +20,8 @@
 ```bash
 node .agents/skills/issue-orchestration/scripts/validate-state-root.mjs \
   --candidate <state-root> \
-  --repository <FsusBlog-root> \
-  --repository <FsusUI-root> \
-  --workspace <common-or-launch-workspace>
+  --repository <target-repository-root> \
+  --workspace <launch-workspace>
 ```
 
 守卫会按输入遍历顺序解析相对路径和 `..`，拒绝 symlink 组件，以最近存在祖先推导不存在尾部的规范路径，并同时核验 Linux mount coordinate、device/inode identity 和实际 Git worktree。对无法证明 backing path 的 FUSE/overlay alias mount 直接拒绝。它不以字符串前缀作为充分证据；无法读取 mount 或 worktree 身份时 fail closed。第一次校验通过后，只能使用输出的 `candidate.canonical` 以 `0700` 权限创建状态根；创建后必须用同一参数复验，复验通过前不得写 DAG。
@@ -141,7 +140,7 @@ DAG 至少记录：
 
 ## Stage model pool 与重分类
 
-永久 writer routing 的唯一 authority 是 `execution-capability-routing.v3`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后从 `profile-capability-matrix.v3` 中选择满足全部硬能力且属于 stage pool 的最低充分 profile。永久池只包含 Terra 与 Sol 的 `low/medium/high/xhigh/max` 十个 profile；Luna 与 Ultra 不可发现。UI、长链和 frontier 仍必须由机器 capability evidence 决定，不能由节点字段或 Root 偏好决定。logical model capability 不含 sandbox/permission label；非 writer stage 受 `stage-model-pool.v3` role pool 与 execution-class policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
+永久 writer routing 的唯一 authority 是 `execution-capability-routing.v3`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后通过冻结 route table 选择唯一 production profile。普通 roster 固定为 `terra-low/medium/high`、`luna-max`、`sol-low/medium/high/xhigh`，`sol-max` 只允许 Advisor 或机器证明的 frontier exception；`terra-xhigh/max` 与 `luna-low/medium/high/xhigh` 只有 catalog 可见性，没有 dispatch、retry、fallback 或 override authority。`luna-max` 还必须通过 fresh、narrow、single-module、短工具链、精确 tokenizer 与 32K token 上限合同，并在 dispatch 前绑定 trusted availability；唯一 availability fallback 是 `terra-high`。安装只验证完整性、availability、reachability 与 fallback，不运行付费比较。UI、长链和 frontier 仍必须由机器 evidence 决定，不能由节点字段或 Root 偏好决定。logical model capability 不含 sandbox/permission label；非 writer stage 受 `stage-model-pool.v3` role pool 与 execution-class policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
 
 `reworkCount`、失败次数、余额、token、成本、telemetry、当前 root profile 和人工偏好不是 routing input。`writer-stage.output-missing` 不能自动升档；只有最小或实质修订后的 slice、机器 `profile-capability-mismatch`、旧 failure receipt、breaker reset/retry authorization 和可观察 requested/effective metadata 同时成立，才能重编 route。Acceptance-group 的每个 member 与 landing/reverification slice 都独立编译 route，不能继承上一 member 的 profile、candidate receipt 或 verifier context。不可用或不可观察 profile 必须 fail closed，不得静默 fallback。
 

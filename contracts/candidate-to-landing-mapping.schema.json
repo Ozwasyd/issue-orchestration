@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:candidate-to-landing-mapping:v1",
+  "title": "issue-orchestration.candidate-to-landing-mapping.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "repositoryId",
+    "leaseId",
+    "deliveryEpoch",
+    "baseSha",
+    "candidateSha",
+    "candidateTree",
+    "defaultBranchRef",
+    "landingCommit",
+    "mappingType",
+    "candidatePatchId",
+    "landingPatchId",
+    "observedAt",
+    "mappingDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.candidate-to-landing-mapping.v1"},
+    "producerAuthority": {"const": "machine-candidate-landing-mapper"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"type": "string", "minLength": 1},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "repositoryId": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "candidateTree": {"$ref": "#/$defs/sha"},
+    "defaultBranchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "landingCommit": {"$ref": "#/$defs/sha"},
+    "mappingType": {"enum": ["merge-ancestry", "exact-patch"]},
+    "candidatePatchId": {
+      "oneOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]
+    },
+    "landingPatchId": {
+      "oneOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]
+    },
+    "observedAt": {"type": "string", "format": "date-time"},
+    "mappingDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"}
+  }
+}

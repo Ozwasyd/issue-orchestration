@@ -4,7 +4,7 @@
   "modelPoolPolicyVersion": "stage-model-pool.v3",
   "evidenceAuthority": "recomputed-codex-v2-runtime-observations",
   "evidenceFixture": "profile-capability-observations.json",
-  "evidenceDigest": "2bf13a60d12a94f90914291eaf57870d128b38d5948ccd8a8babfff56cd37530",
+  "evidenceDigest": "561b9b190fee942057070b847441d4054729701769c77ec52d6fbc5daa50438d",
   "modelSelfReportAccepted": false,
   "profiles": {
     "terra-low": {
@@ -56,6 +56,16 @@
       "crossModuleReasoningClass": 4,
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
       "evidenceDigest": "d804b977b4282c5e4e00b1cd6da002dc3c790d3e59baea60c4655b3ab6028108"
+    },
+    "luna-max": {
+      "planningDepth": 4,
+      "toolChainPersistence": 2,
+      "contextRetentionClass": 2,
+      "checkpointReliability": 1,
+      "runtimeProbeCapability": 1,
+      "crossModuleReasoningClass": 2,
+      "allowedContinuationModes": ["none"],
+      "evidenceDigest": "a9cb81b26f1d255e5f20ae2f8fcf6477bde27d63775dddfd659b33bbcdc6aefc"
     },
     "sol-low": {
       "planningDepth": 1,

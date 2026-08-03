@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:worktree-removal-receipt:v1",
+  "title": "issue-orchestration.worktree-removal-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "repositoryId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "worktreePath",
+    "worktreeFilesystemIdentity",
+    "worktreeRegistryEntry",
+    "branchRef",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "leaseId",
+    "disposition",
+    "inventoryDigest",
+    "dispositionReceiptDigest",
+    "processObservationDigest",
+    "commandClass",
+    "forceAuthorizationDigest",
+    "pathAbsent",
+    "registryEntryAbsent",
+    "gitMetadataPruned",
+    "removedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.worktree-removal-receipt.v1"},
+    "producerAuthority": {"const": "machine-git-resource-cleaner"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "worktreePath": {"$ref": "#/$defs/text"},
+    "worktreeFilesystemIdentity": {"type": "object"},
+    "worktreeRegistryEntry": {"$ref": "#/$defs/text"},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "leaseId": {"$ref": "#/$defs/text"},
+    "disposition": {
+      "enum": ["landed", "superseded", "discard-authorized", "quarantined"]
+    },
+    "inventoryDigest": {"$ref": "#/$defs/digest"},
+    "dispositionReceiptDigest": {"$ref": "#/$defs/digest"},
+    "processObservationDigest": {"$ref": "#/$defs/digest"},
+    "commandClass": {
+      "enum": ["git-worktree-remove-and-prune", "git-worktree-remove-force-and-prune"]
+    },
+    "forceAuthorizationDigest": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "pathAbsent": {"const": true},
+    "registryEntryAbsent": {"const": true},
+    "gitMetadataPruned": {"const": true},
+    "removedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1}
+  }
+}

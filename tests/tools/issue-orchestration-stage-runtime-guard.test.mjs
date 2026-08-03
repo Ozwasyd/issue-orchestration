@@ -107,6 +107,8 @@ function fixture({
     const actorSessionId = writer
         ? 'writer-session-1'
         : 'observer-session-1'
+    const selectedProfile = writer ? 'terra-low' : 'sol-max'
+    const routeDecisionDigest = digest('route')
     const observation = {
         schema:
             'issue-orchestration.runtime-execution-observation.v1',
@@ -122,14 +124,21 @@ function fixture({
         effectiveRole: stageRole,
         requestedPhase: stagePhase,
         effectivePhase: stagePhase,
-        requestedProfile: writer ? 'terra-low' : 'sol-max',
-        effectiveProfile: writer ? 'terra-low' : 'sol-max',
+        requestedProfile: selectedProfile,
+        effectiveProfile: selectedProfile,
         requestedModel:
             writer ? 'gpt-5.6-terra' : 'gpt-5.6-sol',
         effectiveModel:
             writer ? 'gpt-5.6-terra' : 'gpt-5.6-sol',
         requestedEffort: writer ? 'low' : 'max',
         effectiveEffort: writer ? 'low' : 'max',
+        routeDecisionDigest,
+        packageDigest:
+            startup.observation.packageDigest,
+        modelPoolPolicyDigest:
+            startup.observation.policyDigests.modelPool,
+        executionRoutingPolicyDigest:
+            startup.observation.policyDigests.executionRouting,
         effectiveMultiAgentBackend: 'v2',
         effectivePermissionProfile: 'danger-full-access',
         permissionInheritance: 'inherited-parent-profile',
@@ -142,6 +151,8 @@ function fixture({
         compileRuntimeExecutionBinding({
             stageRole,
             stagePhase,
+            selectedProfile,
+            routeDecisionDigest,
             runtimeObservation: observation,
             startup,
             runtimeTrustBinding,
@@ -167,7 +178,7 @@ function fixture({
         leaseDigest,
         sliceDigest: writer ? digest('writer-slice') : null,
         allowedPaths: writer ? ['allowed.mjs'] : [],
-        routeDecisionDigest: digest('route'),
+        routeDecisionDigest,
         compiledPromptDigest: digest('prompt'),
         remoteSnapshotDigest: digest('remote'),
         runtimeExecutionBinding,

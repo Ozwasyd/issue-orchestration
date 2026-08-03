@@ -68,6 +68,7 @@ const requiredPackageFiles = [
     'manifest.json',
     'policy/model-pool.json',
     'policy/control-plane-advisor-policy.json',
+    'policy/git-resource-cleanup-policy.json',
     'policy/remote-mutation-policy.json',
     'policy/root-takeover-policy.json',
     'policy/routing-policy.json',
@@ -94,6 +95,7 @@ const requiredRuntimeModules = [
     'executable-slice-compiler.mjs',
     'event-ledger.mjs',
     'frontier-compiler.mjs',
+    'git-resource-cleanup.mjs',
     'human-decision.mjs',
     'remote-mutation-authority.mjs',
     'resource-lifecycle.mjs',
@@ -203,51 +205,34 @@ function git(directory, args) {
     return result.stdout.trim()
 }
 
-function createRepository(directory) {
-    fs.mkdirSync(directory, { recursive: true })
-    git(directory, ['init', '--initial-branch=main'])
-    git(directory, ['config', 'user.email', 'test-owner@example.invalid'])
-    git(directory, ['config', 'user.name', 'Issue 1823 Test Owner'])
-    fs.writeFileSync(path.join(directory, 'README.md'), 'probe repository\n')
-    git(directory, ['add', 'README.md'])
-    git(directory, ['commit', '-m', 'test: seed discovery probe'])
-}
-
 function topology(t) {
     const temporaryRoot = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'fsusblog-1823-shared-package-')
+        path.join(os.tmpdir(), 'issue-orchestration-shared-package-')
     )
     t.after(() => fs.rmSync(temporaryRoot, { recursive: true, force: true }))
-    const commonWorkspace = path.join(temporaryRoot, 'common-workspace')
-    const fsusBlog = path.join(commonWorkspace, 'FsusBlog')
-    const fsusUi = path.join(commonWorkspace, 'FsusUI')
-    const worktreeRoot = path.join(temporaryRoot, 'worktrees')
-    const fsusBlogWorktree = path.join(worktreeRoot, 'FsusBlog-issue')
-    const fsusUiWorktree = path.join(worktreeRoot, 'FsusUI-issue')
+    const protectedRoot = path.join(temporaryRoot, 'protected-root')
+    const probeRoot = path.join(temporaryRoot, 'cwd-probes')
+    const isolatedProbeCwds = Array.from(
+        { length: 4 },
+        (_, index) => path.join(probeRoot, `probe-${index + 1}`)
+    )
     const externalRoot = path.join(temporaryRoot, 'external')
     const installRoot = path.join(externalRoot, 'shared-install')
     const stateRoot = path.join(externalRoot, 'runtime-state')
-    createRepository(fsusBlog)
-    createRepository(fsusUi)
-    fs.mkdirSync(worktreeRoot, { recursive: true })
-    git(fsusBlog, ['worktree', 'add', '--detach', fsusBlogWorktree, 'HEAD'])
-    git(fsusUi, ['worktree', 'add', '--detach', fsusUiWorktree, 'HEAD'])
+    fs.mkdirSync(protectedRoot, { recursive: true })
+    for (const cwd of isolatedProbeCwds) {
+        fs.mkdirSync(cwd, { recursive: true })
+    }
     fs.mkdirSync(externalRoot, { recursive: true })
     return {
         temporaryRoot,
-        commonWorkspace,
-        fsusBlog,
-        fsusUi,
-        fsusBlogWorktree,
-        fsusUiWorktree,
+        protectedRoot,
+        isolatedProbeCwds,
         installRoot,
         stateRoot,
         discoveryCwds: [
-            fsusBlog,
-            fsusUi,
-            commonWorkspace,
-            fsusBlogWorktree,
-            fsusUiWorktree
+            packageRoot,
+            ...isolatedProbeCwds
         ]
     }
 }
@@ -256,9 +241,8 @@ function installArguments(value, target = value.installRoot) {
     return [
         '--source-root', packageRoot,
         '--install-root', target,
-        '--protected-root', value.commonWorkspace,
-        '--protected-root', value.fsusBlogWorktree,
-        '--protected-root', value.fsusUiWorktree,
+        '--protected-root', value.protectedRoot,
+        '--protected-root', value.isolatedProbeCwds[0],
         '--json'
     ]
 }
@@ -558,7 +542,7 @@ test('P04 performs a real atomic install and five-cwd discovery probe', (t) => {
         discoverScript,
         '--source-root', packageRoot,
         '--install-root', value.installRoot,
-        '--cwd', value.fsusBlog,
+        '--cwd', value.discoveryCwds[0],
         '--json'
     ]), 'standalone shared package discovery')
     for (const field of [
@@ -640,7 +624,10 @@ test('P06 unknown installed edits fail closed and are never overwritten', (t) =>
 
 test('P07 protected targets and ownership-unsafe uninstall fail closed', (t) => {
     const value = topology(t)
-    const protectedTarget = path.join(value.fsusBlog, '.shared-control-plane')
+    const protectedTarget = path.join(
+        value.protectedRoot,
+        '.shared-control-plane'
+    )
     const refused = run(process.execPath, [
         installScript,
         ...installArguments(value, protectedTarget)

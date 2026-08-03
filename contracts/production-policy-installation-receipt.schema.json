@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:production-policy-installation-receipt:v1",
+  "title": "issue-orchestration.production-policy-installation-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "status",
+    "manifestDigest",
+    "modelPoolPolicyVersion",
+    "policyDigest",
+    "availabilityBindingDigest",
+    "paidModelInvocationCount",
+    "comparativeQualificationPerformed",
+    "routeReachability",
+    "disabledProfiles",
+    "frontierOnlyProfiles",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.production-policy-installation-receipt.v1"
+    },
+    "status": {
+      "const": "verified"
+    },
+    "manifestDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "modelPoolPolicyVersion": {
+      "const": "stage-model-pool.v3"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "availabilityBindingDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "paidModelInvocationCount": {
+      "const": 0
+    },
+    "comparativeQualificationPerformed": {
+      "const": false
+    },
+    "routeReachability": {
+      "type": "object",
+      "minProperties": 9,
+      "additionalProperties": {
+        "const": true
+      }
+    },
+    "disabledProfiles": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true
+    },
+    "frontierOnlyProfiles": {
+      "const": ["sol-max"]
+    },
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

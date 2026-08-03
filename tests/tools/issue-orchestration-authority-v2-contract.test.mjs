@@ -11,6 +11,9 @@ import {
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    createTrustedRepositoryFixture
+} from './issue-orchestration-trusted-repository-test-helper.mjs'
 
 const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -24,9 +27,7 @@ const scriptsRoot = path.join(
     packageRoot,
     'skills/issue-orchestration/scripts'
 )
-const fsusBlogRoot = path.resolve(
-    process.env.FSUSBLOG_ROOT ?? path.join(root, '../FsusBlog')
-)
+const repositoryRoot = createTrustedRepositoryFixture()
 const contract = JSON.parse(fs.readFileSync(path.join(
     root,
     'tests/fixtures/issue-orchestration/issues-1877-1887-contract.json'
@@ -107,7 +108,7 @@ function runtimeMetadata(profile = 'terra-low') {
 function rootRuntimeTrust(startup = runtimeStartup) {
     const repositoryTargets = [{
         repository: 'Ozwasyd/FsusBlog',
-        repositoryPath: fsusBlogRoot
+        repositoryPath: repositoryRoot
     }]
     return {
         repositoryTargets,

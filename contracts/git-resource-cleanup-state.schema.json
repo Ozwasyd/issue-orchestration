@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:git-resource-cleanup-state:v1",
+  "title": "issue-orchestration.git-resource-cleanup-state.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "policyDigest",
+    "lifecycleId",
+    "currentState",
+    "runId",
+    "rootAuthorityEpoch",
+    "actorInvocationId",
+    "repositoryId",
+    "repositoryPath",
+    "worktreePath",
+    "worktreeResourceId",
+    "branchResourceId",
+    "branchRef",
+    "defaultBranchRef",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "attemptId",
+    "stageRole",
+    "sliceId",
+    "leaseId",
+    "leasePath",
+    "slotId",
+    "resourceActorInvocationIds",
+    "remoteName",
+    "remoteRef",
+    "remoteExpectedSha",
+    "inventoryDigest",
+    "dispositionReceiptDigest",
+    "processObservationDigest",
+    "quarantineReceiptDigest",
+    "worktreeRemovalReceiptDigest",
+    "branchRetirementReceiptDigest",
+    "remoteCleanupReceiptDigest",
+    "leaseReleaseReceiptDigest",
+    "leaseReleased",
+    "slotReleased",
+    "transitions",
+    "stateDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.git-resource-cleanup-state.v1"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "currentState": {
+      "enum": [
+        "active",
+        "frozen",
+        "inventoried",
+        "candidate-disposition-proven",
+        "actors-and-processes-stopped",
+        "worktree-removed",
+        "local-ref-retired",
+        "quarantined",
+        "lease-and-slot-released",
+        "post-cleanup-verified"
+      ]
+    },
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "actorInvocationId": {"$ref": "#/$defs/text"},
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "repositoryPath": {"$ref": "#/$defs/text"},
+    "worktreePath": {"$ref": "#/$defs/text"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "defaultBranchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "stageRole": {"$ref": "#/$defs/text"},
+    "sliceId": {"$ref": "#/$defs/text"},
+    "leaseId": {"$ref": "#/$defs/text"},
+    "leasePath": {"$ref": "#/$defs/text"},
+    "slotId": {"$ref": "#/$defs/text"},
+    "resourceActorInvocationIds": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/text"}
+    },
+    "remoteName": {"$ref": "#/$defs/nullableText"},
+    "remoteRef": {"$ref": "#/$defs/nullableText"},
+    "remoteExpectedSha": {
+      "oneOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]
+    },
+    "inventoryDigest": {"$ref": "#/$defs/nullableDigest"},
+    "dispositionReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "processObservationDigest": {"$ref": "#/$defs/nullableDigest"},
+    "quarantineReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "worktreeRemovalReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "branchRetirementReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "remoteCleanupReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "leaseReleaseReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "leaseReleased": {"type": "boolean"},
+    "slotReleased": {"type": "boolean"},
+    "disposition": {
+      "enum": ["landed", "superseded", "discard-authorized", "quarantined"]
+    },
+    "landingMapping": {
+      "oneOf": [{"type": "object"}, {"type": "null"}]
+    },
+    "quarantineReceipt": {
+      "oneOf": [{"type": "object"}, {"type": "null"}]
+    },
+    "transitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "evidenceDigest", "transitionedAt"],
+        "properties": {
+          "from": {
+            "oneOf": [{"type": "string"}, {"type": "null"}]
+          },
+          "to": {"type": "string", "minLength": 1},
+          "evidenceDigest": {"$ref": "#/$defs/digest"},
+          "transitionedAt": {"type": "string", "format": "date-time"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "stateDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1},
+    "nullableText": {
+      "oneOf": [{"$ref": "#/$defs/text"}, {"type": "null"}]
+    }
+  }
+}

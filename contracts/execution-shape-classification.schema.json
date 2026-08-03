@@ -24,6 +24,12 @@
         "statefulContinuationRequired",
         "checkpointSupportRequired",
         "firstActionDeterministic",
+        "costSensitivity",
+        "freshContext",
+        "compiledContextTokens",
+        "exactTokenizerAvailable",
+        "selfContainedPrompt",
+        "bulkCrossScopeContext",
         "unsplittableReason",
         "classificationEvidenceDigest",
         "classificationDigest"
@@ -72,7 +78,8 @@
                 "context-heavy",
                 "high-tool-depth",
                 "long-horizon-cross-module",
-                "observe-only-adjudication"
+                "observe-only-adjudication",
+                "luna-fresh-narrow-deep"
             ]
         },
         "secondaryShapes": {
@@ -121,6 +128,29 @@
             ]
         },
         "firstActionDeterministic": {
+            "type": "boolean"
+        },
+        "costSensitivity": {
+            "enum": [
+                "neutral",
+                "latency-sensitive",
+                "cost-sensitive-deep"
+            ]
+        },
+        "freshContext": {
+            "type": "boolean"
+        },
+        "compiledContextTokens": {
+            "type": ["integer", "null"],
+            "minimum": 0
+        },
+        "exactTokenizerAvailable": {
+            "type": "boolean"
+        },
+        "selfContainedPrompt": {
+            "type": "boolean"
+        },
+        "bulkCrossScopeContext": {
             "type": "boolean"
         },
         "unsplittableReason": {

@@ -137,7 +137,15 @@ function containsSecret(value) {
         const sealedAuthorityReference =
             /(?:authorization|authority).*digest/iu.test(key) &&
             (child === null || HASH.test(child ?? ''))
-        return sensitive && !sealedAuthorityReference ||
+        const nonSecretRoutingMetric =
+            key === 'compiledContextTokens' &&
+                (child === null ||
+                    Number.isInteger(child) && child >= 0) ||
+            key === 'exactTokenizerAvailable' &&
+                typeof child === 'boolean'
+        return sensitive &&
+                !sealedAuthorityReference &&
+                !nonSecretRoutingMetric ||
             containsSecret(child)
     })
 }
@@ -1037,6 +1045,10 @@ async function verifyRuntimeDispatchV2(input) {
             compileRuntimeExecutionBinding({
                 stageRole: input.request.stageRole,
                 stagePhase: input.request.stagePhase,
+                selectedProfile:
+                    input.request.selectedProfileId,
+                routeDecisionDigest:
+                    input.request.executionRouteDecisionDigest,
                 runtimeObservation:
                     input.runtimeExecutionObservation,
                 startup: input.startup,

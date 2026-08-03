@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:git-resource-cleanup-verification:v1",
+  "title": "issue-orchestration.git-resource-cleanup-verification.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "actorRole",
+    "status",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "stageRole",
+    "sliceId",
+    "resourceActorInvocationIds",
+    "repositoryId",
+    "repositoryPath",
+    "defaultBranchRef",
+    "defaultBranchSha",
+    "worktreeResourceId",
+    "branchResourceId",
+    "worktreePath",
+    "branchRef",
+    "leaseId",
+    "leasePath",
+    "slotId",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "disposition",
+    "deliveryClean",
+    "quarantineReceiptDigest",
+    "quarantineRef",
+    "worktreeRemovalReceiptDigest",
+    "branchRetirementReceiptDigest",
+    "remoteCleanupReceiptDigest",
+    "leaseReleaseReceiptDigest",
+    "postCleanupObservationDigest",
+    "finalStateDigest",
+    "verifiedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.git-resource-cleanup-verification.v1"},
+    "actorRole": {"const": "machine-resource-verifier"},
+    "status": {"const": "post-cleanup-verified"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "stageRole": {"$ref": "#/$defs/text"},
+    "sliceId": {"$ref": "#/$defs/text"},
+    "resourceActorInvocationIds": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/text"}
+    },
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "repositoryPath": {"$ref": "#/$defs/text"},
+    "defaultBranchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "defaultBranchSha": {"$ref": "#/$defs/sha"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "worktreePath": {"$ref": "#/$defs/text"},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "leaseId": {"$ref": "#/$defs/text"},
+    "leasePath": {"$ref": "#/$defs/text"},
+    "slotId": {"$ref": "#/$defs/text"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "disposition": {
+      "enum": ["landed", "superseded", "discard-authorized", "quarantined"]
+    },
+    "deliveryClean": {"type": "boolean"},
+    "quarantineReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "quarantineRef": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^refs/issue-orchestration/quarantine/"
+        },
+        {"type": "null"}
+      ]
+    },
+    "worktreeRemovalReceiptDigest": {"$ref": "#/$defs/digest"},
+    "branchRetirementReceiptDigest": {"$ref": "#/$defs/digest"},
+    "remoteCleanupReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "leaseReleaseReceiptDigest": {"$ref": "#/$defs/digest"},
+    "postCleanupObservationDigest": {"$ref": "#/$defs/digest"},
+    "finalStateDigest": {"$ref": "#/$defs/digest"},
+    "verifiedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1}
+  }
+}

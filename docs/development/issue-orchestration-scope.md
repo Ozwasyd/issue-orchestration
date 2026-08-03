@@ -189,7 +189,7 @@ Root 启动必须先由 launcher/runtime integration 产生 `issue-orchestration
 
 `issue-orchestration.runtime-observation.v2` 必须从真实 child rollout 和机器 observation 读取，而不是复制 request 字段。它至少记录 `threadId`、`rolloutId`、`startedAt`、effective model/effort/role/mode/sandbox/fork/cwd/profile、runtime metadata digest，以及带 observation digest 的 dispatch/git/Skill/capability/lease observation。`skill-loader`、git identity、capability 和 lease observation 必须来自受信机器来源并自洽哈希；agent 自述不是 authority。缺少字段或 capability 时只能返回 `capability-unverified`，任何 mismatch、漂移、重放、secret material、错误 worktree、full-history fork 或不符合角色的 sandbox 都返回 `rejected`，不得进入 active attempt。
 
-永久 writer route 的唯一 correctness authority 是 `execution-capability-routing.v3`。它消费 #1874 verified slice 与机器 execution metrics，产生 shape、capability requirement 和 route decision；profile matrix 只能由 package 中唯一的可重算 machine runtime observation fixture 维护。永久池只含 Terra/Sol；logical capability selection 不含 sandbox 或 runtime permission label。UI implementation 永久限 `sol-low`/`sol-medium`，超出能力必须重切片或停止进入 fresh observe-only adjudication。
+永久 writer route 的唯一 correctness authority 是 `execution-capability-routing.v3`。它消费 verified slice 与机器 execution metrics，产生 shape、capability requirement 和 route decision；profile matrix 只能由 package 中唯一的可重算 machine runtime observation fixture 维护。普通 production roster 固定为 `terra-low/medium/high`、严格受限的 `luna-max` 与 `sol-low/medium/high/xhigh`；`sol-max` 只服务 Advisor/frontier，其他 Terra/Luna 档位没有生产 authority。Luna 必须 fresh、narrow、self-contained、单模块、短工具链、精确 tokenizer 且不超过 32768 tokens；只有 dispatch 前可信 runtime availability 为 unavailable/unsupported 时，才固定 fallback 到 `terra-high`。安装不运行付费模型比较。logical capability selection 不含 sandbox 或 runtime permission label。UI implementation 永久限 `sol-low`/`sol-medium`，超出能力必须重切片或停止进入 fresh observe-only adjudication。
 
 `writer-stage.output-missing` 不能按次数或措辞变化重路由。只有 `profile-capability-mismatch` 机器证据、最小或实质修订 slice、旧 failure/route/candidate receipt、breaker reset/retry authorization、不同的新 candidate identity及可观察 requested/effective runtime metadata全部成立时，才允许 `compileExecutionReroute`。Acceptance-group member、landing conflict 和 reverification各自独立编译 route；Telemetry只消费 route/outcome receipt作观察，不反向控制 correctness。Quiescence inventory必须保留 route decision、failure、retry和runtime receipt的引用，资源清理由机器 verifier签发。
 
@@ -266,7 +266,7 @@ behavior-green → ux-acceptance → ux-accepted
 
 - root scheduler（`root-scheduler`）是唯一可调用 ledger append 的 writer；所有 implementer、test owner、UX verifier、UI system adjudicator、documentation writer、machine resource verifier、independent verifier、subagent 都只能返回 receipt/evidence，尝试写 ledger 必须返回 `ledger-writer-role`。
 - DAG creator/updater 只产生 proposal；只有 root 在 remote live snapshot digest 确实变化、proposal 身份匹配且 actor 为 `dag-updater` 时，才能追加 `dag.proposal-accepted`。本地 stage/rework event 不触发 semantic DAG update。
-- `stateRoot` 必须与两个产品仓库、共同工作区和所有 worktree 完全分离；保护根重叠、路径逃逸、祖先 symlink 或 ledger/projection 位于受保护目录时拒绝。ledger path 不能通过 symlink 绕过该边界。
+- `stateRoot` 必须与 authoring source、caller 提供的全部目标仓库、启动工作区和所有 worktree 完全分离；保护根重叠、路径逃逸、祖先 symlink 或 ledger/projection 位于受保护目录时拒绝。ledger path 不能通过 symlink 绕过该边界。
 - terminal 进入必须有合法 category（`externally_blocked`、`resource_failed` 或 `contract_disputed`）和 direct evidence；recovery fingerprint 未变化时不得恢复或重派。cleanup failure 不能释放 lease/slot，也不能覆盖 first failure。
 - group session 与每个 member 独立 replay；group green 不能替代 member 的 contract、independent verification、commit 或 delivery。非法成员顺序、重复 active member、一个 lease 绑定多个 member 均 fail closed。
 
@@ -278,7 +278,9 @@ behavior-green → ux-acceptance → ux-accepted
 
 `candidate-green` 原子撤销 implementer writer，并只为同一 candidate 授予 independent verifier observe-only authority。verification rejection 撤销 verifier authority，并在同一 worktree/attempt 上恢复唯一 writer；双 writer、新 worktree 或丢失 retained service descendant/port owner 都 fail closed。
 
-Cleanup 只在合法 disposition 后启动。`issue-orchestration.resource-cleanup-receipt.v1` 必须由 machine resource verifier 签发，状态为 `resources-clean`，包含空的 machine-observed `postInventory` 和自洽 digest；agent 自述、缺 inventory 或仍有 owned resource 都不能释放 slot/lease 或授权 delivery。Cleanup 执行与 quiescence 不使用 LLM profile；Luna/low 或 Terra/max 只能解释异常，不能签发绿色 receipt。dirty worktree 进入 `quarantined-dirty`，保持 slot、阻止 delivery 且不得 force remove。
+Cleanup 只在合法 disposition 后启动。Worktree 与 child branch 必须经过 `active → frozen → inventoried → candidate-disposition-proven → actors-and-processes-stopped → worktree-removed → local-ref-retired|quarantined → lease-and-slot-released → post-cleanup-verified` 的完整 Git-resource 状态链。Inventory 绑定 canonical path/filesystem identity、Git common-dir/registry entry、branch/HEAD/index/tree、staged/dirty/untracked evidence、candidate/base/epoch、actor/process cwd/open-resource 与 lease。Merge ancestry 使用安全 `branch -d`；非 ancestry landing 只有 exact patch mapping 后才能 `branch -D`。未映射或 dirty 内容先保存 namespaced quarantine ref、patch、tree/index 和 untracked-content manifests，再允许 Git-aware force removal；quarantine 不能冒充 delivery。
+
+旧的 `cleanupAttemptResources` 不再直接运行 worktree/branch 删除，只能复核 `git-resource-cleanup-verification.v1` 的实时 path/ref/process/default-branch/quarantine/lease 后状态。没有该回执时，通用 cleanup 在任何 lock/lease/temp side effect 前失败。最终 `issue-orchestration.resource-cleanup-receipt.v1` 仍必须由 machine resource verifier 签发，状态为 `resources-clean`，包含空的 machine-observed `postInventory` 和自洽 digest；agent 自述、缺 inventory 或仍有 owned resource 都不能释放 slot/lease 或授权 delivery。Cleanup 执行与 quiescence 不使用 LLM profile；任何模型都不能签发绿色 receipt。
 
 Member cleanup 只删除 member-owned resources；group-owned worktree/service 必须保持 `retained`，直到所有 member cleanup 后的 group cleanup。Crash recovery 对比 baseline/observed registry：unknown/orphan owner 使恢复失败，externally-owned resource 必须保留且不得删除；外部资源缺失同样是 cleanup failure。
 
@@ -296,9 +298,9 @@ Subagent 的本地发现只作为 `possible-remote-contract-impact` execution-le
 
 Package 对外只发布七个角色：`code-implementer`、`dag-creator-updater`、`documentation-writer`、`test-owner`、`ui-system-adjudicator`、`ui-ux-implementer` 和 `ux-acceptance-verifier`。Control-plane Advisor 是 proposal-only service actor，外部 takeover supervisor 是 machine component，二者都不是第八个产品角色。Landing conflict resolution 只能复用 code/UI writer，不发布 `landing-owner`。角色与 profile 由单一 `stage-model-pool.v3` 和 deterministic routing compiler 选择：normal root 固定 `terra-low`，只有新 parent 的 recovery-takeover 可使用 `terra-medium`；documentation 只使用 `terra-medium` 或 `terra-high`，cleanup 的 green authority 是 machine resource verifier。旧的 `.agents/skills/issue-orchestration`、`.codex/agents` issue aliases、review/cleanup-verifier aliases、临时 bootstrap dispatcher 和 fixed-Sol/node-local profile authority 都不是可发现的兼容来源；产品 API、design、documentation 和 runtime authority 仍由各仓库 current 文档/AGENTS 在运行时提供，不能复制进 package。
 
-安装目标必须是 caller-supplied、位于两个仓库、common workspace 和全部 worktree 之外的 external install root；runtime state root 也必须独立于 authoring source 和 install root。安装通过 staging sibling 后原子 rename，并写入 `.issue-orchestration-install.json` ownership manifest。验证逐文件比较 source/install/manifest/install digests；未知手工编辑、半安装残留、symlink、protected-root overlap 和 ownership drift 都 fail closed，不能覆盖未知编辑。卸载只在 ownership manifest 完全匹配时删除 package-owned install root，外部 sibling 或 sentinel 保留。
+安装目标必须是 caller-supplied、位于 authoring source、caller 提供的保护根和全部 worktree 之外的 external install root；runtime state root 也必须独立于 authoring source 和 install root。安装通过 staging sibling 后原子 rename，并写入 `.issue-orchestration-install.json` ownership manifest。验证逐文件比较 source/install/manifest/install digests；未知手工编辑、半安装残留、symlink、protected-root overlap 和 ownership drift 都 fail closed，不能覆盖未知编辑。卸载只在 ownership manifest 完全匹配时删除 package-owned install root，外部 sibling 或 sentinel 保留。
 
-使用 `install.mjs`、`verify-install.mjs` 和 `discover.mjs` 时，应从五个 cwd 复核同一身份：FsusBlog root、FsusUI root、common workspace，以及两仓各一个 worktree。每个 discovery receipt 必须返回相同的 `packageIdentity`/`packageDigest`、Skill identity/digest、七角色集合、model-pool、routing、remote-mutation、graph/patch/runtime-projection、writer compiler/progress/schema 和 projector digests；任何 cwd-specific drift 都拒绝。典型验证（所有路径均为外部临时目录）如下：
+使用 `install.mjs`、`verify-install.mjs` 和 `discover.mjs` 时，应从五个自包含 cwd 复核同一身份：当前 package root 与四个隔离临时目录。每个 discovery receipt 必须返回相同的 `packageIdentity`/`packageDigest`、Skill identity/digest、七角色集合、model-pool、routing、remote-mutation、graph/patch/runtime-projection、writer compiler/progress/schema 和 projector digests；任何 cwd-specific drift 都拒绝。典型验证（所有 install/state/probe 路径均为外部临时目录）如下：
 
 ```bash
 PACKAGE_ROOT=.
@@ -306,14 +308,15 @@ INSTALL_ROOT=/external/issue-orchestration-install
 STATE_ROOT=/external/issue-orchestration-state
 node "$PACKAGE_ROOT/scripts/install.mjs" \
   --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT" \
-  --protected-root "$PWD" --protected-root /path/to/FsusUI
+  --protected-root "$PWD"
 node "$PACKAGE_ROOT/scripts/verify-install.mjs" \
   --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT" \
   --runtime-state-root "$STATE_ROOT" \
-  --probe-cwd /path/to/FsusBlog --probe-cwd /path/to/FsusUI \
-  --probe-cwd /path/to/common-workspace \
-  --probe-cwd /path/to/FsusBlog-worktree \
-  --probe-cwd /path/to/FsusUI-worktree
+  --probe-cwd "$PWD" \
+  --probe-cwd /tmp/issue-orchestration-probe-1 \
+  --probe-cwd /tmp/issue-orchestration-probe-2 \
+  --probe-cwd /tmp/issue-orchestration-probe-3 \
+  --probe-cwd /tmp/issue-orchestration-probe-4
 node "$PACKAGE_ROOT/scripts/uninstall.mjs" \
   --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT"
 ```

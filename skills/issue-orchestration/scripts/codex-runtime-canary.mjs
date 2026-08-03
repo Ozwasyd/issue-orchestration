@@ -21,9 +21,18 @@ const RECEIPT_SCHEMA =
     'issue-orchestration.codex-runtime-canary-receipt.v2'
 const MODELS = new Map([
     ['gpt-5.6-terra', 'terra'],
+    ['gpt-5.6-luna', 'luna'],
     ['gpt-5.6-sol', 'sol']
 ])
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+const MODEL_POOL_POLICY = JSON.parse(fsSync.readFileSync(path.resolve(
+    import.meta.dirname,
+    '../../../policy/model-pool.json'
+), 'utf8'))
+const ENABLED_PROFILES = new Set([
+    ...MODEL_POOL_POLICY.productionRoster,
+    ...MODEL_POOL_POLICY.frontierOnlyProfiles
+])
 
 function payload(event) {
     return event?.payload ?? event ?? {}
@@ -100,7 +109,10 @@ export function parseCodexRuntimeMetadata({
             { invocationRequest, runtimeObservation, comparison })
     }
     const family = MODELS.get(runtimeObservation.model)
-    if (!family || !EFFORTS.has(runtimeObservation.effort)) {
+    const profile = `${family}-${runtimeObservation.effort}`
+    if (!family ||
+        !EFFORTS.has(runtimeObservation.effort) ||
+        !ENABLED_PROFILES.has(profile)) {
         fail('codex-runtime-profile-forbidden')
     }
     if (runtimeObservation.multiAgentBackend !== 'v2') {
@@ -113,8 +125,7 @@ export function parseCodexRuntimeMetadata({
     const value = {
         schema: METADATA_SCHEMA,
         status: 'verified',
-        profile:
-            `${family}-${runtimeObservation.effort}`,
+        profile,
         invocationRequest,
         orchestrationLabels: {
             requestedRole:
@@ -727,10 +738,7 @@ export async function verifyManifestSourceCommit(root, sourceCommit) {
 }
 
 export async function runCodexRuntimeCanary({
-    projectsRoot,
     packageRoot = path.resolve(import.meta.dirname, '../../..'),
-    fsusBlogRoot,
-    fsusUIRoot,
     model = 'gpt-5.6-terra',
     effort = 'low',
     live = false
@@ -755,11 +763,14 @@ export async function runCodexRuntimeCanary({
     )))
     const codexHome = await fs.mkdtemp(path.join(
         os.tmpdir(), 'issue-orchestration-codex-home-'))
-    const writerRoot = await fs.mkdtemp(path.join(
-        os.tmpdir(), 'issue-orchestration-writer-cwd-'))
-    const discoveryRoot = await fs.mkdtemp(path.join(
-        os.tmpdir(), 'issue-orchestration-discovery-cwd-'))
-    const resources = [codexHome, writerRoot, discoveryRoot]
+    const isolatedCwds = await Promise.all(
+        Array.from({ length: 4 }, (_, index) =>
+            fs.mkdtemp(path.join(
+                os.tmpdir(),
+                `issue-orchestration-canary-cwd-${index + 1}-`
+            )))
+    )
+    const resources = [codexHome, ...isolatedCwds]
     const sourceHome = process.env.CODEX_HOME
         ?? path.join(os.homedir(), '.codex')
     let installation
@@ -781,11 +792,8 @@ export async function runCodexRuntimeCanary({
             'references',
             'runtime-discovery-canary.md')
         const cwds = [
-            projectsRoot,
-            fsusBlogRoot,
-            fsusUIRoot,
-            writerRoot,
-            discoveryRoot
+            packageRoot,
+            ...isolatedCwds
         ]
         discoveryProbes = []
         for (const cwd of cwds) {
@@ -825,13 +833,9 @@ export async function runCodexRuntimeCanary({
         receiptDigest: digest(cleanupBody)
     })
     const repoLocalPaths = [
-        path.join(fsusBlogRoot,
+        path.join(packageRoot,
             '.agents/skills/issue-orchestration'),
-        path.join(fsusBlogRoot,
-            '.codex/skills/issue-orchestration'),
-        path.join(fsusUIRoot,
-            '.agents/skills/issue-orchestration'),
-        path.join(fsusUIRoot,
+        path.join(packageRoot,
             '.codex/skills/issue-orchestration')
     ]
     const repoLocalCopies = await Promise.all(

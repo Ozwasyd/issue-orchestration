@@ -72,14 +72,14 @@
     "destructive operations outside test-created temporary roots"
   ],
   "fileHashes": {
-    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs": "832818532a1389f65a5579c375ba255824976032117ae8f9638421fe56bc4670",
+    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs": "257cedd615e0e20b1a6260b982025837ea305301d2c3bd2d5fa2eaf9de4bb6f8",
     "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json": "5ef2f288e921c9b230854fdaaaa45a89d41211807cffbdabaa61c4518b73db31",
     "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json": "8812a4a1d9eb171fa7b28fa332a7b075dc050090c5550208491561a2896f8742",
     "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json": "b4fbd107315bcdc117475c55be58028c8106b57a7c602beb07305078f019e8b8",
     "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json": "e3177496ff68f5f0f09db40dcd9ffb1d3faa77df5b439040f44b990496a265e0",
     "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json": "144ae0f11cd8831ef1c5e2f8cbd933bbdc384278700156826e2fde014d79e1a5"
   },
-  "frozenTreeDigest": "edc23a0a5ca7a10bfd4540fd408736c5c8f312450464bdf64d65cca4c1a061a9",
+  "frozenTreeDigest": "9dc1c358f96206f55df164209ceee12b8df26b37e517855ae688635072cd19ee",
   "hashAlgorithm": "sha256-raw-file-bytes-and-canonical-json",
-  "contractDigest": "f62089c22dc4ec3d7be567cc1f50e4b9f577014c8b05d3a47ef52d509701b726"
+  "contractDigest": "f63545fdb6108d378f37d0a36d00bf3c727168ad890b1f14b23192e5f00b7d29"
 }

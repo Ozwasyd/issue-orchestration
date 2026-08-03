@@ -3,6 +3,9 @@ import fs from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import {
+    reobserveGitResourceCleanupVerification
+} from './git-resource-cleanup.mjs'
 // Shared issue-orchestration package runtime.
 
 const HASH = /^[a-f0-9]{64}$/u
@@ -320,34 +323,12 @@ function resourceAction(resource, action, details = {}) {
     }
 }
 
-function findRepositoryForResource(resource, baseline, registry) {
-    const identity = resourceIdentity(resource)
-    if (isText(identity.repositoryRoot)) return path.resolve(identity.repositoryRoot)
-    if (resource.resourceType === 'worktree') {
-        const branch = registry.resources.find((candidate) =>
-            candidate.resourceType === 'branch'
-            && candidate.identityEvidence?.name === identity.branch)
-        if (branch?.identityEvidence?.repositoryRoot) {
-            return path.resolve(branch.identityEvidence.repositoryRoot)
-        }
-    }
-    if (baseline.repositories?.length === 1) return baseline.repositories[0].repositoryRoot
-    return null
-}
-
 function isOwnedTemporaryPath(baseline, candidatePath) {
     const target = path.resolve(candidatePath)
     return baseline.temporaryRoots?.some(({ temporaryRoot }) => {
         const root = path.resolve(temporaryRoot)
         return target.startsWith(`${root}${path.sep}`)
     }) ?? false
-}
-
-function worktreeIsDirty(worktreePath) {
-    if (!fs.existsSync(worktreePath)) return false
-    const result = command('git', ['status', '--porcelain=v1', '--untracked-files=all'], worktreePath)
-    if (result.status !== 0) fail('resource-worktree-observation')
-    return Boolean(result.stdout.trim())
 }
 
 function currentProcessGroupId() {
@@ -515,84 +496,6 @@ function failResource(resource, reason, failedResources) {
     })
 }
 
-function cleanWorktree(resource, baseline, registry, cleanupActions, failedResources) {
-    const identity = resourceIdentity(resource)
-    if (!isText(identity.path)) {
-        failResource(resource, 'worktree-path-missing', failedResources)
-        return
-    }
-    const worktreePath = path.resolve(identity.path)
-    if (!fs.existsSync(worktreePath)) {
-        cleanupActions.push(resourceAction(resource, 'already-absent'))
-        return
-    }
-    if (worktreeIsDirty(worktreePath)) {
-        failResource(resource, 'dirty-worktree', failedResources)
-        return
-    }
-    const repositoryRoot = findRepositoryForResource(resource, baseline, registry)
-    if (!repositoryRoot || !baselineRepository(baseline, repositoryRoot)) {
-        failResource(resource, 'worktree-repository-unbound', failedResources)
-        return
-    }
-    if (path.resolve(repositoryRoot) === worktreePath) {
-        failResource(resource, 'repository-worktree-retained', failedResources)
-        return
-    }
-    const observed = observeRepositoryRoot(repositoryRoot)
-    if (!observed.worktrees.some(({ path: candidate }) => path.resolve(candidate) === worktreePath)) {
-        failResource(resource, 'worktree-observation-missing', failedResources)
-        return
-    }
-    const removal = command('git', ['worktree', 'remove', worktreePath], repositoryRoot)
-    if (removal.status !== 0) {
-        failResource(resource, 'git-worktree-remove-failed', failedResources)
-        return
-    }
-    const prune = command('git', ['worktree', 'prune'], repositoryRoot)
-    if (prune.status !== 0 || fs.existsSync(worktreePath)) {
-        failResource(resource, 'git-worktree-prune-failed', failedResources)
-        return
-    }
-    cleanupActions.push(resourceAction(resource, 'git-worktree-remove-and-prune', { repositoryRoot }))
-}
-
-function cleanBranch(resource, baseline, cleanupActions, failedResources) {
-    const identity = resourceIdentity(resource)
-    if (!isText(identity.name) || !isText(identity.repositoryRoot)) {
-        failResource(resource, 'branch-identity-missing', failedResources)
-        return
-    }
-    const repositoryRoot = path.resolve(identity.repositoryRoot)
-    if (!baselineRepository(baseline, repositoryRoot)) {
-        failResource(resource, 'branch-repository-unbound', failedResources)
-        return
-    }
-    const primaryWorktree = baselineRepository(baseline, repositoryRoot)?.worktrees.find(
-        ({ path: worktreePath }) => path.resolve(worktreePath) === repositoryRoot
-    )
-    if (primaryWorktree?.branch === identity.name) {
-        failResource(resource, 'primary-branch-retained', failedResources)
-        return
-    }
-    const exists = command('git', ['show-ref', '--verify', '--quiet', `refs/heads/${identity.name}`], repositoryRoot)
-    if (exists.status === 1) {
-        cleanupActions.push(resourceAction(resource, 'already-absent'))
-        return
-    }
-    if (exists.status !== 0) {
-        failResource(resource, 'branch-observation-failed', failedResources)
-        return
-    }
-    const deletion = command('git', ['branch', '-d', identity.name], repositoryRoot)
-    const after = command('git', ['show-ref', '--verify', '--quiet', `refs/heads/${identity.name}`], repositoryRoot)
-    if (deletion.status !== 0 || after.status !== 1) {
-        failResource(resource, 'branch-delete-failed', failedResources)
-        return
-    }
-    cleanupActions.push(resourceAction(resource, 'git-branch-delete', { repositoryRoot }))
-}
-
 async function cleanProcessGroup(resource, cleanupActions, failedResources) {
     const identity = resourceIdentity(resource)
     const processGroupId = Number(identity.processGroupId ?? identity.leaderPid)
@@ -731,9 +634,13 @@ export async function cleanupAttemptResources({
     baseline,
     actorRole,
     groupCleanup = false,
-    groupSessionDigest
+    groupSessionDigest,
+    gitCleanupVerifications = []
 } = {}) {
     if (actorRole !== 'machine-resource-verifier') fail('machine-resource-verifier-required')
+    if (!Array.isArray(gitCleanupVerifications)) {
+        fail('git-resource-cleanup-verifications-invalid')
+    }
     const next = createResourceRegistry(registry)
     if (baseline?.schema !== 'issue-orchestration.resource-baseline-inventory.v1'
         || !HASH.test(baseline.baselineDigest ?? '')
@@ -772,38 +679,68 @@ export async function cleanupAttemptResources({
         })
         return { registry: next, receipt, observation }
     }
-    const dirtyResources = next.resources.filter((resource) => resource.resourceType === 'worktree'
-        && isCleanupTarget(resource)
-        && isText(resource.identityEvidence?.path)
-        && fs.existsSync(resource.identityEvidence.path)
-        && worktreeIsDirty(resource.identityEvidence.path))
-    if (dirtyResources.length > 0) {
-        for (const resource of dirtyResources) markResource(next, resource.resourceId, 'quarantined-dirty')
-        next.phase = 'quarantined-dirty'
+    const gitPreflightFailures = []
+    for (const resource of next.resources.filter((item) =>
+        ['worktree', 'branch'].includes(item.resourceType) &&
+        isCleanupTarget(item))) {
+        const verification = gitCleanupVerifications.find((value) =>
+            resource.resourceType === 'worktree'
+                ? value?.worktreeResourceId === resource.resourceId
+                : value?.branchResourceId === resource.resourceId)
+        if (!verification) {
+            failResource(
+                resource,
+                'git-resource-state-machine-required',
+                gitPreflightFailures
+            )
+            continue
+        }
+        try {
+            reobserveGitResourceCleanupVerification(
+                verification,
+                {
+                    runId: next.runId,
+                    attemptId: next.stageAttemptId,
+                    worktreeResourceId:
+                        resource.resourceType === 'worktree'
+                            ? resource.resourceId
+                            : undefined,
+                    branchResourceId:
+                        resource.resourceType === 'branch'
+                            ? resource.resourceId
+                            : undefined,
+                    leaseId: next.writeLease?.id
+                }
+            )
+        } catch (error) {
+            failResource(
+                resource,
+                error?.code ??
+                    'git-resource-state-machine-invalid',
+                gitPreflightFailures
+            )
+        }
+    }
+    if (gitPreflightFailures.length > 0) {
         next.deliveryAuthorized = false
-        next.slotHeld = true
-        const quarantinedResources = dirtyResources.map((resource) => ({
-            resourceId: resource.resourceId,
-            resourceType: resource.resourceType,
-            reason: 'dirty-worktree'
-        }))
         const receipt = cleanupReceipt({
             registry: next,
             baseline,
             ownedResourceDigest,
             cleanupActions: [],
             retainedResources: retainedGroupResources,
-            quarantinedResources,
-            failedResources: [],
-            status: 'quarantined',
-            postInventory: activeOwnedResources(next, isCleanupTarget)
+            quarantinedResources: [],
+            failedResources: gitPreflightFailures,
+            status: 'cleanup-failed',
+            postInventory:
+                activeOwnedResources(next, isCleanupTarget)
         })
         return { registry: next, receipt, observation }
     }
-
     const cleanupActions = []
     const lockReleaseObservations = []
     const failedResources = []
+    const quarantinedResources = []
     const orderedTypes = [
         'worktree', 'branch', 'process-group', 'port', 'lock', 'lease', 'temporary-directory'
     ]
@@ -811,8 +748,68 @@ export async function cleanupAttemptResources({
         for (const resource of next.resources.filter((item) => item.resourceType === resourceType
             && isCleanupTarget(item))) {
             const failuresBefore = failedResources.length
-            if (resourceType === 'worktree') cleanWorktree(resource, baseline, next, cleanupActions, failedResources)
-            else if (resourceType === 'branch') cleanBranch(resource, baseline, cleanupActions, failedResources)
+            if (resourceType === 'worktree' || resourceType === 'branch') {
+                const verification = gitCleanupVerifications.find((value) =>
+                    resourceType === 'worktree'
+                        ? value?.worktreeResourceId === resource.resourceId
+                        : value?.branchResourceId === resource.resourceId)
+                if (!verification) {
+                    failResource(
+                        resource,
+                        'git-resource-state-machine-required',
+                        failedResources
+                    )
+                } else {
+                    try {
+                        reobserveGitResourceCleanupVerification(
+                            verification,
+                            {
+                                runId: next.runId,
+                                attemptId: next.stageAttemptId,
+                                worktreeResourceId:
+                                    resourceType === 'worktree'
+                                        ? resource.resourceId
+                                        : undefined,
+                                branchResourceId:
+                                    resourceType === 'branch'
+                                        ? resource.resourceId
+                                        : undefined,
+                                leaseId: next.writeLease?.id
+                            }
+                        )
+                        cleanupActions.push(resourceAction(
+                            resource,
+                            'git-resource-state-machine-verified',
+                            {
+                                verificationReceiptDigest:
+                                    verification.receiptDigest,
+                                disposition:
+                                    verification.disposition
+                            }
+                        ))
+                        if (verification.deliveryClean !== true &&
+                            !quarantinedResources.some(({ receiptDigest }) =>
+                                receiptDigest ===
+                                    verification.receiptDigest)) {
+                            quarantinedResources.push({
+                                resourceId:
+                                    verification.worktreeResourceId,
+                                resourceType: 'git-resource-pair',
+                                reason: 'recoverable-work-quarantined',
+                                receiptDigest:
+                                    verification.receiptDigest
+                            })
+                        }
+                    } catch (error) {
+                        failResource(
+                            resource,
+                            error?.code ??
+                                'git-resource-state-machine-invalid',
+                            failedResources
+                        )
+                    }
+                }
+            }
             else if (resourceType === 'process-group') {
                 await cleanProcessGroup(resource, cleanupActions, failedResources)
             } else if (resourceType === 'port') await cleanPort(resource, cleanupActions, failedResources)
@@ -849,7 +846,7 @@ export async function cleanupAttemptResources({
         lockReleaseObservations,
         finalFilesystemObservations,
         retainedResources: retainedGroupResources,
-        quarantinedResources: [],
+        quarantinedResources,
         failedResources,
         status,
         postInventory
@@ -858,7 +855,12 @@ export async function cleanupAttemptResources({
         verifyCleanupReceipt(receipt)
         if (next.writeLease) next.writeLease.state = 'released'
         next.slotHeld = false
-        next.phase = 'cleaned'
+        next.phase = quarantinedResources.length > 0
+            ? 'cleaned-with-quarantine'
+            : 'cleaned'
+        if (quarantinedResources.length > 0) {
+            next.deliveryAuthorized = false
+        }
     } else {
         next.deliveryAuthorized = false
     }

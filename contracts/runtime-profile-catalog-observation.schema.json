@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-profile-catalog-observation:v1",
+  "title": "issue-orchestration.runtime-profile-catalog-observation.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "source",
+    "paidInvocationCount",
+    "profiles"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-profile-catalog-observation.v1"
+    },
+    "source": {
+      "const": "trusted-runtime-catalog-observer"
+    },
+    "paidInvocationCount": {
+      "const": 0
+    },
+    "profiles": {
+      "type": "array",
+      "minItems": 9,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": ["profileId", "available", "reason"],
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "reason": {
+            "enum": [
+              null,
+              "runtime-unsupported",
+              "runtime-unavailable"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

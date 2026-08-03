@@ -171,7 +171,14 @@ function createSandbox() {
         async createOwnedResources({ dirty = false } = {}) {
             command('git', ['worktree', 'add', '-b', branchName, worktreePath, 'HEAD'], repositoryRoot)
             mkdirSync(temporaryDirectory, { recursive: true })
-            writeFileSync(leasePath, JSON.stringify({ ownerAttemptId: cases.identities.attemptId }))
+            writeFileSync(leasePath, JSON.stringify({
+                leaseId: cases.identities.writeLeaseId,
+                runId: cases.identities.runId,
+                attemptId: cases.identities.attemptId,
+                ownerAttemptId: cases.identities.attemptId,
+                resourceId: 'worktree-1828-owned',
+                state: 'active'
+            }))
             this.port = await reservePort()
             this.portHolder = await startPortHolder(this.port)
             if (hasFlock()) this.lockHolder = await startLockHolder(lockPath)
@@ -289,6 +296,7 @@ function registryFor(sandbox, overrides = {}) {
 }
 
 let implementationPromise
+let gitCleanupPromise
 async function implementation() {
     assert.equal(existsSync(implementationPath), true,
         `missing #1828 current resource lifecycle owner: ${implementationRelative}`)
@@ -298,6 +306,116 @@ async function implementation() {
         assert.equal(typeof loaded[name], 'function', `missing export ${name}`)
     }
     return loaded
+}
+
+async function gitCleanup() {
+    gitCleanupPromise ??= import(pathToFileURL(resolve(
+        root,
+        `${packageRoot}/git-resource-cleanup.mjs`
+    )).href)
+    return await gitCleanupPromise
+}
+
+async function retireSandboxGitResources(sandbox) {
+    const loaded = await gitCleanup()
+    const identity = cases.identities
+    const authority = loaded.sealMachineReceipt({
+        schema:
+            'issue-orchestration.git-resource-root-authority.v1',
+        actorRole: 'root-control',
+        runId: identity.runId,
+        rootAuthorityEpoch: 'root-epoch-1828-cleanup',
+        actorInvocationId: 'root-invocation-1828-cleanup',
+        issuedAt: '2026-08-03T08:30:00.000Z'
+    }, 'authorityDigest')
+    let state = loaded.createGitResourceCleanup({
+        authority,
+        repositoryId: 'fixture/resource-lifecycle',
+        repositoryPath: sandbox.repositoryRoot,
+        worktreePath: sandbox.worktreePath,
+        worktreeResourceId: 'worktree-1828-owned',
+        branchResourceId: 'branch-1828-owned',
+        branchRef: `refs/heads/${sandbox.branchName}`,
+        defaultBranchRef: 'refs/heads/master',
+        baseSha: sandbox.baseSha,
+        candidateSha: command(
+            'git',
+            ['rev-parse', 'HEAD'],
+            sandbox.worktreePath
+        ),
+        deliveryEpoch: identity.epochId,
+        attemptId: identity.attemptId,
+        stageRole: 'code-implementer',
+        sliceId: 'slice-1828-cleanup',
+        leaseId: identity.writeLeaseId,
+        leasePath: sandbox.leasePath,
+        slotId: 'slot-1828-owned'
+    })
+    state = loaded.freezeGitResource({
+        state,
+        authority,
+        dispatchBlocked: true,
+        writerAuthorityRevoked: true,
+        cleanupAuthorityPreserved: true
+    }).state
+    const inventoried = loaded.inventoryGitResource({
+        state,
+        authority
+    })
+    state = inventoried.state
+    const disposition = inventoried.inventory.dirty
+        ? loaded.proveCandidateDisposition({
+                state,
+                authority,
+                inventory: inventoried.inventory,
+                disposition: 'quarantined',
+                quarantineRoot: sandbox.sandboxRoot,
+                reasonCodes: ['dirty-worktree']
+            })
+        : loaded.proveCandidateDisposition({
+                state,
+                authority,
+                inventory: inventoried.inventory,
+                disposition: 'discard-authorized',
+                failureReceiptDigest: 'f'.repeat(64)
+            })
+    state = loaded.confirmGitResourceProcessesStopped({
+        state: disposition.state,
+        authority
+    }).state
+    state = loaded.removeGitWorktree({
+        state,
+        authority,
+        inventory: inventoried.inventory
+    }).state
+    state = loaded.retireGitLocalRef({
+        state,
+        authority,
+        inventory: inventoried.inventory
+    }).state
+    const slotObservation = loaded.sealMachineReceipt({
+        schema:
+            'issue-orchestration.resource-slot-release-observation.v1',
+        producerAuthority: 'machine-resource-slot-registry',
+        runId: identity.runId,
+        attemptId: identity.attemptId,
+        resourceId: 'worktree-1828-owned',
+        slotId: 'slot-1828-owned',
+        releaseAuthorized: true,
+        released: false,
+        activeResourceReferences: [],
+        observedAt: '2026-08-03T08:31:00.000Z'
+    }, 'observationDigest')
+    state = loaded.releaseGitResourceLeaseAndSlot({
+        state,
+        authority,
+        inventory: inventoried.inventory,
+        slotReleaseObservation: slotObservation
+    }).state
+    return loaded.verifyGitResourceCleanup({
+        state,
+        inventory: inventoried.inventory
+    }).receipt
 }
 
 function assertErrorCode(operation, code) {
@@ -446,6 +564,46 @@ test('B06 ordinary internal red cycles retain the one attempt/worktree/slot/writ
     }
 })
 
+test('B06A generic cleanup cannot bypass the Git-resource state machine or release its lease', async () => {
+    const loaded = await implementation()
+    const sandbox = createSandbox()
+    try {
+        const baseline = await loaded.captureBaselineInventory({
+            repositoryRoots: [sandbox.repositoryRoot],
+            temporaryRoots: [sandbox.temporaryParent],
+            dockerMode: 'observe-only'
+        })
+        await sandbox.createOwnedResources()
+        const result = await loaded.cleanupAttemptResources({
+            registry: registryFor(sandbox),
+            baseline,
+            actorRole: 'machine-resource-verifier'
+        })
+        assert.equal(result.receipt.status, 'cleanup-failed')
+        assert.ok(result.receipt.failedResources.every(
+            ({ reason }) =>
+                reason === 'git-resource-state-machine-required'
+        ))
+        assert.deepEqual(result.receipt.cleanupActions, [])
+        assert.equal(result.registry.slotHeld, true)
+        assert.equal(result.registry.writeLease.state, 'active')
+        assert.equal(existsSync(sandbox.leasePath), true)
+        assert.equal(existsSync(sandbox.worktreePath), true)
+        assert.equal(commandResult(
+            'git',
+            [
+                'show-ref',
+                '--verify',
+                '--quiet',
+                `refs/heads/${sandbox.branchName}`
+            ],
+            sandbox.repositoryRoot
+        ).status, 0)
+    } finally {
+        sandbox.destroy()
+    }
+})
+
 test('B07 real clean worktree/process/port/temp/lock/lease cleanup proves post-inventory and git prune', async (t) => {
     const loaded = await implementation()
     if (!hasFlock()) t.skip('flock is unavailable; lock probe is availability-gated')
@@ -462,10 +620,13 @@ test('B07 real clean worktree/process/port/temp/lock/lease cleanup proves post-i
         await new Promise((resolvePromise) => setTimeout(resolvePromise, 100))
         assert.equal(existsSync(sandbox.lockPath), true)
         assert.equal(commandResult('flock', ['-n', sandbox.lockPath, 'true']).status, 0)
+        const gitCleanupVerification =
+            await retireSandboxGitResources(sandbox)
         const result = await loaded.cleanupAttemptResources({
             registry: registryFor(sandbox),
             baseline,
-            actorRole: 'machine-resource-verifier'
+            actorRole: 'machine-resource-verifier',
+            gitCleanupVerifications: [gitCleanupVerification]
         })
         assert.equal(result.receipt.status, 'resources-clean')
         assert.equal(loaded.verifyCleanupReceipt(result.receipt), true)
@@ -484,7 +645,7 @@ test('B07 real clean worktree/process/port/temp/lock/lease cleanup proves post-i
     }
 })
 
-test('B08 real dirty worktree is quarantined; force removal, branch deletion, delivery, and lease release are forbidden', async () => {
+test('B08 real dirty worktree is preserved, retired, and blocks clean delivery', async () => {
     const loaded = await implementation()
     const sandbox = createSandbox()
     try {
@@ -494,17 +655,27 @@ test('B08 real dirty worktree is quarantined; force removal, branch deletion, de
             dockerMode: 'observe-only'
         })
         await sandbox.createOwnedResources({ dirty: true })
+        const gitCleanupVerification =
+            await retireSandboxGitResources(sandbox)
         const result = await loaded.cleanupAttemptResources({
             registry: registryFor(sandbox),
             baseline,
-            actorRole: 'machine-resource-verifier'
+            actorRole: 'machine-resource-verifier',
+            gitCleanupVerifications: [gitCleanupVerification]
         })
-        assert.equal(result.receipt.status, 'quarantined')
-        assert.equal(result.registry.phase, 'quarantined-dirty')
-        assert.equal(result.registry.slotHeld, true)
+        assert.equal(result.receipt.status, 'resources-clean')
+        assert.equal(
+            result.registry.phase,
+            'cleaned-with-quarantine'
+        )
+        assert.equal(result.registry.slotHeld, false)
         assert.equal(result.registry.deliveryAuthorized, false)
-        assert.equal(existsSync(sandbox.worktreePath), true)
-        assert.equal(commandResult('git', ['show-ref', '--verify', '--quiet', `refs/heads/${sandbox.branchName}`], sandbox.repositoryRoot).status, 0)
+        assert.equal(existsSync(sandbox.worktreePath), false)
+        assert.equal(commandResult('git', ['show-ref', '--verify', '--quiet', `refs/heads/${sandbox.branchName}`], sandbox.repositoryRoot).status, 1)
+        assert.equal(
+            result.receipt.quarantinedResources.length,
+            1
+        )
     } finally {
         sandbox.destroy()
     }
@@ -525,10 +696,13 @@ test('B09 baseline/external branches and temporary roots are never removed by ow
             dockerMode: 'observe-only'
         })
         await sandbox.createOwnedResources()
+        const gitCleanupVerification =
+            await retireSandboxGitResources(sandbox)
         const result = await loaded.cleanupAttemptResources({
             registry: registryFor(sandbox),
             baseline,
-            actorRole: 'machine-resource-verifier'
+            actorRole: 'machine-resource-verifier',
+            gitCleanupVerifications: [gitCleanupVerification]
         })
         assert.equal(result.receipt.status, 'resources-clean')
         assert.equal(existsSync(externalDirectory), true)
@@ -671,10 +845,13 @@ test('B15 two-repository/shared-workspace inventory leaves unrelated worktree me
             dockerMode: 'observe-only'
         })
         await sandbox.createOwnedResources()
+        const gitCleanupVerification =
+            await retireSandboxGitResources(sandbox)
         const result = await loaded.cleanupAttemptResources({
             registry: registryFor(sandbox),
             baseline,
-            actorRole: 'machine-resource-verifier'
+            actorRole: 'machine-resource-verifier',
+            gitCleanupVerifications: [gitCleanupVerification]
         })
         assert.equal(result.receipt.status, 'resources-clean')
         assert.equal(command('git', ['rev-parse', '--is-inside-work-tree'], siblingRepository), 'true')
@@ -694,10 +871,13 @@ test('B16 cleanup receipt has the complete machine-observed binding and a self-c
             temporaryRoots: [sandbox.temporaryParent],
             dockerMode: 'observe-only'
         })
+        const gitCleanupVerification =
+            await retireSandboxGitResources(sandbox)
         const result = await loaded.cleanupAttemptResources({
             registry: registryFor(sandbox),
             baseline,
-            actorRole: 'machine-resource-verifier'
+            actorRole: 'machine-resource-verifier',
+            gitCleanupVerifications: [gitCleanupVerification]
         })
         for (const field of cases.cleanupReceiptRequiredFields) {
             assert.notEqual(result.receipt[field], undefined, `cleanup receipt missing ${field}`)

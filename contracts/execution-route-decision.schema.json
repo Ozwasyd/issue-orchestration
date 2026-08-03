@@ -25,6 +25,8 @@
         "runtimeExecutionBindingDigest",
         "runtimeExecutionBindingStatus",
         "runtimeVerificationStatus",
+        "availabilityBindingDigest",
+        "availabilityFallbackReason",
         "previousRouteDecisionDigest",
         "previousFailureReceiptDigest",
         "retryAuthorizationDigest",
@@ -113,6 +115,16 @@
             "enum": [
                 "pending-observation",
                 "verified"
+            ]
+        },
+        "availabilityBindingDigest": {
+            "$ref": "#/$defs/nullableDigest"
+        },
+        "availabilityFallbackReason": {
+            "enum": [
+                null,
+                "runtime-unsupported",
+                "runtime-unavailable"
             ]
         },
         "previousRouteDecisionDigest": {

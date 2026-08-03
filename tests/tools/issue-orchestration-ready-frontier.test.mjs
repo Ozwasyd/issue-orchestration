@@ -55,8 +55,8 @@ const runtimeProbes = readFixture(artifactPaths.runtimeProbes)
 const frozenContract = readFixture(artifactPaths.contract)
 const writerEpochId = 'epoch-ready-frontier-1816-001'
 const repositoryWorktrees = Object.freeze({
-    'Ozwasyd/FsusBlog': resolve(root, '../FsusBlog'),
-    'Ozwasyd/FsusUI': resolve(root, '../FsusUI')
+    'Ozwasyd/FsusBlog': root,
+    'Ozwasyd/FsusUI': root
 })
 const repositoryBaseShas = Object.freeze(Object.fromEntries(
     Object.entries(repositoryWorktrees).map(([repository, worktree]) => [

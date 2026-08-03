@@ -82,6 +82,126 @@ function assertDigest(value, code) {
     if (!HASH.test(value ?? '')) fail(code)
 }
 
+export function compileProfileAvailabilityBinding({
+    packageDigest,
+    runtimeInvocationId,
+    observedAt,
+    catalogObservation
+} = {}) {
+    if (!HASH.test(packageDigest ?? '') ||
+        typeof runtimeInvocationId !== 'string' ||
+        !runtimeInvocationId ||
+        typeof observedAt !== 'string' ||
+        !observedAt ||
+        catalogObservation?.schema !==
+            'issue-orchestration.runtime-profile-catalog-observation.v1' ||
+        catalogObservation.source !==
+            'trusted-runtime-catalog-observer' ||
+        catalogObservation.paidInvocationCount !== 0 ||
+        !Array.isArray(catalogObservation.profiles)) {
+        fail('execution-route-availability-observation-invalid')
+    }
+    const observed = new Map()
+    for (const profile of catalogObservation.profiles) {
+        if (typeof profile?.profileId !== 'string' ||
+            observed.has(profile.profileId) ||
+            typeof profile.available !== 'boolean' ||
+            profile.available && profile.reason !== null ||
+            !profile.available &&
+                !['runtime-unsupported', 'runtime-unavailable']
+                    .includes(profile.reason)) {
+            fail('execution-route-availability-observation-invalid')
+        }
+        observed.set(profile.profileId, profile)
+    }
+    const authorized = [
+        ...STAGE_MODEL_POOL_POLICY.productionRoster,
+        ...STAGE_MODEL_POOL_POLICY.frontierOnlyProfiles
+    ]
+    if (authorized.some((profile) => !observed.has(profile))) {
+        fail('execution-route-availability-observation-incomplete')
+    }
+    const profiles = Object.fromEntries(authorized.map((profile) => [
+        profile,
+        {
+            available: observed.get(profile).available,
+            reason: observed.get(profile).reason
+        }
+    ]))
+    return seal({
+        schema:
+            'issue-orchestration.profile-availability-binding.v1',
+        source: 'trusted-runtime-catalog-observer',
+        phase: 'pre-dispatch',
+        runtimeInvocationId,
+        packageDigest,
+        policyDigest: EXECUTION_ROUTING_POLICY_DIGEST,
+        observedAt,
+        profiles
+    }, 'bindingDigest')
+}
+
+export function verifyInstalledProductionPolicy({
+    manifest,
+    availabilityBinding
+} = {}) {
+    if (manifest?.schema !==
+            'issue-orchestration.shared-package-manifest.v1' ||
+        !HASH.test(manifest.manifestDigest ?? '') ||
+        availabilityBinding?.packageDigest !== manifest.manifestDigest) {
+        fail('execution-route-install-package-binding')
+    }
+    validateAvailabilityBinding(availabilityBinding)
+    const disabled =
+        new Set(STAGE_MODEL_POOL_POLICY.disabledProfiles)
+    const ordinaryOutcomes = Object.values(
+        ROUTING_POLICY.selectionPriority
+    ).flat()
+    if (ordinaryOutcomes.some((profile) =>
+        disabled.has(profile) || profile === 'sol-max') ||
+        Object.values(STAGE_ROUTE_DEFINITIONS).some((stage) =>
+            stage.allowedProfiles.some((profile) =>
+                disabled.has(profile))) ||
+        Object.entries(STAGE_ROUTE_DEFINITIONS).some(([key, stage]) =>
+            stage.allowedProfiles.includes('sol-max') &&
+            key !== 'dag-creator-updater:semantic-proposal')) {
+        fail('execution-route-install-authority-invalid')
+    }
+    const reachability = Object.fromEntries(
+        Object.entries(ROUTING_POLICY.selectionPriority)
+            .map(([route, profiles]) => [
+                route,
+                profiles.some((profile) =>
+                    availabilityBinding.profiles[profile]?.available ===
+                        true ||
+                    profile === 'luna-max' &&
+                        availabilityBinding.profiles['terra-high']
+                            ?.available === true)
+            ])
+    )
+    if (Object.values(reachability).some((reachable) =>
+        reachable !== true)) {
+        fail('execution-route-install-route-unreachable')
+    }
+    return seal({
+        schema:
+            'issue-orchestration.production-policy-installation-receipt.v1',
+        status: 'verified',
+        manifestDigest: manifest.manifestDigest,
+        modelPoolPolicyVersion: STAGE_MODEL_POOL_POLICY.version,
+        policyDigest: EXECUTION_ROUTING_POLICY_DIGEST,
+        availabilityBindingDigest:
+            availabilityBinding.bindingDigest,
+        paidModelInvocationCount: 0,
+        comparativeQualificationPerformed: false,
+        routeReachability: reachability,
+        disabledProfiles:
+            [...STAGE_MODEL_POOL_POLICY.disabledProfiles],
+        frontierOnlyProfiles:
+            [...STAGE_MODEL_POOL_POLICY.frontierOnlyProfiles]
+    }, 'receiptDigest')
+}
+
 function toolPersistenceLevel(depth) {
     if (depth >= 16) return 5
     if (depth >= 12) return 4
@@ -163,6 +283,8 @@ export function verifyProfileCapabilityMatrix({
                 requestedEffort: observation.requestedEffort,
                 effectiveEffort: observation.effectiveEffort,
                 multiAgentBackend: observation.multiAgentBackend
+            }, {
+                allowNonProductionCatalog: true
             })
         } catch {
             fail('execution-route-capability-runtime-metadata-invalid')
@@ -177,15 +299,16 @@ export function verifyProfileCapabilityMatrix({
             fail('execution-route-capability-matrix-not-recomputable')
         }
     }
-    const modelProfiles =
-        Object.keys(STAGE_MODEL_POOL_POLICY.profiles).sort()
-    if (!sameValue(
-        [...observationProfiles].sort(),
-        modelProfiles
-    ) || !sameValue(
-        Object.keys(matrix.profiles ?? {}).sort(),
-        modelProfiles
-    )) {
+    const matrixProfiles = Object.keys(matrix.profiles ?? {}).sort()
+    const authorizedProfiles = [
+        ...STAGE_MODEL_POOL_POLICY.productionRoster,
+        ...STAGE_MODEL_POOL_POLICY.frontierOnlyProfiles
+    ].sort()
+    if (!sameValue([...observationProfiles].sort(), matrixProfiles) ||
+        authorizedProfiles.some((profile) =>
+            !observationProfiles.has(profile)) ||
+        matrixProfiles.some((profile) =>
+            !STAGE_MODEL_POOL_POLICY.profiles[profile])) {
         fail('execution-route-capability-profile-coverage')
     }
     return matrix
@@ -243,7 +366,18 @@ const INTEGER_METRICS = Object.freeze([
 ])
 
 function validatedMetrics(input, slice) {
-    const metrics = input?.executionMetrics
+    const supplied = input?.executionMetrics
+    const metrics = supplied && typeof supplied === 'object'
+        ? {
+                costSensitivity: 'neutral',
+                freshContext: false,
+                compiledContextTokens: null,
+                exactTokenizerAvailable: false,
+                selfContainedPrompt: false,
+                bulkCrossScopeContext: false,
+                ...supplied
+            }
+        : supplied
     if (!metrics || typeof metrics !== 'object' ||
         INTEGER_METRICS.some((field) =>
             !Number.isInteger(metrics[field]) || metrics[field] < 0) ||
@@ -252,7 +386,16 @@ function validatedMetrics(input, slice) {
         !['simple', 'resumable', 'durable']
             .includes(metrics.checkpointSupportRequired) ||
         typeof metrics.firstActionDeterministic !== 'boolean' ||
-        typeof metrics.wholeIssueScope !== 'boolean') {
+        typeof metrics.wholeIssueScope !== 'boolean' ||
+        !['neutral', 'latency-sensitive', 'cost-sensitive-deep']
+            .includes(metrics.costSensitivity) ||
+        typeof metrics.freshContext !== 'boolean' ||
+        metrics.compiledContextTokens !== null &&
+            (!Number.isInteger(metrics.compiledContextTokens) ||
+                metrics.compiledContextTokens < 0) ||
+        typeof metrics.exactTokenizerAvailable !== 'boolean' ||
+        typeof metrics.selfContainedPrompt !== 'boolean' ||
+        typeof metrics.bulkCrossScopeContext !== 'boolean') {
         fail('execution-route-shape-metrics-invalid')
     }
     if (metrics.wholeIssueScope === true) {
@@ -271,8 +414,41 @@ function validatedMetrics(input, slice) {
     return metrics
 }
 
+function lunaContractSatisfied(metrics, slice, stageDefinition) {
+    const contract = STAGE_MODEL_POOL_POLICY.lunaMaxContract
+    return stageDefinition.allowedProfiles.includes('luna-max') &&
+        metrics.freshContext === contract.freshContext &&
+        metrics.contextBreadth === contract.contextBreadth &&
+        metrics.statefulContinuationRequired ===
+            contract.statefulContinuationRequired &&
+        metrics.checkpointSupportRequired ===
+            contract.checkpointSupportRequired &&
+        metrics.ownedModuleCount <= contract.maxOwnedModuleCount &&
+        metrics.commandLoopCount <= contract.maxCommandLoopCount &&
+        metrics.toolInteractionDepth <=
+            contract.maxToolInteractionDepth &&
+        metrics.runtimeProbeDepth <= contract.maxRuntimeProbeDepth &&
+        metrics.firstActionDeterministic ===
+            contract.firstActionDeterministic &&
+        Number.isInteger(metrics.compiledContextTokens) &&
+        metrics.compiledContextTokens <=
+            contract.maxCompiledContextTokens &&
+        metrics.exactTokenizerAvailable ===
+            contract.exactTokenizerRequired &&
+        metrics.selfContainedPrompt ===
+            contract.selfContainedPromptRequired &&
+        metrics.bulkCrossScopeContext === false &&
+        slice.maxOwnedModules <= contract.maxOwnedModuleCount
+}
+
 function shapeCandidates(metrics, slice, stageDefinition) {
     const shapes = []
+    if (metrics.costSensitivity === 'cost-sensitive-deep') {
+        if (!lunaContractSatisfied(metrics, slice, stageDefinition)) {
+            fail('execution-route-luna-contract')
+        }
+        shapes.push('luna-fresh-narrow-deep')
+    }
     if (stageDefinition.writeScope === 'none' ||
         slice.explicitReadOnlyOutput) {
         shapes.push('observe-only-adjudication')
@@ -366,6 +542,12 @@ function compileShape(input, slice, classification, stageDefinition) {
         checkpointSupportRequired:
             metrics.checkpointSupportRequired,
         firstActionDeterministic: metrics.firstActionDeterministic,
+        costSensitivity: metrics.costSensitivity,
+        freshContext: metrics.freshContext,
+        compiledContextTokens: metrics.compiledContextTokens,
+        exactTokenizerAvailable: metrics.exactTokenizerAvailable,
+        selfContainedPrompt: metrics.selfContainedPrompt,
+        bulkCrossScopeContext: metrics.bulkCrossScopeContext,
         unsplittableReason:
             dominantWorkShape === 'long-horizon-cross-module'
                 ? metrics.unsplittableReason
@@ -428,7 +610,9 @@ function selectProfile({
     stageDefinition,
     classification
 }) {
-    const isUiWriter = shape.stageRole === 'ui-ux-implementer'
+    const isUiWriter =
+        shape.stageRole === 'ui-ux-implementer' &&
+        shape.stagePhase === 'ui-implementation'
     if (isUiWriter && [
         'context-heavy',
         'high-tool-depth',
@@ -488,12 +672,81 @@ function selectProfile({
     const selectedProfile = priority.find((profileId) =>
         capable.includes(profileId) && profileId !== 'sol-max')
     if (!selectedProfile) fail('execution-route-no-capable-profile')
+    if (selectedProfile === 'luna-max') {
+        return resolveLunaAvailability({
+            input,
+            capable,
+            stageDefinition,
+            selectedProfileReason:
+                `${shape.dominantWorkShape}-strict-contract`
+        })
+    }
     return {
         allowedProfiles: capable.filter((profileId) =>
             profileId !== 'sol-max'),
         selectedProfile,
         selectedProfileReason:
             `${shape.dominantWorkShape}-minimum-capability-fit`
+    }
+}
+
+function validateAvailabilityBinding(binding) {
+    if (binding?.schema !==
+            'issue-orchestration.profile-availability-binding.v1' ||
+        binding.source !== 'trusted-runtime-catalog-observer' ||
+        binding.phase !== 'pre-dispatch' ||
+        typeof binding.runtimeInvocationId !== 'string' ||
+        !binding.runtimeInvocationId ||
+        !HASH.test(binding.packageDigest ?? '') ||
+        binding.policyDigest !== EXECUTION_ROUTING_POLICY_DIGEST ||
+        typeof binding.observedAt !== 'string' ||
+        !binding.observedAt ||
+        binding.bindingDigest !== digest(
+            Object.fromEntries(Object.entries(binding)
+                .filter(([field]) => field !== 'bindingDigest'))
+        )) {
+        fail('execution-route-availability-binding-invalid')
+    }
+    const luna = binding.profiles?.['luna-max']
+    if (!luna || typeof luna.available !== 'boolean' ||
+        luna.available && luna.reason !== null ||
+        !luna.available &&
+            !ROUTING_POLICY.lunaAvailabilityFallback.allowedReasons
+                .includes(luna.reason)) {
+        fail('execution-route-luna-availability-unproven')
+    }
+    return binding
+}
+
+function resolveLunaAvailability({
+    input,
+    capable,
+    stageDefinition,
+    selectedProfileReason
+}) {
+    const binding = validateAvailabilityBinding(
+        input.runtimeAvailabilityBinding
+    )
+    const luna = binding.profiles['luna-max']
+    if (luna.available) {
+        return {
+            allowedProfiles: capable.filter((profile) =>
+                profile === 'luna-max'),
+            selectedProfile: 'luna-max',
+            selectedProfileReason,
+            availabilityBindingDigest: binding.bindingDigest,
+            availabilityFallbackReason: null
+        }
+    }
+    if (!stageDefinition.allowedProfiles.includes('terra-high')) {
+        fail('execution-route-luna-fallback-unreachable')
+    }
+    return {
+        allowedProfiles: ['luna-max', 'terra-high'],
+        selectedProfile: 'terra-high',
+        selectedProfileReason: 'luna-pre-dispatch-unavailable-fixed-fallback',
+        availabilityBindingDigest: binding.bindingDigest,
+        availabilityFallbackReason: luna.reason
     }
 }
 
@@ -546,6 +799,10 @@ function compileDecision({
             {
                 stageRole: shape.stageRole,
                 stagePhase: shape.stagePhase,
+                selectedProfile: selected.selectedProfile,
+                routeDecisionDigest:
+                    input.runtimeExecutionBinding
+                        .routeDecisionDigest,
                 startup: input.startup,
                 runtimeTrustBinding:
                     input.runtimeTrustBinding,
@@ -583,6 +840,10 @@ function compileDecision({
                 ? 'pending-observation'
                 : 'verified',
         runtimeVerificationStatus,
+        availabilityBindingDigest:
+            selected.availabilityBindingDigest ?? null,
+        availabilityFallbackReason:
+            selected.availabilityFallbackReason ?? null,
         previousRouteDecisionDigest: null,
         previousFailureReceiptDigest: null,
         retryAuthorizationDigest: null,

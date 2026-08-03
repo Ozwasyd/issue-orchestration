@@ -1,0 +1,67 @@
+{
+  "schema": "issue-orchestration.git-resource-cleanup-policy.v1",
+  "version": "git-resource-cleanup.v1",
+  "authority": {
+    "freeze": "root-control",
+    "execution": "machine-git-resource-cleaner",
+    "verification": "machine-resource-verifier"
+  },
+  "states": [
+    "active",
+    "frozen",
+    "inventoried",
+    "candidate-disposition-proven",
+    "actors-and-processes-stopped",
+    "worktree-removed",
+    "local-ref-retired",
+    "quarantined",
+    "lease-and-slot-released",
+    "post-cleanup-verified"
+  ],
+  "transitions": {
+    "active": ["frozen"],
+    "frozen": ["inventoried"],
+    "inventoried": ["candidate-disposition-proven"],
+    "candidate-disposition-proven": ["actors-and-processes-stopped"],
+    "actors-and-processes-stopped": ["worktree-removed"],
+    "worktree-removed": ["local-ref-retired", "quarantined"],
+    "local-ref-retired": ["lease-and-slot-released"],
+    "quarantined": ["lease-and-slot-released"],
+    "lease-and-slot-released": ["post-cleanup-verified"]
+  },
+  "candidateDispositions": [
+    "landed",
+    "superseded",
+    "discard-authorized",
+    "quarantined"
+  ],
+  "allowedActions": [
+    "refresh-worktree-inventory",
+    "recompute-candidate-landing-map",
+    "terminate-owned-process",
+    "quarantine-unmapped-work",
+    "retry-git-aware-remove",
+    "operator-required"
+  ],
+  "normalWorktreeCommands": [
+    "git worktree remove <exact-owned-path>",
+    "git worktree prune"
+  ],
+  "branchCommands": {
+    "mergeAncestry": "git branch -d <exact-owned-branch>",
+    "mappedOrDiscarded": "git branch -D <exact-owned-branch>",
+    "quarantine": "git update-ref -d <exact-owned-ref> <expected-sha>"
+  },
+  "quarantineNamespace": "refs/issue-orchestration/quarantine",
+  "remoteStagingNamespace": "refs/heads/issue-orchestration/staging",
+  "remoteCleanupSupported": true,
+  "forbidden": [
+    "rm-rf-worktree",
+    "wildcard-path",
+    "wildcard-ref",
+    "default-or-protected-ref",
+    "llm-clean-signature",
+    "lease-release-before-physical-verification",
+    "branch-force-delete-without-mapping-or-discard-authority"
+  ]
+}

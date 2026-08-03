@@ -32,7 +32,8 @@
     "context-heavy",
     "high-tool-depth",
     "long-horizon-cross-module",
-    "observe-only-adjudication"
+    "observe-only-adjudication",
+    "luna-fresh-narrow-deep"
   ],
   "contextBreadthOrder": ["narrow", "moderate", "broad", "very-broad"],
   "shapeRequirements": {
@@ -44,18 +45,27 @@
     "high-tool-depth": [4, 4, 4, 4, 3, 4],
     "long-horizon-cross-module": [4, 4, 4, 4, 4, 4],
     "observe-only-adjudication": [3, 3, 3, 3, 2, 3]
+    ,
+    "luna-fresh-narrow-deep": [4, 2, 2, 1, 1, 2]
   },
   "selectionPriority": {
     "atomic-edit": ["terra-low", "sol-low", "terra-medium", "sol-medium"],
     "bounded-multifile": ["terra-medium", "sol-medium", "terra-high", "sol-high"],
-    "iterative-debug": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"],
-    "runtime-probe-heavy": ["terra-max", "sol-high", "sol-xhigh"],
-    "context-heavy": ["terra-high", "terra-xhigh", "sol-high", "sol-xhigh"],
-    "high-tool-depth": ["terra-xhigh", "terra-max", "sol-xhigh"],
+    "iterative-debug": ["sol-high", "sol-xhigh"],
+    "runtime-probe-heavy": ["sol-high", "sol-xhigh"],
+    "context-heavy": ["sol-high", "sol-xhigh"],
+    "high-tool-depth": ["sol-xhigh"],
     "long-horizon-cross-module": ["sol-high", "sol-xhigh"],
-    "observe-only-adjudication": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"]
+    "observe-only-adjudication": ["terra-high", "luna-max", "sol-high", "sol-xhigh"],
+    "luna-fresh-narrow-deep": ["luna-max"]
   },
   "uiImplementationProfiles": ["sol-low", "sol-medium"],
   "solMaxRule": "machine-proven-frontier-exception-only",
-  "rerouteFailureClass": "profile-capability-mismatch"
+  "rerouteFailureClass": "route-classification-changed",
+  "lunaAvailabilityFallback": {
+    "primary": "luna-max",
+    "fallback": "terra-high",
+    "allowedReasons": ["runtime-unsupported", "runtime-unavailable"],
+    "phase": "pre-dispatch-only"
+  }
 }

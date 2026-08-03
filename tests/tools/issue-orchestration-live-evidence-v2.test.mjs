@@ -13,9 +13,6 @@ const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../..'
 )
-const projectsRoot = path.dirname(root)
-const fsusBlogRoot = path.join(projectsRoot, 'FsusBlog')
-const fsusUIRoot = path.join(projectsRoot, 'FsusUI')
 const packageRoot = path.join(
     root,
     '.'
@@ -48,7 +45,7 @@ after(() => {
 function metadataEvents({
     model = 'gpt-5.6-terra',
     effort = 'low',
-    cwd = projectsRoot,
+    cwd = root,
     role = 'root-scheduler'
 } = {}) {
     return {
@@ -433,14 +430,11 @@ test('L84-03 action, cleanup and receipt claims fail closed', async () => {
 })
 
 test('L84-04 live Codex V2 canary runs only under explicit acceptance mode', {
-    skip: process.env.FSUSBLOG_CODEX_RUNTIME_CANARY !== '1'
+    skip: process.env.ISSUE_ORCHESTRATION_CODEX_RUNTIME_CANARY !== '1'
 }, async () => {
     const { runCodexRuntimeCanary } = await importRuntime(1884)
     const receipt = await runCodexRuntimeCanary({
-        projectsRoot,
         packageRoot,
-        fsusBlogRoot,
-        fsusUIRoot,
         model: 'gpt-5.6-terra',
         effort: 'low',
         live: true
@@ -482,27 +476,19 @@ test('L85-01 collector inventories the real machine without reading a clean fixt
     const config = {
         runId: 'collector-run-1',
         stateRoot: runtimeStateRoot,
-        repositories: [
-            {
-                name: 'FsusBlog',
-                repository: 'Ozwasyd/FsusBlog',
-                root,
-                defaultBranch: 'master'
-            },
-            {
-                name: 'FsusUI',
-                repository: 'Ozwasyd/FsusUI',
-                root: fsusUIRoot,
-                defaultBranch: 'main'
-            }
-        ],
-        selectorScope: ['Ozwasyd/FsusBlog#1885'],
+        repositories: [{
+            name: 'issue-orchestration',
+            repository: 'Ozwasyd/issue-orchestration',
+            root,
+            defaultBranch: 'main'
+        }],
+        selectorScope: ['Ozwasyd/issue-orchestration#9'],
         allowedRetention: [],
         machineId: os.hostname()
     }
     const baseline = await freezeQuiescenceBaseline(config)
     const before = {
-        blogHead: fs.readFileSync(
+        repositoryHead: fs.readFileSync(
             path.join(root, '.git', 'HEAD'), 'utf8'),
         stateEntries: fs.readdirSync(runtimeStateRoot)
     }
@@ -511,7 +497,7 @@ test('L85-01 collector inventories the real machine without reading a clean fixt
         baseline
     })
     const after = {
-        blogHead: fs.readFileSync(
+        repositoryHead: fs.readFileSync(
             path.join(root, '.git', 'HEAD'), 'utf8'),
         stateEntries: fs.readdirSync(runtimeStateRoot)
     }
@@ -545,10 +531,10 @@ test('L85-02 summaries are recomputed and incomplete collection fails closed', a
         runId: 'collector-run-2',
         stateRoot: runtimeStateRoot,
         repositories: [{
-            name: 'FsusBlog',
-            repository: 'Ozwasyd/FsusBlog',
+            name: 'issue-orchestration',
+            repository: 'Ozwasyd/issue-orchestration',
             root,
-            defaultBranch: 'master'
+            defaultBranch: 'main'
         }],
         selectorScope: [],
         baseline: {
@@ -668,6 +654,11 @@ function childReceipt(key, mode = 'live') {
         common.routingSchema =
             'issue-orchestration.execution-routing-policy.v3'
         common.registeredProfiles = [
+            'luna-low',
+            'luna-medium',
+            'luna-high',
+            'luna-xhigh',
+            'luna-max',
             'terra-low',
             'terra-medium',
             'terra-high',
@@ -679,7 +670,9 @@ function childReceipt(key, mode = 'live') {
             'sol-xhigh',
             'sol-max'
         ]
-        common.forbiddenProfileCount = 0
+        common.productionProfileCount = 8
+        common.frontierProfileCount = 1
+        common.disabledProfileCount = 6
         common.parallelModelTableCount = 0
     }
     if (key === 'root-runtime-canary') {

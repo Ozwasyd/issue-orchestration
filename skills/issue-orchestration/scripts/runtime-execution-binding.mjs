@@ -10,7 +10,8 @@ import {
     unsignedDigest
 } from './runtime-contract-lib.mjs'
 import {
-    STAGE_ROUTE_DEFINITIONS
+    STAGE_ROUTE_DEFINITIONS,
+    verifyRuntimeProfileMetadata
 } from './stage-profile-policy.mjs'
 import {
     requireRuntimeStartupBinding
@@ -84,6 +85,8 @@ function validateObservation(value) {
 export function compileRuntimeExecutionBinding({
     stageRole,
     stagePhase,
+    selectedProfile,
+    routeDecisionDigest,
     runtimeObservation,
     startup,
     runtimeTrustBinding,
@@ -98,6 +101,37 @@ export function compileRuntimeExecutionBinding({
         repositoryTargets,
         startup
     })
+    assertDigest(
+        routeDecisionDigest,
+        'runtime-execution-route-decision-required'
+    )
+    if (!definition.allowedProfiles.includes(selectedProfile)) {
+        fail('runtime-execution-profile-not-authorized')
+    }
+    try {
+        verifyRuntimeProfileMetadata({
+            selectedProfile,
+            requestedModel: observation.requestedModel,
+            effectiveModel: observation.effectiveModel,
+            requestedEffort: observation.requestedEffort,
+            effectiveEffort: observation.effectiveEffort,
+            multiAgentBackend:
+                observation.effectiveMultiAgentBackend
+        })
+    } catch {
+        fail('runtime-execution-profile-mismatch')
+    }
+    if (observation.requestedProfile !== selectedProfile ||
+        observation.effectiveProfile !== selectedProfile ||
+        observation.routeDecisionDigest !== routeDecisionDigest ||
+        observation.packageDigest !==
+            startup.observation.packageDigest ||
+        observation.modelPoolPolicyDigest !==
+            startup.observation.policyDigests.modelPool ||
+        observation.executionRoutingPolicyDigest !==
+            startup.observation.policyDigests.executionRouting) {
+        fail('runtime-execution-profile-or-policy-binding-mismatch')
+    }
     if (observation.rootInvocationId !==
             startupBinding.runtimeInvocationId ||
         observation.requestedRole !== stageRole ||
@@ -159,6 +193,17 @@ export function compileRuntimeExecutionBinding({
             runtimeTrustBinding.bindingDigest,
         runtimeObservationDigest:
             observation.observationDigest,
+        selectedProfile,
+        requestedModel: observation.requestedModel,
+        effectiveModel: observation.effectiveModel,
+        requestedEffort: observation.requestedEffort,
+        effectiveEffort: observation.effectiveEffort,
+        routeDecisionDigest,
+        packageDigest: observation.packageDigest,
+        modelPoolPolicyDigest:
+            observation.modelPoolPolicyDigest,
+        executionRoutingPolicyDigest:
+            observation.executionRoutingPolicyDigest,
         effectiveMultiAgentBackend:
             observation.effectiveMultiAgentBackend,
         effectivePermissionProfile:
@@ -182,6 +227,8 @@ export function compileRuntimeExecutionBinding({
 export function validateRuntimeExecutionBinding(value, {
     stageRole,
     stagePhase,
+    selectedProfile,
+    routeDecisionDigest,
     startup,
     runtimeTrustBinding,
     repositoryTargets
@@ -198,7 +245,9 @@ export function validateRuntimeExecutionBinding(value, {
     const definition = stageDefinition(stageRole, stagePhase)
     if (value.stageRole !== stageRole ||
         value.stagePhase !== stagePhase ||
-        value.executionClass !== definition.executionClass) {
+        value.executionClass !== definition.executionClass ||
+        value.selectedProfile !== selectedProfile ||
+        value.routeDecisionDigest !== routeDecisionDigest) {
         fail('runtime-execution-stage-binding-mismatch')
     }
     const startupBinding =
@@ -211,6 +260,12 @@ export function validateRuntimeExecutionBinding(value, {
             startupBinding.startupAttestationDigest ||
         value.rootInvocationId !==
             startupBinding.runtimeInvocationId ||
+        value.packageDigest !==
+            startup.observation.packageDigest ||
+        value.modelPoolPolicyDigest !==
+            startup.observation.policyDigests.modelPool ||
+        value.executionRoutingPolicyDigest !==
+            startup.observation.policyDigests.executionRouting ||
         value.runtimeTrustBindingDigest !==
             runtimeTrustBinding.bindingDigest ||
         value.effectivePermissionProfile !==

@@ -38,33 +38,35 @@ const EXPECTED_POOLS = {
     'root-scheduler:recovery-takeover':
         [['terra-medium'], 'terra-medium'],
     'dag-creator-updater:semantic-proposal':
-        [['terra-high', 'terra-xhigh', 'terra-max', 'sol-xhigh', 'sol-max'],
+        [['terra-high', 'sol-high', 'sol-xhigh', 'sol-max'],
             'terra-high'],
     'test-owner:test-contract-planning':
-        [['terra-high', 'terra-xhigh', 'terra-max', 'sol-high', 'sol-xhigh'],
+        [['terra-high', 'luna-max', 'sol-high', 'sol-xhigh'],
             'terra-high'],
     'test-owner:test-contract':
-        [['terra-medium', 'terra-high', 'terra-xhigh', 'terra-max',
+        [['terra-medium', 'terra-high', 'luna-max',
             'sol-high', 'sol-xhigh'], 'terra-medium'],
     'test-owner:behavior-verification':
-        [['terra-high', 'terra-xhigh', 'terra-max', 'sol-high', 'sol-xhigh'],
+        [['terra-high', 'luna-max', 'sol-high', 'sol-xhigh'],
             'terra-high'],
     'code-implementer:implementation':
-        [['terra-low', 'terra-medium', 'terra-high', 'terra-xhigh',
-            'terra-max', 'sol-high', 'sol-xhigh'], 'terra-medium'],
+        [['terra-low', 'terra-medium', 'terra-high', 'luna-max',
+            'sol-medium', 'sol-high', 'sol-xhigh'], 'terra-medium'],
     'code-implementer:landing-conflict-resolution':
-        [['terra-medium', 'terra-high', 'terra-xhigh', 'terra-max',
-            'sol-high', 'sol-xhigh'], 'terra-high'],
+        [['terra-medium', 'terra-high', 'sol-high', 'sol-xhigh'],
+            'terra-medium'],
     'ui-ux-implementer:ui-implementation':
         [['sol-low', 'sol-medium'], 'sol-low'],
     'ui-ux-implementer:landing-conflict-resolution':
-        [['sol-low', 'sol-medium'], 'sol-medium'],
+        [['terra-medium', 'terra-high', 'sol-medium', 'sol-high',
+            'sol-xhigh'], 'terra-medium'],
     'ui-system-adjudicator:adjudication':
         [['sol-high', 'sol-xhigh'], 'sol-high'],
     'ux-acceptance-verifier:ux-acceptance':
         [['sol-medium', 'sol-high', 'sol-xhigh'], 'sol-medium'],
     'documentation-writer:documentation':
-        [['terra-low', 'terra-medium', 'terra-high'], 'terra-medium']
+        [['terra-low', 'terra-medium', 'sol-medium', 'sol-high'],
+            'terra-medium']
 }
 
 function readJson(name) {
@@ -109,8 +111,8 @@ function assignment(overrides = {}) {
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         allowedProfiles: [
-            'terra-low', 'terra-medium', 'terra-high', 'terra-xhigh',
-            'terra-max', 'sol-high', 'sol-xhigh'
+            'terra-low', 'terra-medium', 'terra-high', 'luna-max',
+            'sol-medium', 'sol-high', 'sol-xhigh'
         ],
         defaultProfile: 'terra-medium',
         routingAuthority: 'deterministic-execution-capability-compiler',
@@ -190,9 +192,10 @@ test('contract assets are frozen against the merged issue body', () => {
         kind: 'superseding-package-issues',
         issueIds: [
             'Ozwasyd/issue-orchestration#5',
-            'Ozwasyd/issue-orchestration#11'
+            'Ozwasyd/issue-orchestration#11',
+            'Ozwasyd/issue-orchestration#16'
         ],
-        updatedAt: '2026-08-03T06:23:26Z'
+        updatedAt: '2026-08-03T08:16:44Z'
     })
     assert.deepEqual(
         acceptance.acceptance.flatMap(({ mutations }) => mutations).sort(),
@@ -272,7 +275,7 @@ test('P04-P09 deterministic compiler maps every role and classification', async 
         }, 'terra-medium'],
         ['dag-creator-updater', 'semantic-proposal', {}, 'terra-high'],
         ['dag-creator-updater', 'semantic-proposal',
-            { contractState: 'authority-conflict' }, 'terra-xhigh'],
+            { contractState: 'authority-conflict' }, 'sol-xhigh'],
         ['dag-creator-updater', 'semantic-proposal',
             {
                 engineeringRiskClass: 'frontier',
@@ -289,7 +292,7 @@ test('P04-P09 deterministic compiler maps every role and classification', async 
             { verificationClass: 'focused' }, 'terra-high'],
         ['test-owner', 'test-contract',
             { verificationClass: 'focused' }, 'terra-medium'],
-        ['test-owner', 'test-contract', { verificationClass: 'runtime' }, 'terra-max'],
+        ['test-owner', 'test-contract', { verificationClass: 'runtime' }, 'sol-high'],
         ['test-owner', 'behavior-verification',
             { verificationClass: 'protocol' }, 'sol-xhigh'],
         ['code-implementer', 'implementation',
@@ -297,17 +300,17 @@ test('P04-P09 deterministic compiler maps every role and classification', async 
         ['code-implementer', 'implementation',
             { engineeringRiskClass: 'complex' }, 'terra-high'],
         ['code-implementer', 'implementation',
-            { engineeringRiskClass: 'high-risk' }, 'terra-max'],
+            { engineeringRiskClass: 'high-risk' }, 'sol-high'],
         ['code-implementer', 'implementation',
             { engineeringRiskClass: 'frontier' }, 'sol-xhigh'],
         ['code-implementer', 'landing-conflict-resolution',
-            { engineeringRiskClass: 'bounded' }, 'terra-high'],
+            { engineeringRiskClass: 'bounded' }, 'terra-medium'],
         ['ui-ux-implementer', 'ui-implementation',
             { domain: 'ui-ux', uiDecisionClass: 'prescribed' }, 'sol-low'],
         ['ui-ux-implementer', 'ui-implementation',
             { domain: 'ui-ux', uiDecisionClass: 'layout-judgment' }, 'sol-medium'],
         ['ui-ux-implementer', 'landing-conflict-resolution',
-            { domain: 'ui-ux', uiDecisionClass: 'prescribed' }, 'sol-medium'],
+            { domain: 'ui-ux', uiDecisionClass: 'prescribed' }, 'terra-medium'],
         ['ui-system-adjudicator', 'adjudication',
             { domain: 'ui-ux', uiDecisionClass: 'system-design-dispute' }, 'sol-high'],
         ['ux-acceptance-verifier', 'ux-acceptance',
@@ -321,7 +324,7 @@ test('P04-P09 deterministic compiler maps every role and classification', async 
             'terra-medium'],
         ['documentation-writer', 'documentation',
             { domain: 'documentation', engineeringRiskClass: 'complex' },
-            'terra-high']
+            'terra-medium']
     ]
     for (const [stageRole, stagePhase, changes, expected] of cases) {
         const route = compile({

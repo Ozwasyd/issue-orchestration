@@ -22,8 +22,8 @@
     "updatedAt": "2026-07-31T14:03:33Z",
     "commentCount": 3,
     "commands": [
-      "gh api repos/Ozwasyd/FsusBlog/issues/1822 --jq '{number,state,state_reason,updated_at,comments}'",
-      "gh api --paginate repos/Ozwasyd/FsusBlog/issues/1822/comments --jq 'length'"
+      "committed-fixture: issue identity, state, timestamp and comment count",
+      "committed-fixture: comment-count evidence; no live repository access"
     ]
   },
   "revision0BaselineProbe": {

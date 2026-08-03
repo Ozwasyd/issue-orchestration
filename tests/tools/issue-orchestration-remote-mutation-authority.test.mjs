@@ -78,6 +78,8 @@ function runtimeFixture() {
         startup
     })
     const rootControlLeaseDigest = digest('root-control-lease')
+    const selectedProfile = 'terra-low'
+    const routeDecisionDigest = digest('root-route')
     const observation = {
         schema:
             'issue-orchestration.runtime-execution-observation.v1',
@@ -94,12 +96,19 @@ function runtimeFixture() {
         effectiveRole: 'root-scheduler',
         requestedPhase: 'scheduling',
         effectivePhase: 'scheduling',
-        requestedProfile: 'terra-low',
-        effectiveProfile: 'terra-low',
+        requestedProfile: selectedProfile,
+        effectiveProfile: selectedProfile,
         requestedModel: 'gpt-5.6-terra',
         effectiveModel: 'gpt-5.6-terra',
         requestedEffort: 'low',
         effectiveEffort: 'low',
+        routeDecisionDigest,
+        packageDigest:
+            startup.observation.packageDigest,
+        modelPoolPolicyDigest:
+            startup.observation.policyDigests.modelPool,
+        executionRoutingPolicyDigest:
+            startup.observation.policyDigests.executionRouting,
         effectiveMultiAgentBackend: 'v2',
         effectivePermissionProfile: 'danger-full-access',
         permissionInheritance: 'inherited-parent-profile',
@@ -111,6 +120,8 @@ function runtimeFixture() {
         compileRuntimeExecutionBinding({
             stageRole: 'root-scheduler',
             stagePhase: 'scheduling',
+            selectedProfile,
+            routeDecisionDigest,
             runtimeObservation: observation,
             startup,
             runtimeTrustBinding,

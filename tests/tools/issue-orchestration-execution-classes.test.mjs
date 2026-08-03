@@ -25,14 +25,15 @@ import {
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    createTrustedRepositoryFixture
+} from './issue-orchestration-trusted-repository-test-helper.mjs'
 
 const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../..'
 )
-const fsusBlogRoot = path.resolve(
-    process.env.FSUSBLOG_ROOT ?? path.join(root, '../FsusBlog')
-)
+const repositoryRoot = createTrustedRepositoryFixture()
 const stagePolicy = JSON.parse(fs.readFileSync(
     path.join(root, 'policy/stage-permissions.json'),
     'utf8'
@@ -49,7 +50,7 @@ function trustFixture() {
     const startup = verifiedRuntimeStartup({})
     const repositoryTargets = [{
         repository: 'Ozwasyd/FsusBlog',
-        repositoryPath: fsusBlogRoot
+        repositoryPath: repositoryRoot
     }]
     const runtimeTrustBinding = compileRuntimeTrustBinding({
         role: 'root-scheduler',
@@ -81,6 +82,8 @@ function executionObservation({
     const effort = profile.split('-').at(-1)
     const model = profile.startsWith('sol-')
         ? 'gpt-5.6-sol'
+        : profile.startsWith('luna-')
+            ? 'gpt-5.6-luna'
         : 'gpt-5.6-terra'
     const value = {
         schema:
@@ -103,6 +106,15 @@ function executionObservation({
         effectiveModel: model,
         requestedEffort: effort,
         effectiveEffort: effort,
+        routeDecisionDigest:
+            digest({ profile, stageRole, stagePhase }),
+        packageDigest:
+            fixture.startup.observation.packageDigest,
+        modelPoolPolicyDigest:
+            fixture.startup.observation.policyDigests.modelPool,
+        executionRoutingPolicyDigest:
+            fixture.startup.observation.policyDigests
+                .executionRouting,
         effectiveMultiAgentBackend: 'v2',
         effectivePermissionProfile: 'danger-full-access',
         permissionInheritance: 'inherited-parent-profile',
@@ -112,6 +124,14 @@ function executionObservation({
     }
     value.observationDigest = digest(value)
     return value
+}
+
+function routeIdentity(runtimeObservation) {
+    return {
+        selectedProfile: runtimeObservation.requestedProfile,
+        routeDecisionDigest:
+            runtimeObservation.routeDecisionDigest
+    }
 }
 
 test('stage-permissions.v2 defines every stage by semantic execution class', () => {
@@ -181,16 +201,17 @@ test('logical stage routes contain execution semantics but no runtime sandbox au
 
 test('actual full permission binds independently to observe-only and leased-writer semantics', () => {
     const fixture = trustFixture()
+    const observeObservation = executionObservation({
+        fixture,
+        profile: 'sol-max',
+        stageRole: 'dag-creator-updater',
+        stagePhase: 'semantic-proposal'
+    })
     const observe = compileRuntimeExecutionBinding({
         stageRole: 'dag-creator-updater',
         stagePhase: 'semantic-proposal',
-        runtimeObservation:
-            executionObservation({
-                fixture,
-                profile: 'sol-max',
-                stageRole: 'dag-creator-updater',
-                stagePhase: 'semantic-proposal'
-            }),
+        runtimeObservation: observeObservation,
+        ...routeIdentity(observeObservation),
         ...fixture
     })
     assert.equal(observe.executionClass, 'observe-only')
@@ -206,11 +227,12 @@ test('actual full permission binds independently to observe-only and leased-writ
     )
 
     const leaseDigest = digest('writer-lease')
+    const writerObservation = executionObservation({ fixture })
     const writer = compileRuntimeExecutionBinding({
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
-        runtimeObservation:
-            executionObservation({ fixture }),
+        runtimeObservation: writerObservation,
+        ...routeIdentity(writerObservation),
         writeLeaseDigest: leaseDigest,
         ...fixture
     })
@@ -231,22 +253,24 @@ test('actual full permission binds independently to observe-only and leased-writ
 
 test('leases and legacy sandbox claims cannot change execution class', () => {
     const fixture = trustFixture()
+    const writerObservation = executionObservation({ fixture })
     assert.throws(() => compileRuntimeExecutionBinding({
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
-        runtimeObservation:
-            executionObservation({ fixture }),
+        runtimeObservation: writerObservation,
+        ...routeIdentity(writerObservation),
         ...fixture
     }), { code: 'runtime-execution-write-lease-required' })
+    const observer = executionObservation({
+        fixture,
+        stageRole: 'dag-creator-updater',
+        stagePhase: 'semantic-proposal'
+    })
     assert.throws(() => compileRuntimeExecutionBinding({
         stageRole: 'dag-creator-updater',
         stagePhase: 'semantic-proposal',
-        runtimeObservation:
-            executionObservation({
-                fixture,
-                stageRole: 'dag-creator-updater',
-                stagePhase: 'semantic-proposal'
-            }),
+        runtimeObservation: observer,
+        ...routeIdentity(observer),
         writeLeaseDigest: digest('forged-lease'),
         ...fixture
     }), { code: 'runtime-execution-write-lease-forbidden' })
@@ -263,6 +287,7 @@ test('leases and legacy sandbox claims cannot change execution class', () => {
         stageRole: 'dag-creator-updater',
         stagePhase: 'semantic-proposal',
         runtimeObservation: legacy,
+        ...routeIdentity(legacy),
         ...fixture
     }), { code: 'runtime-execution-legacy-sandbox-authority' })
 
@@ -271,6 +296,7 @@ test('leases and legacy sandbox claims cannot change execution class', () => {
         stageRole: 'test-owner',
         stagePhase: 'behavior-verification',
         runtimeObservation: writerMasquerade,
+        ...routeIdentity(writerMasquerade),
         ...fixture
     }), {
         code:

@@ -23,6 +23,53 @@ if (MODEL_POOL.schema
     throw new Error('routing-policy-source-invalid')
 }
 
+const EXPECTED_PRODUCTION_ROSTER = Object.freeze([
+    'terra-low',
+    'terra-medium',
+    'terra-high',
+    'luna-max',
+    'sol-low',
+    'sol-medium',
+    'sol-high',
+    'sol-xhigh'
+])
+const EXPECTED_FRONTIER_ONLY = Object.freeze(['sol-max'])
+const EXPECTED_DISABLED = Object.freeze([
+    'terra-xhigh',
+    'terra-max',
+    'luna-low',
+    'luna-medium',
+    'luna-high',
+    'luna-xhigh'
+])
+const PRODUCTION_PROFILES = new Set(MODEL_POOL.productionRoster ?? [])
+const FRONTIER_ONLY_PROFILES =
+    new Set(MODEL_POOL.frontierOnlyProfiles ?? [])
+const DISABLED_PROFILES = new Set(MODEL_POOL.disabledProfiles ?? [])
+const CATALOG_PROFILES = new Set(Object.keys(MODEL_POOL.profiles ?? {}))
+const AUTHORIZED_PROFILES = new Set([
+    ...PRODUCTION_PROFILES,
+    ...FRONTIER_ONLY_PROFILES
+])
+
+if (!sameValues(MODEL_POOL.productionRoster,
+    EXPECTED_PRODUCTION_ROSTER) ||
+    !sameValues(MODEL_POOL.frontierOnlyProfiles,
+        EXPECTED_FRONTIER_ONLY) ||
+    !sameValues(MODEL_POOL.disabledProfiles,
+        EXPECTED_DISABLED) ||
+    CATALOG_PROFILES.size !==
+        AUTHORIZED_PROFILES.size + DISABLED_PROFILES.size ||
+    [...CATALOG_PROFILES].some((profile) =>
+        !AUTHORIZED_PROFILES.has(profile) &&
+        !DISABLED_PROFILES.has(profile)) ||
+    [...AUTHORIZED_PROFILES].some((profile) =>
+        DISABLED_PROFILES.has(profile)) ||
+    MODEL_POOL.installation?.paidModelInvocationCount !== 0 ||
+    MODEL_POOL.installation?.comparativeQualificationForbidden !== true) {
+    throw new Error('production-model-roster-invalid')
+}
+
 const EXPECTED_EXECUTION_CLASSES = Object.freeze({
     'root-control': {
         stateAuthority: 'mechanical-control-plane-only',
@@ -105,8 +152,14 @@ const STAGES = Object.freeze(Object.fromEntries(
             throw new Error(`stage-permission-missing:${key}`)
         }
         for (const profile of modelStage.allowedProfiles) {
-            if (!MODEL_POOL.profiles[profile]) {
+            if (!MODEL_POOL.profiles[profile] ||
+                !AUTHORIZED_PROFILES.has(profile) ||
+                DISABLED_PROFILES.has(profile)) {
                 throw new Error(`stage-profile-missing:${profile}`)
+            }
+            if (profile === 'sol-max' &&
+                key !== 'dag-creator-updater:semantic-proposal') {
+                throw new Error('sol-max-ordinary-route-forbidden')
             }
         }
         return [key, Object.freeze({
@@ -139,6 +192,16 @@ export const STAGE_MODEL_POOL_POLICY = Object.freeze({
     requiredRoutingFields: REQUIRED_ROUTING_FIELDS,
     requiredStageProfileFields: REQUIRED_STAGE_PROFILE_FIELDS,
     profiles: Object.freeze(structuredClone(MODEL_POOL.profiles)),
+    productionRoster: Object.freeze([...MODEL_POOL.productionRoster]),
+    frontierOnlyProfiles:
+        Object.freeze([...MODEL_POOL.frontierOnlyProfiles]),
+    disabledProfiles: Object.freeze([...MODEL_POOL.disabledProfiles]),
+    lunaMaxContract:
+        Object.freeze(structuredClone(MODEL_POOL.lunaMaxContract)),
+    availabilityFallback:
+        Object.freeze(structuredClone(MODEL_POOL.availabilityFallback)),
+    installation:
+        Object.freeze(structuredClone(MODEL_POOL.installation)),
     stages: STAGES,
     cleanup: Object.freeze(structuredClone(MODEL_POOL.cleanup)),
     forbiddenRoutingInputs: Object.freeze([...ROUTING_POLICY.forbiddenInputs])
@@ -184,7 +247,9 @@ export function stageDefinitionsForRole(stageRole) {
 
 export function splitProfile(profileId) {
     const profile = MODEL_POOL.profiles[profileId]
-    if (!profile) fail('routing-profile-id')
+    if (!profile || DISABLED_PROFILES.has(profileId)) {
+        fail('routing-profile-id')
+    }
     return Object.freeze({
         profileId,
         model: profile.model,
@@ -192,9 +257,14 @@ export function splitProfile(profileId) {
     })
 }
 
-export function verifyRuntimeProfileMetadata(value) {
+export function verifyRuntimeProfileMetadata(
+    value,
+    { allowNonProductionCatalog = false } = {}
+) {
     const profile = MODEL_POOL.profiles[value?.selectedProfile]
     if (!profile ||
+        !allowNonProductionCatalog &&
+            DISABLED_PROFILES.has(value?.selectedProfile) ||
         typeof value.requestedModel !== 'string' ||
         typeof value.effectiveModel !== 'string' ||
         typeof value.requestedEffort !== 'string' ||
@@ -292,6 +362,9 @@ function selectDagProfile(input) {
             'dag-authority-or-topology-conflict'
         ]
     }
+    if (input.dagUpdateClass === 'full-reconstruction') {
+        return [selector.fullReconstruction, 'dag-full-reconstruction']
+    }
     return [selector.default, 'dag-semantic-proposal-default']
 }
 
@@ -367,9 +440,11 @@ function selectDocumentationProfile(input) {
     if (input.documentationClass === 'mechanical-no-change') {
         return ['terra-low', 'documentation-mechanical-no-change']
     }
-    if (input.documentationClass === 'architecture-public-contract'
-        || input.engineeringRiskClass !== 'bounded') {
-        return ['terra-high', 'documentation-architecture-public-contract']
+    if (input.documentationClass === 'architecture-public-contract') {
+        return ['sol-high', 'documentation-architecture-public-contract']
+    }
+    if (input.documentationClass === 'cross-module') {
+        return ['sol-medium', 'documentation-cross-module']
     }
     return ['terra-medium', 'documentation-current-sync']
 }

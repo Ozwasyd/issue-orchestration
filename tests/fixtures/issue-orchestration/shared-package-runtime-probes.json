@@ -5,15 +5,15 @@
     {
       "id": "RP01-real-external-install",
       "test": "P04",
-      "kind": "real-filesystem-and-git",
-      "observation": "invoke install.mjs against two temporary Git repositories and two real linked worktrees with an external install root",
+      "kind": "real-filesystem",
+      "observation": "invoke install.mjs from the current package checkout with isolated external install and protected roots",
       "expected": "installed receipt with canonical source/install digests"
     },
     {
       "id": "RP02-five-cwd-discovery",
       "test": "P04",
       "kind": "real-process-cwd-matrix",
-      "observation": "verify from FsusBlog root, FsusUI root, common workspace, FsusBlog worktree and FsusUI worktree",
+      "observation": "verify from the current package root and four isolated temporary cwd probes",
       "expected": "one package/Skill identity and digest plus the same seven agents and policy/graph/projector digests"
     },
     {
@@ -34,7 +34,7 @@
       "id": "RP05-protected-root-rejection",
       "test": "P07",
       "kind": "real-path-boundary",
-      "observation": "attempt installation inside the FsusBlog repository",
+      "observation": "attempt installation inside an explicit temporary protected root",
       "expected": "install-target-protected-overlap and zero installed files"
     },
     {
@@ -49,7 +49,7 @@
       "test": "P08",
       "kind": "real-node-import",
       "observation": "load the shared stage policy, semantic/runtime projector and dispatch receipt modules",
-      "expected": "stage-model-pool.v3 with Luna/low root and required graph/receipt exports"
+      "expected": "stage-model-pool.v3 with Terra/low root and required graph/receipt exports"
     },
     {
       "id": "RP08-external-runtime-state",

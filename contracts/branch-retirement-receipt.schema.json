@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:branch-retirement-receipt:v1",
+  "title": "issue-orchestration.branch-retirement-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "repositoryId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "branchRef",
+    "expectedSha",
+    "baseSha",
+    "deliveryEpoch",
+    "leaseId",
+    "defaultBranchRef",
+    "defaultBranchSha",
+    "disposition",
+    "inventoryDigest",
+    "dispositionReceiptDigest",
+    "worktreeRemovalReceiptDigest",
+    "landingMappingDigest",
+    "quarantineReceiptDigest",
+    "commandClass",
+    "branchAbsent",
+    "unexpectedRefChange",
+    "retiredAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.branch-retirement-receipt.v1"},
+    "producerAuthority": {"const": "machine-git-resource-cleaner"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "expectedSha": {"$ref": "#/$defs/sha"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "leaseId": {"$ref": "#/$defs/text"},
+    "defaultBranchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "defaultBranchSha": {"$ref": "#/$defs/sha"},
+    "disposition": {
+      "enum": ["landed", "superseded", "discard-authorized", "quarantined"]
+    },
+    "inventoryDigest": {"$ref": "#/$defs/digest"},
+    "dispositionReceiptDigest": {"$ref": "#/$defs/digest"},
+    "worktreeRemovalReceiptDigest": {"$ref": "#/$defs/digest"},
+    "landingMappingDigest": {"$ref": "#/$defs/nullableDigest"},
+    "quarantineReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "commandClass": {
+      "enum": [
+        "git-branch-safe-delete",
+        "git-branch-force-delete-exact-mapping",
+        "git-branch-force-delete-disposition-authorized",
+        "git-update-ref-delete-after-quarantine"
+      ]
+    },
+    "branchAbsent": {"const": true},
+    "unexpectedRefChange": {"const": false},
+    "retiredAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1}
+  }
+}

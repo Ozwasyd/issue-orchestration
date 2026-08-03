@@ -30,7 +30,7 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 
 任何仓库、远端 issue、scope、DAG、状态根、lease 或 actor 操作之前，launcher/runtime integration 必须先产生 `runtime-startup-observation.v1`，再由 `runtime-startup-attestation.v1` 确定性验证 actual model、effort、V2 backend、trust mode、sandbox、approval、inheritance、capacity、package/policy digest 与 invocation/session。Root 手写 metadata、环境变量回显、prompt JSON 和历史 receipt 都不是 observation authority；缺失或不可观察字段直接终止该 parent invocation。正常 `root-scheduler:scheduling` 只允许 `terra-low`。`terra-medium` 只属于全新 parent 的 `root-scheduler:recovery-takeover`，且必须绑定 machine takeover authorization、handoff、old-root fencing 与新 authority epoch；boolean recovery flag 或 medium child 不能升级 low root。
 
-attestation verified 后才确认两个仓库路径、共同启动工作区、默认分支、HEAD、dirty state、可写权限和远端身份，并用 `runtime-trust-policy.mjs` 生成和复核绑定同一 attestation/invocation 的 `runtime-trust-binding.v1`。随后完整读取 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md)。每个 member/node 在取得自己的 facts、route、lease、receipt 与 tombstone 投影后独立通过 `dag-startup-gate-receipt.v2`；DAG gate 只消费 startup attestation，不接受旧 `rootRuntime.metadata`。所有调度运行态由根代理独占写入已验证的仓库外状态根。
+attestation verified 后才确认 caller 本轮明确提供的目标仓库路径、启动工作区、默认分支、HEAD、dirty state、可写权限和远端身份，并用 `runtime-trust-policy.mjs` 生成和复核绑定同一 attestation/invocation 的 `runtime-trust-binding.v1`。随后完整读取 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md)。每个 member/node 在取得自己的 facts、route、lease、receipt 与 tombstone 投影后独立通过 `dag-startup-gate-receipt.v2`；DAG gate 只消费 startup attestation，不接受旧 `rootRuntime.metadata`。所有调度运行态由根代理独占写入已验证的仓库外状态根。
 
 所有 stage 都以 `root-control`、`observe-only` 或 `leased-writer` 表示语义 authority；logical profile selection 不得消费 sandbox/permission label。实际 permission、inheritance 与 guarantee 只进入独立 runtime execution binding。每个 accepted stage result 必须通过 `stage-runtime-guard.mjs` 的 machine pre/post snapshot 和 mutation postcondition：observe-only 的 protected repository/state-root/remote delta 必须为空；leased-writer 的所有 delta 必须落在当前 lease/slice allowlist 内。任一 violation 都使 actor result 失效，不能被 Root metadata 转成合法 writer 或 independent evidence。
 
@@ -56,12 +56,12 @@ attestation verified 后才确认两个仓库路径、共同启动工作区、�
 bootstrap dispatcher。单一入口为：
 
 ```bash
-FSUSBLOG_E2E_LIVE=1 node --test --test-concurrency=1 tests/tools/issue-orchestration/*.test.mjs
+ISSUE_ORCHESTRATION_E2E_LIVE=1 node --test --test-concurrency=1 tests/tools/issue-orchestration/*.test.mjs
 ```
 
 该入口从 `tests/tools/issue-orchestration/` 的固定 lane 读取永久 package
 能力，启动真实 child test processes 和真实 Codex V2 rollouts，执行真实
-Git/worktree/landing、五种 cwd 安装发现、跨 FsusBlog/FsusUI baseline、
+Git/worktree/landing、五种隔离 cwd 安装发现、当前仓 baseline、
 首次 writer 冷启动、一次性空 rollout 恢复、在线 watchdog、候选变更后
 fresh verifier、UI 双 Skills、human gate、真实 mutation controls 与 live
 machine quiescence collector，并产生严格的
@@ -70,7 +70,8 @@ machine quiescence collector，并产生严格的
 run-family/candidate 的 child receipts；布尔结论、mutation 数量和
 quiescence 结果不得硬编码。Fixture 模式只能签
 `fixture-verified/productionReady=false`。
-Live 模式必须复读 GitHub 依赖和两个默认分支远端 SHA；child rollout
+Live 模式只复读当前 package 仓默认分支远端 SHA；不查询或依赖任何
+产品仓 checkout、issue 或默认分支。child rollout
 若没有实际测试、退出非零或只有自然语言报告均失败。
 临时 runner 只能作为 audit-only 历史证据，不能参与这条永久 E2E
 制造绿灯。
@@ -89,6 +90,15 @@ Live 模式必须复读 GitHub 依赖和两个默认分支远端 SHA；child rol
 8. **立即交付验收组**：一组全部通过后，读取 [`references/group-delivery.md`](references/group-delivery.md)，按其中的 CI evidence 分类与关闭门禁完成提交、主分支推送、远端核验和 issue 关闭；dry-run 时停在明确的首个有副作用动作之前。
 9. **回写运行态并继续**：由根代理在已验证的仓库外状态根追加 verified plan/slice/shape/capability/route/prompt/checkpoint/terminal/failure/retry事件，更新 DAG、证据键、槽位和恢复指纹，然后回到步骤 1；不得靠记忆补全尚未读取的阶段规则。
 10. **最终 quiescence**：全部目标节点已远端关闭后，以新的 observe-only machine inventory 调用 `scripts/quiescence.mjs`。必须同时枚举 issue/stage/attempt/group/actor、work plan/slice/checkpoint/continuation/breaker/route、Git/resource/process/port/Docker/lock/lease/slot、landing/source mapping/human retention、Skill/DAG/telemetry 与 bootstrap retirement。只有可重算的 `issue-orchestration.quiescence-receipt.v1` 为 `quiescent` 且 `violations=[]` 才能结束整轮。该 gate 只观察；发现残留后返回 violation，不能自行清理、恢复 continuation、重路由、landing 或选择人工决定。
+
+Worktree 与 child branch 不走通用目录/ref 删除。必须由
+`scripts/git-resource-cleanup.mjs` 按
+`active → frozen → inventoried → candidate-disposition-proven → actors-and-processes-stopped → worktree-removed → local-ref-retired|quarantined → lease-and-slot-released → post-cleanup-verified`
+完整推进。Merge ancestry 只允许 `branch -d`；squash/rebase/cherry-pick
+只有 exact candidate-to-landing mapping 后才能 `branch -D`；未映射提交、
+staged/dirty/untracked 内容必须先保存 quarantine ref、patch、index 与
+untracked manifests。旧 `resource-lifecycle.mjs` 只能消费最终机器回执，
+不能自行删除 Git 资源或提前释放 lease/slot。
 
 ## 状态与停止
 

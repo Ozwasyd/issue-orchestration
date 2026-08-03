@@ -559,7 +559,13 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         stageRole: 'ui-ux-implementer',
         stagePhase: 'landing-conflict-resolution'
     })
-    assert.deepEqual(uiLandingRoute.allowedProfiles, ['sol-low', 'sol-medium'])
+    assert.deepEqual(uiLandingRoute.allowedProfiles, [
+        'terra-medium',
+        'terra-high',
+        'sol-medium',
+        'sol-high',
+        'sol-xhigh'
+    ])
     const codeLandingRoute = profileModule.compileStageRoute({
         ...classification,
         domain: 'generic-code',
@@ -573,8 +579,6 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         [
             'terra-medium',
             'terra-high',
-            'terra-xhigh',
-            'terra-max',
             'sol-high',
             'sol-xhigh'
         ]

@@ -228,6 +228,10 @@ export function captureStageMutationSnapshot(input = {}) {
         {
             stageRole: input.stageRole,
             stagePhase: input.stagePhase,
+            selectedProfile:
+                input.runtimeExecutionBinding.selectedProfile,
+            routeDecisionDigest:
+                input.runtimeExecutionBinding.routeDecisionDigest,
             startup: input.startup,
             runtimeTrustBinding: input.runtimeTrustBinding,
             repositoryTargets: input.repositoryTargets

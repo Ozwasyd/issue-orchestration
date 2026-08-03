@@ -69,7 +69,7 @@
   },
   {
     "id": "temporary-runner-substitutes-permanent-runtime",
-    "evidenceLane": "cross-repo-e2e.test.mjs"
+    "evidenceLane": "repository-e2e.test.mjs"
   },
   {
     "id": "resource-lifecycle-contract-modified",

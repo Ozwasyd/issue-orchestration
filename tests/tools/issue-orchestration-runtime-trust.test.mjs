@@ -24,9 +24,6 @@ const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../..'
 )
-const fsusBlogRoot = path.resolve(
-    process.env.FSUSBLOG_ROOT ?? path.join(root, '../FsusBlog')
-)
 const temporaryRoots = new Set()
 
 test.after(() => {
@@ -56,9 +53,13 @@ function temporaryRepository(remoteUrl) {
     return repositoryPath
 }
 
+const repositoryRoot = temporaryRepository(
+    'https://github.com/Ozwasyd/FsusBlog.git'
+)
+
 function rootBinding(repositoryTargets = [{
     repository: 'Ozwasyd/FsusBlog',
-    repositoryPath: fsusBlogRoot
+    repositoryPath: repositoryRoot
 }], startup = verifiedRuntimeStartup({})) {
     return compileRuntimeTrustBinding({
         role: 'root-scheduler',
@@ -88,7 +89,7 @@ test('T04-01 validates the versioned policy, binding, and permission evidence sc
         evidenceClass: 'route',
         repositoryTargets: [{
             repository: 'Ozwasyd/FsusBlog',
-            repositoryPath: fsusBlogRoot
+            repositoryPath: repositoryRoot
         }],
         startup
     })
@@ -109,7 +110,7 @@ test('T04-01 validates the versioned policy, binding, and permission evidence sc
 test('T04-02 accepts an observed unattended full-access root and records honest evidence', () => {
     const targets = [{
         repository: 'Ozwasyd/FsusBlog',
-        repositoryPath: fsusBlogRoot
+        repositoryPath: repositoryRoot
     }]
     const startup = verifiedRuntimeStartup({})
     const binding = rootBinding(targets, startup)
@@ -158,7 +159,7 @@ test('T04-03 rejects read-only, unobserved, and non-V2 Codex root claims', () =>
             permissionProfileObserved: true,
             repositoryTargets: [{
                 repository: 'Ozwasyd/FsusBlog',
-                repositoryPath: fsusBlogRoot
+                repositoryPath: repositoryRoot
             }],
             ...overrides
         }), {
@@ -231,7 +232,7 @@ test('T04-06 rejects forged machine isolation and disabled future mode mapping',
         permissionProfileObserved: true,
         repositoryTargets: [{
             repository: 'Ozwasyd/FsusBlog',
-            repositoryPath: fsusBlogRoot
+            repositoryPath: repositoryRoot
         }]
     }), {
         code: 'runtime-trust-mode-not-enabled'
@@ -249,7 +250,7 @@ test('T04-07 full runtime access does not expand Root semantic authority', () =>
         permissionProfileObserved: true,
         repositoryTargets: [{
             repository: 'Ozwasyd/FsusBlog',
-            repositoryPath: fsusBlogRoot
+            repositoryPath: repositoryRoot
         }]
     }), {
         code: 'runtime-trust-root-semantic-boundary'
@@ -264,7 +265,7 @@ test('T04-07 full runtime access does not expand Root semantic authority', () =>
         permissionProfileObserved: true,
         repositoryTargets: [{
             repository: 'Ozwasyd/FsusBlog',
-            repositoryPath: fsusBlogRoot
+            repositoryPath: repositoryRoot
         }]
     }), {
         code: 'runtime-trust-root-semantic-boundary'

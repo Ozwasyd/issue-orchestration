@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:git-remote-cleanup-authorization:v1",
+  "title": "issue-orchestration.git-remote-cleanup-authorization.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "actorRole",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "repositoryId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "remoteName",
+    "ref",
+    "expectedSha",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "leaseId",
+    "action",
+    "authorizedAt",
+    "authorizationDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.git-remote-cleanup-authorization.v1"},
+    "actorRole": {"const": "root-control"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"type": "string", "minLength": 1},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "repositoryId": {"type": "string", "minLength": 1},
+    "worktreeResourceId": {"type": "string", "minLength": 1},
+    "branchResourceId": {"type": "string", "minLength": 1},
+    "remoteName": {"type": "string", "minLength": 1},
+    "ref": {
+      "type": "string",
+      "pattern": "^refs/heads/issue-orchestration/staging/"
+    },
+    "expectedSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "candidateSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "action": {"const": "delete-exact-remote-staging-ref"},
+    "authorizedAt": {"type": "string", "format": "date-time"},
+    "authorizationDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

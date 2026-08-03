@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:candidate-disposition-receipt:v1",
+  "title": "issue-orchestration.candidate-disposition-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "repositoryId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "leaseId",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "disposition",
+    "inventoryDigest",
+    "landingMappingDigest",
+    "acceptanceReceiptDigest",
+    "verificationReceiptDigest",
+    "landingReceiptDigest",
+    "failureReceiptDigest",
+    "supersessionMappingDigest",
+    "quarantineReceiptDigest",
+    "reasonCodes",
+    "provenAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.candidate-disposition-receipt.v1"},
+    "producerAuthority": {"const": "machine-candidate-disposition-verifier"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"$ref": "#/$defs/text"},
+    "rootAuthorityEpoch": {"$ref": "#/$defs/text"},
+    "attemptId": {"$ref": "#/$defs/text"},
+    "repositoryId": {"$ref": "#/$defs/text"},
+    "worktreeResourceId": {"$ref": "#/$defs/text"},
+    "branchResourceId": {"$ref": "#/$defs/text"},
+    "leaseId": {"$ref": "#/$defs/text"},
+    "baseSha": {"$ref": "#/$defs/sha"},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "deliveryEpoch": {"$ref": "#/$defs/text"},
+    "disposition": {
+      "enum": ["landed", "superseded", "discard-authorized", "quarantined"]
+    },
+    "inventoryDigest": {"$ref": "#/$defs/digest"},
+    "landingMappingDigest": {"$ref": "#/$defs/nullableDigest"},
+    "acceptanceReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "verificationReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "landingReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "failureReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "supersessionMappingDigest": {"$ref": "#/$defs/nullableDigest"},
+    "quarantineReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "reasonCodes": {"type": "array", "items": {"$ref": "#/$defs/text"}},
+    "provenAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "text": {"type": "string", "minLength": 1}
+  }
+}

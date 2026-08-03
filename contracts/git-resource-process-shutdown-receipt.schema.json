@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:git-resource-process-shutdown-receipt:v1",
+  "title": "issue-orchestration.git-resource-process-shutdown-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "lifecycleId",
+    "runId",
+    "rootAuthorityEpoch",
+    "attemptId",
+    "stageRole",
+    "sliceId",
+    "repositoryId",
+    "worktreeResourceId",
+    "branchResourceId",
+    "worktreePath",
+    "branchRef",
+    "baseSha",
+    "candidateSha",
+    "deliveryEpoch",
+    "leaseId",
+    "actorShutdownReceiptDigests",
+    "processObservation",
+    "observedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.git-resource-process-shutdown-receipt.v1"},
+    "producerAuthority": {"const": "machine-git-resource-cleaner"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "lifecycleId": {"$ref": "#/$defs/digest"},
+    "runId": {"type": "string", "minLength": 1},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "attemptId": {"type": "string", "minLength": 1},
+    "stageRole": {"type": "string", "minLength": 1},
+    "sliceId": {"type": "string", "minLength": 1},
+    "repositoryId": {"type": "string", "minLength": 1},
+    "worktreeResourceId": {"type": "string", "minLength": 1},
+    "branchResourceId": {"type": "string", "minLength": 1},
+    "worktreePath": {"type": "string", "minLength": 1},
+    "branchRef": {"type": "string", "pattern": "^refs/heads/"},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "candidateSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "actorShutdownReceiptDigests": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/digest"}
+    },
+    "processObservation": {"type": "object"},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
