@@ -8,6 +8,9 @@ import {
     uniqueSorted,
     unsignedDigest
 } from './runtime-contract-lib.mjs'
+import {
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 function validateAcceptance(value) {
     if (value?.schema !==
@@ -83,28 +86,19 @@ export function compileSlicePlanValidation({
             'test-owner:test-contract-planning' ||
         proposal.rootAuthored !== false ||
         proposal.acceptanceContractDigest !==
-            acceptance.contractDigest ||
-        proposal.actorRuntime?.role !== 'test-owner' ||
-        proposal.actorRuntime?.phase !==
-            'test-contract-planning' ||
-        proposal.actorRuntime?.executionClass !==
-            'observe-only' ||
-        proposal.actorRuntime?.mutationContract !==
-            'no-protected-mutation') {
+            acceptance.contractDigest) {
         fail('slice-proposal-authority')
     }
-    assertDigest(
-        proposal.actorRuntime.routeDecisionDigest,
-        'slice-proposal-route-binding'
-    )
-    assertDigest(
-        proposal.actorRuntime.runtimeExecutionBindingDigest,
-        'slice-proposal-runtime-execution-binding'
-    )
-    assertDigest(
-        proposal.actorRuntime.mutationPostconditionReceiptDigest,
-        'slice-proposal-mutation-postcondition'
-    )
+    try {
+        validateRouteBoundActor({
+            actor: proposal.actorRuntime,
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            proposalOnly: true
+        })
+    } catch (error) {
+        fail(error?.code ?? 'slice-proposal-authority')
+    }
     assertText(proposal.objective, 'slice-proposal-objective')
     const allowedPaths = assertArray(
         proposal.allowedPaths,

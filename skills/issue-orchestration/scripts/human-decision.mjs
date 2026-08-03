@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto'
+import {
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 // Shared issue-orchestration package runtime.
 
 const HASH = /^[a-f0-9]{64}$/u
@@ -112,8 +115,14 @@ function validateAdjudication(value) {
     if (value?.status !== 'complete') {
         fail('human-decision-adjudication-incomplete')
     }
-    if (value.role !== 'ui-system-adjudicator'
-        || value.profile !== 'gpt-5.6-sol/xhigh') {
+    try {
+        validateRouteBoundActor({
+            actor: value,
+            stageRole: 'ui-system-adjudicator',
+            stagePhase: 'adjudication',
+            proposalOnly: true
+        })
+    } catch {
         fail('human-decision-adjudicator-authority')
     }
     if (value.finalReadOnly !== true && !HASH.test(value.digest ?? '')) {

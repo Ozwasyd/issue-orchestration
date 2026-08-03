@@ -4,6 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
+import {
+    routeActorFor
+} from './issue-orchestration-route-test-helper.mjs'
 import { pathToFileURL } from 'node:url'
 
 const root = path.resolve(import.meta.dirname, '../..')
@@ -140,19 +143,23 @@ async function assertDenied(operation, expectedCode) {
 }
 
 function graphAuthor(overrides = {}) {
-    return {
-        actorRole: 'dag-creator-updater',
-        actorId: 'dag-updater-1833',
-        executionClass: 'observe-only',
-        mutationContract: 'no-protected-mutation',
-        runtimeExecutionBindingDigest:
-            digest('dag-updater-runtime-binding'),
-        mutationPostconditionReceiptDigest:
-            digest('dag-updater-postcondition'),
-        freshContext: true,
-        acceptedWithoutModification: true,
-        ...overrides
+    const actorOverrides = { ...overrides }
+    if (actorOverrides.actorRole && !actorOverrides.role) {
+        actorOverrides.role = actorOverrides.actorRole
     }
+    if (actorOverrides.role && !actorOverrides.actorRole) {
+        actorOverrides.actorRole = actorOverrides.role
+    }
+    return routeActorFor({
+        stageRole: 'dag-creator-updater',
+        stagePhase: 'semantic-proposal',
+        actorId: 'dag-creator-updater-1833',
+        proposalOnly: true,
+        actorOverrides: {
+            acceptedWithoutModification: true,
+            ...actorOverrides
+        }
+    })
 }
 
 async function baseline() {

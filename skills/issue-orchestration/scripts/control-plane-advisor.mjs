@@ -16,8 +16,17 @@ import {
 import {
     validateStageMutationPostconditionReceipt
 } from './stage-runtime-guard.mjs'
+import {
+    STAGE_ROUTE_DEFINITIONS
+} from './stage-profile-policy.mjs'
 
 const POLICY_ROOT = path.resolve(import.meta.dirname, '../../../policy')
+const ROOT_SCHEDULING_PROFILE = STAGE_ROUTE_DEFINITIONS[
+    'root-scheduler:scheduling'
+]?.defaultProfile
+if (!ROOT_SCHEDULING_PROFILE) {
+    throw new Error('advisor-root-route-policy-missing')
+}
 const POLICY_PATH = path.join(
     POLICY_ROOT,
     'control-plane-advisor-policy.json'
@@ -194,7 +203,7 @@ export function compileControlPlaneAdvisorRequest(input = {}) {
     const startupBinding =
         requireRuntimeStartupBinding({ startup: input.startup })
     if (startupBinding.rootPhase !== 'scheduling' ||
-        startupBinding.rootProfile !== 'terra-low' ||
+        startupBinding.rootProfile !== ROOT_SCHEDULING_PROFILE ||
         unresolved.runId !== input.runId ||
         unresolved.failureDigest !== input.failureDigest ||
         input.consultedFailureDigests?.includes(
@@ -554,7 +563,7 @@ export function executeControlPlaneRecoveryAction({
     const startupBinding =
         requireRuntimeStartupBinding({ startup })
     if (startupBinding.rootPhase !== 'scheduling' ||
-        startupBinding.rootProfile !== 'terra-low' ||
+        startupBinding.rootProfile !== ROOT_SCHEDULING_PROFILE ||
         plan?.planDigest !==
             unsignedDigest(plan ?? {}, 'planDigest') ||
         plan.rootInvocationId !==

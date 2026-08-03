@@ -88,7 +88,7 @@ function sealTestReceipt(value) {
 function sourceBindingForPhase(stagePhase) {
     if (stagePhase === 'test-contract') {
         return {
-            actorRole: 'dag-updater',
+            actorRole: 'dag-creator-updater',
             eventType: 'node.discovered',
             receiptSchema:
                 'issue-orchestration.dag-scope-receipt.v1'
@@ -368,7 +368,7 @@ export function sealCanonicalWriterLedgerEvent({
 
 function sourceEventBlueprints(stagePhase) {
     const discovered = {
-        actorRole: 'dag-updater',
+        actorRole: 'dag-creator-updater',
         attemptId: null,
         eventType: 'node.discovered',
         fromState: 'none',

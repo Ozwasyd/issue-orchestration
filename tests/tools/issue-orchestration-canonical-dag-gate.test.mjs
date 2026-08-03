@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import test from 'node:test'
 
 import {
@@ -23,6 +24,10 @@ import {
 import {
     createTrustedRepositoryFixture
 } from './issue-orchestration-trusted-repository-test-helper.mjs'
+import {
+    routeActorFor,
+    routeDecisionFor
+} from './issue-orchestration-route-test-helper.mjs'
 
 const startup = verifiedRuntimeStartup({})
 const policyDigest = startup.observation.policyDigests.modelPool
@@ -54,10 +59,36 @@ const agentReceipts = new Set([
     'deliveryAttempt'
 ])
 
+function authorityForReceipt(key) {
+    if (['planningRoute', 'planningAttempt', 'testContractPlan',
+        'slicePlanProposal'].includes(key)) {
+        return ['test-owner', 'test-contract-planning', true]
+    }
+    if (['routeDecision', 'writerDispatch', 'activeAttempt',
+        'writerCheckpoint', 'writerFailure', 'retryAuthorization'].includes(key)) {
+        return ['test-owner', 'test-contract', false]
+    }
+    if (key === 'implementationTerminal') {
+        return ['code-implementer', 'implementation', false]
+    }
+    if (key === 'behavior') {
+        return ['test-owner', 'behavior-verification', true]
+    }
+    if (['uiAdjudicationRoute', 'uiAdjudication'].includes(key)) {
+        return ['ui-system-adjudicator', 'adjudication', true]
+    }
+    if (['uxAcceptanceRoute', 'uxAcceptance'].includes(key)) {
+        return ['ux-acceptance-verifier', 'ux-acceptance', true]
+    }
+    if (['documentationRoute', 'documentation'].includes(key)) {
+        return ['documentation-writer', 'documentation', false]
+    }
+    return ['root-scheduler', 'scheduling', false]
+}
+
 function receipt(key, memberId, predecessors) {
     const digestField = digestFields[key] ?? 'receiptDigest'
-    const value = {
-        schema: `issue-orchestration.${key}.v1`,
+    const envelope = {
         memberId,
         selectorReceiptDigest,
         remoteSnapshotDigest,
@@ -65,26 +96,33 @@ function receipt(key, memberId, predecessors) {
         predecessorReceiptDigests: [...predecessors].sort()
     }
     if (agentReceipts.has(key)) {
-        value.actorRole = key.includes('documentation')
-            ? 'documentation-writer'
-            : key.includes('ux')
-                ? 'ux-acceptance-verifier'
-                : key.includes('uiAdjudication')
-                    ? 'ui-system-adjudicator'
-                    : key === 'behavior'
-                        ? 'test-owner'
-                        : key.startsWith('planning') ||
-                            key === 'testContractPlan' ||
-                            key === 'slicePlanProposal'
-                            ? 'test-owner'
-                            : 'code-implementer'
-        value.runtimeExecutionBindingDigest = digest(`${key}:runtime`)
-        value.mutationPostconditionEvidenceDigest = digest(`${key}:mutation`)
-        if (digestField !== 'routeDecisionDigest') {
-            value.routeDecisionDigest = digest(`${key}:route`)
+        const [stageRole, stagePhase, proposalOnly] =
+            authorityForReceipt(key)
+        if (digestField === 'routeDecisionDigest') {
+            return routeDecisionFor({
+                stageRole,
+                stagePhase,
+                suffix: `${key}:${memberId}`,
+                overrides: envelope
+            })
         }
-    } else {
-        value.compilerAuthority = `deterministic-${key}-compiler`
+        const value = {
+            schema: `issue-orchestration.${key}.v1`,
+            ...envelope,
+            ...routeActorFor({
+                stageRole,
+                stagePhase,
+                proposalOnly,
+                suffix: `${key}:${memberId}`
+            })
+        }
+        value[digestField] = digest(value)
+        return value
+    }
+    const value = {
+        schema: `issue-orchestration.${key}.v1`,
+        ...envelope,
+        compilerAuthority: `deterministic-${key}-compiler`
     }
     value[digestField] = digest(value)
     return value
@@ -175,10 +213,28 @@ function request(states = ['discovered', 'discovered']) {
     }
 }
 
+function graphCanonical(value, semanticKey = null) {
+    if (Array.isArray(value)) {
+        const normalized = value.map((item) => graphCanonical(item))
+        if (['completedSlicePrefix', 'completedSliceReceiptDigests',
+            'priorTerminalReceiptDigests'].includes(semanticKey)) {
+            return normalized
+        }
+        return normalized.sort((left, right) =>
+            JSON.stringify(left).localeCompare(JSON.stringify(right)))
+    }
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [
+        key, graphCanonical(value[key], key)
+    ]))
+}
+
 function resealGraph(value) {
     const unsigned = structuredClone(value.dag)
     delete unsigned.semanticGraphDigest
-    value.dag.semanticGraphDigest = digest(unsigned)
+    value.dag.semanticGraphDigest = createHash('sha256')
+        .update(JSON.stringify(graphCanonical(unsigned)))
+        .digest('hex')
 }
 
 test('two fresh discovered issues pass without future receipts', () => {

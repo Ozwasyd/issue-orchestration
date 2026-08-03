@@ -9,6 +9,9 @@ import {
     uniqueSorted,
     unsignedDigest
 } from './runtime-contract-lib.mjs'
+import {
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 const CLASSIFICATIONS = new Set([
     'acceptance',
@@ -84,6 +87,16 @@ export function compileRequirementInventory({
         proposal.remoteSnapshotDigest !==
             snapshot.remoteSnapshotDigest) {
         fail('requirement-proposal-drift')
+    }
+    try {
+        validateRouteBoundActor({
+            actor: proposal.actorRuntime ?? proposal.authoredBy,
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            proposalOnly: true
+        })
+    } catch (error) {
+        fail(error?.code ?? 'requirement-proposal-drift')
     }
     if (rootDecision?.action !== 'accept' ||
         rootDecision.proposalDigest !== proposal.proposalDigest ||

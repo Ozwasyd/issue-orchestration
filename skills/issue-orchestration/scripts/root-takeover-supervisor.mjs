@@ -13,6 +13,12 @@ import {
 import {
     requireRuntimeStartupBinding
 } from './runtime-startup-attestation.mjs'
+import {
+    STAGE_MODEL_POOL_POLICY,
+    STAGE_ROUTE_DEFINITIONS,
+    splitProfile
+} from './stage-profile-policy.mjs'
+
 
 const POLICY_PATH = path.resolve(
     import.meta.dirname,
@@ -26,6 +32,18 @@ export const ROOT_TAKEOVER_POLICY_DIGEST =
     digest(ROOT_TAKEOVER_POLICY)
 
 const SHA = /^[a-f0-9]{40}$/u
+
+function recoveryRouteDefinition() {
+    const definition = STAGE_ROUTE_DEFINITIONS[
+        `root-scheduler:${ROOT_TAKEOVER_POLICY.recoveryRootPhase}`
+    ]
+    if (!definition) fail('root-recovery-route-policy-missing')
+    return definition
+}
+
+function recoveryProfileId() {
+    return recoveryRouteDefinition().defaultProfile
+}
 
 function timestamp(value, code) {
     const result = Date.parse(value)
@@ -203,7 +221,7 @@ export function compileRootTakeoverAuthorization(input = {}) {
         expectedNewRootPhase:
             ROOT_TAKEOVER_POLICY.recoveryRootPhase,
         expectedNewRootProfile:
-            ROOT_TAKEOVER_POLICY.recoveryRootProfile,
+            recoveryProfileId(),
         expectedNewInvocationClass: 'parent-invocation',
         expectedNewInvocationId:
             input.expectedNewInvocationId,
@@ -503,10 +521,17 @@ export function authorizeRecoveryRootLaunch({
         requestedStage:
             ROOT_TAKEOVER_POLICY.recoveryRootPhase,
         requestedProfile:
-            ROOT_TAKEOVER_POLICY.recoveryRootProfile,
-        requestedModel: 'gpt-5.6-terra',
-        requestedEffort: 'medium',
-        requestedMultiAgentBackend: 'v2',
+            recoveryProfileId(),
+        requestedModel: splitProfile(
+            recoveryProfileId()
+        ).model,
+        requestedEffort: splitProfile(
+            recoveryProfileId()
+        ).effort,
+        requestedMultiAgentBackend:
+            STAGE_MODEL_POOL_POLICY.profiles[
+                recoveryProfileId()
+            ].multiAgentBackend,
         requestedTrustMode: 'trusted-owner-repositories',
         requestedPermissionProfile: 'danger-full-access',
         requestedApprovalPolicy: 'never',
@@ -544,7 +569,7 @@ export function completeRecoveryTakeover({
     const startupBinding =
         requireRuntimeStartupBinding({ startup })
     if (startupBinding.rootPhase !== 'recovery-takeover' ||
-        startupBinding.rootProfile !== 'terra-medium' ||
+        startupBinding.rootProfile !== recoveryProfileId() ||
         startupBinding.runtimeInvocationId !==
             authorization.expectedNewInvocationId ||
         startupBinding.runtimeInvocationId ===

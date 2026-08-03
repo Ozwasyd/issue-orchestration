@@ -169,7 +169,7 @@ function activeEmptyLedger(options = {}) {
 function activeDiscoveredLedger(options = {}) {
     const ledger = activeEmptyLedger(options)
     sealEvent(ledger, {
-        actorRole: 'dag-updater',
+        actorRole: 'dag-creator-updater',
         eventType: 'node.discovered',
         fromState: 'none',
         payload: { issueKind: 'code' },
@@ -867,7 +867,7 @@ async function writerFailureRetryLedger() {
 }
 
 function discoveredLedger({
-    discoveryActorRole = 'dag-updater',
+    discoveryActorRole = 'dag-creator-updater',
     issueKind = 'code'
 } = {}) {
     const ledger = emptyLedger()
@@ -879,7 +879,7 @@ function discoveredLedger({
             issueKind,
             proposalReceipt: verifiedReceipt({
                 actorId: 'dag-updater-1817',
-                actorRole: 'dag-updater'
+                actorRole: 'dag-creator-updater'
             })
         },
         toState: 'discovered'
@@ -1228,7 +1228,7 @@ test('contract fixtures are exact, internally linked, and bind the latest author
     const expectedImplementationFiles = [
         {
             path: 'skills/issue-orchestration/scripts/event-ledger.mjs',
-            sha256: '115b63be71282dbfcc28baadea9fb7171fc2ccc5200b2ac17e0ce36bdfdf34ac',
+            sha256: '979f55738e54e3888c291c753e3e8dfaf886b099a46a94143eda7e836bc784a7',
             gitMode: '100644'
         }
     ]
@@ -1531,7 +1531,7 @@ test('P09 reopen invalidates closed authority and requires DAG/frontier recomput
 test('P10 semantic DAG proposal events require a changed remote live snapshot and DAG updater receipt', async () => {
     const ledger = frozenLedger()
     sealEvent(ledger, {
-        actorRole: 'dag-updater',
+        actorRole: 'dag-creator-updater',
         eventType: 'dag.proposal-accepted',
         fromState: 'test-contract-frozen',
         payload: {
@@ -1539,7 +1539,7 @@ test('P10 semantic DAG proposal events require a changed remote live snapshot an
             previousRemoteSnapshotDigest: digest('remote-old'),
             proposalReceipt: verifiedReceipt({
                 actorId: 'dag-updater-1817',
-                actorRole: 'dag-updater'
+                actorRole: 'dag-creator-updater'
             }),
             trigger: 'remote-live-snapshot-digest-changed'
         },
@@ -1974,7 +1974,7 @@ async function writerMutation(writerRole, code) {
 }
 
 function implementationStartLedger({
-    discoveryActorRole = 'dag-updater',
+    discoveryActorRole = 'dag-creator-updater',
     dispatchReceipt
 } = {}) {
     const ledger = frozenLedger({ discoveryActorRole })
@@ -2064,7 +2064,7 @@ const mutations = {
     'implementation-start-discovery-actor-opt-out': async (code) => {
         for (const discoveryActorRole of [
             'root-scheduler',
-            'dag-updater',
+            'dag-creator-updater',
             'legacy-bootstrap-agent'
         ]) {
             await replayMutation(implementationStartLedger({
@@ -2581,7 +2581,7 @@ async function groupLeaseConflictMutation(code) {
     await replayMutation(ledger, code)
 }
 
-async function dagProposalMutation(patch, code, actorRole = 'dag-updater') {
+async function dagProposalMutation(patch, code, actorRole = 'dag-creator-updater') {
     const ledger = frozenLedger()
     sealEvent(ledger, {
         actorRole,
@@ -2592,7 +2592,7 @@ async function dagProposalMutation(patch, code, actorRole = 'dag-updater') {
             previousRemoteSnapshotDigest: digest('remote-old'),
             proposalReceipt: verifiedReceipt({
                 actorId: 'dag-updater-1817',
-                actorRole: 'dag-updater'
+                actorRole: 'dag-creator-updater'
             }),
             trigger: 'remote-live-snapshot-digest-changed',
             ...patch

@@ -37,21 +37,41 @@
         ],
         "properties": {
           "runtimeId": {
-            "enum": ["codex", "claude-code", "grok-build"]
+            "enum": [
+              "codex",
+              "claude-code",
+              "grok-build"
+            ]
           },
-          "launcherProducer": {"type": "string", "minLength": 1},
-          "runtimeProducer": {"type": "string", "minLength": 1},
-          "capacityProducer": {"type": "string", "minLength": 1}
+          "launcherProducer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runtimeProducer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "capacityProducer": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "additionalProperties": false
       }
     },
     "rootPhases": {
       "type": "object",
-      "required": ["scheduling", "recovery-takeover"],
+      "required": [
+        "scheduling",
+        "recovery-takeover"
+      ],
       "properties": {
-        "scheduling": {"$ref": "#/$defs/profile"},
-        "recovery-takeover": {"$ref": "#/$defs/profile"}
+        "scheduling": {
+          "$ref": "#/$defs/profile"
+        },
+        "recovery-takeover": {
+          "$ref": "#/$defs/profile"
+        }
       },
       "additionalProperties": false
     },
@@ -67,25 +87,45 @@
         "permissionGuarantee"
       ],
       "properties": {
-        "role": {"const": "root-scheduler"},
-        "trustMode": {"const": "trusted-owner-repositories"},
-        "effectivePermissionProfile": {"const": "danger-full-access"},
-        "effectiveSandbox": {"const": "danger-full-access"},
-        "approvalPolicy": {"const": "never"},
-        "permissionInheritance": {"const": "inherited-parent-profile"},
-        "permissionGuarantee": {"const": "contract-and-postcondition"}
+        "role": {
+          "const": "root-scheduler"
+        },
+        "trustMode": {
+          "const": "trusted-owner-repositories"
+        },
+        "effectivePermissionProfile": {
+          "const": "danger-full-access"
+        },
+        "effectiveSandbox": {
+          "const": "danger-full-access"
+        },
+        "approvalPolicy": {
+          "const": "never"
+        },
+        "permissionInheritance": {
+          "const": "inherited-parent-profile"
+        },
+        "permissionGuarantee": {
+          "const": "contract-and-postcondition"
+        }
       },
       "additionalProperties": false
     },
     "allowedBeforeVerifiedAttestation": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1},
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "minItems": 4,
       "uniqueItems": true
     },
     "protectedActivities": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1},
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "minItems": 1,
       "uniqueItems": true
     }
@@ -103,12 +143,34 @@
         "takeoverEvidenceRequired"
       ],
       "properties": {
-        "profileId": {"enum": ["terra-low", "terra-medium"]},
-        "phase": {"enum": ["scheduling", "recovery-takeover"]},
-        "model": {"const": "gpt-5.6-terra"},
-        "effort": {"enum": ["low", "medium"]},
-        "multiAgentBackend": {"const": "v2"},
-        "takeoverEvidenceRequired": {"type": "boolean"}
+        "profileId": {
+          "enum": [
+            "terra-low",
+            "terra-medium"
+          ]
+        },
+        "phase": {
+          "enum": [
+            "scheduling",
+            "recovery-takeover"
+          ]
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "effort": {
+          "enum": [
+            "low",
+            "medium"
+          ]
+        },
+        "multiAgentBackend": {
+          "const": "v2"
+        },
+        "takeoverEvidenceRequired": {
+          "type": "boolean"
+        }
       },
       "additionalProperties": false
     }

@@ -2405,7 +2405,7 @@ function sourceEventSpecification(input) {
         input.stageRole === 'test-owner') {
         return {
             eventTypes: ['node.discovered'],
-            actorRoles: ['dag-updater'],
+            actorRoles: ['dag-creator-updater'],
             receiptSchemas: [
                 'issue-orchestration.dag-scope-receipt.v1'
             ],

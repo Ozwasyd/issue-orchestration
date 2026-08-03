@@ -34,29 +34,77 @@
     "producerAuthority": {
       "const": "deterministic-external-root-supervisor"
     },
-    "policyDigest": {"$ref": "#/$defs/digest"},
-    "status": {"const": "launch-authorized"},
-    "runId": {"type": "string", "minLength": 1},
-    "takeoverAuthorizationDigest": {"$ref": "#/$defs/digest"},
-    "fencingReceiptDigest": {"$ref": "#/$defs/digest"},
-    "handoffDigest": {"$ref": "#/$defs/digest"},
-    "expectedNewInvocationId": {"type": "string", "minLength": 1},
-    "expectedInvocationClass": {"const": "parent-invocation"},
-    "requestedStage": {"const": "recovery-takeover"},
-    "requestedProfile": {"const": "terra-medium"},
-    "requestedModel": {"const": "gpt-5.6-terra"},
-    "requestedEffort": {"const": "medium"},
-    "requestedMultiAgentBackend": {"const": "v2"},
-    "requestedTrustMode": {"const": "trusted-owner-repositories"},
-    "requestedPermissionProfile": {"const": "danger-full-access"},
-    "requestedApprovalPolicy": {"const": "never"},
-    "newRootAuthorityEpoch": {"type": "string", "minLength": 1},
-    "attemptOrdinal": {"const": 1},
-    "launchedAt": {"type": "string", "format": "date-time"},
-    "receiptDigest": {"$ref": "#/$defs/digest"}
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "status": {
+      "const": "launch-authorized"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "takeoverAuthorizationDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "fencingReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "handoffDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "expectedNewInvocationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expectedInvocationClass": {
+      "const": "parent-invocation"
+    },
+    "requestedStage": {
+      "const": "recovery-takeover"
+    },
+    "requestedProfile": {
+      "const": "terra-medium"
+    },
+    "requestedModel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestedEffort": {
+      "const": "medium"
+    },
+    "requestedMultiAgentBackend": {
+      "const": "v2"
+    },
+    "requestedTrustMode": {
+      "const": "trusted-owner-repositories"
+    },
+    "requestedPermissionProfile": {
+      "const": "danger-full-access"
+    },
+    "requestedApprovalPolicy": {
+      "const": "never"
+    },
+    "newRootAuthorityEpoch": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptOrdinal": {
+      "const": 1
+    },
+    "launchedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    }
   },
   "additionalProperties": false,
   "$defs": {
-    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
   }
 }
