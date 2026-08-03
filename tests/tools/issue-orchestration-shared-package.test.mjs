@@ -742,11 +742,16 @@ test('P10 package carries orchestration facts, not product design facts', () => 
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
     assert.deepEqual(manifest.ownedDomains.toSorted(), [
         'acceptance-group',
+        'control-plane-advisor',
         'delivery',
         'model-routing',
+        'mutation-postcondition',
         'receipts',
+        'remote-mutation-authority',
         'resource-lifecycle',
+        'root-recovery-takeover',
         'runtime-projection',
+        'runtime-startup',
         'scope-selector',
         'semantic-graph',
         'stage-dispatch'
