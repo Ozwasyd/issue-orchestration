@@ -1,0 +1,88 @@
+name: Diagnose issue 20 CI failure
+
+on:
+  push:
+    branches:
+      - agent/issue-20-canonical-dag-gate
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator --ignore-scripts
+
+      - name: Run complete offline suite and capture TAP
+        id: tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs \
+            > /tmp/issue20-tap.log 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Extract bounded failure report
+        shell: python
+        run: |
+          from pathlib import Path
+          lines = Path('/tmp/issue20-tap.log').read_text(errors='replace').splitlines()
+          indexes = [i for i, line in enumerate(lines) if line.startswith('not ok ')]
+          selected = []
+          for index in indexes[:8]:
+              start = max(0, index - 28)
+              end = min(len(lines), index + 22)
+              selected.extend(lines[start:end])
+              selected.append('\n--- next failure ---\n')
+          summary_start = max(0, len(lines) - 40)
+          report = [
+              'Issue #20 full-suite diagnostic',
+              f'failure_count={len(indexes)}',
+              '',
+              *selected,
+              '',
+              '--- TAP tail ---',
+              *lines[summary_start:]
+          ]
+          text = '\n'.join(report)
+          Path('/tmp/issue20-report.txt').write_text(text[:60000])
+
+      - name: Post diagnostic to PR
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/issue20-report.txt', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 28,
+              body: `<!-- issue-20-ci-diagnostic -->\n\n\`\`\`text\n${report}\n\`\`\``
+            });
+
+      - name: Fail after publishing report
+        if: steps.tests.outputs.exit_code != '0'
+        run: exit 1
