@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-startup-observation:v1",
+  "title": "issue-orchestration.runtime-startup-observation.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "runtimeAdapter",
+    "runtimeId",
+    "runtimeVersion",
+    "invocationId",
+    "sessionId",
+    "requestedRole",
+    "requestedStage",
+    "selectedProfile",
+    "effectiveProfile",
+    "requestedModel",
+    "effectiveModel",
+    "requestedEffort",
+    "effectiveEffort",
+    "requestedMultiAgentBackend",
+    "effectiveMultiAgentBackend",
+    "trustMode",
+    "requestedSandbox",
+    "effectiveSandbox",
+    "requestedPermissionProfile",
+    "effectivePermissionProfile",
+    "requestedApprovalPolicy",
+    "effectiveApprovalPolicy",
+    "permissionInheritance",
+    "permissionGuarantee",
+    "rootRouteDigest",
+    "rootAuthorityEpoch",
+    "capacity",
+    "observedAt",
+    "producerAuthority",
+    "producers",
+    "packageDigest",
+    "manifestDigest",
+    "policyDigests",
+    "sourceRecordDigests",
+    "observationDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-startup-observation.v1"
+    },
+    "runtimeAdapter": {"type": "string", "minLength": 1},
+    "runtimeId": {"enum": ["codex", "claude-code", "grok-build"]},
+    "runtimeVersion": {"type": "string", "minLength": 1},
+    "invocationId": {"type": "string", "minLength": 1},
+    "sessionId": {"type": "string", "minLength": 1},
+    "requestedRole": {"const": "root-scheduler"},
+    "requestedStage": {
+      "enum": ["scheduling", "recovery-takeover"]
+    },
+    "selectedProfile": {"enum": ["terra-low", "terra-medium"]},
+    "effectiveProfile": {"enum": ["terra-low", "terra-medium"]},
+    "requestedModel": {"type": "string", "minLength": 1},
+    "effectiveModel": {"type": "string", "minLength": 1},
+    "requestedEffort": {"type": "string", "minLength": 1},
+    "effectiveEffort": {"type": "string", "minLength": 1},
+    "requestedMultiAgentBackend": {"type": "string", "minLength": 1},
+    "effectiveMultiAgentBackend": {"type": "string", "minLength": 1},
+    "trustMode": {"const": "trusted-owner-repositories"},
+    "requestedSandbox": {"type": "string", "minLength": 1},
+    "effectiveSandbox": {"type": "string", "minLength": 1},
+    "requestedPermissionProfile": {"type": "string", "minLength": 1},
+    "effectivePermissionProfile": {"type": "string", "minLength": 1},
+    "requestedApprovalPolicy": {"type": "string", "minLength": 1},
+    "effectiveApprovalPolicy": {"type": "string", "minLength": 1},
+    "permissionInheritance": {"type": "string", "minLength": 1},
+    "permissionGuarantee": {"type": "string", "minLength": 1},
+    "rootRouteDigest": {"$ref": "#/$defs/digest"},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "capacity": {
+      "type": "object",
+      "required": ["status", "multiAgentV2", "maxConcurrentThreadsPerSession"],
+      "properties": {
+        "status": {"enum": ["observed", "unobservable"]},
+        "multiAgentV2": {"type": ["boolean", "null"]},
+        "maxConcurrentThreadsPerSession": {
+          "type": ["integer", "null"],
+          "minimum": 1
+        },
+        "reasonCode": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "observedAt": {"type": "string", "format": "date-time"},
+    "producerAuthority": {"const": "runtime-owned"},
+    "producers": {
+      "type": "object",
+      "required": ["launcher", "runtime", "capacity"],
+      "properties": {
+        "launcher": {"type": "string", "minLength": 1},
+        "runtime": {"type": "string", "minLength": 1},
+        "capacity": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "packageDigest": {"$ref": "#/$defs/digest"},
+    "manifestDigest": {"$ref": "#/$defs/digest"},
+    "policyDigests": {
+      "type": "object",
+      "required": [
+        "modelPool",
+        "routing",
+        "executionRouting",
+        "stagePermissions",
+        "runtimeTrust",
+        "runtimeStartup",
+        "runtimeExecutionBinding",
+        "stageMutationGuard",
+        "remoteMutation",
+        "rootTakeover",
+        "controlPlaneAdvisor"
+      ],
+      "properties": {
+        "modelPool": {"$ref": "#/$defs/digest"},
+        "routing": {"$ref": "#/$defs/digest"},
+        "executionRouting": {"$ref": "#/$defs/digest"},
+        "stagePermissions": {"$ref": "#/$defs/digest"},
+        "runtimeTrust": {"$ref": "#/$defs/digest"},
+        "runtimeStartup": {"$ref": "#/$defs/digest"},
+        "runtimeExecutionBinding": {"$ref": "#/$defs/digest"},
+        "stageMutationGuard": {"$ref": "#/$defs/digest"},
+        "remoteMutation": {"$ref": "#/$defs/digest"},
+        "rootTakeover": {"$ref": "#/$defs/digest"},
+        "controlPlaneAdvisor": {"$ref": "#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "sourceRecordDigests": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/digest"},
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "observationDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

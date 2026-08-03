@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-startup-policy:v1",
+  "title": "issue-orchestration.runtime-startup-policy.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "version",
+    "maxObservationAgeMs",
+    "trustedRuntimeAdapters",
+    "rootPhases",
+    "requiredRootRuntime",
+    "allowedBeforeVerifiedAttestation",
+    "protectedActivities"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-startup-policy.v1"
+    },
+    "version": {
+      "const": "runtime-startup-attestation.v1"
+    },
+    "maxObservationAgeMs": {
+      "type": "integer",
+      "minimum": 1000
+    },
+    "trustedRuntimeAdapters": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "runtimeId",
+          "launcherProducer",
+          "runtimeProducer",
+          "capacityProducer"
+        ],
+        "properties": {
+          "runtimeId": {
+            "enum": ["codex", "claude-code", "grok-build"]
+          },
+          "launcherProducer": {"type": "string", "minLength": 1},
+          "runtimeProducer": {"type": "string", "minLength": 1},
+          "capacityProducer": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "rootPhases": {
+      "type": "object",
+      "required": ["scheduling", "recovery-takeover"],
+      "properties": {
+        "scheduling": {"$ref": "#/$defs/profile"},
+        "recovery-takeover": {"$ref": "#/$defs/profile"}
+      },
+      "additionalProperties": false
+    },
+    "requiredRootRuntime": {
+      "type": "object",
+      "required": [
+        "role",
+        "trustMode",
+        "effectivePermissionProfile",
+        "effectiveSandbox",
+        "approvalPolicy",
+        "permissionInheritance",
+        "permissionGuarantee"
+      ],
+      "properties": {
+        "role": {"const": "root-scheduler"},
+        "trustMode": {"const": "trusted-owner-repositories"},
+        "effectivePermissionProfile": {"const": "danger-full-access"},
+        "effectiveSandbox": {"const": "danger-full-access"},
+        "approvalPolicy": {"const": "never"},
+        "permissionInheritance": {"const": "inherited-parent-profile"},
+        "permissionGuarantee": {"const": "contract-and-postcondition"}
+      },
+      "additionalProperties": false
+    },
+    "allowedBeforeVerifiedAttestation": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 4,
+      "uniqueItems": true
+    },
+    "protectedActivities": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "profile": {
+      "type": "object",
+      "required": [
+        "profileId",
+        "phase",
+        "model",
+        "effort",
+        "multiAgentBackend",
+        "takeoverEvidenceRequired"
+      ],
+      "properties": {
+        "profileId": {"enum": ["terra-low", "terra-medium"]},
+        "phase": {"enum": ["scheduling", "recovery-takeover"]},
+        "model": {"const": "gpt-5.6-terra"},
+        "effort": {"enum": ["low", "medium"]},
+        "multiAgentBackend": {"const": "v2"},
+        "takeoverEvidenceRequired": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

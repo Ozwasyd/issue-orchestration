@@ -1,0 +1,73 @@
+{
+  "schema": "issue-orchestration.runtime-startup-policy.v1",
+  "version": "runtime-startup-attestation.v1",
+  "maxObservationAgeMs": 300000,
+  "trustedRuntimeAdapters": {
+    "codex-rollout-v1": {
+      "runtimeId": "codex",
+      "launcherProducer": "codex-launcher",
+      "runtimeProducer": "codex-rollout",
+      "capacityProducer": "codex-control-plane"
+    },
+    "claude-code-session-v1": {
+      "runtimeId": "claude-code",
+      "launcherProducer": "claude-code-launcher",
+      "runtimeProducer": "claude-code-session",
+      "capacityProducer": "claude-code-control-plane"
+    },
+    "grok-build-session-v1": {
+      "runtimeId": "grok-build",
+      "launcherProducer": "grok-build-launcher",
+      "runtimeProducer": "grok-build-session",
+      "capacityProducer": "grok-build-control-plane"
+    }
+  },
+  "rootPhases": {
+    "scheduling": {
+      "phase": "scheduling",
+      "profileId": "terra-low",
+      "model": "gpt-5.6-terra",
+      "effort": "low",
+      "multiAgentBackend": "v2",
+      "takeoverEvidenceRequired": false
+    },
+    "recovery-takeover": {
+      "phase": "recovery-takeover",
+      "profileId": "terra-medium",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "multiAgentBackend": "v2",
+      "takeoverEvidenceRequired": true
+    }
+  },
+  "requiredRootRuntime": {
+    "role": "root-scheduler",
+    "trustMode": "trusted-owner-repositories",
+    "effectivePermissionProfile": "danger-full-access",
+    "effectiveSandbox": "danger-full-access",
+    "approvalPolicy": "never",
+    "permissionInheritance": "inherited-parent-profile",
+    "permissionGuarantee": "contract-and-postcondition"
+  },
+  "allowedBeforeVerifiedAttestation": [
+    "package-policy-load",
+    "trusted-runtime-observation",
+    "runtime-preflight",
+    "startup-attestation"
+  ],
+  "protectedActivities": [
+    "repository-discovery",
+    "state-root-validation",
+    "scope-selection",
+    "remote-read",
+    "dag-construction",
+    "lease-allocation",
+    "actor-dispatch",
+    "runtime-probe",
+    "continuation",
+    "landing",
+    "delivery",
+    "cleanup",
+    "quiescence"
+  ]
+}

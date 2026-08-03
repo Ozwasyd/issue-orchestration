@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-activity-authority-receipt:v1",
+  "title": "issue-orchestration.runtime-activity-authority-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "status",
+    "activity",
+    "startupAttestationDigest",
+    "runtimeInvocationId",
+    "runtimeSessionId",
+    "rootPhase",
+    "rootProfile",
+    "rootAuthorityEpoch",
+    "runtimeTrustBindingDigest",
+    "sourceReceiptDigest",
+    "authorityEvidenceDigest",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-activity-authority-receipt.v1"
+    },
+    "producerAuthority": {"const": "machine-runtime-authority-chain"},
+    "status": {"const": "authorized"},
+    "activity": {"type": "string", "minLength": 1},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "runtimeInvocationId": {"type": "string", "minLength": 1},
+    "runtimeSessionId": {"type": "string", "minLength": 1},
+    "rootPhase": {"enum": ["scheduling", "recovery-takeover"]},
+    "rootProfile": {"enum": ["terra-low", "terra-medium"]},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "runtimeTrustBindingDigest": {"$ref": "#/$defs/digest"},
+    "sourceReceiptDigest": {"$ref": "#/$defs/digest"},
+    "authorityEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
