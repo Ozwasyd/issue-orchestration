@@ -39,6 +39,10 @@ import {
     STAGE_ROUTE_DEFINITIONS,
     verifyRuntimeProfileMetadata
 } from './stage-profile-policy.mjs'
+import {
+    compileRuntimePermissionEvidence,
+    validateRuntimeTrustBinding
+} from './runtime-trust-policy.mjs'
 
 class DagGateError extends Error {
     constructor(code, message, details = {}) {
@@ -216,7 +220,7 @@ function projectMember(node, policyDigest) {
     return projection
 }
 
-function validateRootV3(rootRuntime, policyDigest) {
+function validateRootV3(rootRuntime, policyDigest, repositories) {
     const route = rootRuntime?.routeDecision
     if (route?.routingAuthority !==
             'deterministic-execution-capability-compiler') {
@@ -259,7 +263,32 @@ function validateRootV3(rootRuntime, policyDigest) {
     } catch {
         contractFail('dag-gate-root-runtime')
     }
-    return route.selectedProfile
+    if (rootRuntime.metadata?.role !== 'root-scheduler' ||
+        rootRuntime.metadata?.approvalPolicy !== 'never' ||
+        rootRuntime.metadata?.effectivePermissionProfile !==
+            'danger-full-access' ||
+        rootRuntime.metadata?.permissionProfileObserved !== true) {
+        contractFail('dag-gate-root-runtime')
+    }
+    try {
+        validateRuntimeTrustBinding(rootRuntime.runtimeTrustBinding, {
+            expectedRole: 'root-scheduler',
+            expectedExecutionClass: 'root-control',
+            expectedRepositories: repositories,
+            repositoryTargets: rootRuntime.repositoryTargets
+        })
+    } catch {
+        contractFail('dag-gate-root-runtime-trust')
+    }
+    return {
+        rootProfile: route.selectedProfile,
+        runtimePermissionEvidence:
+            compileRuntimePermissionEvidence({
+                binding: rootRuntime.runtimeTrustBinding,
+                evidenceClass: 'run',
+                repositoryTargets: rootRuntime.repositoryTargets
+            })
+    }
 }
 
 export function validateDagStartupGateV2(value) {
@@ -295,9 +324,16 @@ export function validateDagStartupGateV2(value) {
         value.dag.policyDigest,
         'dag-gate-policy'
     )
-    const rootProfile = validateRootV3(
+    const repositories = [...new Set(value.dag.nodes?.map(
+        ({ repository }) => repository
+    ) ?? [])].sort()
+    const {
+        rootProfile,
+        runtimePermissionEvidence
+    } = validateRootV3(
         value.rootRuntime,
-        value.dag.policyDigest
+        value.dag.policyDigest,
+        repositories
     )
     if (!Array.isArray(value.dag.nodes) ||
         value.dag.nodes.length === 0) {
@@ -341,6 +377,20 @@ export function validateDagStartupGateV2(value) {
             value.selectorReceipt.remoteSnapshotDigest,
         policyDigest: value.dag.policyDigest,
         rootProfile,
+        runtimeTrustMode:
+            runtimePermissionEvidence.runtimeTrustMode,
+        runtimeTrustBindingDigest:
+            runtimePermissionEvidence.runtimeTrustBindingDigest,
+        runtimePermissionEvidenceDigest:
+            runtimePermissionEvidence.evidenceDigest,
+        effectivePermissionProfile:
+            runtimePermissionEvidence.effectivePermissionProfile,
+        permissionInheritance:
+            runtimePermissionEvidence.permissionInheritance,
+        machineEnforcedRoleIsolation:
+            runtimePermissionEvidence.machineEnforcedRoleIsolation,
+        mutationPostconditionRequired:
+            runtimePermissionEvidence.mutationPostconditionRequired,
         memberCount: projections.length,
         memberProjectionDigests:
             projections.map(({ projectionDigest }) =>

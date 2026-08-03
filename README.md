@@ -7,6 +7,28 @@ This repository is the only editable source for the Skill, runtime scripts,
 contracts, policies, graph schemas, and agent definitions. Runtime state must
 remain outside this repository and outside every product worktree.
 
+## Runtime trust model
+
+The supported unattended mode is `trusted-owner-repositories`. The root
+scheduler runs with `approval_policy=never` and an observed
+`danger-full-access` permission profile. Codex V2 children may inherit that
+effective profile; the package therefore does not claim machine-enforced
+per-child read-only isolation.
+
+This mode is restricted by
+`policy/runtime-trust-policy.json` to the explicit `Ozwasyd/FsusBlog` and
+`Ozwasyd/FsusUI` repository identities. Startup and continuation fail closed
+when an origin URL cannot be resolved, is outside that exact allowlist, or
+drifts after the trust binding was compiled. Role separation remains semantic
+and receipt-based, with required mutation postconditions. Full runtime access
+does not authorize Root to author product code, tests, UI, or product
+documentation.
+
+This threat model is only for repositories owned and trusted by the operator.
+It is unsuitable for third-party, untrusted, or multi-tenant workloads. A
+future `strict-machine-isolation` mode remains explicitly representable but is
+disabled; it is never silently mapped to the trusted-owner mode.
+
 ## Install for Codex discovery
 
 Use Codex's built-in `skill-installer` with private repository

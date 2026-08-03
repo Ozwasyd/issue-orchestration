@@ -26,7 +26,9 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 
 本 Skill 请求的并发度只能来自运行时实际可观察的 V2 capacity；根调度线程不计入 agent 槽位。固定槽位数字、旧 bootstrap capacity 或节点字段都没有并发授权。
 
-开始前确认两个仓库路径、共同启动工作区、默认分支、HEAD、dirty state、可写权限和远端身份。随后完整读取 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md)。每个 member/node 在取得自己的 read-only facts、route、lease、receipt 与 tombstone 投影后独立通过 `dag-startup-gate-receipt.v2`；不存在阻断全局的旧 bootstrap 门。所有调度运行态由根代理独占写入已验证的仓库外状态根。
+永久无人值守运行使用 `trusted-owner-repositories` mode：Root 必须实际观测为 `approval_policy=never`、`danger-full-access` 和 Codex V2，children 可以继承同一 effective permission profile。该 mode 不声称 machine-enforced child read-only isolation；角色边界来自 execution class、lease、receipt 与必需的 mutation postcondition。只有 `policy/runtime-trust-policy.json` 精确 allowlist 中的 `Ozwasyd/FsusBlog`、`Ozwasyd/FsusUI` 可进入，远端身份无法解析、非 allowlist repository 或运行中 origin/path identity 漂移都在派发前 fail closed。该 threat model 只适用于 operator-owned trusted repositories，不适用于 third-party、untrusted 或 multi-tenant workload。`strict-machine-isolation` 作为 disabled future mode 单独表示，不能被静默映射到 trusted mode。
+
+开始前确认两个仓库路径、共同启动工作区、默认分支、HEAD、dirty state、可写权限和远端身份，并用 `runtime-trust-policy.mjs` 生成和复核 `runtime-trust-binding.v1`。随后完整读取 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md)。每个 member/node 在取得自己的 facts、route、lease、receipt 与 tombstone 投影后独立通过 `dag-startup-gate-receipt.v2`；不存在阻断全局的旧 bootstrap 门。所有调度运行态由根代理独占写入已验证的仓库外状态根。
 
 ## 权威边界
 
@@ -69,13 +71,13 @@ Live 模式必须复读 GitHub 依赖和两个默认分支远端 SHA；child rol
 
 根代理负责 DAG、调用确定性 compiler、槽位调度、完成度复核、最终验收、本地整合、提交、推送、issue 评论与关闭；Root 不编写测试、实现或文档，不手写或修改 compiled prompt。实现者和独立 verifier/adjudicator 不执行远端交付。
 
-1. **建立或刷新 DAG**：按 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md) 验证仓库外状态根，读取或重建当前范围 DAG；由 fresh read-only `dag-creator-updater` 生成完整 requirement inventory、acceptance contract 与 semantic proposal，Root 只接收有界投影并机械纳入通过 validator 的结果。
+1. **建立或刷新 DAG**：按 [`references/dag-and-scheduling.md`](references/dag-and-scheduling.md) 验证仓库外状态根与 runtime trust binding，读取或重建当前范围 DAG；由 fresh observe-only `dag-creator-updater` 生成完整 requirement inventory、acceptance contract 与 semantic proposal，Root 只接收有界投影并机械纳入通过 validator 与 mutation postcondition 的结果。
 2. **选择 stage**：继续按同一 reference 的 ready、槽位、长任务、模型和 terminal 规则选择下一动作；完整 issue 不能成为 writer dispatch unit。
 3. **编译 work plan 与 slice**：读取 [`references/dispatch-and-runtime-probe.md`](references/dispatch-and-runtime-probe.md)，先由 fresh read-only semantic agent 提议 slices，再由确定性 validator 校验完整性、ownership、拓扑、路径、动作和 capacity；Root 不得提议或修改 slice。首次 test writer 严格按 acceptance contract → planning request/receipt → resource/lease → frozen contract → verified slice/prompt → writer 的冷启动顺序执行。
 4. **编译 execution route**：只对当前 verified slice 重算 `execution-shape-classification.v1 → stage-capability-requirement.v1 → execution-route-decision.v1`。Profile 必须来自唯一 capability matrix 的机器 fixture evidence；Root、成本、失败次数和 telemetry 都不能选模。
 5. **编译并派发 prompt**：从 verified plan/slice确定性生成 compiled prompt，先验证 prompt digest和route decision binding，再调用对应 writer role。保留的 task template只能呈现 compiler输出，不得由 Root手填、删减验收或修改 prompt。
 6. **收口 slice**：writer必须在阈值前返回机器可验证 checkpoint、合法 continuation或 terminal receipt。非最终 slice只进入`next-slice`；只有完整 plan的有序 terminal receipts全部通过，stage才可进入`candidate-green`。
-7. **分类与独立验证**：按 [`references/review-failure-and-verification.md`](references/review-failure-and-verification.md) 处理 writer failure、在线 watchdog、一次性空 rollout retry 和 verifier blocker。完整 stage candidate 稳定后，按 fresh read-only 条件调用 `test-owner` 的 behavior-verification phase；blocker 修复或 candidate identity 改变后旧 receipt 立即失效，必须先编译 impact plan 再由 fresh-context candidate B verifier 重验受影响边界，不增加第二评审层。
+7. **分类与独立验证**：按 [`references/review-failure-and-verification.md`](references/review-failure-and-verification.md) 处理 writer failure、在线 watchdog、一次性空 rollout retry 和 verifier blocker。完整 stage candidate 稳定后，按 fresh observe-only 条件调用 `test-owner` 的 behavior-verification phase；blocker 修复或 candidate identity 改变后旧 receipt 立即失效，必须先编译 impact plan 再由 fresh-context candidate B verifier 重验受影响边界，不增加第二评审层。
 8. **立即交付验收组**：一组全部通过后，读取 [`references/group-delivery.md`](references/group-delivery.md)，按其中的 CI evidence 分类与关闭门禁完成提交、主分支推送、远端核验和 issue 关闭；dry-run 时停在明确的首个有副作用动作之前。
 9. **回写运行态并继续**：由根代理在已验证的仓库外状态根追加 verified plan/slice/shape/capability/route/prompt/checkpoint/terminal/failure/retry事件，更新 DAG、证据键、槽位和恢复指纹，然后回到步骤 1；不得靠记忆补全尚未读取的阶段规则。
 10. **最终 quiescence**：全部目标节点已远端关闭后，以新的 observe-only machine inventory 调用 `scripts/quiescence.mjs`。必须同时枚举 issue/stage/attempt/group/actor、work plan/slice/checkpoint/continuation/breaker/route、Git/resource/process/port/Docker/lock/lease/slot、landing/source mapping/human retention、Skill/DAG/telemetry 与 bootstrap retirement。只有可重算的 `issue-orchestration.quiescence-receipt.v1` 为 `quiescent` 且 `violations=[]` 才能结束整轮。该 gate 只观察；发现残留后返回 violation，不能自行清理、恢复 continuation、重路由、landing 或选择人工决定。

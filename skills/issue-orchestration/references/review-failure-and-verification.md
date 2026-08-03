@@ -4,7 +4,7 @@
 
 本文件是实现者/独立 verifier 数量、验证合同、失败分类、重跑、evidence 复用和验收顺序的唯一详细来源。
 
-## 角色与只读边界
+## 角色与 observe-only 边界
 
 每个 executable slice 同时最多一名 writer；完整 stage 达到 `candidate-green` 后最多一名独立 behavior verifier。不得为同一 slice 并行派发第二名 writer 或增加评审层。
 
@@ -17,7 +17,7 @@
 
 没有 blocker 时明确返回 `no delivery blocker`。不得修改代码、扩大范围、启动额外 agent、重复完整验收或提出纯偏好型风格意见。UI 的 `system-design-dispute` 由独立 `ui-system-adjudicator` 只读裁决；不得让 behavior verifier 或 implementer 代替该 authority。
 
-当前 Codex 会把父 turn 的实时 sandbox 重新应用到 child，因此 custom-agent 文件中的 `sandbox_mode = "read-only"` 只是默认值，不能单独证明只读。调用 behavior verifier、UX verifier 或 UI adjudicator 前必须把父 turn 设为 read-only，使用非 full-history fork，并在 child rollout 或等价元数据中核验实际 `sandbox_policy` 为 `read-only`。若当前 surface 不能建立并核验该边界，不运行 verifier/adjudicator，也不声称已独立只读验收。
+`trusted-owner-repositories` mode 中 Codex V2 child 可以继承 Root 的 `danger-full-access`。因此 verifier/adjudicator 的 `observe-only` 是语义 execution class，不是 machine-enforced sandbox 声明。调用 behavior verifier、UX verifier 或 UI adjudicator 时必须使用 fresh non-full-history context，记录实际 effective permission profile、inheritance 和 `permissionGuarantee=contract-and-postcondition`，并在接收结果前验证必需 mutation postcondition。任何源码、control-plane state 或 remote mutation 都使结果及 independent evidence 失效。只有未来 runtime 真实提供并观察到严格边界时，才可以单独记录 `permissionGuarantee=machine-enforced`；这不会改变 stage 的 observe-only 语义。
 
 ## Blocker 回路
 

@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-trust-policy:v1",
+  "title": "issue-orchestration.runtime-trust-policy.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "defaultMode",
+    "modes"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-trust-policy.v1"
+    },
+    "defaultMode": {
+      "const": "trusted-owner-repositories"
+    },
+    "modes": {
+      "type": "object",
+      "required": [
+        "trusted-owner-repositories",
+        "strict-machine-isolation"
+      ],
+      "properties": {
+        "trusted-owner-repositories": {
+          "$ref": "#/$defs/trustedMode"
+        },
+        "strict-machine-isolation": {
+          "$ref": "#/$defs/strictMode"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "repositoryAllowlist": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+      }
+    },
+    "trustedMode": {
+      "type": "object",
+      "required": [
+        "mode",
+        "enabled",
+        "repositoryAllowlist",
+        "rootPermissionProfile",
+        "approvalPolicy",
+        "childPermissionInheritance",
+        "machineEnforcedRoleIsolation",
+        "semanticRoleIsolation",
+        "mutationPostconditionRequired",
+        "permissionGuarantee"
+      ],
+      "properties": {
+        "mode": {
+          "const": "trusted-owner-repositories"
+        },
+        "enabled": {
+          "const": true
+        },
+        "repositoryAllowlist": {
+          "$ref": "#/$defs/repositoryAllowlist"
+        },
+        "rootPermissionProfile": {
+          "const": "danger-full-access"
+        },
+        "approvalPolicy": {
+          "const": "never"
+        },
+        "childPermissionInheritance": {
+          "const": "inherited-parent-profile"
+        },
+        "machineEnforcedRoleIsolation": {
+          "const": false
+        },
+        "semanticRoleIsolation": {
+          "const": "execution-class-and-receipt"
+        },
+        "mutationPostconditionRequired": {
+          "const": true
+        },
+        "permissionGuarantee": {
+          "const": "contract-and-postcondition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "strictMode": {
+      "type": "object",
+      "required": [
+        "mode",
+        "enabled",
+        "repositoryAllowlist",
+        "rootPermissionProfile",
+        "approvalPolicy",
+        "childPermissionInheritance",
+        "machineEnforcedRoleIsolation",
+        "semanticRoleIsolation",
+        "mutationPostconditionRequired",
+        "permissionGuarantee"
+      ],
+      "properties": {
+        "mode": {
+          "const": "strict-machine-isolation"
+        },
+        "enabled": {
+          "const": false
+        },
+        "repositoryAllowlist": {
+          "$ref": "#/$defs/repositoryAllowlist"
+        },
+        "rootPermissionProfile": {
+          "const": "runtime-defined"
+        },
+        "approvalPolicy": {
+          "const": "runtime-defined"
+        },
+        "childPermissionInheritance": {
+          "const": "runtime-enforced-profile"
+        },
+        "machineEnforcedRoleIsolation": {
+          "const": true
+        },
+        "semanticRoleIsolation": {
+          "const": "execution-class-and-receipt"
+        },
+        "mutationPostconditionRequired": {
+          "const": true
+        },
+        "permissionGuarantee": {
+          "const": "machine-enforced"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -192,7 +192,7 @@
       {
         "path": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
         "presence": "present",
-        "sha256": "e024312836f101bc100879114c1e4f49a3d22c910d6291da4eb42ab3565254fe",
+        "sha256": "a61511ade725562fd933e84184478be8944b70763ba3ebea87358bb2eb8f82fc",
         "gitMode": "100644"
       },
       {
@@ -214,7 +214,7 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "afdc7fde9eb4b79e4307c15c73cf0157f2280f0cd3f67d83437d4b0ad94ab42b"
+    "candidateDigest": "88a5b369c30136ee84ed9b02f386982e501dd58733cc7fe0df2b77c3921f47ac"
   },
   "hashAlgorithm": "sha256-raw-file-bytes",
   "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",

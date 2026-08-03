@@ -47,6 +47,8 @@ const manifest = {
         artifactDigests['policy/stage-permissions.json'],
     remoteMutationPolicyDigest:
         artifactDigests['policy/remote-mutation-policy.json'],
+    runtimeTrustPolicyDigest:
+        artifactDigests['policy/runtime-trust-policy.json'],
     graphSchemaDigest:
         artifactDigests['graph/semantic-graph.schema.json'],
     patchSchemaDigest:
@@ -68,8 +70,10 @@ const manifest = {
         'external-runtime-state-root',
         'fresh-context-routing',
         'git-worktree-discovery',
-        'read-only-verification-sandbox',
+        'runtime-permission-observation',
+        'semantic-role-isolation',
         'runtime-model-effort-observation',
+        'trusted-owner-repository-allowlist',
         'stage-scoped-write-lease'
     ],
     installTargets: [

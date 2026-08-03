@@ -323,6 +323,8 @@ export function readManifest(sourceRoot) {
             manifest.artifactDigests['policy/stage-permissions.json'],
         remoteMutationPolicyDigest:
             manifest.artifactDigests['policy/remote-mutation-policy.json'],
+        runtimeTrustPolicyDigest:
+            manifest.artifactDigests['policy/runtime-trust-policy.json'],
         graphSchemaDigest:
             manifest.artifactDigests['graph/semantic-graph.schema.json'],
         patchSchemaDigest:

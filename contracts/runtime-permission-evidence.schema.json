@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-permission-evidence:v1",
+  "title": "issue-orchestration.runtime-permission-evidence.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "evidenceClass",
+    "runtimeTrustBindingDigest",
+    "runtimeTrustMode",
+    "role",
+    "executionClass",
+    "effectivePermissionProfile",
+    "permissionInheritance",
+    "permissionGuarantee",
+    "machineEnforcedRoleIsolation",
+    "semanticRoleIsolation",
+    "mutationPostconditionRequired",
+    "repositoryIdentitySetDigest",
+    "evidenceDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-permission-evidence.v1"
+    },
+    "evidenceClass": {
+      "enum": [
+        "route",
+        "run",
+        "terminal"
+      ]
+    },
+    "runtimeTrustBindingDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeTrustMode": {
+      "enum": [
+        "trusted-owner-repositories",
+        "strict-machine-isolation"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executionClass": {
+      "enum": [
+        "root-control",
+        "observe-only",
+        "leased-writer"
+      ]
+    },
+    "effectivePermissionProfile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissionInheritance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissionGuarantee": {
+      "enum": [
+        "contract-and-postcondition",
+        "machine-enforced"
+      ]
+    },
+    "machineEnforcedRoleIsolation": {
+      "type": "boolean"
+    },
+    "semanticRoleIsolation": {
+      "const": "execution-class-and-receipt"
+    },
+    "mutationPostconditionRequired": {
+      "const": true
+    },
+    "repositoryIdentitySetDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "evidenceDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

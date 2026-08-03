@@ -4,13 +4,24 @@
   "title": "issue-orchestration.root-control-action-receipt.v1",
   "type": "object",
   "required": [
-    "schema", "status", "rootProfile", "projectionDigest", "action",
-    "actionInputDigest", "semanticWorkPerformedByRoot", "receiptDigest"
+    "schema", "status", "rootProfile", "runtimeTrustMode",
+    "runtimeTrustBindingDigest", "runtimePermissionEvidenceDigest",
+    "effectivePermissionProfile", "permissionInheritance",
+    "machineEnforcedRoleIsolation", "mutationPostconditionRequired",
+    "projectionDigest", "action", "actionInputDigest",
+    "semanticWorkPerformedByRoot", "receiptDigest"
   ],
   "properties": {
     "schema": {"const": "issue-orchestration.root-control-action-receipt.v1"},
     "status": {"const": "authorized"},
     "rootProfile": {"enum": ["terra-low", "terra-medium"]},
+    "runtimeTrustMode": {"const": "trusted-owner-repositories"},
+    "runtimeTrustBindingDigest": {"$ref": "#/$defs/digest"},
+    "runtimePermissionEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "effectivePermissionProfile": {"const": "danger-full-access"},
+    "permissionInheritance": {"const": "inherited-parent-profile"},
+    "machineEnforcedRoleIsolation": {"const": false},
+    "mutationPostconditionRequired": {"const": true},
     "projectionDigest": {"$ref": "#/$defs/digest"},
     "action": {"type": "string"},
     "actionInputDigest": {"$ref": "#/$defs/digest"},

@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-trust-binding:v1",
+  "title": "issue-orchestration.runtime-trust-binding.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "policyDigest",
+    "mode",
+    "role",
+    "executionClass",
+    "runtimeId",
+    "multiAgentBackend",
+    "approvalPolicy",
+    "effectivePermissionProfile",
+    "permissionProfileObserved",
+    "childPermissionInheritance",
+    "machineEnforcedRoleIsolation",
+    "semanticRoleIsolation",
+    "mutationPostconditionRequired",
+    "permissionGuarantee",
+    "repositoryIdentities",
+    "repositoryIdentitySetDigest",
+    "bindingDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-trust-binding.v1"
+    },
+    "policyDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "mode": {
+      "enum": [
+        "trusted-owner-repositories",
+        "strict-machine-isolation"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "executionClass": {
+      "enum": [
+        "root-control",
+        "observe-only",
+        "leased-writer"
+      ]
+    },
+    "runtimeId": {
+      "enum": [
+        "codex",
+        "claude-code",
+        "grok-build"
+      ]
+    },
+    "multiAgentBackend": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approvalPolicy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "effectivePermissionProfile": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissionProfileObserved": {
+      "const": true
+    },
+    "childPermissionInheritance": {
+      "type": "string",
+      "minLength": 1
+    },
+    "machineEnforcedRoleIsolation": {
+      "type": "boolean"
+    },
+    "semanticRoleIsolation": {
+      "const": "execution-class-and-receipt"
+    },
+    "mutationPostconditionRequired": {
+      "const": true
+    },
+    "permissionGuarantee": {
+      "enum": [
+        "contract-and-postcondition",
+        "machine-enforced"
+      ]
+    },
+    "repositoryIdentities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "repository",
+          "canonicalPath",
+          "remoteUrl",
+          "remoteIdentityDigest"
+        ],
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+          },
+          "canonicalPath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "remoteUrl": {
+            "type": "string",
+            "minLength": 1
+          },
+          "remoteIdentityDigest": {
+            "$ref": "#/$defs/digest"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "repositoryIdentitySetDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "bindingDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "issue-orchestration.runtime-trust-policy.v1",
+  "defaultMode": "trusted-owner-repositories",
+  "modes": {
+    "trusted-owner-repositories": {
+      "mode": "trusted-owner-repositories",
+      "enabled": true,
+      "repositoryAllowlist": [
+        "Ozwasyd/FsusBlog",
+        "Ozwasyd/FsusUI"
+      ],
+      "rootPermissionProfile": "danger-full-access",
+      "approvalPolicy": "never",
+      "childPermissionInheritance": "inherited-parent-profile",
+      "machineEnforcedRoleIsolation": false,
+      "semanticRoleIsolation": "execution-class-and-receipt",
+      "mutationPostconditionRequired": true,
+      "permissionGuarantee": "contract-and-postcondition"
+    },
+    "strict-machine-isolation": {
+      "mode": "strict-machine-isolation",
+      "enabled": false,
+      "repositoryAllowlist": [
+        "Ozwasyd/FsusBlog",
+        "Ozwasyd/FsusUI"
+      ],
+      "rootPermissionProfile": "runtime-defined",
+      "approvalPolicy": "runtime-defined",
+      "childPermissionInheritance": "runtime-enforced-profile",
+      "machineEnforcedRoleIsolation": true,
+      "semanticRoleIsolation": "execution-class-and-receipt",
+      "mutationPostconditionRequired": true,
+      "permissionGuarantee": "machine-enforced"
+    }
+  }
+}

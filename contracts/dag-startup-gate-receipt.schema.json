@@ -5,8 +5,12 @@
   "type": "object",
   "required": [
     "schema", "status", "selectorReceiptDigest", "remoteSnapshotDigest",
-    "policyDigest", "rootProfile", "memberCount", "memberProjectionDigests",
-    "legacyGlobalReceiptAuthority", "receiptDigest"
+    "policyDigest", "rootProfile", "runtimeTrustMode",
+    "runtimeTrustBindingDigest", "runtimePermissionEvidenceDigest",
+    "effectivePermissionProfile", "permissionInheritance",
+    "machineEnforcedRoleIsolation", "mutationPostconditionRequired",
+    "memberCount", "memberProjectionDigests", "legacyGlobalReceiptAuthority",
+    "receiptDigest"
   ],
   "properties": {
     "schema": {"const": "issue-orchestration.dag-startup-gate-receipt.v2"},
@@ -15,6 +19,13 @@
     "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
     "policyDigest": {"$ref": "#/$defs/digest"},
     "rootProfile": {"enum": ["terra-low", "terra-medium"]},
+    "runtimeTrustMode": {"const": "trusted-owner-repositories"},
+    "runtimeTrustBindingDigest": {"$ref": "#/$defs/digest"},
+    "runtimePermissionEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "effectivePermissionProfile": {"const": "danger-full-access"},
+    "permissionInheritance": {"const": "inherited-parent-profile"},
+    "machineEnforcedRoleIsolation": {"const": false},
+    "mutationPostconditionRequired": {"const": true},
     "memberCount": {"type": "integer", "minimum": 1},
     "memberProjectionDigests": {
       "type": "array", "items": {"$ref": "#/$defs/digest"}, "minItems": 1,

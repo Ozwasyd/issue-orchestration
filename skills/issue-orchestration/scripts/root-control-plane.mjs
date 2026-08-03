@@ -9,6 +9,10 @@ import {
 import {
     verifyRuntimeProfileMetadata
 } from './stage-profile-policy.mjs'
+import {
+    compileRuntimePermissionEvidence,
+    validateRuntimeTrustBinding
+} from './runtime-trust-policy.mjs'
 
 const PROJECTION_FIELDS = new Set([
     'schema',
@@ -120,10 +124,31 @@ function validateRootRuntime(value) {
         fail('root-control-runtime-metadata')
     }
     if (value.metadata?.role !== 'root-scheduler' ||
-        value.metadata?.sandbox !== 'read-only') {
+        value.metadata?.approvalPolicy !== 'never' ||
+        value.metadata?.effectivePermissionProfile !==
+            'danger-full-access' ||
+        value.metadata?.permissionProfileObserved !== true) {
         fail('root-control-runtime-metadata')
     }
-    return route.selectedProfile
+    try {
+        validateRuntimeTrustBinding(value.runtimeTrustBinding, {
+            expectedRole: 'root-scheduler',
+            expectedExecutionClass: 'root-control',
+            repositoryTargets: value.repositoryTargets
+        })
+    } catch {
+        fail('root-control-runtime-trust')
+    }
+    const runtimePermissionEvidence =
+        compileRuntimePermissionEvidence({
+            binding: value.runtimeTrustBinding,
+            evidenceClass: 'run',
+            repositoryTargets: value.repositoryTargets
+        })
+    return {
+        rootProfile: route.selectedProfile,
+        runtimePermissionEvidence
+    }
 }
 
 export function compileRootControlAction({
@@ -132,7 +157,10 @@ export function compileRootControlAction({
     requestedAction
 }) {
     validateDispatchInvestigationProjection(projection)
-    const rootProfile = validateRootRuntime(rootRuntime)
+    const {
+        rootProfile,
+        runtimePermissionEvidence
+    } = validateRootRuntime(rootRuntime)
     if (!sameValue(requestedAction, projection.nextActions[0])) {
         fail('root-control-action-not-recomputable')
     }
@@ -153,6 +181,20 @@ export function compileRootControlAction({
             'issue-orchestration.root-control-action-receipt.v1',
         status: 'authorized',
         rootProfile,
+        runtimeTrustMode:
+            runtimePermissionEvidence.runtimeTrustMode,
+        runtimeTrustBindingDigest:
+            runtimePermissionEvidence.runtimeTrustBindingDigest,
+        runtimePermissionEvidenceDigest:
+            runtimePermissionEvidence.evidenceDigest,
+        effectivePermissionProfile:
+            runtimePermissionEvidence.effectivePermissionProfile,
+        permissionInheritance:
+            runtimePermissionEvidence.permissionInheritance,
+        machineEnforcedRoleIsolation:
+            runtimePermissionEvidence.machineEnforcedRoleIsolation,
+        mutationPostconditionRequired:
+            runtimePermissionEvidence.mutationPostconditionRequired,
         projectionDigest: projection.projectionDigest,
         action: requestedAction.action,
         actionInputDigest: digest(requestedAction),

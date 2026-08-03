@@ -5,6 +5,10 @@ import path from 'node:path'
 import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import {
+    compileRuntimeTrustBinding
+} from '../../skills/issue-orchestration/scripts/runtime-trust-policy.mjs'
+
 const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
     '../..'
@@ -16,6 +20,9 @@ const packageRoot = path.join(
 const scriptsRoot = path.join(
     packageRoot,
     'skills/issue-orchestration/scripts'
+)
+const fsusBlogRoot = path.resolve(
+    process.env.FSUSBLOG_ROOT ?? path.join(root, '../FsusBlog')
 )
 const contract = JSON.parse(fs.readFileSync(path.join(
     root,
@@ -82,10 +89,32 @@ function runtimeMetadata(profile = 'terra-low') {
         role: profile.startsWith('terra-')
             ? 'root-scheduler'
             : 'code-implementer',
-        sandbox: 'read-only',
+        approvalPolicy: 'never',
+        effectivePermissionProfile: 'danger-full-access',
+        permissionProfileObserved: true,
         cwd: '/fixture',
         observable: true,
         observationDigest: digest({ profile })
+    }
+}
+
+function rootRuntimeTrust() {
+    const repositoryTargets = [{
+        repository: 'Ozwasyd/FsusBlog',
+        repositoryPath: fsusBlogRoot
+    }]
+    return {
+        repositoryTargets,
+        runtimeTrustBinding: compileRuntimeTrustBinding({
+            role: 'root-scheduler',
+            executionClass: 'root-control',
+            runtimeId: 'codex',
+            multiAgentBackend: 'v2',
+            approvalPolicy: 'never',
+            effectivePermissionProfile: 'danger-full-access',
+            permissionProfileObserved: true,
+            repositoryTargets
+        })
     }
 }
 
@@ -183,6 +212,7 @@ function gateFixture() {
                 sliceDigest: digest('root-control-slice')
             }),
             metadata: runtimeMetadata('terra-low'),
+            ...rootRuntimeTrust(),
             controlPlaneRecovery: false,
             recoveryClassification: null,
             recoveryReceiptDigest: null
@@ -751,7 +781,8 @@ test('A81-01 limits terra-low Root to recomputable mechanical actions', async ()
                 phase: 'scheduling',
                 profile: 'terra-low'
             }),
-            metadata: runtimeMetadata('terra-low')
+            metadata: runtimeMetadata('terra-low'),
+            ...rootRuntimeTrust()
         },
         requestedAction: {
             action: 'dispatch-ready-slice',
@@ -793,10 +824,29 @@ test('A81-02 rejects Root-authored semantics, expanded context and profile leaka
                 phase: 'scheduling',
                 profile: 'terra-high'
             }),
-            metadata: runtimeMetadata('terra-high')
+            metadata: runtimeMetadata('terra-high'),
+            ...rootRuntimeTrust()
         },
         requestedAction: projection.nextActions[0]
     }), { code: 'root-control-profile' })
+
+    const directProductEdit = dispatchProjection()
+    directProductEdit.nextActions[0].action = 'author-implementation'
+    delete directProductEdit.projectionDigest
+    directProductEdit.projectionDigest = digest(directProductEdit)
+    assert.throws(() => compileRootControlAction({
+        projection: directProductEdit,
+        rootRuntime: {
+            routeDecision: route({
+                role: 'root-scheduler',
+                phase: 'scheduling',
+                profile: 'terra-low'
+            }),
+            metadata: runtimeMetadata('terra-low'),
+            ...rootRuntimeTrust()
+        },
+        requestedAction: directProductEdit.nextActions[0]
+    }), { code: 'root-control-action' })
 })
 
 test('A81-03 source fingerprints cache authority evidence without a reviewer layer', async () => {
