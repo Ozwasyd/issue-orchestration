@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-execution-observation:v1",
+  "title": "issue-orchestration.runtime-execution-observation.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "producer",
+    "runtimeId",
+    "runtimeVersion",
+    "actorInvocationId",
+    "actorSessionId",
+    "rootInvocationId",
+    "requestedRole",
+    "effectiveRole",
+    "requestedPhase",
+    "effectivePhase",
+    "requestedProfile",
+    "effectiveProfile",
+    "requestedModel",
+    "effectiveModel",
+    "requestedEffort",
+    "effectiveEffort",
+    "effectiveMultiAgentBackend",
+    "effectivePermissionProfile",
+    "permissionInheritance",
+    "permissionGuarantee",
+    "observedAt",
+    "observationDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-execution-observation.v1"
+    },
+    "producerAuthority": {"const": "runtime-owned"},
+    "producer": {"type": "string", "minLength": 1},
+    "runtimeId": {"enum": ["codex", "claude-code", "grok-build"]},
+    "runtimeVersion": {"type": "string", "minLength": 1},
+    "actorInvocationId": {"type": "string", "minLength": 1},
+    "actorSessionId": {"type": "string", "minLength": 1},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "requestedRole": {"type": "string", "minLength": 1},
+    "effectiveRole": {"type": "string", "minLength": 1},
+    "requestedPhase": {"type": "string", "minLength": 1},
+    "effectivePhase": {"type": "string", "minLength": 1},
+    "requestedProfile": {"type": "string", "minLength": 1},
+    "effectiveProfile": {"type": "string", "minLength": 1},
+    "requestedModel": {"type": "string", "minLength": 1},
+    "effectiveModel": {"type": "string", "minLength": 1},
+    "requestedEffort": {"type": "string", "minLength": 1},
+    "effectiveEffort": {"type": "string", "minLength": 1},
+    "effectiveMultiAgentBackend": {"const": "v2"},
+    "effectivePermissionProfile": {"type": "string", "minLength": 1},
+    "permissionInheritance": {"type": "string", "minLength": 1},
+    "permissionGuarantee": {"type": "string", "minLength": 1},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "observationDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:runtime-execution-binding:v1",
+  "title": "issue-orchestration.runtime-execution-binding.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "policyDigest",
+    "status",
+    "stageRole",
+    "stagePhase",
+    "executionClass",
+    "runtimeId",
+    "runtimeVersion",
+    "actorInvocationId",
+    "actorSessionId",
+    "rootInvocationId",
+    "startupAttestationDigest",
+    "runtimeTrustBindingDigest",
+    "runtimeObservationDigest",
+    "effectiveMultiAgentBackend",
+    "effectivePermissionProfile",
+    "permissionInheritance",
+    "permissionGuarantee",
+    "machineEnforcedRoleIsolation",
+    "mutationContract",
+    "requiredPostconditionEvidenceClass",
+    "mutationPostconditionRequired",
+    "writeLeaseDigest",
+    "bindingDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.runtime-execution-binding.v1"
+    },
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"const": "verified"},
+    "stageRole": {"type": "string", "minLength": 1},
+    "stagePhase": {"type": "string", "minLength": 1},
+    "executionClass": {
+      "enum": ["root-control", "observe-only", "leased-writer"]
+    },
+    "runtimeId": {"enum": ["codex", "claude-code", "grok-build"]},
+    "runtimeVersion": {"type": "string", "minLength": 1},
+    "actorInvocationId": {"type": "string", "minLength": 1},
+    "actorSessionId": {"type": "string", "minLength": 1},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "runtimeTrustBindingDigest": {"$ref": "#/$defs/digest"},
+    "runtimeObservationDigest": {"$ref": "#/$defs/digest"},
+    "effectiveMultiAgentBackend": {"const": "v2"},
+    "effectivePermissionProfile": {"type": "string", "minLength": 1},
+    "permissionInheritance": {"type": "string", "minLength": 1},
+    "permissionGuarantee": {"type": "string", "minLength": 1},
+    "machineEnforcedRoleIsolation": {"type": "boolean"},
+    "mutationContract": {
+      "enum": [
+        "control-plane-and-delivery-gated",
+        "no-protected-mutation",
+        "lease-and-slice-allowlist"
+      ]
+    },
+    "requiredPostconditionEvidenceClass": {
+      "enum": [
+        "root-control-mutation-postcondition",
+        "observe-only-mutation-postcondition",
+        "leased-writer-mutation-postcondition"
+      ]
+    },
+    "mutationPostconditionRequired": {"const": true},
+    "writeLeaseDigest": {
+      "anyOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "bindingDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

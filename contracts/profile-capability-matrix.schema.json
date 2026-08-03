@@ -1,7 +1,7 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "urn:issue-orchestration:profile-capability-matrix:v2",
-    "title": "issue-orchestration.profile-capability-matrix.v2",
+    "$id": "urn:issue-orchestration:profile-capability-matrix:v3",
+    "title": "issue-orchestration.profile-capability-matrix.v3",
     "type": "object",
     "required": [
         "schema",
@@ -15,10 +15,10 @@
     ],
     "properties": {
         "schema": {
-            "const": "issue-orchestration.profile-capability-matrix.v2"
+            "const": "issue-orchestration.profile-capability-matrix.v3"
         },
         "policyVersion": {
-            "const": "execution-capability-routing.v2"
+            "const": "execution-capability-routing.v3"
         },
         "modelPoolPolicyVersion": {
             "const": "stage-model-pool.v3"
@@ -47,10 +47,31 @@
                     "checkpointReliability",
                     "runtimeProbeCapability",
                     "crossModuleReasoningClass",
-                    "supportedSandboxes",
                     "allowedContinuationModes",
                     "evidenceDigest"
-                ]
+                ],
+                "properties": {
+                    "planningDepth": {"$ref": "#/$defs/level"},
+                    "toolChainPersistence": {"$ref": "#/$defs/level"},
+                    "contextRetentionClass": {"$ref": "#/$defs/level"},
+                    "checkpointReliability": {"$ref": "#/$defs/level"},
+                    "runtimeProbeCapability": {"$ref": "#/$defs/level"},
+                    "crossModuleReasoningClass": {"$ref": "#/$defs/level"},
+                    "allowedContinuationModes": {
+                        "type": "array",
+                        "items": {
+                            "enum": [
+                                "none",
+                                "checkpoint-resume",
+                                "durable-continuation"
+                            ]
+                        },
+                        "minItems": 1,
+                        "uniqueItems": true
+                    },
+                    "evidenceDigest": {"$ref": "#/$defs/digest"}
+                },
+                "additionalProperties": false
             }
         }
     },
@@ -59,6 +80,11 @@
         "digest": {
             "type": "string",
             "pattern": "^[a-f0-9]{64}$"
+        },
+        "level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
         }
     }
 }

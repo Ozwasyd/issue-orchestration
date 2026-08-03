@@ -1,0 +1,20 @@
+{
+  "schema": "issue-orchestration.runtime-execution-binding-policy.v1",
+  "version": "runtime-execution-binding.v1",
+  "trustedProducerAuthority": "runtime-owned",
+  "supportedRuntimeIds": ["codex", "claude-code", "grok-build"],
+  "requiredMultiAgentBackend": "v2",
+  "effectivePermissionSource": "runtime-observation",
+  "permissionInheritanceSource": "runtime-observation",
+  "permissionGuaranteeSource": "runtime-observation",
+  "semanticExecutionClassSource": "stage-permissions.v2",
+  "mutationPostconditionRequired": true,
+  "forbiddenLogicalCapabilityInputs": [
+    "sandbox",
+    "requiredSandbox",
+    "supportedSandboxes",
+    "effectivePermissionProfile",
+    "permissionInheritance",
+    "permissionGuarantee"
+  ]
+}

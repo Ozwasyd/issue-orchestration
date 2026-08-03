@@ -1,10 +1,10 @@
 {
-  "schema": "issue-orchestration.profile-capability-matrix.v2",
-  "policyVersion": "execution-capability-routing.v2",
+  "schema": "issue-orchestration.profile-capability-matrix.v3",
+  "policyVersion": "execution-capability-routing.v3",
   "modelPoolPolicyVersion": "stage-model-pool.v3",
   "evidenceAuthority": "recomputed-codex-v2-runtime-observations",
   "evidenceFixture": "profile-capability-observations.json",
-  "evidenceDigest": "a6c6509776584ae1bfcb69cd7a199db6f744a4489fa2c640e52bcab24c454bb7",
+  "evidenceDigest": "2bf13a60d12a94f90914291eaf57870d128b38d5948ccd8a8babfff56cd37530",
   "modelSelfReportAccepted": false,
   "profiles": {
     "terra-low": {
@@ -14,9 +14,8 @@
       "checkpointReliability": 1,
       "runtimeProbeCapability": 1,
       "crossModuleReasoningClass": 1,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none"],
-      "evidenceDigest": "2d02476ba9478b182fbd127de0202e67127b12c2fa9f3685448f786995536958"
+      "evidenceDigest": "69f9eb7617c47769d27e9582be05947ea69ba0245f424eb6d97ec69fb335ab3e"
     },
     "terra-medium": {
       "planningDepth": 2,
@@ -25,9 +24,8 @@
       "checkpointReliability": 2,
       "runtimeProbeCapability": 1,
       "crossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume"],
-      "evidenceDigest": "323189ccc57d73192ba2df05ca250d3a5d88a2770e6659ed31895abb510f9cad"
+      "evidenceDigest": "571bf4bd6d8c960b3eebfb4e90b60cc01be3d6e5df476fc9572b9fd22793d167"
     },
     "terra-high": {
       "planningDepth": 3,
@@ -36,9 +34,8 @@
       "checkpointReliability": 3,
       "runtimeProbeCapability": 2,
       "crossModuleReasoningClass": 3,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume"],
-      "evidenceDigest": "21300e843ff484ec50d117b8d4a7c2c7b2dda6f6b66b6c25d26e8a6ce2fb419c"
+      "evidenceDigest": "1fea79a2d6ec528875199eacbf40b835c2d8866ce057a21e8cba3677b67b005f"
     },
     "terra-xhigh": {
       "planningDepth": 4,
@@ -47,9 +44,8 @@
       "checkpointReliability": 4,
       "runtimeProbeCapability": 3,
       "crossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
-      "evidenceDigest": "b9f62ddf138c476e7f38396333f0dd4dc61e783969da96e16529dd07120f507d"
+      "evidenceDigest": "70ca296aedeba17a46df8cda3d7172ee9c1d7f8cf3f2e6edb14358cd3918e7b8"
     },
     "terra-max": {
       "planningDepth": 4,
@@ -58,9 +54,8 @@
       "checkpointReliability": 5,
       "runtimeProbeCapability": 5,
       "crossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
-      "evidenceDigest": "7096f30137f62a9ae860fdaf67cdc98cd21536a622677cd72c2cf3710024ec12"
+      "evidenceDigest": "d804b977b4282c5e4e00b1cd6da002dc3c790d3e59baea60c4655b3ab6028108"
     },
     "sol-low": {
       "planningDepth": 1,
@@ -69,9 +64,8 @@
       "checkpointReliability": 2,
       "runtimeProbeCapability": 1,
       "crossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume"],
-      "evidenceDigest": "7e744f6522fcd92f94d5bf4dd101fed620effcf8e37469462b02be7372ba946c"
+      "evidenceDigest": "2621fb1e5a04806190b158dd7a5f703dba3c73917552c229d5b3c716466a4f9f"
     },
     "sol-medium": {
       "planningDepth": 2,
@@ -80,9 +74,8 @@
       "checkpointReliability": 2,
       "runtimeProbeCapability": 2,
       "crossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume"],
-      "evidenceDigest": "ae9d29f1f872a2613ea7698f44659fa20868e43618c54f8b2c7b02e1028a32ac"
+      "evidenceDigest": "7b35e4ca6aca51b1ace27ae4705c4f51bb17a377c0f85e1db33c003804a1eeea"
     },
     "sol-high": {
       "planningDepth": 4,
@@ -91,9 +84,8 @@
       "checkpointReliability": 4,
       "runtimeProbeCapability": 4,
       "crossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
-      "evidenceDigest": "56b46c283e60ee40c53dd12db6366c7d19bab3e20ff1c5296933b395ec76cb55"
+      "evidenceDigest": "dacb20dfb07d53bf9a4b7f38cd30cc1f2ebd0ae889498d495754cea18dc193be"
     },
     "sol-xhigh": {
       "planningDepth": 5,
@@ -102,9 +94,8 @@
       "checkpointReliability": 5,
       "runtimeProbeCapability": 5,
       "crossModuleReasoningClass": 5,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
-      "evidenceDigest": "826d6231bfb6bb45821f718062ae44cb339eee8db46fa13ec41d1056253d9395"
+      "evidenceDigest": "34c0685cfe7accc390cd2d7ec0ca94d25ffb89e756f41aa49a6bbd618f637485"
     },
     "sol-max": {
       "planningDepth": 5,
@@ -113,9 +104,8 @@
       "checkpointReliability": 5,
       "runtimeProbeCapability": 5,
       "crossModuleReasoningClass": 5,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "allowedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"],
-      "evidenceDigest": "f0a833720e5d3adc1193e6e9692332bc56298224336f26f6fe6aa313e6acfeae"
+      "evidenceDigest": "d505fb421b4aafa7253b218971fa37e8cb965e2e50b582f18e5edfd1cfc8fd7c"
     }
   }
 }

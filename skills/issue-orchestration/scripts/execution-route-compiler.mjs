@@ -12,6 +12,9 @@ import {
 import {
     compileExecutableSlice
 } from './executable-slice-compiler.mjs'
+import {
+    validateRuntimeExecutionBinding
+} from './runtime-execution-binding.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const POLICY_ROOT = path.resolve(import.meta.dirname, '../../../policy')
@@ -100,7 +103,6 @@ function capabilityFromObservation(observation) {
             observation.observedRuntimeProbeCapability,
         crossModuleReasoningClass:
             observation.observedCrossModuleReasoningClass,
-        supportedSandboxes: [...observation.supportedSandboxes],
         allowedContinuationModes:
             [...observation.supportedContinuationModes],
         evidenceDigest: digest(observation)
@@ -112,7 +114,7 @@ export function verifyProfileCapabilityMatrix({
     observations = CAPABILITY_OBSERVATIONS
 } = {}) {
     if (matrix?.schema !==
-            'issue-orchestration.profile-capability-matrix.v2' ||
+            'issue-orchestration.profile-capability-matrix.v3' ||
         matrix.policyVersion !== ROUTING_POLICY.version ||
         matrix.modelPoolPolicyVersion !==
             STAGE_MODEL_POOL_POLICY.version ||
@@ -120,7 +122,7 @@ export function verifyProfileCapabilityMatrix({
             'recomputed-codex-v2-runtime-observations' ||
         matrix.modelSelfReportAccepted !== false ||
         observations?.schema !==
-            'issue-orchestration.profile-capability-observations.v2' ||
+            'issue-orchestration.profile-capability-observations.v3' ||
         observations.authority !==
             'codex-v2-runtime-metadata-observer' ||
         matrix.evidenceDigest !== digest(observations)) {
@@ -273,7 +275,7 @@ function shapeCandidates(metrics, slice, stageDefinition) {
     const shapes = []
     if (stageDefinition.writeScope === 'none' ||
         slice.explicitReadOnlyOutput) {
-        shapes.push('read-only-adjudication')
+        shapes.push('observe-only-adjudication')
     }
     const longHorizon =
         metrics.toolInteractionDepth >= 16 ||
@@ -387,7 +389,7 @@ function compileCapabilityRequirement(shape, stageDefinition) {
                 : 'none'
     return seal({
         schema:
-            'issue-orchestration.stage-capability-requirement.v1',
+            'issue-orchestration.stage-capability-requirement.v2',
         sliceId: shape.sliceId,
         sliceDigest: shape.sliceDigest,
         classificationDigest: shape.classificationDigest,
@@ -398,7 +400,6 @@ function compileCapabilityRequirement(shape, stageDefinition) {
         runtimeProbeCapability: levels[4],
         crossModuleReasoningClass: levels[5],
         requiredFreshContext: stageDefinition.freshContext,
-        requiredSandbox: stageDefinition.sandbox,
         allowedContinuationMode: continuationMode
     }, 'capabilityDigest')
 }
@@ -415,7 +416,6 @@ function profileSatisfies(profile, requirement) {
             requirement.runtimeProbeCapability &&
         profile.crossModuleReasoningClass >=
             requirement.crossModuleReasoningClass &&
-        profile.supportedSandboxes.includes(requirement.requiredSandbox) &&
         profile.allowedContinuationModes.includes(
             requirement.allowedContinuationMode
         )
@@ -540,8 +540,22 @@ function compileDecision({
         selected.selectedProfile
     )
     const runtime = splitProfile(selected.selectedProfile)
+    if (input.runtimeExecutionBinding !== undefined) {
+        validateRuntimeExecutionBinding(
+            input.runtimeExecutionBinding,
+            {
+                stageRole: shape.stageRole,
+                stagePhase: shape.stagePhase,
+                startup: input.startup,
+                runtimeTrustBinding:
+                    input.runtimeTrustBinding,
+                repositoryTargets:
+                    input.repositoryTargets
+            }
+        )
+    }
     return seal({
-        schema: 'issue-orchestration.execution-route-decision.v1',
+        schema: 'issue-orchestration.execution-route-decision.v2',
         policyVersion: ROUTING_POLICY.version,
         modelPoolPolicyVersion: STAGE_MODEL_POOL_POLICY.version,
         routingAuthority: ROUTING_POLICY.routingAuthority,
@@ -561,7 +575,13 @@ function compileDecision({
             STAGE_MODEL_POOL_POLICY.profiles[
                 selected.selectedProfile
             ].multiAgentBackend,
-        requiredSandbox: requirement.requiredSandbox,
+        executionClass: stageDefinition.executionClass,
+        runtimeExecutionBindingDigest:
+            input.runtimeExecutionBinding?.bindingDigest ?? null,
+        runtimeExecutionBindingStatus:
+            input.runtimeExecutionBinding === undefined
+                ? 'pending-observation'
+                : 'verified',
         runtimeVerificationStatus,
         previousRouteDecisionDigest: null,
         previousFailureReceiptDigest: null,

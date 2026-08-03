@@ -9,15 +9,15 @@
     "evidence": "policy/profile-capability-observations.json",
     "schemas": [
         "issue-orchestration.execution-shape-classification.v1",
-        "issue-orchestration.stage-capability-requirement.v1",
-        "issue-orchestration.profile-capability-matrix.v2",
-        "issue-orchestration.execution-route-decision.v1"
+    "issue-orchestration.stage-capability-requirement.v2",
+    "issue-orchestration.profile-capability-matrix.v3",
+    "issue-orchestration.execution-route-decision.v2"
     ],
     "schemaFiles": {
         "issue-orchestration.execution-shape-classification.v1": "execution-shape-classification.schema.json",
-        "issue-orchestration.stage-capability-requirement.v1": "stage-capability-requirement.schema.json",
-        "issue-orchestration.profile-capability-matrix.v2": "profile-capability-matrix.schema.json",
-        "issue-orchestration.execution-route-decision.v1": "execution-route-decision.schema.json"
+    "issue-orchestration.stage-capability-requirement.v2": "stage-capability-requirement.schema.json",
+    "issue-orchestration.profile-capability-matrix.v3": "profile-capability-matrix.schema.json",
+    "issue-orchestration.execution-route-decision.v2": "execution-route-decision.schema.json"
     },
     "positiveCases": [
         "R01-bounded-luna",
@@ -26,7 +26,7 @@
         "R04-unsplittable-long-horizon-sol-xhigh",
         "R05-frontier-only-sol-max",
         "R06-ui-low-medium-boundary",
-        "R07-read-only-adjudication",
+        "R07-observe-only-adjudication",
         "R08-valid-profile-mismatch-reroute"
     ],
     "negativeCases": [

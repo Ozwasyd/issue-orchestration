@@ -1,5 +1,5 @@
 {
-  "schema": "issue-orchestration.profile-capability-observations.v2",
+  "schema": "issue-orchestration.profile-capability-observations.v3",
   "authority": "codex-v2-runtime-metadata-observer",
   "catalogCommand": "codex debug models",
   "observations": [
@@ -27,7 +27,6 @@
       "observedCheckpointReliability": 1,
       "observedRuntimeProbeCapability": 1,
       "observedCrossModuleReasoningClass": 1,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none"]
     },
     {
@@ -54,7 +53,6 @@
       "observedCheckpointReliability": 2,
       "observedRuntimeProbeCapability": 1,
       "observedCrossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume"]
     },
     {
@@ -81,7 +79,6 @@
       "observedCheckpointReliability": 3,
       "observedRuntimeProbeCapability": 2,
       "observedCrossModuleReasoningClass": 3,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume"]
     },
     {
@@ -108,7 +105,6 @@
       "observedCheckpointReliability": 4,
       "observedRuntimeProbeCapability": 3,
       "observedCrossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"]
     },
     {
@@ -135,7 +131,6 @@
       "observedCheckpointReliability": 5,
       "observedRuntimeProbeCapability": 5,
       "observedCrossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"]
     },
     {
@@ -162,7 +157,6 @@
       "observedCheckpointReliability": 2,
       "observedRuntimeProbeCapability": 1,
       "observedCrossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume"]
     },
     {
@@ -189,7 +183,6 @@
       "observedCheckpointReliability": 2,
       "observedRuntimeProbeCapability": 2,
       "observedCrossModuleReasoningClass": 2,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume"]
     },
     {
@@ -216,7 +209,6 @@
       "observedCheckpointReliability": 4,
       "observedRuntimeProbeCapability": 4,
       "observedCrossModuleReasoningClass": 4,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"]
     },
     {
@@ -243,7 +235,6 @@
       "observedCheckpointReliability": 5,
       "observedRuntimeProbeCapability": 5,
       "observedCrossModuleReasoningClass": 5,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"]
     },
     {
@@ -270,7 +261,6 @@
       "observedCheckpointReliability": 5,
       "observedRuntimeProbeCapability": 5,
       "observedCrossModuleReasoningClass": 5,
-      "supportedSandboxes": ["read-only", "workspace-write"],
       "supportedContinuationModes": ["none", "checkpoint-resume", "durable-continuation"]
     }
   ]

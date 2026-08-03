@@ -1,7 +1,8 @@
 {
-  "schema": "issue-orchestration.execution-routing-policy.v2",
-  "version": "execution-capability-routing.v2",
+  "schema": "issue-orchestration.execution-routing-policy.v3",
+  "version": "execution-capability-routing.v3",
   "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "runtimeExecutionBindingPolicyVersion": "runtime-execution-binding.v1",
   "routingAuthority": "deterministic-execution-capability-compiler",
   "matrixAuthority": "profile-capability-matrix.json",
   "observationAuthority": "profile-capability-observations.json",
@@ -18,7 +19,10 @@
     "requestedProfile",
     "selectedProfile",
     "profileOverride",
-    "currentRootProfile"
+    "currentRootProfile",
+    "sandbox",
+    "requiredSandbox",
+    "supportedSandboxes"
   ],
   "workShapes": [
     "atomic-edit",
@@ -28,7 +32,7 @@
     "context-heavy",
     "high-tool-depth",
     "long-horizon-cross-module",
-    "read-only-adjudication"
+    "observe-only-adjudication"
   ],
   "contextBreadthOrder": ["narrow", "moderate", "broad", "very-broad"],
   "shapeRequirements": {
@@ -39,7 +43,7 @@
     "context-heavy": [3, 3, 3, 3, 2, 3],
     "high-tool-depth": [4, 4, 4, 4, 3, 4],
     "long-horizon-cross-module": [4, 4, 4, 4, 4, 4],
-    "read-only-adjudication": [3, 3, 3, 3, 2, 3]
+    "observe-only-adjudication": [3, 3, 3, 3, 2, 3]
   },
   "selectionPriority": {
     "atomic-edit": ["terra-low", "sol-low", "terra-medium", "sol-medium"],
@@ -49,7 +53,7 @@
     "context-heavy": ["terra-high", "terra-xhigh", "sol-high", "sol-xhigh"],
     "high-tool-depth": ["terra-xhigh", "terra-max", "sol-xhigh"],
     "long-horizon-cross-module": ["sol-high", "sol-xhigh"],
-    "read-only-adjudication": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"]
+    "observe-only-adjudication": ["terra-high", "sol-high", "terra-xhigh", "sol-xhigh"]
   },
   "uiImplementationProfiles": ["sol-low", "sol-medium"],
   "solMaxRule": "machine-proven-frontier-exception-only",

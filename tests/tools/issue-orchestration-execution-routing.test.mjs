@@ -179,7 +179,7 @@ test('C02 recomputes the sole capability matrix from machine observations', () =
         observations
     })
     assert.equal(verified.schema,
-        'issue-orchestration.profile-capability-matrix.v2')
+        'issue-orchestration.profile-capability-matrix.v3')
     assert.equal(verified.evidenceAuthority,
         'recomputed-codex-v2-runtime-observations')
     assert.equal(verified.modelSelfReportAccepted, false)
