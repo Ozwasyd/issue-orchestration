@@ -4,6 +4,7 @@ import {
     compileExecutableSlice,
     validateCompiledDispatchPrompt
 } from './executable-slice-compiler.mjs'
+import { validateRouteBoundActor } from './execution-route-compiler.mjs'
 
 const REASON_ORDER = [
     'dependency-unsatisfied',
@@ -508,30 +509,31 @@ function validateLayerDigest(record) {
 }
 
 function validateSemanticActor(record) {
-    const actor = record?.authoredBy
-    return actor?.role === 'dag-creator-updater'
-        && typeof actor.actorId === 'string'
-        && actor.actorId.length > 0
-        && actor.model === 'gpt-5.6-sol'
-        && actor.effort === 'max'
-        && actor.executionClass === 'observe-only'
-        && actor.mutationContract === 'no-protected-mutation'
-        && actor.freshContext === true
-        && actor.proposalOnly === true
+    try {
+        validateRouteBoundActor({
+            actor: record?.authoredBy,
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            proposalOnly: true
+        })
+        return true
+    } catch {
+        return false
+    }
 }
 
 function validateTestOwnerActor(record) {
-    const actor = record?.authoredBy
-    return actor?.role === 'test-owner'
-        && typeof actor.actorId === 'string'
-        && actor.actorId.length > 0
-        && actor.model === 'gpt-5.6-sol'
-        && actor.effort === 'max'
-        && actor.executionClass === 'leased-writer'
-        && actor.mutationContract ===
-            'lease-and-slice-allowlist'
-        && actor.writeScope === 'tests-only'
-        && record.testOwnerId === actor.actorId
+    try {
+        const actor = validateRouteBoundActor({
+            actor: record?.authoredBy,
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract',
+            proposalOnly: false
+        })
+        return record.testOwnerId === actor.actorId
+    } catch {
+        return false
+    }
 }
 
 function validateInvestigationProjection({

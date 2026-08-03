@@ -265,7 +265,7 @@ behavior-green → ux-acceptance → ux-accepted
 ### Authority 与 fail-closed 边界
 
 - root scheduler（`root-scheduler`）是唯一可调用 ledger append 的 writer；所有 implementer、test owner、UX verifier、UI system adjudicator、documentation writer、machine resource verifier、independent verifier、subagent 都只能返回 receipt/evidence，尝试写 ledger 必须返回 `ledger-writer-role`。
-- DAG creator/updater 只产生 proposal；只有 root 在 remote live snapshot digest 确实变化、proposal 身份匹配且 actor 为 `dag-updater` 时，才能追加 `dag.proposal-accepted`。本地 stage/rework event 不触发 semantic DAG update。
+- DAG creator/updater 只产生 proposal；只有 root 在 remote live snapshot digest 确实变化、proposal 身份匹配且 actor 绑定 canonical `dag-creator-updater:semantic-proposal` route 时，才能追加 `dag.proposal-accepted`。本地 stage/rework event 不触发 semantic DAG update。
 - `stateRoot` 必须与 authoring source、caller 提供的全部目标仓库、启动工作区和所有 worktree 完全分离；保护根重叠、路径逃逸、祖先 symlink 或 ledger/projection 位于受保护目录时拒绝。ledger path 不能通过 symlink 绕过该边界。
 - terminal 进入必须有合法 category（`externally_blocked`、`resource_failed` 或 `contract_disputed`）和 direct evidence；recovery fingerprint 未变化时不得恢复或重派。cleanup failure 不能释放 lease/slot，也不能覆盖 first failure。
 - group session 与每个 member 独立 replay；group green 不能替代 member 的 contract、independent verification、commit 或 delivery。非法成员顺序、重复 active member、一个 lease 绑定多个 member 均 fail closed。
@@ -286,9 +286,9 @@ Member cleanup 只删除 member-owned resources；group-owned worktree/service �
 
 ## DAG update authority
 
-初始 DAG 只能由通过 startup attestation 的 `terra-low` root scheduler 显式启动一次 `stage-model-pool.v3` semantic-proposal route 的 `dag-creator`。后续 root scheduler 先对 live remote snapshot 重算本节的三层 digest 和 expected-mutation registry；只有 `semanticGraphInputDigest` 出现未预期变化时，才显式启动同样 fresh-context、observe-only、非 resident 的 `dag-updater`，且其唯一允许的普通 proposal 是一次最小 `semantic-patch`。scope、runtime projection、expected delivery mutation 或本地 execution ledger 变化都保持 `projection-only`，不得启动 updater；三层 digest 均未变化时 semantic action 为 `none`。profile 只能由 v3 routing policy 与冻结分类证据选择，Sol/max 只保留给合法 frontier exception。即使 execution ledger 有失败或返工事件也不得更新 semantic DAG。
+初始 DAG 只能由通过 startup attestation 的 `terra-low` root scheduler 显式启动一次 `stage-model-pool.v3` semantic-proposal route 的 `dag-creator-updater`，action 为 `semantic-create`。后续 root scheduler 先对 live remote snapshot 重算本节的三层 digest 和 expected-mutation registry；只有 `semanticGraphInputDigest` 出现未预期变化时，才显式启动同样 fresh-context、observe-only、非 resident 的 `dag-creator-updater`，action 为 `semantic-update`，且其唯一允许的普通 proposal 是一次最小 `semantic-patch`。scope、runtime projection、expected delivery mutation 或本地 execution ledger 变化都保持 `projection-only`，不得启动 updater；三层 digest 均未变化时 semantic action 为 `none`。profile 只能由 v3 routing policy 与冻结分类证据选择，Sol/max 只保留给合法 frontier exception。即使 execution ledger 有失败或返工事件也不得更新 semantic DAG。
 
-启动请求必须声明 `explicit=true`，requester role 为 `root-scheduler`；任何非 root requester、错误 model/effort、错误 execution class/mutation contract、继承 context、resident agent 或错误 agent role 都以稳定 denial 返回。更新 agent 生成的 proposal 必须由 root scheduler 原样接受，且 proposal、selector receipt、remote snapshot、runtime execution binding、mutation postcondition 和 resolved issue set 的 digest/内容逐项相等；root 不得在接受时改写 issue set 或 selector。
+启动请求必须声明 `explicit=true`，requester role 为 `root-scheduler`；任何非 root requester、与 canonical route decision 不一致的 policy/profile/runtime metadata、错误 execution class/mutation contract、继承 context、resident agent 或错误 agent role 都以稳定 denial 返回。更新 agent 生成的 proposal 必须由 root scheduler 原样接受，且 proposal、selector receipt、remote snapshot、runtime execution binding、mutation postcondition 和 resolved issue set 的 digest/内容逐项相等；root 不得在接受时改写 issue set 或 selector。
 
 Subagent 的本地发现只作为 `possible-remote-contract-impact` execution-ledger event 返回并附直接 evidence。要纳入 scope，root 必须先让事实成为远端 issue 或现有 issue 的正文/评论变化；下一轮真实 remote snapshot 变化后才可更新 DAG。无关优化建议不创建 issue，也不扩大 scope。
 
@@ -321,7 +321,7 @@ node "$PACKAGE_ROOT/scripts/uninstall.mjs" \
   --source-root "$PACKAGE_ROOT" --install-root "$INSTALL_ROOT"
 ```
 
-Semantic graph（`semantic-graph.json`）、immutable ledger、runtime projection（`runtime-projection.json`）、work plans、slices、compiled prompts、checkpoints、continuations、terminal/failure/retry receipts 和 resource registry 只能写入 `STATE_ROOT`；不得进入 source 或 installed artifact。`semanticGraphDigest` 与 `runtimeProjectionDigest` 各自由对应 validator/projector 产生；writer lifecycle event 只能引用通过验证的 plan/slice/prompt/checkpoint/terminal/failure/retry digest。Receipt 同时绑定 manifest/package/install digests、candidate/base、epoch、role/model/effort、cwd、Skill/capability 和 runtime-state-root identity。
+Semantic graph（`semantic-graph.json`）、immutable ledger、runtime projection（`runtime-projection.json`）、work plans、slices、compiled prompts、checkpoints、continuations、terminal/failure/retry receipts 和 resource registry 只能写入 `STATE_ROOT`；不得进入 source 或 installed artifact。`semanticGraphDigest` 与 `runtimeProjectionDigest` 各自由对应 validator/projector 产生；writer lifecycle event 只能引用通过验证的 plan/slice/prompt/checkpoint/terminal/failure/retry digest。Receipt 同时绑定 manifest/package/install digests、candidate/base、epoch、canonical route decision、runtime execution binding、cwd、Skill/capability、mutation postcondition 和 runtime-state-root identity；actor 不得自声明独立的 model/profile/effort authority。
 
 ## Grouped delivery window
 

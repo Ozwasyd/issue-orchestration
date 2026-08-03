@@ -4,6 +4,9 @@ import { createHash } from 'node:crypto'
 import {
     authorizeRuntimeStartupActivity
 } from './runtime-startup-attestation.mjs'
+import {
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 const RECEIPT_SCHEMA = 'issue-orchestration.selector-receipt.v1'
 
@@ -220,50 +223,36 @@ function denied(code, reason, base) {
     return { ...base, launchAuthorized: false, code, reason }
 }
 
-function verifiedRoute(value, stageRole, stagePhase) {
-    return value?.schema ===
-            'issue-orchestration.execution-route-decision.v2' &&
-        value.policyVersion === 'execution-capability-routing.v4' &&
-        value.modelPoolPolicyVersion === 'stage-model-pool.v3' &&
-        value.routingAuthority ===
-            'canonical-route-cell-compiler' &&
-        typeof value.routeCellId === 'string' &&
-        value.routeCellId.length > 0 &&
-        value.capabilityValidationResult === 'accepted' &&
-        value.stageRole === stageRole &&
-        value.stagePhase === stagePhase &&
-        /^[a-f0-9]{64}$/u.test(value.routeDecisionDigest ?? '') &&
-        value.runtimeVerificationStatus === 'verified'
-}
-
 function authorizeLaunch(request, expectedAction, base) {
     const checks = [
         [request?.explicit === true, 'explicit launch required'],
-        [request?.requester?.role === 'root-scheduler', 'root requester required'],
-        [verifiedRoute(
-            request?.requester?.routeDecision,
-            'root-scheduler',
-            'scheduling'
-        ), 'root route decision mismatch'],
-        [
-            request?.agent?.role === 'dag-creator-updater',
-            'agent role mismatch'
-        ],
         [request?.agent?.action === expectedAction, 'agent action mismatch'],
-        [verifiedRoute(
-            request?.agent?.routeDecision,
-            'dag-creator-updater',
-            'semantic-proposal'
-        ), 'agent route decision mismatch'],
-        [
-            request?.agent?.executionClass === 'observe-only',
-            'agent execution class mismatch'
-        ],
-        [request?.agent?.freshContext === true, 'fresh context required'],
         [request?.agent?.resident === false, 'resident agent forbidden']
     ]
     for (const [valid, reason] of checks) {
         if (!valid) return denied('dag-launch-denied', reason, base)
+    }
+    try {
+        validateRouteBoundActor({
+            actor: request.requester,
+            routeDecision: request.requester?.routeDecision,
+            stageRole: 'root-scheduler',
+            stagePhase: 'scheduling',
+            proposalOnly: false
+        })
+        validateRouteBoundActor({
+            actor: request.agent,
+            routeDecision: request.agent?.routeDecision,
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            proposalOnly: true
+        })
+    } catch (error) {
+        return denied(
+            'dag-launch-denied',
+            error?.code ?? 'canonical route decision mismatch',
+            base
+        )
     }
     return {
         ...base,
@@ -297,7 +286,7 @@ export function evaluateDagUpdate({
     }
     return authorizeLaunch(
         launchRequest,
-        initial ? 'dag-creator' : 'dag-updater',
+        initial ? 'semantic-create' : 'semantic-update',
         base
     )
 }

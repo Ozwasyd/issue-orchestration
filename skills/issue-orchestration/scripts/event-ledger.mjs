@@ -1782,7 +1782,7 @@ function validateSpecial(event, node, context) {
         fail('terminal-recovery-unchanged')
     }
     if (type === 'dag.proposal-accepted') {
-        if (event.actorRole !== 'dag-updater') fail('dag-proposal-authority')
+        if (event.actorRole !== 'dag-creator-updater') fail('dag-proposal-authority')
         if (payload.trigger !== 'remote-live-snapshot-digest-changed' ||
             payload.currentRemoteSnapshotDigest === payload.previousRemoteSnapshotDigest) {
             fail('dag-proposal-trigger')

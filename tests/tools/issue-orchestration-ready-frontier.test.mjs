@@ -12,6 +12,9 @@ import {
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    routeActorFor
+} from './issue-orchestration-route-test-helper.mjs'
 
 const root = resolve(import.meta.dirname, '../..')
 const runtimeStartup = verifiedRuntimeStartup({})
@@ -185,10 +188,21 @@ function selectorFor(members, version = 'frontier-contract.v1') {
 
 function layeredActor(role) {
     if (role === 'test-owner') {
-        return clone(cases.layerAuthorityPolicy.testOwnerDispatchFacts)
+        return routeActorFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract',
+            actorId: cases.layerAuthorityPolicy
+                .testOwnerDispatchFacts.actorId,
+            proposalOnly: false
+        })
     }
     if (role === 'dag-creator-updater') {
-        return clone(cases.layerAuthorityPolicy.semanticFacts)
+        return routeActorFor({
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            actorId: cases.layerAuthorityPolicy.semanticFacts.actorId,
+            proposalOnly: true
+        })
     }
     throw new Error(`unsupported layered actor role: ${role}`)
 }
@@ -1276,23 +1290,24 @@ test('frozen corrective contract covers every acceptance, probe, and mutation id
     assert.deepEqual(cases.layerAuthorityPolicy.semanticFacts, {
         role: 'dag-creator-updater',
         actorId: 'dag-creator-updater:frontier-fixture',
-        model: 'gpt-5.6-sol',
-        effort: 'max',
         executionClass: 'observe-only',
         mutationContract: 'no-protected-mutation',
         freshContext: true,
-        proposalOnly: true
+        proposalOnly: true,
+        stagePhase: 'semantic-proposal',
+        writeScope: 'none'
     })
     assert.deepEqual(
         cases.layerAuthorityPolicy.testOwnerDispatchFacts,
         {
             role: 'test-owner',
             actorId: frozenContract.testOwnerId,
-            model: 'gpt-5.6-sol',
-            effort: 'max',
             executionClass: 'leased-writer',
             mutationContract: 'lease-and-slice-allowlist',
-            writeScope: 'tests-only'
+            writeScope: 'tests-only',
+            stagePhase: 'test-contract',
+            freshContext: false,
+            proposalOnly: false
         }
     )
     assert.deepEqual(
@@ -1380,19 +1395,25 @@ test('[L01] canonical fixture is layered-only and carries a validated projection
             node.classificationFacts.schema,
             cases.layeredSchemas.classification
         )
-        assert.deepEqual(
+        for (const authoredBy of [
             node.discoveryFacts.authoredBy,
-            cases.layerAuthorityPolicy.semanticFacts
-        )
-        assert.deepEqual(
-            node.classificationFacts.authoredBy,
-            cases.layerAuthorityPolicy.semanticFacts
-        )
+            node.classificationFacts.authoredBy
+        ]) {
+            assert.equal(authoredBy.role, 'dag-creator-updater')
+            assert.equal(authoredBy.phase, 'semantic-proposal')
+            assert.equal(authoredBy.executionRouteDecision.stageRole,
+                'dag-creator-updater')
+            assert.equal(authoredBy.executionRouteDecision.stagePhase,
+                'semantic-proposal')
+        }
         if (node.dispatchInvestigation) {
-            assert.deepEqual(
-                node.dispatchInvestigation.authoredBy,
-                cases.layerAuthorityPolicy.testOwnerDispatchFacts
-            )
+            const authoredBy = node.dispatchInvestigation.authoredBy
+            assert.equal(authoredBy.role, 'test-owner')
+            assert.equal(authoredBy.phase, 'test-contract')
+            assert.equal(authoredBy.executionRouteDecision.stageRole,
+                'test-owner')
+            assert.equal(authoredBy.executionRouteDecision.stagePhase,
+                'test-contract')
             assert.equal(
                 node.dispatchInvestigation.testOwnerId,
                 frozenContract.testOwnerId

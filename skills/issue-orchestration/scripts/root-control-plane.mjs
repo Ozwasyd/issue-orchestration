@@ -13,6 +13,16 @@ import {
 import {
     requireRuntimeStartupBinding
 } from './runtime-startup-attestation.mjs'
+import {
+    STAGE_ROUTE_DEFINITIONS
+} from './stage-profile-policy.mjs'
+
+const ROOT_SCHEDULING_PROFILE = STAGE_ROUTE_DEFINITIONS[
+    'root-scheduler:scheduling'
+]?.defaultProfile
+if (!ROOT_SCHEDULING_PROFILE) {
+    throw new Error('root-control-route-policy-missing')
+}
 
 const PROJECTION_FIELDS = new Set([
     'schema',
@@ -100,7 +110,7 @@ function validateRootRuntime({
         fail('root-control-startup-attestation')
     }
     if (startupBinding.rootPhase !== 'scheduling' ||
-        startupBinding.rootProfile !== 'terra-low') {
+        startupBinding.rootProfile !== ROOT_SCHEDULING_PROFILE) {
         fail('root-control-profile')
     }
     try {

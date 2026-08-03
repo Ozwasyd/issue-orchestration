@@ -17,6 +17,9 @@ import {
     evaluateSliceTerminalGate,
     validateSealedWriterStageCheckpointEvidence
 } from './writer-stage-progress.mjs'
+import {
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 const REMOTE_MUTATION_POLICY = Object.freeze(JSON.parse(fs.readFileSync(
     path.resolve(
@@ -612,7 +615,7 @@ const WRITER_PHASE_ROLES = Object.freeze({
 })
 const WRITER_SOURCE_PREDECESSORS = Object.freeze({
     'test-contract': Object.freeze({
-        'node.discovered': 'dag-updater'
+        'node.discovered': 'dag-creator-updater'
     }),
     implementation: Object.freeze({
         'test-contract.frozen': 'test-owner'
@@ -2431,19 +2434,17 @@ export function classifyRemoteMutations({
 
 function validateGraphAuthor(author) {
     requireObject(author, 'graph-patch-authority')
-    if (author.actorRole !== 'dag-creator-updater'
-        || typeof author.actorId !== 'string'
-        || author.executionClass !== 'observe-only'
-        || author.mutationContract !==
-            'no-protected-mutation'
-        || !/^[a-f0-9]{64}$/u.test(
-            author.runtimeExecutionBindingDigest ?? ''
-        )
-        || !/^[a-f0-9]{64}$/u.test(
-            author.mutationPostconditionReceiptDigest ?? ''
-        )
-        || author.freshContext !== true
-        || author.acceptedWithoutModification !== true) {
+    try {
+        validateRouteBoundActor({
+            actor: author,
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            proposalOnly: true
+        })
+    } catch {
+        fail('graph-patch-authority')
+    }
+    if (author.acceptedWithoutModification !== true) {
         fail('graph-patch-authority')
     }
 }

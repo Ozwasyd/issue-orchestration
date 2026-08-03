@@ -17,21 +17,22 @@
     "semanticFacts": {
       "role": "dag-creator-updater",
       "actorId": "dag-creator-updater:frontier-fixture",
-      "model": "gpt-5.6-sol",
-      "effort": "max",
       "executionClass": "observe-only",
       "mutationContract": "no-protected-mutation",
       "freshContext": true,
-      "proposalOnly": true
+      "proposalOnly": true,
+      "stagePhase": "semantic-proposal",
+      "writeScope": "none"
     },
     "testOwnerDispatchFacts": {
       "role": "test-owner",
       "actorId": "test-owner-repositorya-1816-corrective-18c6003eb5ad",
-      "model": "gpt-5.6-sol",
-      "effort": "max",
       "executionClass": "leased-writer",
       "mutationContract": "lease-and-slice-allowlist",
-      "writeScope": "tests-only"
+      "writeScope": "tests-only",
+      "stagePhase": "test-contract",
+      "freshContext": false,
+      "proposalOnly": false
     },
     "semanticDriftFields": [
       "role",
@@ -122,7 +123,9 @@
       "repository": "ExampleOrg/RepositoryA",
       "issueNumber": 9102,
       "surface": "code",
-      "dependsOn": ["ExampleOrg/RepositoryA#9101"]
+      "dependsOn": [
+        "ExampleOrg/RepositoryA#9101"
+      ]
     },
     {
       "issueId": "ExampleOrg/RepositoryB#2901",
@@ -143,11 +146,18 @@
     }
   ],
   "expectedCanonicalNotReady": {
-    "ExampleOrg/RepositoryA#9102": ["dependency-unsatisfied"]
+    "ExampleOrg/RepositoryA#9102": [
+      "dependency-unsatisfied"
+    ]
   },
   "canonicalization": {
     "algorithm": "SHA-256 over recursively key-sorted JSON; set-like arrays sort by canonical member-stage or identity",
-    "frontierDigestExcludes": ["computedAt", "root narration", "handwritten node status", "array and file traversal order"],
+    "frontierDigestExcludes": [
+      "computedAt",
+      "root narration",
+      "handwritten node status",
+      "array and file traversal order"
+    ],
     "eligibilityInputDigestIncludes": [
       "selector receipt and remote snapshot identity",
       "member semantic graph and completed prerequisite identities",

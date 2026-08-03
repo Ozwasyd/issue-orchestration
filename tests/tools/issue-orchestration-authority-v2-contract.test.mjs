@@ -3,6 +3,10 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import test from 'node:test'
+import {
+    routeActorFor,
+    routeDecisionFor
+} from './issue-orchestration-route-test-helper.mjs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import {
@@ -341,6 +345,12 @@ function requirementProposal(snapshot = requirementSnapshot()) {
         issueNumber: snapshot.issueNumber,
         selectorReceiptDigest: snapshot.selectorReceiptDigest,
         remoteSnapshotDigest: snapshot.remoteSnapshotDigest,
+        actorRuntime: routeActorFor({
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            actorId: 'dag-creator-updater:requirement-inventory',
+            proposalOnly: true
+        }),
         classifications
     }
     value.proposalDigest = digest(value)
@@ -483,18 +493,9 @@ function planningReceipt() {
     const value = {
         schema: 'issue-orchestration.test-contract-plan-receipt.v1',
         status: 'verified',
-        actorRole: 'test-owner',
-        phase: 'test-contract-planning',
         rootAuthored: false,
-        executionClass: 'observe-only',
-        mutationContract: 'no-protected-mutation',
-        freshContext: true,
         attemptId: 'planning-attempt-1',
         acceptanceContractDigest: acceptanceContract().contractDigest,
-        runtimeExecutionBindingDigest:
-            digest('runtime-execution-binding'),
-        mutationPostconditionReceiptDigest:
-            digest('planning-postcondition'),
         ownerRepository: 'ExampleOrg/RepositoryA',
         testPaths: ['tests/tools/issue-1879.test.mjs'],
         commands: ['node --test tests/tools/issue-1879.test.mjs'],
@@ -503,11 +504,18 @@ function planningReceipt() {
         stageBoundaries: ['tests-only'],
         sliceProposalDigest: digest('slice-proposal'),
         filesystemWrites: [],
-        disputedAuthority: null
+        disputedAuthority: null,
+        ...routeActorFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            actorId: 'test-owner:planning-attempt-1',
+            proposalOnly: true
+        })
     }
     value.receiptDigest = digest(value)
     return value
 }
+
 
 test('A79-01 advances a new issue through distinct planning and writer attempts', async () => {
     const {
@@ -524,10 +532,10 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
             receiptDigest: digest('discovered')
         },
         acceptanceContract: acceptance,
-        routeDecision: route({
-            role: 'test-owner',
-            phase: 'test-contract-planning',
-            profile: 'terra-high'
+        routeDecision: routeDecisionFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            selectedProfile: 'terra-high'
         }),
         attemptId: 'planning-attempt-1'
     })
@@ -540,10 +548,10 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
     const dispatch = compileTestContractWriterDispatch({
         acceptanceContract: acceptance,
         planningReceipt: plan,
-        routeDecision: route({
-            role: 'test-owner',
-            phase: 'test-contract',
-            profile: 'terra-medium'
+        routeDecision: routeDecisionFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract',
+            selectedProfile: 'terra-medium'
         }),
         writerAttemptId: 'writer-attempt-1',
         resourceReceipt: {
@@ -568,10 +576,10 @@ test('A79-02 rejects fabricated history, Root authority and cold-start loops', a
     } = await importRuntime(1879)
     assert.throws(() => compileTestContractPlanningRequest({
         acceptanceContract: acceptanceContract(),
-        routeDecision: route({
-            role: 'test-owner',
-            phase: 'test-contract-planning',
-            profile: 'terra-high'
+        routeDecision: routeDecisionFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            selectedProfile: 'terra-high'
         }),
         attemptId: 'planning'
     }), { code: 'test-planning-node-discovered' })
@@ -658,17 +666,12 @@ function sliceProposal() {
             'slice-a': [],
             'slice-b': ['slice-a']
         },
-        actorRuntime: {
-            role: 'test-owner',
-            phase: 'test-contract-planning',
-            executionClass: 'observe-only',
-            mutationContract: 'no-protected-mutation',
-            routeDecisionDigest: digest('planning-route'),
-            runtimeExecutionBindingDigest:
-                digest('planning-runtime-binding'),
-            mutationPostconditionReceiptDigest:
-                digest('planning-postcondition')
-        }
+        actorRuntime: routeActorFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            actorId: 'test-owner:slice-planning',
+            proposalOnly: true
+        })
     }
     value.proposalDigest = digest(value)
     return { acceptance, proposal: value }

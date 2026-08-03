@@ -10,6 +10,11 @@ import {
     seal,
     unsignedDigest
 } from './runtime-contract-lib.mjs'
+import {
+    STAGE_MODEL_POOL_POLICY,
+    STAGE_ROUTE_DEFINITIONS,
+    splitProfile
+} from './stage-profile-policy.mjs'
 
 const AUTHORITY_ROOT = path.resolve(import.meta.dirname, '../../..')
 const POLICY_PATH = path.join(
@@ -108,24 +113,41 @@ export function currentRuntimeStartupAuthority() {
 function validatePolicy() {
     const policy = RUNTIME_STARTUP_POLICY
     const normal = policy.rootPhases?.scheduling
-    const recovery =
-        policy.rootPhases?.['recovery-takeover']
+    const recovery = policy.rootPhases?.['recovery-takeover']
+    const expectedNormal = STAGE_ROUTE_DEFINITIONS[
+        'root-scheduler:scheduling'
+    ]
+    const expectedRecovery = STAGE_ROUTE_DEFINITIONS[
+        'root-scheduler:recovery-takeover'
+    ]
+    const normalProfile = normal?.profileId
+        ? splitProfile(normal.profileId)
+        : null
+    const recoveryProfile = recovery?.profileId
+        ? splitProfile(recovery.profileId)
+        : null
     if (policy.schema !==
             'issue-orchestration.runtime-startup-policy.v1' ||
         policy.version !== 'runtime-startup-attestation.v1' ||
         !Number.isInteger(policy.maxObservationAgeMs) ||
         policy.maxObservationAgeMs < 1000 ||
-        normal?.profileId !== 'terra-low' ||
+        normal?.profileId !== expectedNormal.defaultProfile ||
         normal.phase !== 'scheduling' ||
-        normal.model !== 'gpt-5.6-terra' ||
-        normal.effort !== 'low' ||
-        normal.multiAgentBackend !== 'v2' ||
+        normal.model !== normalProfile?.model ||
+        normal.effort !== normalProfile?.effort ||
+        normal.multiAgentBackend !==
+            STAGE_MODEL_POOL_POLICY.profiles[
+                normal.profileId
+            ]?.multiAgentBackend ||
         normal.takeoverEvidenceRequired !== false ||
-        recovery?.profileId !== 'terra-medium' ||
+        recovery?.profileId !== expectedRecovery.defaultProfile ||
         recovery.phase !== 'recovery-takeover' ||
-        recovery.model !== 'gpt-5.6-terra' ||
-        recovery.effort !== 'medium' ||
-        recovery.multiAgentBackend !== 'v2' ||
+        recovery.model !== recoveryProfile?.model ||
+        recovery.effort !== recoveryProfile?.effort ||
+        recovery.multiAgentBackend !==
+            STAGE_MODEL_POOL_POLICY.profiles[
+                recovery.profileId
+            ]?.multiAgentBackend ||
         recovery.takeoverEvidenceRequired !== true ||
         !Array.isArray(policy.allowedBeforeVerifiedAttestation) ||
         !Array.isArray(policy.protectedActivities)) {
@@ -377,9 +399,13 @@ function evaluateObservation({
     const reasons = []
     const authority = currentRuntimeStartupAuthority()
     const root = RUNTIME_STARTUP_POLICY.requiredRootRuntime
-    const profile = RUNTIME_STARTUP_POLICY.rootPhases[
-        observation?.requestedStage
+    const stageDefinition = STAGE_ROUTE_DEFINITIONS[
+        `${root.role}:${observation?.requestedStage}`
     ]
+    const expectedProfileId = stageDefinition?.defaultProfile
+    const expectedProfile = expectedProfileId
+        ? STAGE_MODEL_POOL_POLICY.profiles[expectedProfileId]
+        : null
     const observedTime = validDate(observation?.observedAt)
     const attestedTime = validDate(attestedAt)
 
@@ -419,22 +445,20 @@ function evaluateObservation({
         reasons.push('runtime-startup-runtime-identity-unobservable')
     }
     if (observation?.requestedRole !== root.role ||
-        !profile) {
+        !stageDefinition ||
+        !expectedProfile) {
         reasons.push('runtime-startup-root-role-mismatch')
     }
-    if (!['terra-low', 'terra-medium'].includes(
-        observation?.selectedProfile
-    ) ||
-        observation?.selectedProfile !== profile?.profileId ||
-        observation?.effectiveProfile !== profile?.profileId ||
-        observation?.requestedModel !== profile?.model ||
-        observation?.effectiveModel !== profile?.model ||
-        observation?.requestedEffort !== profile?.effort ||
-        observation?.effectiveEffort !== profile?.effort ||
+    if (observation?.selectedProfile !== expectedProfileId ||
+        observation?.effectiveProfile !== expectedProfileId ||
+        observation?.requestedModel !== expectedProfile.model ||
+        observation?.effectiveModel !== expectedProfile.model ||
+        observation?.requestedEffort !== expectedProfile.effort ||
+        observation?.effectiveEffort !== expectedProfile.effort ||
         observation?.requestedMultiAgentBackend !==
-            profile?.multiAgentBackend ||
+            expectedProfile.multiAgentBackend ||
         observation?.effectiveMultiAgentBackend !==
-            profile?.multiAgentBackend) {
+            expectedProfile.multiAgentBackend) {
         reasons.push('runtime-startup-profile-mismatch')
     }
     if (observation?.trustMode !== root.trustMode ||
@@ -525,9 +549,9 @@ export function attestRuntimeStartup({
         rootPhase:
             observation?.requestedStage ?? 'scheduling',
         selectedProfile:
-            observation?.selectedProfile ?? 'terra-low',
+            observation?.selectedProfile ?? 'unobservable',
         effectiveProfile:
-            observation?.effectiveProfile ?? 'terra-low',
+            observation?.effectiveProfile ?? 'unobservable',
         effectiveModel:
             observation?.effectiveModel ?? 'unobservable',
         effectiveEffort:

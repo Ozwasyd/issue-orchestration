@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 // Shared issue-orchestration package runtime.
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { validateRouteBoundActor } from './execution-route-compiler.mjs'
 
 const repositoryRoot = resolve(
     process.env.ISSUE_ORCHESTRATION_REPOSITORY_ROOT ?? process.cwd()
@@ -54,14 +55,17 @@ function verifyRecord(record, schema, label) {
 }
 
 function semanticActorValid(record) {
-    const actor = record?.authoredBy
-    return ['dag-creator', 'dag-updater'].includes(actor?.role)
-        && actor.model === 'gpt-5.6-sol'
-        && actor.effort === 'max'
-        && actor.executionClass === 'observe-only'
-        && actor.mutationContract === 'no-protected-mutation'
-        && actor.freshContext === true
-        && actor.proposalOnly === true
+    try {
+        validateRouteBoundActor({
+            actor: record?.authoredBy,
+            stageRole: 'dag-creator-updater',
+            stagePhase: 'semantic-proposal',
+            proposalOnly: true
+        })
+        return true
+    } catch {
+        return false
+    }
 }
 
 function validateDispatch(node, runtimeState) {
@@ -304,35 +308,38 @@ export function evaluateInvestigationFreshness({
 
 export function authorizeInvestigationTransition({ transition, actor }) {
     if (transition.layer === 'dispatchInvestigation') {
-        if (actor.role === 'dag-creator' || actor.role === 'dag-updater') {
+        if (actor?.role === 'dag-creator-updater') {
             fail('dag-agent-dispatch-authority-forbidden', 'DAG agents own semantics only.')
         }
-        if (actor.role !== 'test-owner') {
+        if (actor?.role !== 'test-owner') {
             fail('test-contract-disputed', 'Only the test owner can freeze dispatch evidence.')
         }
-        if (actor.model !== 'gpt-5.6-sol' || actor.effort !== 'max'
-            || actor.executionClass !== 'leased-writer'
-            || actor.mutationContract !==
-                'lease-and-slice-allowlist'
-            || actor.writeScope !== 'tests-only') {
-            fail('test-owner-runtime-identity', 'Test owner must run as Sol/max.')
+        try {
+            validateRouteBoundActor({
+                actor,
+                stageRole: 'test-owner',
+                stagePhase: 'test-contract',
+                proposalOnly: false
+            })
+        } catch {
+            fail('test-owner-runtime-identity', 'Test owner route binding is invalid.')
         }
         return { valid: true }
     }
     if (transition.layer === 'discoveryFacts'
         || transition.layer === 'classificationFacts') {
-        if (actor.role === 'test-owner') {
+        if (actor?.role === 'test-owner') {
             fail('test-owner-semantic-authority-forbidden', 'Test owner cannot write semantics.')
         }
-        if (!['dag-creator', 'dag-updater'].includes(actor.role)) {
-            fail('investigation-transition-authority', 'Semantic transition is unauthorized.')
-        }
-        if (actor.model !== 'gpt-5.6-sol' || actor.effort !== 'max'
-            || actor.executionClass !== 'observe-only'
-            || actor.mutationContract !==
-                'no-protected-mutation'
-            || actor.freshContext !== true || actor.proposalOnly !== true) {
-            fail('investigation-layer-authority', 'Semantic actor identity is invalid.')
+        try {
+            validateRouteBoundActor({
+                actor,
+                stageRole: 'dag-creator-updater',
+                stagePhase: 'semantic-proposal',
+                proposalOnly: true
+            })
+        } catch {
+            fail('investigation-layer-authority', 'Semantic actor route binding is invalid.')
         }
         return { valid: true }
     }

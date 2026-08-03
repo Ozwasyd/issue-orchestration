@@ -28,6 +28,10 @@ import {
 import {
     requireRuntimeStartupBinding
 } from './runtime-startup-attestation.mjs'
+import {
+    validateExecutionRouteDecision,
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const CANONICAL_ROLES = new Set([
@@ -40,6 +44,43 @@ const CANONICAL_ROLES = new Set([
     'ux-acceptance-verifier',
     'documentation-writer'
 ])
+
+const DIRECT_ROUTE_RECEIPTS = new Set([
+    'planningRoute', 'routeDecision', 'uiAdjudicationRoute',
+    'uxAcceptanceRoute', 'documentationRoute'
+])
+
+function routeAuthorityFor(key, node) {
+    if (['planningRoute', 'planningAttempt', 'testContractPlan',
+        'slicePlanProposal'].includes(key)) {
+        return ['test-owner', 'test-contract-planning', true]
+    }
+    if (['routeDecision', 'writerDispatch', 'activeAttempt',
+        'writerCheckpoint', 'writerFailure', 'retryAuthorization'].includes(key)) {
+        return ['test-owner', 'test-contract', false]
+    }
+    if (key === 'implementationTerminal') {
+        return node.uiClass === 'non-ui'
+            ? ['code-implementer', 'implementation', false]
+            : ['ui-ux-implementer', 'ui-implementation', false]
+    }
+    if (key === 'behavior') {
+        return ['test-owner', 'behavior-verification', true]
+    }
+    if (['uiAdjudicationRoute', 'uiAdjudication'].includes(key)) {
+        return ['ui-system-adjudicator', 'adjudication', true]
+    }
+    if (['uxAcceptanceRoute', 'uxAcceptance'].includes(key)) {
+        return ['ux-acceptance-verifier', 'ux-acceptance', true]
+    }
+    if (['documentationRoute', 'documentation'].includes(key)) {
+        return ['documentation-writer', 'documentation', false]
+    }
+    if (key === 'deliveryAttempt') {
+        return ['root-scheduler', 'scheduling', false]
+    }
+    return null
+}
 
 const AGENT_RECEIPTS = new Set([
     'planningRoute', 'planningAttempt', 'testContractPlan',
@@ -261,16 +302,31 @@ function validateReceiptEnvelope({
     usedDigests.add(value)
 
     if (AGENT_RECEIPTS.has(key)) {
-        if (!CANONICAL_ROLES.has(receipt.actorRole) ||
-            !HASH.test(receipt.routeDecisionDigest ?? '') ||
-            !HASH.test(receipt.runtimeExecutionBindingDigest ?? '') ||
-            !HASH.test(receipt.mutationPostconditionEvidenceDigest ?? '')) {
-            fail('dag-gate-receipt-actor-binding', key)
-        }
-        for (const legacy of ['model', 'effort', 'profile']) {
-            if (Object.hasOwn(receipt, legacy)) {
-                fail('dag-gate-receipt-legacy-model-authority', key)
+        const authority = routeAuthorityFor(key, node)
+        if (!authority) fail('dag-gate-receipt-actor-binding', key)
+        const [stageRole, stagePhase, proposalOnly] = authority
+        try {
+            if (DIRECT_ROUTE_RECEIPTS.has(key)) {
+                validateExecutionRouteDecision(receipt, {
+                    stageRole,
+                    stagePhase
+                })
+            } else {
+                validateRouteBoundActor({
+                    actor: receipt,
+                    routeDecision: receipt.executionRouteDecision ??
+                        receipt.routeDecision,
+                    stageRole,
+                    stagePhase,
+                    proposalOnly
+                })
             }
+        } catch (error) {
+            fail(error?.code ?? 'dag-gate-receipt-actor-binding', key)
+        }
+        if (!DIRECT_ROUTE_RECEIPTS.has(key) &&
+            !CANONICAL_ROLES.has(receipt.actorRole ?? receipt.role)) {
+            fail('dag-gate-receipt-actor-binding', key)
         }
     } else if (typeof receipt.compilerAuthority !== 'string' ||
         receipt.compilerAuthority.length === 0) {

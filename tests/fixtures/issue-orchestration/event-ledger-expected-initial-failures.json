@@ -33,7 +33,7 @@
   "hashAlgorithm": "sha256",
   "selfHashPolicy": "fileHashes covers raw bytes for every allowedTestPath except this manifest; stage 1 testContractDigest covers canonical JSON with testContractDigest and candidateIdentity omitted; stage 2 candidateDigest covers canonical JSON of baseSha, the stage 1 testContractDigest, and path-sorted exact implementationFiles records",
   "fileHashes": {
-    "tests/tools/issue-orchestration-event-ledger.test.mjs": "513af8f58886acbfdf52ed008d2778836d34b07adb6b820c1540ea58ae064af5",
+    "tests/tools/issue-orchestration-event-ledger.test.mjs": "0e92522e1bdb3323f733d691b0868794667ac5d0ae04cd3a128aa804237174e1",
     "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json": "29ab6284bd92ba416bfa6c74585a4fd7ef4c2e3e85a86a2a10a84abe2559accd",
     "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json": "4c69c0946b4369c0dc90d6164c98676d2bd61165f67af98ee54b8fa03a8a05fa",
     "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json": "089544e96ae5623e9117c26df12c927489c0be28aa93046959d1cf315e72d608"
@@ -103,19 +103,19 @@
       "evidence": "Shared helpers add a verified dispatch prerequisite and implementer-self-test-receipt.v1 without weakening any downstream assertion."
     }
   ],
-  "testContractDigest": "93d91c8697cba7443cd02cc73a4ff1f5e6a8590bef3c4680f2bbd1939a3f91e2",
+  "testContractDigest": "79834561bf4bbebfc00d7a989901963d381734dd0a8682a5448f5c5b04489cd7",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
-    "testContractDigest": "93d91c8697cba7443cd02cc73a4ff1f5e6a8590bef3c4680f2bbd1939a3f91e2",
+    "testContractDigest": "79834561bf4bbebfc00d7a989901963d381734dd0a8682a5448f5c5b04489cd7",
     "implementationFiles": [
       {
         "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
-        "sha256": "115b63be71282dbfcc28baadea9fb7171fc2ccc5200b2ac17e0ce36bdfdf34ac",
+        "sha256": "979f55738e54e3888c291c753e3e8dfaf886b099a46a94143eda7e836bc784a7",
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "a51942adc697e40a30cb68c83b507e7b0551ad3e7888495c7a159ea51dbed263"
+    "candidateDigest": "aa16d4722c79409c87cafe11ae479eed3a8d12fa2da6dc6a1330249ee8ac7037"
   }
 }

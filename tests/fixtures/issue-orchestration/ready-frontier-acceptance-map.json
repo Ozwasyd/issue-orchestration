@@ -6,170 +6,312 @@
     {
       "id": "AC-01",
       "requirement": "The same canonical DAG, selector receipt, validated layered investigation projection, and runtime facts produce the same eligibility and frontier digests regardless of input order or computedAt.",
-      "tests": ["F01", "F02"],
-      "mutations": ["frontier-digest-forged", "layered-projection-digest-forged", "layer-digest-forged"]
+      "tests": [
+        "F01",
+        "F02"
+      ],
+      "mutations": [
+        "frontier-digest-forged",
+        "layered-projection-digest-forged",
+        "layer-digest-forged"
+      ]
     },
     {
       "id": "AC-02",
       "requirement": "readyFrontier is the exact maximum eligible member-issue plus stage set; root-authored status cannot omit or add members.",
-      "tests": ["F01", "F05"],
-      "mutations": ["eligible-member-omitted", "blocked-member-overreported", "selector-member-omitted"]
+      "tests": [
+        "F01",
+        "F05"
+      ],
+      "mutations": [
+        "eligible-member-omitted",
+        "blocked-member-overreported",
+        "selector-member-omitted"
+      ]
     },
     {
       "id": "AC-03",
       "requirement": "Every blocked active member has compiler-owned, canonically ordered, directly evidence-bound reason enums.",
-      "tests": ["F03", "F04"],
-      "mutations": ["free-text-reason", "reason-code-or-evidence-modified"]
+      "tests": [
+        "F03",
+        "F04"
+      ],
+      "mutations": [
+        "free-text-reason",
+        "reason-code-or-evidence-modified"
+      ]
     },
     {
       "id": "AC-04",
       "requirement": "Completed tombstones unlock dependents and reopen or tombstone drift removes them from the frontier.",
-      "tests": ["F07"],
+      "tests": [
+        "F07"
+      ],
       "mutations": []
     },
     {
       "id": "AC-05",
       "requirement": "An empty frontier is valid only when every active member has a blocker, active attempt, or unchanged terminal reason.",
-      "tests": ["F03", "F06"],
-      "mutations": ["eligible-member-omitted"]
+      "tests": [
+        "F03",
+        "F06"
+      ],
+      "mutations": [
+        "eligible-member-omitted"
+      ]
     },
     {
       "id": "AC-06",
       "requirement": "Ready work plus available slots and no root-only delivery action produces a non-empty maximal dispatch set.",
-      "tests": ["D01", "D02", "D03"],
-      "mutations": ["ready-slots-empty-batch"]
+      "tests": [
+        "D01",
+        "D02",
+        "D03"
+      ],
+      "mutations": [
+        "ready-slots-empty-batch"
+      ]
     },
     {
       "id": "AC-07",
       "requirement": "A validated candidate-ready layered projection may enter only test-contract-ready; shallower phases expose investigation-incomplete with blocked time and owner identity, while later stages require dispatch-investigated.",
-      "tests": ["L01", "L02", "F03"],
+      "tests": [
+        "L01",
+        "L02",
+        "F03"
+      ],
       "mutations": []
     },
     {
       "id": "AC-08",
       "requirement": "Selector/comment, base, scope, layered freshness/digest, terminal, and role-permission drift invalidate old eligibility input digests.",
-      "tests": ["F08"],
-      "mutations": ["remote-comment-drift", "base-sha-drift", "selector-member-omitted", "terminal-fingerprint-changed", "candidate-permission-drift", "layered-selector-drift", "layered-freshness-stale", "layered-member-fact-drift", "dispatch-investigation-base-drift"]
+      "tests": [
+        "F08"
+      ],
+      "mutations": [
+        "remote-comment-drift",
+        "base-sha-drift",
+        "selector-member-omitted",
+        "terminal-fingerprint-changed",
+        "candidate-permission-drift",
+        "layered-selector-drift",
+        "layered-freshness-stale",
+        "layered-member-fact-drift",
+        "dispatch-investigation-base-drift"
+      ]
     },
     {
       "id": "AC-09",
       "requirement": "Local stage progress recomputes the execution frontier without triggering a semantic DAG update.",
-      "tests": ["S03"],
+      "tests": [
+        "S03"
+      ],
       "mutations": []
     },
     {
       "id": "AC-10",
       "requirement": "Array, issue, and traversal reordering do not change canonical digests.",
-      "tests": ["F02"],
+      "tests": [
+        "F02"
+      ],
       "mutations": []
     },
     {
       "id": "AC-11",
       "requirement": "Fifteen eligible independent members fill fifteen available slots, while N eligible members produce exactly N candidates.",
-      "tests": ["D01", "D02"],
-      "mutations": ["group-serializes-independent-members"]
+      "tests": [
+        "D01",
+        "D02"
+      ],
+      "mutations": [
+        "group-serializes-independent-members"
+      ]
     },
     {
       "id": "STAGE-01",
       "requirement": "Each issue has exactly one deterministic next stage and cannot dispatch test and implementation writers together.",
-      "tests": ["S01", "S02"],
-      "mutations": ["non-current-stage-dispatched"]
+      "tests": [
+        "S01",
+        "S02"
+      ],
+      "mutations": [
+        "non-current-stage-dispatched"
+      ]
     },
     {
       "id": "STAGE-02",
       "requirement": "UI behavior green advances to independent UX acceptance before documentation or delivery.",
-      "tests": ["S02"],
+      "tests": [
+        "S02"
+      ],
       "mutations": []
     },
     {
       "id": "STAGE-03",
       "requirement": "Documentation completion advances to delivery, and delivery completion advances to cleanup before closure.",
-      "tests": ["S01"],
+      "tests": [
+        "S01"
+      ],
       "mutations": []
     },
     {
       "id": "ROLE-01",
       "requirement": "Root consumes compiler projections and cannot edit eligibility, reasons, or the current stage.",
-      "tests": ["F05"],
-      "mutations": ["eligible-member-omitted", "reason-code-or-evidence-modified", "non-current-stage-dispatched"]
+      "tests": [
+        "F05"
+      ],
+      "mutations": [
+        "eligible-member-omitted",
+        "reason-code-or-evidence-modified",
+        "non-current-stage-dispatched"
+      ]
     },
     {
       "id": "ROLE-02",
       "requirement": "Sol/max test-owner and Sol/low implementation candidates, write permissions, and authority digests are eligibility inputs.",
-      "tests": ["R01", "R02"],
-      "mutations": ["candidate-permission-drift"]
+      "tests": [
+        "R01",
+        "R02"
+      ],
+      "mutations": [
+        "candidate-permission-drift"
+      ]
     },
     {
       "id": "ROLE-03",
       "requirement": "A UI issue rejects an ordinary code implementer or missing design Skill/authority digest.",
-      "tests": ["R02"],
+      "tests": [
+        "R02"
+      ],
       "mutations": []
     },
     {
       "id": "GROUP-01",
       "requirement": "Group overlays retain independent per-member eligibility and cannot make a blocked member ready.",
-      "tests": ["G01"],
-      "mutations": ["group-ready-masks-blocked-member"]
+      "tests": [
+        "G01"
+      ],
+      "mutations": [
+        "group-ready-masks-blocked-member"
+      ]
     },
     {
       "id": "GROUP-02",
       "requirement": "Group green cannot hide an individual member behavior failure.",
-      "tests": ["G02"],
-      "mutations": ["group-green-masks-member-failure"]
+      "tests": [
+        "G02"
+      ],
+      "mutations": [
+        "group-green-masks-member-failure"
+      ]
     },
     {
       "id": "GROUP-03",
       "requirement": "Ineligible grouping falls back to per-issue dispatch and cannot serialize independent low-conflict members.",
-      "tests": ["G03"],
-      "mutations": ["group-serializes-independent-members"]
+      "tests": [
+        "G03"
+      ],
+      "mutations": [
+        "group-serializes-independent-members"
+      ]
     },
     {
       "id": "LAYER-01",
       "requirement": "The #1816 fixture and production compiler consume one validated discovery/classification/dispatch investigation projection and never node.investigation.",
-      "tests": ["L01", "L02", "B01"],
-      "mutations": ["unvalidated-layered-projection", "legacy-node-investigation-accepted"]
+      "tests": [
+        "L01",
+        "L02",
+        "B01"
+      ],
+      "mutations": [
+        "unvalidated-layered-projection",
+        "legacy-node-investigation-accepted"
+      ]
     },
     {
       "id": "LAYER-02",
       "requirement": "Projection and layer digests are recomputed and bound to the selected member facts; arbitrary 64-hex values are not authority.",
-      "tests": ["L01"],
-      "mutations": ["layered-projection-digest-forged", "layered-member-fact-drift", "layer-digest-forged"]
+      "tests": [
+        "L01"
+      ],
+      "mutations": [
+        "layered-projection-digest-forged",
+        "layered-member-fact-drift",
+        "layer-digest-forged"
+      ]
     },
     {
       "id": "TRUST-01",
-      "requirement": "Discovery and classification authoredBy facts exactly bind role=dag-creator-updater, model=gpt-5.6-sol, effort=max, executionClass=observe-only, freshContext=true authority; dispatch investigation exactly binds the frozen Sol/max write-tests-only test owner and testOwnerId.",
-      "tests": ["L01", "TRUST-01"],
-      "mutations": ["root-authored-discovery-facts", "root-authored-classification-facts", "root-authored-dispatch-investigation", "layer-authority-runtime-policy-drift"]
+      "requirement": "Discovery and classification authoredBy facts exactly bind canonical dag-creator-updater semantic route authority and the canonical test-owner test-contract route; both actors bind the installed policy, runtime identity, mutation contract, and testOwnerId.",
+      "tests": [
+        "L01",
+        "TRUST-01"
+      ],
+      "mutations": [
+        "root-authored-discovery-facts",
+        "root-authored-classification-facts",
+        "root-authored-dispatch-investigation",
+        "layer-authority-runtime-policy-drift"
+      ]
     },
     {
       "id": "TRUST-02",
       "requirement": "Discovery and classification bind the exact non-root DAG actor identity and the same actorId across both semantic layers; dispatch binds the frozen contract testOwnerId rather than trusting a self-consistent replacement identity.",
-      "tests": ["TRUST-02"],
-      "mutations": ["discovery-root-like-actor-id", "classification-root-like-actor-id", "semantic-layer-actor-continuity-drift", "dispatch-owner-substitution"]
+      "tests": [
+        "TRUST-02"
+      ],
+      "mutations": [
+        "discovery-root-like-actor-id",
+        "classification-root-like-actor-id",
+        "semantic-layer-actor-continuity-drift",
+        "dispatch-owner-substitution"
+      ]
     },
     {
       "id": "LAYER-03",
       "requirement": "Every discovery layer independently binds its exact schema, complete status, and recomputed inputDigest; re-signing the outer layer digest cannot authorize changed envelope or source inputs.",
-      "tests": ["LAYER-03"],
-      "mutations": ["discovery-schema-resigned", "discovery-status-incomplete-resigned", "discovery-input-digest-resigned"]
+      "tests": [
+        "LAYER-03"
+      ],
+      "mutations": [
+        "discovery-schema-resigned",
+        "discovery-status-incomplete-resigned",
+        "discovery-input-digest-resigned"
+      ]
     },
     {
       "id": "LAYER-04",
       "requirement": "The validated projection binds its exact schema, exact machine read-only validation actor, one projection member per DAG member, and testOwnerCandidates/implementationReady recomputed from member phases.",
-      "tests": ["LAYER-04"],
-      "mutations": ["projection-schema-resigned", "validation-root-authored-resigned", "projection-duplicate-member-resigned", "projection-derived-lists-forged"]
+      "tests": [
+        "LAYER-04"
+      ],
+      "mutations": [
+        "projection-schema-resigned",
+        "validation-root-authored-resigned",
+        "projection-duplicate-member-resigned",
+        "projection-derived-lists-forged"
+      ]
     },
     {
       "id": "BIND-01",
       "requirement": "check-dag-gate passes the validated layered investigation projection into frontier validation; importing or storing it without consumption is insufficient.",
-      "tests": ["B01"],
-      "mutations": ["layered-projection-binding-removed"]
+      "tests": [
+        "B01"
+      ],
+      "mutations": [
+        "layered-projection-binding-removed"
+      ]
     },
     {
       "id": "COMPAT-01",
       "requirement": "Production dot or bracket reads of node.investigation and any compatibility fallback are forbidden; legacy input is rejected rather than replayed as dispatch authority.",
-      "tests": ["B01"],
-      "mutations": ["legacy-property-fallback-present", "legacy-node-investigation-accepted"]
+      "tests": [
+        "B01"
+      ],
+      "mutations": [
+        "legacy-property-fallback-present",
+        "legacy-node-investigation-accepted"
+      ]
     }
   ]
 }

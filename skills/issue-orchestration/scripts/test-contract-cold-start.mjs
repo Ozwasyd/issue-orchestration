@@ -5,6 +5,10 @@ import {
     seal,
     unsignedDigest
 } from './runtime-contract-lib.mjs'
+import {
+    validateExecutionRouteDecision,
+    validateRouteBoundActor
+} from './execution-route-compiler.mjs'
 
 function validateAcceptanceContract(value) {
     if (value?.schema !==
@@ -18,36 +22,14 @@ function validateAcceptanceContract(value) {
 }
 
 function validateRoute(value, phase) {
-    if (value?.schema !==
-            'issue-orchestration.execution-route-decision.v2' ||
-        value.policyVersion !== 'execution-capability-routing.v4' ||
-        value.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
-        value.routingAuthority !==
-            'canonical-route-cell-compiler' ||
-        typeof value.routeCellId !== 'string' ||
-        !value.routeCellId ||
-        value.capabilityValidationResult !== 'accepted' ||
-        value.stageRole !== 'test-owner' ||
-        value.stagePhase !== phase ||
-        value.executionClass !== (
-            phase === 'test-contract-planning'
-                ? 'observe-only'
-                : 'leased-writer'
-        ) ||
-        value.mutationContract !== (
-            phase === 'test-contract-planning'
-                ? 'no-protected-mutation'
-                : 'lease-and-slice-allowlist'
-        ) ||
-        value.runtimeVerificationStatus !== 'verified') {
+    try {
+        return validateExecutionRouteDecision(value, {
+            stageRole: 'test-owner',
+            stagePhase: phase
+        })
+    } catch {
         fail('test-planning-route')
     }
-    assertDigest(value.routeDecisionDigest, 'test-planning-route')
-    assertDigest(
-        value.runtimeExecutionBindingDigest,
-        'test-planning-runtime-execution-binding'
-    )
-    return value
 }
 
 export function compileTestContractPlanningRequest({
@@ -106,13 +88,17 @@ export function verifyTestContractPlanReceipt({
     if (receipt?.schema !==
             'issue-orchestration.test-contract-plan-receipt.v1' ||
         receipt.status !== 'verified' ||
-        receipt.actorRole !== 'test-owner' ||
-        receipt.phase !== 'test-contract-planning' ||
-        receipt.rootAuthored !== false ||
-        receipt.executionClass !== 'observe-only' ||
-        receipt.mutationContract !==
-            'no-protected-mutation' ||
-        receipt.freshContext !== true) {
+        receipt.rootAuthored !== false) {
+        fail('test-planning-authority')
+    }
+    try {
+        validateRouteBoundActor({
+            actor: receipt,
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            proposalOnly: true
+        })
+    } catch {
         fail('test-planning-authority')
     }
     if (receipt.attemptId !== request?.attemptId ||

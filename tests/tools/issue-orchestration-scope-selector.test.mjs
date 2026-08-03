@@ -7,6 +7,9 @@ import { pathToFileURL } from 'node:url'
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    routeActorFor
+} from './issue-orchestration-route-test-helper.mjs'
 
 const root = resolve(import.meta.dirname, '../..')
 const fixturePath = resolve(
@@ -137,54 +140,28 @@ async function expectDenied(operation, messagePattern = /denied|invalid|required
     }
 }
 
-function launchRequest(role) {
-    const routeDecision = (
-        stageRole,
-        stagePhase,
-        selectedProfile,
-        executionClass
-    ) => ({
-        schema: 'issue-orchestration.execution-route-decision.v2',
-        policyVersion: 'execution-capability-routing.v4',
-        modelPoolPolicyVersion: 'stage-model-pool.v3',
-        routingAuthority: 'canonical-route-cell-compiler',
-        stageRole,
-        stagePhase,
-        executionClass,
-        selectedProfile,
-        routeCellId: stageRole === 'root-scheduler'
-            ? 'control.normal'
-            : 'dag.semantic-default',
-        capabilityValidationResult: 'accepted',
-        runtimeVerificationStatus: 'verified',
-        routeDecisionDigest: 'a'.repeat(64)
-    })
+function launchRequest(action) {
     return {
         explicit: true,
-        requester: {
-            role: 'root-scheduler',
-            routeDecision: routeDecision(
-                'root-scheduler',
-                'scheduling',
-                'terra-low',
-                'root-control'
-            )
-        },
+        requester: routeActorFor({
+            stageRole: 'root-scheduler',
+            stagePhase: 'scheduling',
+            proposalOnly: false,
+            actorId: 'root-scheduler:scope-selector'
+        }),
         agent: {
-            role: 'dag-creator-updater',
-            action: role,
-            routeDecision: routeDecision(
-                'dag-creator-updater',
-                'semantic-proposal',
-                'terra-high',
-                'observe-only'
-            ),
-            executionClass: 'observe-only',
-            freshContext: true,
+            ...routeActorFor({
+                stageRole: 'dag-creator-updater',
+                stagePhase: 'semantic-proposal',
+                proposalOnly: true,
+                actorId: 'dag-creator-updater:scope-selector'
+            }),
+            action,
             resident: false
         }
     }
 }
+
 
 test('fixture freezes all six versioned selector forms and their expansion policies', () => {
     assert.equal(fixture.schema, 'issue-orchestration.scope-selector-test-cases.v1')
@@ -387,14 +364,14 @@ test('[A08][M07] initial DAG creation consumes Root and DAG route decisions', as
         previousRemoteSnapshotDigest: null,
         currentReceipt,
         executionEvents: [],
-        launchRequest: launchRequest('dag-creator')
+        launchRequest: launchRequest('semantic-create')
     })
     assert.equal(result.semanticAction, 'create')
     assert.equal(result.dagCreationRequired, true)
     assert.equal(result.dagUpdateRequired, false)
     assert.equal(result.launchAuthorized, true)
     assert.equal(result.agentRole, 'dag-creator-updater')
-    assert.equal(result.agentAction, 'dag-creator')
+    assert.equal(result.agentAction, 'semantic-create')
     assert.equal(result.oneShot, true)
 })
 
@@ -424,13 +401,13 @@ test('[A09][N04][M08] a changed remote body requires one routed updater launch',
         previousRemoteSnapshotDigest: previous.remoteSnapshotDigest,
         currentReceipt: current,
         executionEvents: [],
-        launchRequest: launchRequest('dag-updater')
+        launchRequest: launchRequest('semantic-update')
     })
     assert.equal(launched.semanticAction, 'update')
     assert.equal(launched.dagUpdateRequired, true)
     assert.equal(launched.launchAuthorized, true)
     assert.equal(launched.agentRole, 'dag-creator-updater')
-    assert.equal(launched.agentAction, 'dag-updater')
+    assert.equal(launched.agentAction, 'semantic-update')
     assert.equal(launched.oneShot, true)
 })
 
@@ -489,7 +466,7 @@ test('[A11][N05][M10] subagent discoveries remain possible-remote-contract-impac
         remoteIssues: changedIssues,
         previousReceipt: receipt
     })
-    const subagentRequest = launchRequest('dag-updater')
+    const subagentRequest = launchRequest('semantic-update')
     subagentRequest.requester.role = 'implementer'
     await expectDenied(
         () => evaluateDagUpdate({
@@ -535,7 +512,7 @@ test('[A12][N02][N05][M11] all non-root, non-Sol/max, writable, inherited, or re
 
     for (const [name, mutate] of mutants) {
         await t.test(name, async () => {
-            const request = launchRequest('dag-updater')
+            const request = launchRequest('semantic-update')
             mutate(request)
             await expectDenied(
                 () => evaluateDagUpdate({

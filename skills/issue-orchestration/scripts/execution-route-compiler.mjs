@@ -82,6 +82,165 @@ function assertDigest(value, code) {
     if (!HASH.test(value ?? '')) fail(code)
 }
 
+
+export function validateExecutionRouteDecision(value, {
+    stageRole,
+    stagePhase,
+    requireRuntimeBinding = true
+} = {}) {
+    if (value?.schema !==
+            'issue-orchestration.execution-route-decision.v2' ||
+        value.policyVersion !== EXECUTION_ROUTING_POLICY_VERSION ||
+        value.modelPoolPolicyVersion !==
+            STAGE_MODEL_POOL_POLICY.version ||
+        value.routingAuthority !== EXECUTION_ROUTING_AUTHORITY ||
+        value.canonicalPolicyDigest !==
+            EXECUTION_ROUTING_POLICY_DIGEST) {
+        fail('execution-route-decision-policy')
+    }
+    const key = `${value.stageRole}:${value.stagePhase}`
+    const definition = STAGE_ROUTE_DEFINITIONS[key]
+    if (!definition ||
+        stageRole !== undefined && value.stageRole !== stageRole ||
+        stagePhase !== undefined && value.stagePhase !== stagePhase) {
+        fail('execution-route-decision-stage')
+    }
+    if (!Array.isArray(value.allowedProfiles) ||
+        !sameValue(
+            [...value.allowedProfiles].sort(),
+            [...definition.allowedProfiles].sort()
+        ) ||
+        !definition.allowedProfiles.includes(value.selectedProfile) ||
+        !definition.allowedProfiles.includes(value.requiredProfile)) {
+        fail('execution-route-decision-profile')
+    }
+    const profile = splitProfile(value.selectedProfile)
+    const profilePolicy = STAGE_MODEL_POOL_POLICY.profiles[
+        value.selectedProfile
+    ]
+    const assumption = REVIEWED_ASSUMPTIONS.profiles?.[
+        value.selectedProfile
+    ]
+    if (!profilePolicy || !assumption ||
+        value.requestedModel !== profile.model ||
+        value.requestedEffort !== profile.effort ||
+        value.multiAgentBackend !== profilePolicy.multiAgentBackend ||
+        value.reviewedAssumptionDigest !==
+            assumption.assumptionDigest ||
+        value.executionClass !== definition.executionClass ||
+        value.capabilityValidationResult !== 'accepted') {
+        fail('execution-route-decision-runtime')
+    }
+    const cell = ROUTING_POLICY.routeCells?.[value.routeCellId]
+    if (!cell ||
+        value.routeCellDigest !== digest({
+            routeCellId: value.routeCellId,
+            cell
+        }) ||
+        value.requiredProfile !== cell.requiredProfile ||
+        value.selectingPredicatesDigest !==
+            digest(value.selectingPredicates) ||
+        !HASH.test(value.classificationDigest ?? '') ||
+        !HASH.test(value.capabilityDigest ?? '') ||
+        !HASH.test(value.routeDecisionDigest ?? '')) {
+        fail('execution-route-decision-binding')
+    }
+    if (value.selectedProfile === value.requiredProfile) {
+        if (!['not-required', 'primary-available'].includes(
+            value.availabilityHandling
+        ) || value.availabilityFallbackReason !== null) {
+            fail('execution-route-decision-availability')
+        }
+    } else {
+        const fallback = STAGE_MODEL_POOL_POLICY.availabilityFallback
+        if (value.requiredProfile !== fallback.primary ||
+            value.selectedProfile !== fallback.fallback ||
+            value.availabilityHandling !== 'fixed-fallback' ||
+            !fallback.allowedReasons.includes(
+                value.availabilityFallbackReason
+            ) ||
+            !HASH.test(value.availabilityBindingDigest ?? '')) {
+            fail('execution-route-decision-availability')
+        }
+    }
+    const unsigned = structuredClone(value)
+    delete unsigned.routeDecisionDigest
+    if (value.routeDecisionDigest !== digest(unsigned)) {
+        fail('execution-route-decision-digest')
+    }
+    if (requireRuntimeBinding) {
+        if (value.runtimeExecutionBindingStatus !== 'verified' ||
+            !HASH.test(value.runtimeExecutionBindingDigest ?? '') ||
+            value.runtimeVerificationStatus !== 'verified' ||
+            !HASH.test(value.runtimeIdentityDigest ?? '') ||
+            typeof value.runtimeInvocationId !== 'string' ||
+            !value.runtimeInvocationId) {
+            fail('execution-route-decision-runtime-binding')
+        }
+    }
+    return value
+}
+
+export function validateRouteBoundActor({
+    actor,
+    routeDecision = actor?.executionRouteDecision ??
+        actor?.routeDecision,
+    stageRole,
+    stagePhase,
+    proposalOnly,
+    requireRuntimeBinding = true
+} = {}) {
+    if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
+        fail('route-actor-invalid')
+    }
+    const legacyFields = [
+        'model', 'effort', 'profile', 'profileId',
+        'selectedProfile', 'requestedModel', 'requestedEffort'
+    ]
+    if (legacyFields.some((field) =>
+        Object.hasOwn(actor, field))) {
+        fail('route-actor-legacy-model-authority')
+    }
+    if (actor.role !== undefined && actor.actorRole !== undefined &&
+        actor.role !== actor.actorRole ||
+        actor.phase !== undefined && actor.stagePhase !== undefined &&
+        actor.phase !== actor.stagePhase) {
+        fail('route-actor-binding')
+    }
+    const role = actor.role ?? actor.actorRole
+    const phase = actor.phase ?? actor.stagePhase
+    validateExecutionRouteDecision(routeDecision, {
+        stageRole: stageRole ?? role,
+        stagePhase: stagePhase ?? phase,
+        requireRuntimeBinding
+    })
+    const definition = STAGE_ROUTE_DEFINITIONS[
+        `${routeDecision.stageRole}:${routeDecision.stagePhase}`
+    ]
+    if (typeof actor.actorId !== 'string' || !actor.actorId ||
+        role !== routeDecision.stageRole ||
+        phase !== routeDecision.stagePhase ||
+        actor.routeDecisionDigest !==
+            routeDecision.routeDecisionDigest ||
+        actor.runtimeExecutionBindingDigest !==
+            routeDecision.runtimeExecutionBindingDigest ||
+        actor.executionClass !== definition.executionClass ||
+        actor.mutationContract !== definition.mutationContract ||
+        actor.writeScope !== definition.writeScope ||
+        actor.freshContext !== definition.freshContext ||
+        !HASH.test(
+            actor.mutationPostconditionEvidenceDigest ??
+            actor.mutationPostconditionReceiptDigest ?? ''
+        )) {
+        fail('route-actor-binding')
+    }
+    if (proposalOnly !== undefined &&
+        actor.proposalOnly !== proposalOnly) {
+        fail('route-actor-output-authority')
+    }
+    return actor
+}
+
 export function compileProfileAvailabilityBinding({
     packageDigest,
     runtimeInvocationId,

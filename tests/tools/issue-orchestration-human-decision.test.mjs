@@ -4,6 +4,9 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
+import {
+    routeActorFor
+} from './issue-orchestration-route-test-helper.mjs'
 
 const root = resolve(import.meta.dirname, '../..')
 const packageScripts = 'skills/issue-orchestration/scripts'
@@ -46,6 +49,20 @@ const context = Object.freeze({
     authoritySourcesDigest: 'c'.repeat(64)
 })
 
+function adjudicator(overrides = {}) {
+    return routeActorFor({
+        stageRole: 'ui-system-adjudicator',
+        stagePhase: 'adjudication',
+        actorId: 'ui-system-adjudicator:human-decision',
+        proposalOnly: true,
+        actorOverrides: {
+            status: 'complete',
+            digest: 'e'.repeat(64),
+            ...overrides
+        }
+    })
+}
+
 function requestInput(overrides = {}) {
     return {
         ...context,
@@ -56,13 +73,9 @@ function requestInput(overrides = {}) {
             digest: 'd'.repeat(64),
             classification: 'not-invocation-environment-or-test-failure'
         },
-        adjudication: {
-            status: 'complete',
-            role: 'ui-system-adjudicator',
-            profile: 'gpt-5.6-sol/xhigh',
-            digest: 'e'.repeat(64),
+        adjudication: adjudicator({
             conclusion: 'two-legal-user-visible-options'
-        },
+        }),
         authoritativeSources: [{
             source: 'https://github.com/ExampleOrg/RepositoryA/issues/1835',
             digest: 'f'.repeat(64),
@@ -134,7 +147,7 @@ test('H02 ordinary failures remain machine-owned; only completed authority confl
     const loaded = await implementation()
     const ordinary = loaded.evaluateHumanDecisionEligibility({
         machineInvestigation: { status: 'complete' },
-        adjudication: { status: 'complete', role: 'ui-system-adjudicator', profile: 'gpt-5.6-sol/high' },
+        adjudication: adjudicator({ role: 'root-scheduler', actorRole: 'root-scheduler' }),
         triggerClass: 'git-conflict',
         legalOptionCount: 1,
         missingConstraintAuthority: null
@@ -144,12 +157,7 @@ test('H02 ordinary failures remain machine-owned; only completed authority confl
 
     const eligible = loaded.evaluateHumanDecisionEligibility({
         machineInvestigation: { status: 'complete' },
-        adjudication: {
-            status: 'complete',
-            role: 'ui-system-adjudicator',
-            profile: 'gpt-5.6-sol/xhigh',
-            finalReadOnly: true
-        },
+        adjudication: adjudicator({ finalReadOnly: true }),
         triggerClass: 'ui-authority-conflict',
         legalOptionCount: 2,
         missingConstraintAuthority: 'product-owner',
@@ -160,7 +168,7 @@ test('H02 ordinary failures remain machine-owned; only completed authority confl
 
     assertError(() => loaded.evaluateHumanDecisionEligibility({
         machineInvestigation: { status: 'complete' },
-        adjudication: { status: 'complete', role: 'root-scheduler', profile: 'gpt-5.6-luna/low' },
+        adjudication: adjudicator({ role: 'root-scheduler', actorRole: 'root-scheduler' }),
         triggerClass: 'authority-conflict',
         legalOptionCount: 2,
         missingConstraintAuthority: 'product-owner',

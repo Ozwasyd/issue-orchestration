@@ -152,14 +152,14 @@
   "runtimeProbes": "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json",
   "mutations": "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json",
   "fileHashes": {
-    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "1cc38a4c85ae8b22251517bc13847d9e0ded3b3462e231a0980e0ebf5fca4922",
-    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "ab5e05e11a1229232820168ef10f50f8191e502455ca8bc1f345fafbf38a8fa4",
+    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "a7228f0a7d44042e1687e5f5a818d9bebf20f8b232b3319f98b738ea2b16a097",
+    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "99cf5f110f1d2afbe46b326833551a4db27f7983fae06db2bcfed0b970f75202",
     "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json": "a853d33a06c7e162cc637ffe3dbbf046de5c32bc54bd26332ce4be8944cb50ca",
     "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json": "d7d61bb36c16cbc3266bd2e12c0d5fc79df1f646a9fcb1e25b10a47ea72674ed",
     "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json": "56147e26aea3e7d5800eb5410698d368fdc3f498bea7595b83452a700d390794",
     "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json": "d4ef682b931650668f1f44ab3d02f7619d9911d69eb9aa36493f38e45ec3e583"
   },
-  "frozenTreeDigest": "006a826d244f3f4e501ff20a9be63a6d1c0042177092e3d31e3294c3181354dd",
+  "frozenTreeDigest": "f3772dfc23e070cb487f0c055658c6ca252ad5d6ba727419f68c61e626804519",
   "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
   "baseDependencyFiles": [
     {
@@ -172,30 +172,30 @@
   ],
   "hashAlgorithm": "sha256-raw-file-bytes",
   "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
-  "contractDigest": "8f85d90ee181f0f9aaac537e4241ba55401617511a5a5ad7cda8b4313d1f217b",
+  "contractDigest": "97abd2740712331af65ddc01934bf8241b2a9f80f06ae05bdd32b745520c6d51",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
-    "contractDigest": "8f85d90ee181f0f9aaac537e4241ba55401617511a5a5ad7cda8b4313d1f217b",
+    "contractDigest": "97abd2740712331af65ddc01934bf8241b2a9f80f06ae05bdd32b745520c6d51",
     "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
     "implementationFiles": [
       {
         "path": "skills/issue-orchestration/scripts/investigation-compiler.mjs",
         "presence": "present",
-        "sha256": "7e0994880e7aa4918797b5e759f28ccc2424d6a74d2d496aa0aa87e7e53900f4",
+        "sha256": "5fb3f5faf84a4ac22a08899f6e684144ee31d603d10d03a5f8a16740f906263b",
         "gitMode": "100644"
       },
       {
         "path": "skills/issue-orchestration/scripts/frontier-compiler.mjs",
         "presence": "present",
-        "sha256": "fb9e093920c35e57d76f6f3105ea6763d3aca2ab244d5f7c6f31038a71936335",
+        "sha256": "e20e63784ab9dd170f2d9bacb29dcb1d8920a9b4bac306f1afefd20faa065bd3",
         "gitMode": "100644"
       },
       {
         "path": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
         "presence": "present",
-        "sha256": "4f6b144e3be01de81db504c6c6f45479d600e1e6f90c1099d408995fbc8854ba",
+        "sha256": "f09cb4ce2f66c1f2d873268f86b0a6d29f653f0e5f219ff10bff563b69d179aa",
         "gitMode": "100644"
       },
       {
@@ -217,6 +217,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "86544da5fd3cd674d94892ed3f60fc56b827977d2c2b1fe35bae094802c688dd"
+    "candidateDigest": "c122f3ef8b198c9df2c390d05196327fb5bd89673e6fb3f7a33b115ed65f0df2"
   }
 }

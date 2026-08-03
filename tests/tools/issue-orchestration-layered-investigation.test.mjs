@@ -8,6 +8,9 @@ import { pathToFileURL } from 'node:url'
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    routeActorFor
+} from './issue-orchestration-route-test-helper.mjs'
 
 const root = resolve(import.meta.dirname, '../..')
 const runtimeStartup = verifiedRuntimeStartup({})
@@ -169,61 +172,31 @@ function selectorFor(issueIds, version = 'layered-investigation.v1') {
 }
 
 function actor(role, overrides = {}) {
-    const defaults = {
-        'root-scheduler': {
-            role,
-            actorId: 'root-scheduler-1',
-            model: 'gpt-5.6-sol',
-            effort: 'low',
-            mode: 'root-only'
-        },
-        'dag-creator': {
-            role,
-            actorId: 'dag-creator-1',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
-            executionClass: 'observe-only',
-            mutationContract: 'no-protected-mutation',
-            freshContext: true,
-            proposalOnly: true
-        },
-        'dag-updater': {
-            role,
-            actorId: 'dag-updater-1',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
-            executionClass: 'observe-only',
-            mutationContract: 'no-protected-mutation',
-            freshContext: true,
-            proposalOnly: true
-        },
-        'test-owner': {
-            role,
-            actorId: 'test-owner-1822',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
-            executionClass: 'leased-writer',
-            mutationContract: 'lease-and-slice-allowlist',
-            writeScope: 'tests-only'
-        },
-        'code-implementer': {
-            role,
-            actorId: 'code-implementer-1822',
-            model: 'gpt-5.6-sol',
-            effort: 'low',
-            executionClass: 'leased-writer',
-            mutationContract: 'lease-and-slice-allowlist',
-            writeScope: 'implementation-only'
-        },
-        'discovery-agent': {
-            role,
-            actorId: 'discovery-agent-1',
-            model: 'gpt-5.6-sol',
-            effort: 'max',
-            executionClass: 'observe-only'
+    const canonicalRole = ['dag-creator', 'dag-updater']
+        .includes(role) ? 'dag-creator-updater' : role
+    const stages = {
+        'root-scheduler': ['scheduling', false],
+        'dag-creator-updater': ['semantic-proposal', true],
+        'test-owner': ['test-contract', false],
+        'code-implementer': ['implementation', false]
+    }
+    if (!Object.hasOwn(stages, canonicalRole)) {
+        return {
+            role: canonicalRole,
+            actorId: `${canonicalRole}-1`,
+            ...overrides
         }
     }
-    return { ...defaults[role], ...overrides }
+    const [stagePhase, proposalOnly] = stages[canonicalRole]
+    return routeActorFor({
+        stageRole: canonicalRole,
+        stagePhase,
+        actorId: canonicalRole === 'test-owner'
+            ? 'test-owner-1822'
+            : `${canonicalRole}-1`,
+        proposalOnly,
+        actorOverrides: overrides
+    })
 }
 
 function withDigest(record) {

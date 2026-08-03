@@ -1167,7 +1167,7 @@
                                     "const": "issue-orchestration.dag-scope-receipt.v1"
                                 },
                                 "actorRole": {
-                                    "const": "dag-updater"
+                                    "const": "dag-creator-updater"
                                 }
                             }
                         },
