@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.node-ledger.schema.json",
+  "title": "Issue orchestration node ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "header",
+    "events"
+  ],
+  "properties": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "transitionSchema",
+        "runId",
+        "nodeId",
+        "memberId",
+        "repository",
+        "issueNumber",
+        "selectorReceiptDigest",
+        "remoteMemberDigest",
+        "nodeEpoch",
+        "stateRootCanonical",
+        "baseSha",
+        "issueSnapshotFingerprint",
+        "repositoryFingerprint",
+        "createdAt",
+        "headerDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.node-ledger.v1"
+        },
+        "transitionSchema": {
+          "const": "issue-orchestration.transition.v2"
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memberId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "selectorReceiptDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteMemberDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "nodeEpoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "stateRootCanonical": {
+          "type": "string",
+          "minLength": 1
+        },
+        "baseSha": {
+          "$ref": "#/$defs/gitSha"
+        },
+        "issueSnapshotFingerprint": {
+          "$ref": "#/$defs/digest"
+        },
+        "repositoryFingerprint": {
+          "$ref": "#/$defs/digest"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "headerDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema",
+          "eventId",
+          "sequence",
+          "runId",
+          "nodeId",
+          "eventType",
+          "fromState",
+          "toState",
+          "attemptId",
+          "actorRole",
+          "sourceDagDigest",
+          "issueSnapshotFingerprint",
+          "repositoryFingerprint",
+          "baseSha",
+          "payload",
+          "payloadDigest",
+          "evidenceRefs",
+          "createdAt",
+          "previousEventDigest",
+          "eventDigest"
+        ],
+        "properties": {
+          "schema": {
+            "const": "issue-orchestration.event.v2"
+          },
+          "eventId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sequence": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "runId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "nodeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "eventType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fromState": {
+            "type": "string"
+          },
+          "toState": {
+            "type": "string"
+          },
+          "attemptId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorRole": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceDagDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "issueSnapshotFingerprint": {
+            "$ref": "#/$defs/digest"
+          },
+          "repositoryFingerprint": {
+            "$ref": "#/$defs/digest"
+          },
+          "baseSha": {
+            "$ref": "#/$defs/gitSha"
+          },
+          "payload": {
+            "type": "object"
+          },
+          "payloadDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previousEventDigest": {
+            "$ref": "#/$defs/digest"
+          },
+          "eventDigest": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "gitSha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.node-projection.schema.json",
+  "title": "Issue orchestration node projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runId",
+    "nodeId",
+    "nodeIdentityDigest",
+    "nodes",
+    "groups",
+    "corrections",
+    "dagProposals",
+    "routeReclassifications",
+    "lastSequence",
+    "lastEventDigest",
+    "projectionDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.node-projection.v1"
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nodeIdentityDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "nodes": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "groups": {
+      "type": "object",
+      "maxProperties": 0
+    },
+    "corrections": {
+      "type": "array"
+    },
+    "dagProposals": {
+      "type": "array"
+    },
+    "routeReclassifications": {
+      "type": "array"
+    },
+    "lastSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastEventDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "projectionDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

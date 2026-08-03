@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.node-index.schema.json",
+  "title": "Issue orchestration node index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "runId", "controlProjectionDigest", "nodes",
+    "nodeIndexDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.node-index.v1"},
+    "runId": {"type": "string", "minLength": 1},
+    "controlProjectionDigest": {"$ref": "#/$defs/digest"},
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nodeId", "nodeKey", "ledgerPath", "projectionPath", "status",
+          "errorCode", "ledgerHeadDigest", "projectionDigest"
+        ],
+        "properties": {
+          "nodeId": {"type": "string", "minLength": 1},
+          "nodeKey": {"$ref": "#/$defs/digest"},
+          "ledgerPath": {"type": "string", "minLength": 1},
+          "projectionPath": {"type": "string", "minLength": 1},
+          "status": {"enum": ["verified", "quarantined"]},
+          "errorCode": {"type": ["string", "null"]},
+          "ledgerHeadDigest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]},
+          "projectionDigest": {"anyOf": [{"$ref": "#/$defs/digest"}, {"type": "null"}]}
+        }
+      }
+    },
+    "nodeIndexDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.run-control-ledger.schema.json",
+  "title": "Issue orchestration run control ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["header", "events"],
+  "properties": {
+    "header": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "runId", "createdAt", "headerDigest"],
+      "properties": {
+        "schema": {"const": "issue-orchestration.control-ledger.v1"},
+        "runId": {"type": "string", "minLength": 1},
+        "createdAt": {"type": "string", "format": "date-time"},
+        "headerDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schema", "sequence", "runId", "eventType", "actorRole",
+          "payload", "payloadDigest", "createdAt", "previousEventDigest",
+          "eventDigest"
+        ],
+        "properties": {
+          "schema": {"const": "issue-orchestration.control-event.v1"},
+          "sequence": {"type": "integer", "minimum": 1},
+          "runId": {"type": "string", "minLength": 1},
+          "eventType": {"type": "string", "minLength": 1},
+          "actorRole": {"const": "root-scheduler"},
+          "payload": {"type": "object"},
+          "payloadDigest": {"$ref": "#/$defs/digest"},
+          "createdAt": {"type": "string", "format": "date-time"},
+          "previousEventDigest": {"$ref": "#/$defs/digest"},
+          "eventDigest": {"$ref": "#/$defs/digest"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

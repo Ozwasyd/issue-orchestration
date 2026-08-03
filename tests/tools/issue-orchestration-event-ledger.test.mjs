@@ -160,10 +160,28 @@ function emptyLedger(options = {}) {
 }
 
 function activeEmptyLedger(options = {}) {
-    const ledger = emptyLedger(options)
-    ledger.header.schema = 'issue-orchestration.ledger.v2'
-    ledger.header.transitionSchema = 'issue-orchestration.transition.v2'
-    return ledger
+    const legacy = emptyLedger(options)
+    const unsigned = {
+        schema: 'issue-orchestration.node-ledger.v1',
+        transitionSchema: 'issue-orchestration.transition.v2',
+        runId: legacy.header.runId,
+        nodeId,
+        memberId: nodeId,
+        repository: 'ExampleOrg/RepositoryA',
+        issueNumber: 1817,
+        selectorReceiptDigest: digest('selector-receipt'),
+        remoteMemberDigest: digest('remote-member'),
+        nodeEpoch: 1,
+        stateRootCanonical: legacy.header.stateRootCanonical,
+        baseSha: legacy.header.baseSha,
+        issueSnapshotFingerprint,
+        repositoryFingerprint,
+        createdAt: legacy.header.createdAt
+    }
+    return {
+        header: { ...unsigned, headerDigest: digest(unsigned) },
+        events: []
+    }
 }
 
 function activeDiscoveredLedger(options = {}) {
@@ -174,6 +192,34 @@ function activeDiscoveredLedger(options = {}) {
         fromState: 'none',
         payload: { issueKind: 'code' },
         toState: 'discovered'
+    })
+    return ledger
+}
+
+function activeFrozenLedger(options = {}) {
+    const ledger = activeDiscoveredLedger(options)
+    sealEvent(ledger, {
+        actorRole: 'test-owner',
+        eventType: 'test-contract.started',
+        fromState: 'discovered',
+        payload: { actorId: testOwnerActorId },
+        toState: 'test-contracting'
+    })
+    sealEvent(ledger, {
+        actorRole: 'test-owner',
+        eventType: 'test-contract.frozen',
+        fromState: 'test-contracting',
+        payload: {
+            actorId: testOwnerActorId,
+            frozenFiles: [
+                {
+                    path: 'tests/tools/issue-orchestration-event-ledger.test.mjs',
+                    sha256: '6'.repeat(64)
+                }
+            ],
+            testContractDigest
+        },
+        toState: 'test-contract-frozen'
     })
     return ledger
 }
@@ -269,7 +315,7 @@ function sealEvent(ledger, {
     toState
 }) {
     const event = {
-        schema: ledger.header.schema === 'issue-orchestration.ledger.v2'
+        schema: ledger.header.schema === 'issue-orchestration.node-ledger.v1'
             ? 'issue-orchestration.event.v2'
             : 'issue-orchestration.event.v1',
         eventId,
@@ -1109,7 +1155,7 @@ async function runtime() {
 
 async function replay(ledger) {
     const module = await runtime()
-    if (ledger?.header?.schema === 'issue-orchestration.ledger.v2') {
+    if (ledger?.header?.schema === 'issue-orchestration.node-ledger.v1') {
         return module.replayEventLedger(clone(ledger))
     }
     const audit = await module.auditHistoricalEventLedger(clone(ledger))
@@ -1228,7 +1274,7 @@ test('contract fixtures are exact, internally linked, and bind the latest author
     const expectedImplementationFiles = [
         {
             path: 'skills/issue-orchestration/scripts/event-ledger.mjs',
-            sha256: '979f55738e54e3888c291c753e3e8dfaf886b099a46a94143eda7e836bc784a7',
+            sha256: 'e39883005546726a44f5bbb435a25cdac0c60b53f563b69e468e2fba138612ea',
             gitMode: '100644'
         }
     ]
@@ -1823,7 +1869,7 @@ test('active replay requires explicit ledger, transition, and event v2 schemas',
     const module = await runtime()
     const ledger = activeDiscoveredLedger()
     const projection = await module.replayEventLedger(clone(ledger))
-    assert.equal(projection.schema, 'issue-orchestration.projection.v2')
+    assert.equal(projection.schema, 'issue-orchestration.node-projection.v1')
     assert.equal(nodeOf(projection).status, 'discovered')
     assert.equal(
         await module.validateDagProjection({
@@ -1833,11 +1879,18 @@ test('active replay requires explicit ledger, transition, and event v2 schemas',
         true
     )
 
+    const retiredRunWide = clone(ledger)
+    retiredRunWide.header.schema = 'issue-orchestration.ledger.v2'
+    await expectCode(
+        () => module.replayEventLedger(retiredRunWide),
+        'ledger-v2-run-wide-migration-required'
+    )
+
     const missingTransition = clone(ledger)
     delete missingTransition.header.transitionSchema
     await expectCode(
         () => module.replayEventLedger(missingTransition),
-        'ledger-v2-required'
+        'node-ledger-v1-required'
     )
 
     const legacyEvent = clone(ledger)
@@ -1854,7 +1907,7 @@ test('v1 replay is explicit read-only audit with no mutation authority', async (
     const legacy = discoveredLedger()
     await expectCode(
         () => module.replayEventLedger(clone(legacy)),
-        'ledger-v1-historical-only'
+        'node-ledger-v1-required'
     )
     const audit = await module.auditHistoricalEventLedger(clone(legacy))
     assert.equal(audit.schema, 'issue-orchestration.historical-ledger-audit.v1')
@@ -1891,13 +1944,13 @@ test('append and recovery reject v1 before writing ledger or projection', async 
             ...io,
             writerRole: 'root-scheduler'
         }),
-        'ledger-v1-historical-only'
+        'node-ledger-v1-required'
     )
     assert.equal(fs.readFileSync(io.ledgerPath, 'utf8'), before)
     assert.equal(fs.existsSync(io.projectionPath), false)
     await expectCode(
         () => module.recoverEventLedger(io),
-        'ledger-v1-historical-only'
+        'node-ledger-v1-required'
     )
     assert.equal(fs.existsSync(io.projectionPath), false)
 })
@@ -2017,16 +2070,25 @@ function canonicalIo(
     canonicalIoInvocation += 1
     const canonicalRunId =
         `${ledger.header.runId}-${label}-${process.pid}-${canonicalIoInvocation}`
-    ledger.header.runId = canonicalRunId
-    for (const event of ledger.events) {
-        event.runId = canonicalRunId
-    }
-    resealFrom(ledger)
     const location = module.canonicalEventLedgerLocation({
         runId: canonicalRunId,
         nodeId: node,
         stageAttemptId
     })
+    ledger.header.runId = canonicalRunId
+    if (ledger.header.schema === 'issue-orchestration.node-ledger.v1') {
+        ledger.header.nodeId = node
+        ledger.header.memberId = node
+        ledger.header.stateRootCanonical = location.stateRoot
+        const unsignedHeader = { ...ledger.header }
+        delete unsignedHeader.headerDigest
+        ledger.header.headerDigest = digest(unsignedHeader)
+    }
+    for (const event of ledger.events) {
+        event.runId = canonicalRunId
+        event.nodeId = node
+    }
+    resealFrom(ledger)
     fs.rmSync(location.ledgerPath, { force: true })
     fs.rmSync(location.projectionPath, { force: true })
     return {
@@ -2376,7 +2438,7 @@ async function cleanupFailureMutation(payload, code) {
 }
 
 async function identityMutation(field, value, code) {
-    const ledger = frozenLedger()
+    const ledger = activeFrozenLedger()
     ledger.events[1][field] = value
     resealFrom(ledger, 1)
     await replayMutation(ledger, code)

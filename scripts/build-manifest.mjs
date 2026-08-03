@@ -81,6 +81,8 @@ const manifest = {
     sourceRepositoryDependencies: [],
     requiredCapabilities: [
         'external-runtime-state-root',
+        'per-node-event-ledger',
+        'verified-aggregate-runtime-projection',
         'fresh-context-routing',
         'git-worktree-discovery',
         'runtime-permission-observation',
@@ -131,6 +133,7 @@ const manifest = {
         'remote-mutation-authority',
         'resource-lifecycle',
         'root-recovery-takeover',
+        'run-control-ledger',
         'runtime-projection',
         'runtime-startup',
         'scope-selector',
