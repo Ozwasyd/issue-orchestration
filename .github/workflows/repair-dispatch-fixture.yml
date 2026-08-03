@@ -1,0 +1,118 @@
+name: Repair dispatch fixture
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repair-dispatch-fixture.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Make the dispatch fixture checkout-independent
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+          const crypto = require('node:crypto')
+
+          const testPath = 'tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs'
+          const contractPath = 'tests/fixtures/issue-orchestration/dispatch-receipt-v2-test-contract.json'
+
+          const oldBlock = `execFileSync('git', [
+              'clone',
+              '--quiet',
+              '--shared',
+              '--no-checkout',
+              root,
+              worktree
+          ])
+          execFileSync('git', ['checkout', '--quiet', '--detach', baseSha], {
+              cwd: worktree
+          })
+          execFileSync('git', [
+              'remote',
+              'set-url',
+              'origin',
+              'https://github.com/ExampleOrg/RepositoryA.git'
+          ], { cwd: worktree })`
+
+          const newBlock = `// This temporary repository exercises trusted remote identity only. The
+          // frozen base SHA is contract evidence and must not depend on unreachable
+          // objects lingering in the source checkout's local Git object database.
+          execFileSync('git', ['init', '--quiet', worktree])
+          execFileSync('git', [
+              'remote',
+              'add',
+              'origin',
+              'https://github.com/ExampleOrg/RepositoryA.git'
+          ], { cwd: worktree })`
+
+          let source = fs.readFileSync(testPath, 'utf8')
+          if (!source.includes(oldBlock)) {
+              throw new Error('dispatch fixture source block drifted')
+          }
+          source = source.replace(oldBlock, newBlock)
+          fs.writeFileSync(testPath, source)
+
+          const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex')
+          const canonical = (value) => {
+              if (Array.isArray(value)) return value.map(canonical)
+              if (!value || typeof value !== 'object') return value
+              return Object.fromEntries(Object.keys(value).sort().map(
+                  (key) => [key, canonical(value[key])]
+              ))
+          }
+
+          const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8'))
+          contract.fileHashes[testPath] = sha256(Buffer.from(source))
+          const unsigned = structuredClone(contract)
+          delete unsigned.testContractDigest
+          contract.testContractDigest = sha256(
+              JSON.stringify(canonical(unsigned))
+          )
+          fs.writeFileSync(contractPath, `${JSON.stringify(contract, null, 2)}\n`)
+          NODE
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Run complete offline acceptance suite
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+
+      - name: Remove one-time repair workflow
+        run: rm .github/workflows/repair-dispatch-fixture.yml
+
+      - name: Commit verified repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs \
+            tests/fixtures/issue-orchestration/dispatch-receipt-v2-test-contract.json \
+            .github/workflows/repair-dispatch-fixture.yml
+          git commit -m "test: make dispatch fixture checkout-independent"
+          git push origin HEAD:main
