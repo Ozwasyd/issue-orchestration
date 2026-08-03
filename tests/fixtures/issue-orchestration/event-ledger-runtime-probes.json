@@ -1,0 +1,45 @@
+{
+    "schema": "issue-orchestration.event-ledger-runtime-probes.v1",
+    "probes": [
+        {
+            "id": "R01",
+            "scenario": "event committed and fsynced, process killed before projection write",
+            "faultPoint": "after-event-commit",
+            "expectedRecovery": "replay-ledger-forward",
+            "mustNotRepeat": ["implementation-attempt"]
+        },
+        {
+            "id": "R02",
+            "scenario": "projection contains one uncommitted event beyond the durable ledger",
+            "faultPoint": "projection-ahead-of-ledger",
+            "expectedRecovery": "discard-projection-and-rebuild",
+            "mustNotRepeat": []
+        },
+        {
+            "id": "R03",
+            "scenario": "last JSONL event is truncated after a valid committed prefix",
+            "faultPoint": "truncated-ledger-tail",
+            "expectedCode": "ledger-tail-corrupt",
+            "expectedLastValidSequence": 3,
+            "dispatchEnabled": false
+        },
+        {
+            "id": "R04",
+            "scenario": "recovery after durable delivery and cleanup side-effect receipts",
+            "faultPoint": "after-projection-commit",
+            "expectedRecovery": "projection-already-current",
+            "mustNotRepeat": ["implementation-attempt", "delivery", "commit", "cleanup"]
+        },
+        {
+            "id": "R05",
+            "scenario": "writer and state-root path authority",
+            "writersRejected": ["code-implementer", "test-owner", "ux-acceptance-verifier", "documentation-writer", "machine-cleanup-verifier", "issue-reviewer", "subagent"],
+            "onlyWriter": "root-scheduler"
+        },
+        {
+            "id": "R06",
+            "scenario": "external state root leaves protected roots byte-for-byte and git-status unchanged",
+            "protectedResources": ["FsusBlog repository", "FsusUI repository", "common workspace", "FsusBlog worktree", "FsusUI worktree"]
+        }
+    ]
+}

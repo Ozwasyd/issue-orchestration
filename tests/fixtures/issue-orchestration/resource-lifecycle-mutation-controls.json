@@ -1,0 +1,21 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-mutations.v3",
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "controls": [
+    { "id": "legacy-owner-alias", "killedBy": "B02" }, { "id": "missing-runtime-owner", "killedBy": "B02" },
+    { "id": "registry-owner-omitted", "killedBy": "B03" }, { "id": "registry-epoch-omitted", "killedBy": "B03" },
+    { "id": "unowned-resource-ignored", "killedBy": "B04" }, { "id": "create-before-plan", "killedBy": "B04" },
+    { "id": "terminal-without-cleanup", "killedBy": "B05" }, { "id": "slot-release-before-cleanup", "killedBy": "B05" }, { "id": "agent-self-signs-clean", "killedBy": "B05" },
+    { "id": "red-cycle-new-attempt", "killedBy": "B06" }, { "id": "red-cycle-new-worktree", "killedBy": "B06" }, { "id": "red-cycle-releases-writer", "killedBy": "B06" }, { "id": "cleanup-overwrites-first-failure", "killedBy": "B06" },
+    { "id": "rm-rf-worktree", "killedBy": "B07" }, { "id": "remove-without-prune", "killedBy": "B07" }, { "id": "leader-only-kill", "killedBy": "B07" }, { "id": "delete-lock-file-only", "killedBy": "B07" },
+    { "id": "dirty-worktree-force-remove", "killedBy": "B08" }, { "id": "quarantine-allows-delivery", "killedBy": "B08" },
+    { "id": "delete-baseline-worktree", "killedBy": "B09" }, { "id": "delete-prefix-user-branch", "killedBy": "B09" }, { "id": "delete-external-temp", "killedBy": "B09" },
+    { "id": "leader-exit-is-clean", "killedBy": "B10" }, { "id": "port-holder-ignored", "killedBy": "B10" }, { "id": "lock-file-delete-is-release", "killedBy": "B10" },
+    { "id": "docker-stop-is-clean", "killedBy": "B11" }, { "id": "unlabeled-docker-removed", "killedBy": "B11" },
+    { "id": "orphan-ignored", "killedBy": "B12" }, { "id": "dirty-candidate-lost", "killedBy": "B12" }, { "id": "retry-owner-reuse", "killedBy": "B12" }, { "id": "wrong-lease-release", "killedBy": "B12" },
+    { "id": "ledger-binding-omitted", "killedBy": "B13" }, { "id": "dispatch-binding-omitted", "killedBy": "B13" }, { "id": "stale-epoch-cleanup", "killedBy": "B13" },
+    { "id": "member-deletes-group-worktree", "killedBy": "B14" }, { "id": "group-session-mismatch-accepted", "killedBy": "B14" },
+    { "id": "shared-workspace-overdelete", "killedBy": "B15" }, { "id": "sibling-worktree-pruned", "killedBy": "B15" },
+    { "id": "receipt-missing-post-inventory", "killedBy": "B16" }, { "id": "receipt-digest-unchecked", "killedBy": "B16" }
+  ]
+}

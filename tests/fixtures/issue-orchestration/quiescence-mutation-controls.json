@@ -1,0 +1,98 @@
+[
+  {
+    "id": "all-issues-closed-active-attempt",
+    "expectedCode": "attempts.closed-issue-still-active"
+  },
+  {
+    "id": "pseudo-terminal-attempt",
+    "expectedCode": "attempts.terminal-event-digest-missing"
+  },
+  {
+    "id": "cleanup-receipt-binding-mismatch",
+    "expectedCode": "attempts.cleanup-receipt-binding-mismatch"
+  },
+  {
+    "id": "active-slice",
+    "expectedCode": "slices.active-count"
+  },
+  {
+    "id": "pending-continuation",
+    "expectedCode": "continuations.pending-count"
+  },
+  {
+    "id": "ownerless-checkpoint",
+    "expectedCode": "checkpoints.ownerless-count"
+  },
+  {
+    "id": "open-output-missing-breaker",
+    "expectedCode": "outputMissingBreakers.unresolved-count"
+  },
+  {
+    "id": "stale-route",
+    "expectedCode": "routes.stale-count"
+  },
+  {
+    "id": "capability-mismatch-pending",
+    "expectedCode": "profileCapabilities.pending-mismatch-count"
+  },
+  {
+    "id": "orphan-worktree",
+    "expectedCode": "git.orphan-worktree-count"
+  },
+  {
+    "id": "retained-resource",
+    "expectedCode": "resources.retained-count"
+  },
+  {
+    "id": "unknown-resource",
+    "expectedCode": "resources.unknown-count"
+  },
+  {
+    "id": "active-landing-lease",
+    "expectedCode": "landing.active-lease-count"
+  },
+  {
+    "id": "incomplete-commit-mapping",
+    "expectedCode": "commitMappings.incomplete-count"
+  },
+  {
+    "id": "unresolved-human-decision",
+    "expectedCode": "humanDecisions.active-request-count"
+  },
+  {
+    "id": "ownerless-human-retention",
+    "expectedCode": "humanRetentions.ownerless-count"
+  },
+  {
+    "id": "owned-process-descendant",
+    "expectedCode": "processes.descendant-count"
+  },
+  {
+    "id": "stopped-container-not-removed",
+    "expectedCode": "docker.container-count"
+  },
+  {
+    "id": "duplicate-repo-local-skill",
+    "expectedCode": "filesystem.repo-local-duplicate-skill-count"
+  },
+  {
+    "id": "resident-dag-updater",
+    "expectedCode": "dag.resident-updater-count"
+  },
+  {
+    "id": "bootstrap-audit-only",
+    "expectedCode": "bootstrap.disposition-not-terminal"
+  },
+  {
+    "id": "missing-inventory",
+    "expectedCode": "inventory.missing"
+  },
+  {
+    "id": "unavailable-inventory",
+    "expectedCode": "inventory.unavailable"
+  },
+  {
+    "id": "root-self-sign",
+    "expectedCode": "verifier.not-independent"
+  }
+]

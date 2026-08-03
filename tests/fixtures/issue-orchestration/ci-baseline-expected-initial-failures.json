@@ -1,0 +1,41 @@
+{
+  "schema": "issue-orchestration.ci-baseline-initial-failures.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 10,
+  "baseSha": "9a8ab8cd80a4cdc7f76866f0c475b8fa64218731",
+  "expectedStatus": "red",
+  "behaviorStatus": "red",
+  "documentationStatus": "blocked-until-behavior-green",
+  "expectedExitCode": 1,
+  "expectedSummary": { "tests": 14, "passed": 10, "failed": 4 },
+  "expectedFailingTests": ["R10CI09", "R10CI10", "R10CI11", "R10CI12"],
+  "remoteRunId": 30689788661,
+  "remoteJobIds": [91342753716, 91342753719, 91342753723, 91342753725],
+  "remoteConclusion": "failure",
+  "reproductionCommand": "./tools/test.sh ci-tier validate-matrix --no-deps",
+  "primaryFailures": [
+    {
+      "jobId": 91342753725,
+      "diagnostic": "[postgres-test-collections] SchemaMigrationPostgresCollectionA estimatedFacts mismatch: manifest=213 source=214",
+      "requiredPath": "tests/backend/Fixtures/postgres-test-collections.json"
+    },
+    {
+      "jobId": 91342753723,
+      "diagnostic": "[test-retention] cannot resolve before snapshot source tests/matrix.yml",
+      "requiredPath": ".github/workflows/quality-gate.yml"
+    },
+    {
+      "jobId": 91342753716,
+      "diagnostic": "[matrix] production build process identity failure: managed process group is unverifiable: ESRCH: no such process, read",
+      "requiredPath": "tools/test/process-identity.mjs"
+    },
+    {
+      "jobId": 91342753719,
+      "diagnostic": "72 of 1818 frontend unit tests failed across 27 files with 6 unhandled errors",
+      "requiredPaths": [
+        "tests/frontend/unit/services/binaryTransport.test.ts",
+        "tests/frontend/unit/adapters/binary/index.test.ts"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "issue-orchestration.ci-post-delivery-mutations.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 9,
+  "controls": [
+    { "id": "unnamed-artifact-fallback", "killedBy": "R9CI01" },
+    { "id": "stale-run-artifact-admitted", "killedBy": "R9CI02" },
+    { "id": "missing-producer-identity-softened", "killedBy": "R9CI02" },
+    { "id": "external-failure-absorbed-into-1822", "killedBy": "R9CI03" }
+  ]
+}

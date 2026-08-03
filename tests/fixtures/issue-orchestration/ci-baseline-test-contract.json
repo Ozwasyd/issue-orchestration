@@ -1,0 +1,82 @@
+{
+  "schema": "issue-orchestration.ci-baseline-test-contract.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 10,
+  "correctiveRevision": 8,
+  "status": "frozen-red",
+  "testOwnerId": "test-owner-1822-ci-baseline-r10",
+  "baseSha": "9a8ab8cd80a4cdc7f76866f0c475b8fa64218731",
+  "prioritySupplementCommentId": 5149820258,
+  "requiredRunId": 30687733975,
+  "allowedTestPaths": [
+    "tests/tools/issue-1822-ci-baseline.test.mjs",
+    "tests/fixtures/issue-orchestration/ci-baseline-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/ci-baseline-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/ci-baseline-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/ci-baseline-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/ci-baseline-test-contract.json",
+    "tests/frontend/unit/services/binaryTransport.test.ts",
+    "tests/frontend/unit/adapters/binary/index.test.ts"
+  ],
+  "allowedImplementationPaths": [
+    ".github/workflows/quality-gate.yml",
+    "tests/matrix.yml",
+    "tests/backend/Fixtures/postgres-test-collections.json",
+    "tools/test/process-identity.mjs"
+  ],
+  "documentationWriterAllowedPaths": [
+    "docs/testing.generated.md"
+  ],
+  "documentationWriterStartCondition": "behavior-green",
+  "retentionAuthorityReadOnlyPaths": [
+    "tests/test-retention-before.json"
+  ],
+  "implementationValidationCommands": [
+    "node --test tests/tools/issue-1822-ci-baseline.test.mjs",
+    "npm --prefix src/frontend ci --no-audit --progress=false",
+    "npm --prefix src/frontend run test:unit:fast -- ../../tests/frontend/unit/services/binaryTransport.test.ts",
+    "npm --prefix src/frontend run test:unit:fast -- ../../tests/frontend/unit/services/binaryTransport.test.ts ../../tests/frontend/unit/adapters/binary/index.test.ts",
+    "./tools/test.sh ci-job fast-frontend-unit --fresh",
+    "./tools/build-wasm-artifact.sh",
+    "FSUSBLOG_FRONTEND_WASM_ROOT=build/artifacts/wasm-release node tools/frontend/ensure-wasm.mjs status",
+    "FSUSBLOG_FRONTEND_WASM_ROOT=build/artifacts/wasm-release npm --prefix src/frontend run build",
+    "node tools/check-browser-test-migration.mjs",
+    "node tools/check-test-lifecycle.mjs",
+    "node tools/check-backend-test-governance.mjs",
+    "./tools/test.sh ci-tier validate-matrix --no-deps",
+    "node tools/docs/generate-testing-docs.mjs --check",
+    "node tools/check-postgres-test-collections.mjs"
+  ],
+  "environmentPrerequisiteProbes": [
+    {
+      "command": "./tools/test.sh backend-test-governance --no-deps",
+      "prerequisite": "current BehaviorDoc admission receipt bound to the candidate worktree",
+      "classificationWithoutPrerequisite": "invocation-prerequisite-failure-not-behavior"
+    },
+    {
+      "command": "node tools/frontend/ensure-wasm.mjs status",
+      "prerequisite": "current-run WASM producer artifact and receipt downloaded into the consumer workspace",
+      "classificationWithoutPrerequisite": "producer-artifact-absent-not-consumer-behavior"
+    }
+  ],
+  "forbiddenScopes": [
+    "fallback to historical artifacts",
+    "weakening current-run release identity",
+    "product behavior changes",
+    "documentation",
+    "DAG or bootstrap state",
+    "other issue contracts"
+  ],
+  "fileHashes": {
+    "tests/tools/issue-1822-ci-baseline.test.mjs": "eb4c939ffd27b8cfb6c6290992227c1c2ccb77af61ab8e4ab702d76242d42abc",
+    "tests/fixtures/issue-orchestration/ci-baseline-acceptance-map.json": "2f7eebd3f107393b039067feaaac9e762eb1cd30fca91bfb3b20ebd6a7bf746d",
+    "tests/fixtures/issue-orchestration/ci-baseline-expected-initial-failures.json": "0cdbedaacdd7b85fcfc070d56d1ded2364f381a3a9b7ab580caabc11cd307554",
+    "tests/fixtures/issue-orchestration/ci-baseline-mutation-controls.json": "04d6e738cd39baa8c14a11a81cb1e9b5fc851a65b67f6bd8808fe9f51674de51",
+    "tests/fixtures/issue-orchestration/ci-baseline-runtime-probes.json": "20cd62ac9a4c05f7f2b2035bb8eccfffccc051d3fe13281c85203017c7dbca63",
+    "tests/frontend/unit/services/binaryTransport.test.ts": "c0229fb0770102fc829f621ebbb73e8bcb67c439c429e44fae5e6ce7d72ced75",
+    "tests/frontend/unit/adapters/binary/index.test.ts": "d0187f62ae3d9e1c9d93bc77733e5f24b0630c58d3779e97c10ac326466642bc"
+  },
+  "frozenTreeDigest": "e21e1e84f702de2b52450d623b5889a70759ae84bd7d3f0a0d14f022162a696d",
+  "hashAlgorithm": "sha256-raw-file-bytes",
+  "contractDigest": "52b609759f5daea11b36dc9a821d4b97328de17eb2f5abf38c2ebce8fee5a229"
+}

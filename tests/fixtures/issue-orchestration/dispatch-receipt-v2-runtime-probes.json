@@ -1,0 +1,28 @@
+{
+  "schema": "issue-orchestration.dispatch-receipt-v2-runtime-probes.v1",
+  "issue": "Ozwasyd/FsusBlog#1832",
+  "probes": [
+    {"id": "RP01", "mutation": "N01-root-actual-sol-low", "expectedCode": "root-startup-profile-mismatch"},
+    {"id": "RP02", "mutation": "N02-bounded-terra-without-reclassification", "expectedCode": "dispatch-execution-route-binding"},
+    {"id": "RP03", "mutation": "N03-high-risk-luna", "expectedCode": "dispatch-routing-selection-mismatch"},
+    {"id": "RP04", "mutation": "N04-ui-prescribed-forbidden-family", "expectedCode": "dispatch-routing-selection-mismatch"},
+    {"id": "RP05", "mutation": "N05-ui-implementer-sol-high", "expectedCode": "dispatch-routing-selection-mismatch"},
+    {"id": "RP06", "mutation": "N06-ui-dispute-bypasses-adjudicator", "expectedCode": "dispatch-ui-adjudication-required"},
+    {"id": "RP07", "mutation": "N07-root-balance-model-substitution", "expectedCode": "dispatch-routing-authority"},
+    {"id": "RP08", "mutation": "N08-root-runtime-metadata-unobservable", "expectedCode": "root-startup-capability-unverified"},
+    {"id": "RP09", "mutation": "N09-group-member-inherits-previous-route", "expectedCode": "dispatch-member-routing-inherited"},
+    {"id": "RP10", "mutation": "N10-behavior-verifier-not-fresh", "expectedCode": "independent-verifier-freshness-required"},
+    {"id": "RP11", "mutation": "N11-self-test-signs-behavior-green", "expectedCode": "receipt-schema-stage-mismatch"},
+    {"id": "RP12", "mutation": "N12-old-policy-digest-replay", "expectedCode": "dispatch-routing-policy-replay"},
+    {"id": "RP13", "mutation": "N13-v1-dispatch-transition-authority", "expectedCode": "receipt-v1-historical-only"},
+    {"id": "RP14", "mutation": "N14-v1-self-test-transition-authority", "expectedCode": "receipt-v1-historical-only"},
+    {"id": "RP15", "mutation": "N15-unavailable-profile-silent-fallback", "expectedCode": "runtime-capability-missing"},
+    {"id": "RP16", "mutation": "N16-root-direct-profile-selection", "expectedCode": "dispatch-routing-authority"},
+    {"id": "RP17", "mutation": "N17-scope-identity-drift", "expectedCode": "runtime-scope-identity-mismatch"},
+    {"id": "RP18", "mutation": "N18-dependency-identity-drift", "expectedCode": "runtime-dependency-identity-mismatch"},
+    {"id": "RP19", "mutation": "N19-non-group-id-omitted", "expectedCode": "dispatch-group-identity-missing"},
+    {"id": "RP20", "mutation": "N20-receipt-replay-new-base-candidate", "expectedCode": "dispatch-receipt-replay"},
+    {"id": "RP21", "mutation": "N21-runtime-skill-digest-drift", "expectedCode": "runtime-skill-digest-mismatch"},
+    {"id": "RP22", "mutation": "N22-frozen-test-tree-drift", "expectedCode": "self-test-frozen-tree-drift"}
+  ]
+}

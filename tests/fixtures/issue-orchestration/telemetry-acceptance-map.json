@@ -1,0 +1,18 @@
+{
+  "acceptance": [
+    {"id": "A01", "requirement": "All telemetry is deterministically derived from verified source events and receipts."},
+    {"id": "A02", "requirement": "Model-pool cells remain independent by role, profile, risk, UI class and work shape."},
+    {"id": "A03", "requirement": "Prompt and slice defects, runtime failure, missing first action and capability mismatch remain distinguishable."},
+    {"id": "A04", "requirement": "First artifact and write latency, no-artifact operations, checkpoints and continuations are observable."},
+    {"id": "A05", "requirement": "Internal fixes, legal continuations, independent rejects, landing retries and human wait do not collapse into one rework class."},
+    {"id": "A06", "requirement": "Landing summaries retain source commit mapping, slice and reverification counts."},
+    {"id": "A07", "requirement": "Source mutation, unmapped commits, mixed-member conflicts, receipt replay and force push fail closed."},
+    {"id": "A08", "requirement": "Human summaries distinguish machine-owned work, required authority and post-decision reroute and verification."},
+    {"id": "A09", "requirement": "All forbidden and missing human-request classes are detectable."},
+    {"id": "A10", "requirement": "Human preference, wait, failure count and cost never become routing inputs."},
+    {"id": "A11", "requirement": "Resource states are accepted only from the resource-lifecycle authority."},
+    {"id": "A12", "requirement": "falsePositiveDagDispatchCount remains exactly zero."},
+    {"id": "A13", "requirement": "Telemetry performs no correctness, slicing or model-policy mutation."},
+    {"id": "A14", "requirement": "The resource lifecycle contract is not extended or modified."}
+  ]
+}

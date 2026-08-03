@@ -1,0 +1,17 @@
+{
+  "schema": "fsusblog-design-conformance.ui-orchestration-test-contract.v1",
+  "issue": "Ozwasyd/FsusBlog#1830",
+  "implementationOwner": ".agents/skills/fsusblog-design-conformance/scripts/ui-orchestration.mjs",
+  "checker": ".agents/skills/fsusblog-design-conformance/scripts/ui-orchestration.mjs",
+  "requiredPolicy": ".agents/skills/fsusblog-design-conformance/contracts/blog-ui-stage-policy.json",
+  "requiredSchemas": [
+    ".agents/skills/fsusblog-design-conformance/contracts/fsusui-baseline-identity.schema.json",
+    ".agents/skills/fsusblog-design-conformance/contracts/ui-classification-receipt.schema.json",
+    ".agents/skills/fsusblog-design-conformance/contracts/ui-dispatch-receipt.schema.json",
+    ".agents/skills/fsusblog-design-conformance/contracts/ui-system-adjudication-receipt.schema.json",
+    ".agents/skills/fsusblog-design-conformance/contracts/ux-acceptance-receipt.schema.json"
+  ],
+  "negativeControls": "tests/fixtures/issue-orchestration/blog-ui-orchestration-negative-controls.json",
+  "focusedCommand": "node --test tests/tools/issue-orchestration-blog-ui.test.mjs",
+  "frozenResourceLifecycleSha256": "e4b16ca8c22e46a436bcfd248b5465cf7b21be4eac5276b333759251f55849a1"
+}

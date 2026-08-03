@@ -1,0 +1,10 @@
+{
+  "schema": "issue-orchestration.ci-corrective-initial-failures.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "baseSha": "ecf80ba62dbf7d2fb468c99849b6c4fb08712486",
+  "expectedStatus": "red",
+  "expectedExitCode": 1,
+  "expectedSummary": { "tests": 5, "passed": 2, "failed": 3 },
+  "expectedFailingTests": ["CI01", "CI02", "CI03"],
+  "passingControl": "CI04"
+}

@@ -1,0 +1,118 @@
+{
+  "schema": "issue-orchestration.dispatch-receipt-v2-test-contract.v1",
+  "phase": "test-contract",
+  "status": "frozen-red",
+  "issueId": "Ozwasyd/FsusBlog#1832",
+  "authority": {
+    "kind": "merged-issue-body",
+    "updatedAt": "2026-08-01T09:04:48Z"
+  },
+  "testOwnerId": "test-owner-fsusblog-1832-788737a0",
+  "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
+  "groupId": null,
+  "pipeline": "ordinary-serial",
+  "ciPolicy": "out-of-scope-no-ci",
+  "dependencyBindings": [
+    {
+      "issue": "Ozwasyd/FsusBlog#1817",
+      "state": "CLOSED",
+      "closedAt": "2026-08-01T01:06:40Z",
+      "deliveredCommit": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1818",
+      "state": "CLOSED",
+      "closedAt": "2026-08-01T01:42:48Z",
+      "deliveredCommit": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1819",
+      "state": "CLOSED",
+      "closedAt": "2026-08-01T12:22:33Z",
+      "deliveredCommit": "aff9260d358171d7765e542e56bf18635b328583"
+    }
+  ],
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-test-contract.json"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/dispatch-receipt-v2-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/dispatch-receipt-v2-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/dispatch-receipt-v2-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/dispatch-receipt-v2-mutation-controls.json",
+  "allowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+    "skills/issue-orchestration/scripts/event-ledger.mjs"
+  ],
+  "forbiddenScopes": [
+    "product code",
+    "tests, fixtures, probes, mutation controls, snapshots, thresholds or acceptance mapping after freeze",
+    "DAG, bootstrap or external orchestration state",
+    "compatibility fallback that lets a v1 receipt satisfy a v2 transition",
+    "telemetry, balance, failure-count or root-selected routing",
+    "CI as acceptance evidence",
+    "commit, push, issue mutation or delivery"
+  ],
+  "visibleTestMatrix": [
+    {
+      "id": "dispatch-receipt-v2-focused",
+      "required": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs"
+      ]
+    },
+    {
+      "id": "stage-model-pool-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-stage-profiles.test.mjs"
+      ]
+    },
+    {
+      "id": "dispatch-receipt-v1-history-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"
+      ]
+    },
+    {
+      "id": "event-ledger-transition-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-event-ledger.test.mjs"
+      ]
+    }
+  ],
+  "frozenTestTree": {
+    "algorithm": "sha256-raw-bytes-and-canonical-json-v1",
+    "digest": "43075108c7e1aa3e98f88c7ce29cd144a5fbb7192e85f4374d7553ac695e2f74"
+  },
+  "fileHashes": {
+    "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs": "45f7f344e4464b030156feac1024460b731cf84dee8cc94716b4aa4555508812",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-acceptance-map.json": "5f3560de91c1f2ce1d142856cf001a96033fdfa41408bf794b81ea8b46bc56d6",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-expected-initial-failures.json": "c5452fd5dc11de526c33fe62098732e2fb5aa9800da9b4157dd84536a76ad2bd",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-runtime-probes.json": "2710fdc8d5f382d56a0c047840393371b07a9ecf444981a6b04ce8145b207e39",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-mutation-controls.json": "5afbaa985745c3e779ddf83ab8b4c8f552b0709d7cb1b1da0e46a4594b3fde4b"
+  },
+  "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
+  "selfHashPolicy": "fileHashes covers raw bytes of every allowedTestPaths entry except this manifest; testContractDigest covers canonical JSON with testContractDigest omitted",
+  "expectedBaseSummary": {
+    "tests": 32,
+    "pass": 1,
+    "fail": 31,
+    "skipped": 0
+  },
+  "testContractDigest": "861ae4ab2271ac1701aed3e682228e2d2e9404889f8ad6f0fbdb5a8c5f36052b"
+}

@@ -1,0 +1,78 @@
+[
+  {
+    "id": "root-runtime-profile-drift",
+    "evidenceLane": "stage-model-pool-policy.test.mjs"
+  },
+  {
+    "id": "runtime-only-change-dispatches-dag",
+    "evidenceLane": "runtime-projection.test.mjs"
+  },
+  {
+    "id": "whole-issue-dispatch",
+    "evidenceLane": "executable-slice.test.mjs"
+  },
+  {
+    "id": "compiled-prompt-missing-first-action",
+    "evidenceLane": "compiled-dispatch-prompt.test.mjs"
+  },
+  {
+    "id": "checkpoint-threshold-without-artifact",
+    "evidenceLane": "progress-checkpoint-continuation.test.mjs"
+  },
+  {
+    "id": "output-missing-count-promotes-profile",
+    "evidenceLane": "test-contract-liveness.test.mjs"
+  },
+  {
+    "id": "high-risk-field-forces-terra",
+    "evidenceLane": "execution-shape-routing.test.mjs"
+  },
+  {
+    "id": "partial-slice-candidate-green",
+    "evidenceLane": "implementer-self-test-v2.test.mjs"
+  },
+  {
+    "id": "verifier-writable-or-inherits-context",
+    "evidenceLane": "dispatch-receipt-v2.test.mjs"
+  },
+  {
+    "id": "illegal-ui-implementation-profile",
+    "evidenceLane": "ui-ux-skill-routing.test.mjs"
+  },
+  {
+    "id": "machine-resolvable-human-request",
+    "evidenceLane": "human-decision-gate.test.mjs"
+  },
+  {
+    "id": "model-selects-authority-choice",
+    "evidenceLane": "ui-system-adjudication.test.mjs"
+  },
+  {
+    "id": "source-history-rewritten",
+    "evidenceLane": "landing-lane.test.mjs"
+  },
+  {
+    "id": "landing-member-mixed-or-unmapped",
+    "evidenceLane": "landing-lane.test.mjs"
+  },
+  {
+    "id": "old-receipt-reused-for-new-candidate",
+    "evidenceLane": "dispatch-receipt-v2.test.mjs"
+  },
+  {
+    "id": "force-push-or-remote-drift-ignored",
+    "evidenceLane": "delivery-epoch.test.mjs"
+  },
+  {
+    "id": "active-state-ignored-by-quiescence",
+    "evidenceLane": "quiescence.test.mjs"
+  },
+  {
+    "id": "temporary-runner-substitutes-permanent-runtime",
+    "evidenceLane": "cross-repo-e2e.test.mjs"
+  },
+  {
+    "id": "resource-lifecycle-contract-modified",
+    "evidenceLane": "resource-lifecycle.test.mjs"
+  }
+]

@@ -1,0 +1,78 @@
+{
+  "schema": "issue-orchestration.stage-profile-mutation-controls.v2",
+  "issue": "Ozwasyd/FsusBlog#1819",
+  "controls": [
+    {
+      "id": "N01-root-sol-rejected",
+      "requirement": "Root为Sol/low：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-root-profile"
+    },
+    {
+      "id": "N02-bounded-terra-without-evidence",
+      "requirement": "bounded code无依据使用Terra/max：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-selected-profile"
+    },
+    {
+      "id": "N03-high-risk-luna",
+      "requirement": "high-risk node使用Luna/max：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-selected-profile"
+    },
+    {
+      "id": "N04-ui-forbidden-model",
+      "requirement": "UI节点使用Luna、Terra或Sol/high实现：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-ui-profile"
+    },
+    {
+      "id": "N05-ui-dispute-bypasses-adjudicator",
+      "requirement": "UI system dispute未经adjudicator直接扩大实现：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-ui-adjudication-required"
+    },
+    {
+      "id": "N06-verifier-context-inheritance",
+      "requirement": "verifier继承implementer对话：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-verifier-fresh-context"
+    },
+    {
+      "id": "N07-frozen-test-modified",
+      "requirement": "实现者修改冻结测试后candidate-green：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-frozen-test-tree"
+    },
+    {
+      "id": "N08-internal-red-escalates",
+      "requirement": "内部红测触发新attempt、DAG update或模型升档：失败",
+      "surface": "reclassification",
+      "expectedCode": "routing-internal-cycle-authority"
+    },
+    {
+      "id": "N09-silent-capability-fallback",
+      "requirement": "unavailable profile静默fallback：失败",
+      "surface": "assignment",
+      "expectedCode": "runtime-capability-missing"
+    },
+    {
+      "id": "N10-group-member-inherits-route",
+      "requirement": "acceptance-group B继承A的模型或receipt：失败",
+      "surface": "continuity",
+      "expectedCode": "routing-member-independence"
+    },
+    {
+      "id": "N11-telemetry-controls-policy",
+      "requirement": "telemetry根据成本自动改policy：失败",
+      "surface": "assignment",
+      "expectedCode": "routing-authority"
+    },
+    {
+      "id": "N12-legacy-fixed-sol-discoverable",
+      "requirement": "旧固定Sol profile仍可被shared install发现：失败",
+      "surface": "source-discovery",
+      "expectedCode": "routing-legacy-policy-discoverable"
+    }
+  ]
+}

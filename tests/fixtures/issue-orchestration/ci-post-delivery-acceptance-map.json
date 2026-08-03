@@ -1,0 +1,11 @@
+{
+  "schema": "issue-orchestration.ci-post-delivery-acceptance.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 9,
+  "acceptance": [
+    { "id": "R9CI01", "requirement": "consume only the named current-run integration artifact without fallback", "mutations": ["unnamed-artifact-fallback"] },
+    { "id": "R9CI02", "requirement": "missing artifact or producer identity remains fail-closed", "mutations": ["stale-run-artifact-admitted", "missing-producer-identity-softened"] },
+    { "id": "R9CI03", "requirement": "failed upstream product jobs remain possible-remote-contract-impact", "mutations": ["external-failure-absorbed-into-1822"] },
+    { "id": "R9CI04", "requirement": "mutation and ownership controls remain exact-set complete", "mutations": [] }
+  ]
+}

@@ -1,0 +1,203 @@
+{
+  "schema": "issue-orchestration.ready-frontier-runtime-probes.v2",
+  "issue": "Ozwasyd/FsusBlog#1816",
+  "revision": "corrective-layered-integrity-4",
+  "observedAt": "2026-08-01T06:21:39+08:00",
+  "baseProbe": {
+    "worktreeHead": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+    "remoteMasterHead": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+    "branch": "bootstrap-repair/1816-corrective",
+    "commands": [
+      "git rev-parse HEAD",
+      "git status --short --branch",
+      "gh api repos/Ozwasyd/FsusBlog/commits/master --jq '{sha:.sha}'"
+    ]
+  },
+  "authorityProbes": [
+    {
+      "issue": 1816,
+      "state": "open",
+      "stateReason": "reopened",
+      "updatedAt": "2026-07-31T20:56:14Z",
+      "commentCount": 5,
+      "correctiveAuthorityCommentId": 5147386703,
+      "commands": [
+        "gh issue view 1816 --repo Ozwasyd/FsusBlog --comments",
+        "gh api repos/Ozwasyd/FsusBlog/issues/comments/5147386703"
+      ]
+    },
+    {
+      "issue": 1822,
+      "state": "open",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T14:03:33Z",
+      "commentCount": 3,
+      "commands": [
+        "gh issue view 1822 --repo Ozwasyd/FsusBlog --comments"
+      ]
+    }
+  ],
+  "oldCorrectBaselineProbe": {
+    "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "tests": 48,
+    "passed": 48,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "oldAffectedMatrixBaselineProbe": {
+    "command": "node --test tests/tools/issue-orchestration-scope-selector.test.mjs tests/tools/issue-orchestration-ready-frontier.test.mjs tests/tools/issue-orchestration-completed-prerequisite.test.mjs",
+    "tests": 139,
+    "passed": 139,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "correctiveRedProbe": {
+    "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "tests": 63,
+    "passed": 34,
+    "failed": 29,
+    "exitCode": 1,
+    "firstFailure": "[F01] compiler emits the canonical maximal member-stage projection: readyFrontier was [] instead of the canonical two-member frontier"
+  },
+  "revision2ContractProbe": {
+    "revision": "corrective-layered-projection-2",
+    "testContractDigest": "f19115196b933b984c6d5107141127380ffa47f6bafbc059b150b1b39b534fb3",
+    "frozenTreeDigest": "3f6c0f8baa64fa6fc6efc4807c6ab1a8f0a5ab0f611e3dee3d9400989f4d0250",
+    "manifestRawSha256": "db18ab564912daae4cec403aa49cb3ac6c5a90ab71df9adbdcdbc4ade0cd88d4",
+    "candidateIdentityDigest": "dcfd8a86f2b6c04a052475e8c95c63efcd42a51c588969179acf2aefef586caf",
+    "focusedCandidateProbe": {
+      "tests": 63,
+      "passed": 63,
+      "failed": 0,
+      "mutationControlsKilled": 28,
+      "exitCode": 0
+    },
+    "unaffectedRegressionProbe": {
+      "tests": 91,
+      "passed": 91,
+      "failed": 0,
+      "exitCode": 0
+    }
+  },
+  "freshVerifierRejectionProbe": {
+    "epoch": "corrective-1",
+    "status": "rejected",
+    "rejectedReceiptDigest": "58f18e70fcd0e716308ba4554bb6815fdccaec49e44171ed5cfcabc7009155c5",
+    "candidateIdentityDigest": "dcfd8a86f2b6c04a052475e8c95c63efcd42a51c588969179acf2aefef586caf",
+    "firstFailureEvidenceDigest": "451e9961742d23b09fe909be7fa1158749928bcf8c3acbcabfcf8dc76e4252e3",
+    "mutation": {
+      "id": "layer-authority-runtime-policy-drift",
+      "layers": ["discoveryFacts", "classificationFacts"],
+      "field": "effort",
+      "from": "max",
+      "to": "low",
+      "previousRevisionAcceptedActor": {
+        "role": "dag-creator",
+        "actorId": "dag-creator:frontier-fixture",
+        "model": "gpt-5.6-sol",
+        "effort": "max",
+        "sandboxMode": "read-only",
+        "freshContext": true,
+        "proposalOnly": true
+      },
+      "resealedDigests": [
+        "discoveryFacts.digest",
+        "classificationFacts.discoveryFactsDigest",
+        "classificationFacts.digest",
+        "investigationProjection.inputDigest",
+        "investigationProjection.projectionDigest",
+        "investigationProjection.validation.receiptDigest"
+      ],
+      "expectedCode": "investigation-layer-authority",
+      "actualDisposition": "accepted-frontier"
+    }
+  },
+  "revision3RedProbe": {
+    "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "tests": 64,
+    "passed": 16,
+    "failed": 48,
+    "exitCode": 1,
+    "firstFailure": "[TRUST-01] MUTATION layer-authority-runtime-policy-drift is killed with investigation-layer-authority: re-signed effort=low facts were accepted",
+    "downstreamAuthorityGateFailures": 47
+  },
+  "revision3CandidateProbe": {
+    "revision": "corrective-layered-authority-3",
+    "testContractDigest": "c61e9ba9a231e7f2dea43b77df7b02b8869e8234a07fdfd777e0b94c5219699d",
+    "frozenTreeDigest": "1b5d7ce3fa3ccb2b50cee04879933bbd65a59dc9a2992b94ffebc27f4b8ac3a6",
+    "manifestRawSha256": "7884a193a3194e10c428b6638a286ac722b3217af6b6544201105e478de6b57b",
+    "candidateManifestDigest": "d4972274a7a2355058bf40d687149f6afce705886f1d47aca5bfba9d92c96379",
+    "focusedCandidateProbe": {
+      "tests": 64,
+      "passed": 64,
+      "failed": 0,
+      "mutationControlsKilled": 29,
+      "exitCode": 0
+    }
+  },
+  "revision3FreshVerifierRejectionProbe": {
+    "epoch": "corrective-r3",
+    "status": "rejected",
+    "rejectedReceiptDigest": "cc0b0e8be529cd507b7aec12b64b5a605dda168dcb12823f494cd96bcd06b7f9",
+    "aggregateFailureEvidenceDigest": "0d1626b6ac055d68c94f0d63a5360e188906eae98929b414841f8bff11a82305",
+    "firstFailureEvidenceDigest": "f8ad0a51ce7b6b5d38e318a01d725d35805f3e42aabccd0f5bd5de94fc4449c5",
+    "unexpectedAcceptedMutationCount": 11,
+    "mutations": [
+      {"id": "discovery-root-like-actor-id", "evidenceDigest": "f8ad0a51ce7b6b5d38e318a01d725d35805f3e42aabccd0f5bd5de94fc4449c5"},
+      {"id": "classification-root-like-actor-id", "evidenceDigest": "f63a4b49a8f64606545ab9d4b21b4d56005e7af605b705b2e701514dfc995110"},
+      {"id": "semantic-layer-actor-continuity-drift", "evidenceDigest": "4d28c08b64065e7fef452bfdca62bffeaebf573fb7f2d6d83b977d994219616d"},
+      {"id": "dispatch-owner-substitution", "evidenceDigest": "41e6cc823bbb0e73bf8eaac9c385898496250a5e96c190cdcdf5d765bf595a3a"},
+      {"id": "discovery-schema-resigned", "evidenceDigest": "47d8c3feb92e32106d1515f27fdde7ce75ff658338ff85d63baf1edefcb73b64"},
+      {"id": "discovery-status-incomplete-resigned", "evidenceDigest": "07efd2c0afd9ffdee4c5f03dbd7a18c16dcc0039dd4bac7ea258ba8467744e10"},
+      {"id": "discovery-input-digest-resigned", "evidenceDigest": "d5be928126cc228670b6e973c1c64ad3fd5fb63a4b3d1b4175ef860435391287"},
+      {"id": "projection-schema-resigned", "evidenceDigest": "2df7379b82fdc4983b61a426f6e6add81e10eab4aff8cf3a95b3c1509f99919a"},
+      {"id": "validation-root-authored-resigned", "evidenceDigest": "d41e84ce0e764ecf09909d1fde37d90014f7d4095f709a7e4687d898d087eb61"},
+      {"id": "projection-duplicate-member-resigned", "evidenceDigest": "1dbd54ee8dc2ddcac1b96455360bcbd57f6cc9fdea1cd2cda4cb66ebcf6f51f6"},
+      {"id": "projection-derived-lists-forged", "evidenceDigest": "6405165291c8daad211f0b04e996d31253a1fadee1f52a67e0f3572e460d6d17"}
+    ]
+  },
+  "revision4RedProbe": {
+    "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "tests": 75,
+    "passed": 64,
+    "failed": 11,
+    "exitCode": 1,
+    "firstFailure": "MUTATION discovery-root-like-actor-id is killed with investigation-layer-authority",
+    "allPriorRevision3TestsGreen": true,
+    "newMutationFailures": 11
+  },
+  "productionBindingProbe": {
+    "frontierCompilerLegacyAuthority": "node.investigation",
+    "dagGateLegacyAuthority": "node.investigation codePaths/testPaths/currentDocs/constraints/checkedAt",
+    "validatedLayeredProjectionBound": false,
+    "commands": [
+      "rg -n \"node\\\\.investigation|investigationProjection\" skills/issue-orchestration/scripts/frontier-compiler.mjs skills/issue-orchestration/scripts/check-dag-gate.mjs"
+    ]
+  },
+  "dynamicAcceptance": [
+    {
+      "id": "D01",
+      "kind": "deterministic-synthetic-runtime",
+      "eligibleMembers": 15,
+      "availableSlots": 15,
+      "expectedDispatchedCandidates": 15,
+      "externalServicesRequired": []
+    },
+    {
+      "id": "D02",
+      "kind": "deterministic-synthetic-runtime",
+      "eligibleMembers": 4,
+      "availableSlots": 15,
+      "expectedDispatchedCandidates": 4,
+      "externalServicesRequired": []
+    }
+  ],
+  "resourceObservation": {
+    "ports": [],
+    "containers": [],
+    "networks": [],
+    "locks": [],
+    "persistentProcesses": [],
+    "temporaryRoots": []
+  }
+}

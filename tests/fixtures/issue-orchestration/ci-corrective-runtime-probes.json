@@ -1,0 +1,24 @@
+{
+  "schema": "issue-orchestration.ci-corrective-runtime-probes.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "baseSha": "ecf80ba62dbf7d2fb468c99849b6c4fb08712486",
+  "dagProposalDigest": "87478f",
+  "supplementDigest": "5149402479",
+  "changeContract": {
+    "runId": 30680734922,
+    "status": "completed",
+    "conclusion": "failure",
+    "diagnostic": "trusted fetch-depth 1 makes reviewed blame-ignore revisions unreachable"
+  },
+  "qualityGate": {
+    "requestedRunId": 30680734903,
+    "requestedStatus": "queued",
+    "evidenceRunId": 30680230783,
+    "status": "completed",
+    "conclusion": "failure",
+    "diagnostics": [
+      "missing scale-xs data-scale evidence",
+      "quality gate summary requires current plan source and run identity"
+    ]
+  }
+}

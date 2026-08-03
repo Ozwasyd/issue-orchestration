@@ -1,0 +1,67 @@
+{
+    "schema": "issue-orchestration.test-contract.v1",
+    "issue": "Ozwasyd/FsusBlog#1875",
+    "owner": "test-owner",
+    "frozenAt": "2026-08-02T00:00:00+08:00",
+    "runtime": "skills/issue-orchestration/scripts/execution-route-compiler.mjs",
+    "policy": "policy/execution-routing-policy.json",
+    "matrix": "policy/profile-capability-matrix.json",
+    "evidence": "policy/profile-capability-observations.json",
+    "schemas": [
+        "issue-orchestration.execution-shape-classification.v1",
+        "issue-orchestration.stage-capability-requirement.v1",
+        "issue-orchestration.profile-capability-matrix.v2",
+        "issue-orchestration.execution-route-decision.v1"
+    ],
+    "schemaFiles": {
+        "issue-orchestration.execution-shape-classification.v1": "execution-shape-classification.schema.json",
+        "issue-orchestration.stage-capability-requirement.v1": "stage-capability-requirement.schema.json",
+        "issue-orchestration.profile-capability-matrix.v2": "profile-capability-matrix.schema.json",
+        "issue-orchestration.execution-route-decision.v1": "execution-route-decision.schema.json"
+    },
+    "positiveCases": [
+        "R01-bounded-luna",
+        "R02-runtime-terra-with-evidence",
+        "R03-deep-tool-sol-high",
+        "R04-unsplittable-long-horizon-sol-xhigh",
+        "R05-frontier-only-sol-max",
+        "R06-ui-low-medium-boundary",
+        "R07-read-only-adjudication",
+        "R08-valid-profile-mismatch-reroute"
+    ],
+    "negativeCases": [
+        "N01-no-verified-slice",
+        "N02-whole-issue-route",
+        "N03-high-risk-alone-forces-terra",
+        "N04-subjective-unsplittable",
+        "N05-output-missing-count-escalation",
+        "N06-reroute-without-prior-failure",
+        "N07-runtime-metadata-unobservable",
+        "N08-ui-high-profile",
+        "N09-model-self-report-matrix",
+        "N10-cost-balance-token-or-human-input",
+        "N11-old-candidate-receipt-reuse",
+        "N12-root-selected-profile",
+        "N13-silent-profile-fallback",
+        "N14-domain-risk-only-dispatch"
+    ],
+    "requiredEvidenceFields": [
+        "firstArtifactLatency",
+        "firstWriteLatency",
+        "readOnlyOperationsBeforeArtifact",
+        "successfulToolChainDepth",
+        "checkpointProduced",
+        "continuationRecovered",
+        "visibleCommandLoopCount",
+        "sliceCompletionStatus",
+        "outputMissingClass",
+        "runtimeInvocationFailure"
+    ],
+    "exclusions": [
+        "temporary-bootstrap-self-routing",
+        "model-ranking",
+        "ui-ownership-change",
+        "executable-slice-semantics-change",
+        "resource-lifecycle-contract-change"
+    ]
+}

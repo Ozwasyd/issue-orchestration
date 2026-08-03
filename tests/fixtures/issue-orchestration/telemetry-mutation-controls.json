@@ -1,0 +1,22 @@
+{
+  "controls": [
+    {"id": "N01-runtime-event-dag-updater", "field": "runtimeEventTriggeredDagUpdater", "value": true, "expectedCode": "telemetry-runtime-event-dag-updater"},
+    {"id": "N02-requested-copied-effective", "special": "effective-unobserved", "expectedCode": "telemetry-effective-metadata-unverified"},
+    {"id": "N03-whole-issue-unsliced", "field": "uncompiledWholeIssueDispatch", "value": true, "expectedCode": "telemetry-uncompiled-whole-issue"},
+    {"id": "N04-prompt-missing-first-path", "field": "missingFirstWritablePath", "value": true, "expectedCode": "telemetry-missing-first-writable-path"},
+    {"id": "N05-prose-as-checkpoint", "field": "checkpointThresholdExceededWithoutEvidence", "value": true, "expectedCode": "telemetry-checkpoint-threshold-without-evidence"},
+    {"id": "N06-continuation-restarts", "field": "continuationRestartedFromBeginning", "value": true, "expectedCode": "telemetry-continuation-restarted"},
+    {"id": "N07-output-missing-upgrades", "field": "outputMissingMechanicalUpgrade", "value": true, "expectedCode": "telemetry-output-missing-mechanical-upgrade"},
+    {"id": "N08-high-risk-single-field-terra", "field": "highRiskSingleFieldForcedTerra", "value": true, "expectedCode": "telemetry-high-risk-single-field-terra"},
+    {"id": "N09-group-masks-member", "field": "groupSummaryMaskedMember", "value": true, "expectedCode": "telemetry-group-member-masked"},
+    {"id": "N10-source-commit-unmapped", "field": "unmappedCommitCount", "value": 1, "expectedCode": "telemetry-unmapped-commit-count"},
+    {"id": "N11-force-push", "field": "forcePushAttemptCount", "value": 1, "expectedCode": "telemetry-force-push-attempt-count"},
+    {"id": "N12-old-receipt-replay", "field": "oldReceiptReplayDetected", "value": true, "expectedCode": "telemetry-old-receipt-replay"},
+    {"id": "N13-ordinary-conflict-asks-human", "field": "ordinaryFailureHumanRequestViolation", "value": true, "expectedCode": "telemetry-ordinary-failure-human-request"},
+    {"id": "N14-authority-conflict-model-decides", "field": "authorityConflictModelDecided", "value": true, "expectedCode": "telemetry-authority-conflict-model-decided"},
+    {"id": "N15-human-decision-direct-green", "field": "humanDecisionDirectGreenViolation", "value": true, "expectedCode": "telemetry-human-decision-direct-green"},
+    {"id": "N16-human-preference-routing", "field": "routingUsedHumanPreference", "value": true, "expectedCode": "telemetry-human-preference-routing"},
+    {"id": "N17-cleanup-overwrites-first-failure", "field": "cleanupOverwroteFirstFailure", "value": true, "expectedCode": "telemetry-cleanup-overwrote-first-failure"},
+    {"id": "N18-resource-contract-modified", "field": "resourceContractModified", "value": true, "expectedCode": "telemetry-resource-contract-modified"}
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "issue-orchestration.dispatch-receipt-v2-expected-initial-failures.v1",
+  "issueId": "Ozwasyd/FsusBlog#1832",
+  "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
+  "expectedStatus": "red",
+  "baselineCommand": [
+    "node",
+    "--test",
+    "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs"
+  ],
+  "sourceRealityDigests": {
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "cd6985fcaaddf2380b40351608abe5fd38845b63f2cf4148dc4108e670fe534a",
+    "skills/issue-orchestration/scripts/stage-profile-policy.mjs": "ea3d7dd2d36199c0d8ce309a61449cbf91be33c6807fdf29021afd3c5a36c2dc",
+    "skills/issue-orchestration/scripts/event-ledger.mjs": "27f678f81b342af8a6ece5edf009c48d782c664dd888fdcfc0065963f8358cf6",
+    "docs/development/issue-orchestration-scope.md": "508fcc06d8978e67516ace06586c0936d27e5f376ee5cd08d12e923c5548cff2"
+  },
+  "expectedFailures": [
+    "P01-dispatch-request-v2-missing",
+    "P02-dispatch-receipt-v2-actual-metadata-missing",
+    "P03-root-startup-receipt-v2-missing",
+    "P04-unobservable-actual-metadata-not-v2-closed",
+    "P05-routing-not-v2-receipt-bound",
+    "P06-serial-scope-dependency-not-v2-bound",
+    "P07-implementer-self-test-receipt-v2-missing",
+    "P08-v1-dispatch-still-authorizes-transition",
+    "P09-fresh-behavior-v2-transition-missing",
+    "N01-root-actual-sol-low",
+    "N02-bounded-terra-without-reclassification",
+    "N03-high-risk-luna",
+    "N04-ui-prescribed-forbidden-family",
+    "N05-ui-implementer-sol-high",
+    "N06-ui-dispute-bypasses-adjudicator",
+    "N07-root-balance-model-substitution",
+    "N08-root-runtime-metadata-unobservable",
+    "N09-group-member-inherits-previous-route",
+    "N10-behavior-verifier-not-fresh",
+    "N11-self-test-signs-behavior-green",
+    "N12-old-policy-digest-replay",
+    "N13-v1-dispatch-transition-authority",
+    "N14-v1-self-test-transition-authority",
+    "N15-unavailable-profile-silent-fallback",
+    "N16-root-direct-profile-selection",
+    "N17-scope-identity-drift",
+    "N18-dependency-identity-drift",
+    "N19-non-group-id-omitted",
+    "N20-receipt-replay-new-base-candidate",
+    "N21-runtime-skill-digest-drift",
+    "N22-frozen-test-tree-drift"
+  ],
+  "observedSummary": {
+    "tests": 32,
+    "pass": 1,
+    "fail": 31,
+    "skipped": 0,
+    "firstFailure": "P00-self-hash-pending-before-freeze",
+    "postFreezeExpectedFirstFailure": "P01-dispatch-request-v2-missing",
+    "observedAt": "2026-08-01T20:57:01+08:00"
+  }
+}

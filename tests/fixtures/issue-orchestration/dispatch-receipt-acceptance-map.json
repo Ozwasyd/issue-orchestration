@@ -1,0 +1,141 @@
+{
+    "schema": "issue-orchestration.dispatch-receipt-acceptance-map.v1",
+    "issue": "Ozwasyd/FsusBlog#1818",
+    "authorityCommentId": 5145140476,
+    "revision": 6,
+    "supersedesTestContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+    "verifierRejectionReceiptDigest": "1ea332eb6f8428c989d0bec3b36891e3155ede8b2369acbc2f348ad8cdcb2076",
+    "priorVerifierRejectionReceiptDigests": [
+        "c3f4a78396201870d167c4cd3bc78f6c1ea4de03a8fb8a3471bf37371f6c6917",
+        "434947016c160f74f6dca65d08311d2f2d799781f0af101a49eb4a3cdd4fc9c0",
+        "5d899a51fe16acff92d82dba2bf06ff85d0f35fe3467aa8bbc5bb790dcb80e4b"
+    ],
+    "acceptance": [
+        {
+            "id": "REQUEST-01",
+            "requirement": "An immutable dispatch-request.v1 binds run, node, attempt, stage profile, prompt, DAG/frontier, repository, base/candidate, test contract, epoch, path policy, Skills, and explicit group/member identities.",
+            "tests": ["P01", "P01A", "P14"],
+            "mutations": ["request-field-missing", "request-digest-tampered", "short-base-sha", "secret-in-request", "non-group-id-implicit", "sealed-request-nested-mutable"]
+        },
+        {
+            "id": "RUNTIME-01",
+            "requirement": "Effective model, effort, role, sandbox, fork, cwd, prompt, base/candidate, Skills, and request identity are derived from runtime or machine observations and fail closed when missing.",
+            "tests": ["P02", "P03", "P04"],
+            "mutations": ["runtime-model-unobservable", "runtime-effort-unobservable", "runtime-role-unobservable", "runtime-sandbox-unobservable", "runtime-fork-unobservable", "runtime-working-directory-unobservable", "runtime-thread-id-unobservable", "runtime-rollout-id-unobservable", "runtime-started-at-unobservable", "runtime-skill-unobservable", "requested-copied-as-effective"]
+        },
+        {
+            "id": "MATCH-01",
+            "requirement": "Requested and effective stage identities match exactly; context, sandbox, cwd, prompt, source, base, candidate, epoch, and test contract drift reject the receipt.",
+            "tests": ["P03", "P04"],
+            "mutations": ["runtime-model-mismatch", "runtime-effort-mismatch", "runtime-role-mismatch", "reviewer-sandbox-writable", "test-owner-write-root-overreach", "full-history-fork", "runtime-fork-exact-mismatch", "context-effort-drift", "context-sandbox-drift", "cwd-wrong-repository", "prompt-drift", "base-drift", "source-dag-drift", "frontier-drift", "stage-profile-drift", "test-contract-drift", "candidate-drift", "runtime-request-id-drift", "runtime-epoch-drift"]
+        },
+        {
+            "id": "CANDIDATE-01",
+            "requirement": "candidateDigest is independently observed from the machine git identity and must exactly match the sealed request; matching candidateSha cannot mask a digest drift.",
+            "tests": ["P15", "RP11"],
+            "mutations": ["runtime-candidate-digest-drift"]
+        },
+        {
+            "id": "PROFILE-01",
+            "requirement": "Root is Sol/low, code implementers are Sol/low, test owners are Sol/max with writes restricted to owned tests/fixtures, and read-only verifier profiles cannot acquire write access.",
+            "tests": ["P03A", "P04", "P14"],
+            "mutations": ["code-profile-terra-max", "root-profile-wrong", "test-owner-write-root-overreach", "reviewer-sandbox-writable"]
+        },
+        {
+            "id": "REVIEWER-POLICY-01",
+            "requirement": "A read-only reviewer stage cannot request workspace-write or a write lease; invalid reviewer policy is rejected while sealing the request even when runtime would exactly match the invalid request.",
+            "tests": ["P16", "RP12"],
+            "mutations": ["reviewer-write-policy-request-bypass"]
+        },
+        {
+            "id": "SKILL-01",
+            "requirement": "Required and actually loaded Skill IDs and digests come from machine load evidence; UI stages fail closed on missing or drifted loads.",
+            "tests": ["P03"],
+            "mutations": ["runtime-skill-unobservable", "required-skill-missing", "loaded-skill-digest-mismatch", "skill-observation-self-hashed-forgery"]
+        },
+        {
+            "id": "IDENTITY-01",
+            "requirement": "Request, attempt, thread, rollout, runtime metadata, receipt, candidate, and epoch identities are unique and replay resistant.",
+            "tests": ["P04"],
+            "mutations": ["runtime-thread-id-unobservable", "runtime-rollout-id-unobservable", "runtime-started-at-unobservable", "runtime-request-id-drift", "runtime-epoch-drift", "thread-reused-two-attempts", "request-replayed-new-attempt", "receipt-replayed-new-epoch", "runtime-metadata-digest-tampered"]
+        },
+        {
+            "id": "GROUP-01",
+            "requirement": "Group/session/member/stage/write-lease/worktree/branch/continuity identities match runtime observations; one lease cannot serve multiple members and non-group dispatch is explicit null.",
+            "tests": ["P05"],
+            "mutations": ["non-group-id-implicit", "group-id-mismatch", "group-session-drift", "group-member-mismatch", "group-member-stage-drift", "group-member-test-contract-drift", "group-lease-mismatch", "group-worktree-mismatch", "group-branch-mismatch", "group-lease-multiple-members", "group-candidate-substitutes-member", "group-test-owner-continuity-drift", "group-implementer-continuity-drift", "behavior-verifier-not-fresh"]
+        },
+        {
+            "id": "SELFTEST-01",
+            "requirement": "implementer-self-test-receipt.v1 binds the same request/base/candidate/contract, the full visible matrix, unchanged frozen test tree, implementation diff, command exits, lint/typecheck/build policy, failures, cycles, and working tree.",
+            "tests": ["P06", "P07", "P13"],
+            "mutations": ["self-test-matrix-subset", "frozen-test-tree-changed", "failing-command-deleted", "command-marked-skipped", "self-test-replay-new-candidate", "self-test-cross-candidate-replay", "self-test-base-mismatch", "self-test-request-mismatch", "self-test-still-red", "self-test-lint-failed", "first-failure-overwritten", "working-tree-digest-drift", "implementation-diff-touches-tests", "implementation-diff-digest-missing", "root-self-declares-verified"]
+        },
+        {
+            "id": "TRANSITION-01",
+            "requirement": "Only a verified dispatch starts work and only a verified self-test admits candidate-green; self-test never substitutes for fresh independent behavior verification.",
+            "tests": ["P08", "P11", "P12", "P13"],
+            "mutations": ["start-without-dispatch", "nonverified-dispatch-start", "ledger-start-without-dispatch-receipt", "candidate-without-self-test", "ledger-legacy-candidate-receipt", "self-test-cross-candidate-replay", "self-test-used-for-behavior", "candidate-direct-behavior", "old-receipt-satisfies-new-stage"]
+        },
+        {
+            "id": "SECRET-01",
+            "requirement": "Requests, observations, and receipts contain digests and allowlisted metadata only, never prompts, tokens, credentials, or secret environment.",
+            "tests": ["P01", "P09"],
+            "mutations": ["secret-in-request", "secret-in-receipt"]
+        },
+        {
+            "id": "PROBE-01",
+            "requirement": "Executable runtime probes cover real rollout-shaped metadata, a fresh behavior verifier, and the verify-runtime CLI; absent CLI inputs reject with nonzero status and a diagnostic.",
+            "tests": ["P02", "P09", "P10", "RP01", "RP02", "RP03", "RP08", "RP09", "RP10"],
+            "mutations": ["runtime-role-unobservable", "runtime-fork-unobservable", "behavior-verifier-not-fresh", "runtime-cli-nonexistent-input-no-op"]
+        },
+        {
+            "id": "TEST-OWNER-POLICY-02",
+            "requirement": "The test-owner request profile is fixed to Sol/max with workspace-write limited by the test-owner scoped lease; a self-consistent Terra/low/danger-full-access/unrestricted request is rejected during sealing.",
+            "tests": ["P17", "RP13"],
+            "mutations": ["test-owner-profile-request-bypass"]
+        },
+        {
+            "id": "DAG-POLICY-01",
+            "requirement": "A non-root DAG creator/updater is fixed to Sol/max/read-only and cannot seal a self-consistent Terra/low/workspace-write request.",
+            "tests": ["P18", "RP14"],
+            "mutations": ["non-root-dag-profile-request-bypass"]
+        },
+        {
+            "id": "UI-AUTHORITY-01",
+            "requirement": "FsusBlog UI implementation dispatch requires the frozen design Skills and nonempty matching design-authority digests; an empty self-consistent declaration is rejected during sealing.",
+            "tests": ["P19", "RP15"],
+            "mutations": ["ui-required-skills-empty-bypass"]
+        },
+        {
+            "id": "SECRET-OBSERVATION-02",
+            "requirement": "Credential-bearing rollout or machine observations reject the dispatch and secret values are absent from runtime observations and returned receipts.",
+            "tests": ["P20", "RP16"],
+            "mutations": ["credential-bearing-observation-leak"]
+        },
+        {
+            "id": "LEDGER-DISPATCH-02",
+            "requirement": "Every frozen test contract requires a verified dispatch before implementation starts; enforcement cannot depend on one issue-specific test path appearing in frozenFiles.",
+            "tests": ["P21", "RP17"],
+            "mutations": ["ledger-frozen-path-dispatch-bypass"]
+        },
+        {
+            "id": "LEDGER-SELFTEST-02",
+            "requirement": "Every frozen test contract requires implementer-self-test-receipt.v1 for candidate-green; omitting one issue-specific test path cannot restore legacy verified-candidate receipts.",
+            "tests": ["P22", "RP18"],
+            "mutations": ["ledger-frozen-path-legacy-candidate-bypass"]
+        },
+        {
+            "id": "SELFTEST-EVIDENCE-02",
+            "requirement": "The self-test receipt digest binds implementationDiffDigest, every command result evidence digest, and first-failure/fix-cycle evidence so distinct executions cannot collide.",
+            "tests": ["P23", "RP19"],
+            "mutations": ["self-test-evidence-digest-collision"]
+        },
+        {
+            "id": "SELFTEST-DISPATCH-03",
+            "requirement": "Self-test verification requires a complete digest-valid dispatch receipt bound to the same request, attempt, epoch, thread, rollout, and runtime evidence; a minimal forged verified object has no authority.",
+            "tests": ["P24", "RP20"],
+            "mutations": ["self-test-minimal-dispatch-forgery"]
+        }
+    ]
+}

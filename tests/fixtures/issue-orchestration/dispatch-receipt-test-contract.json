@@ -1,0 +1,270 @@
+{
+    "schema": "issue-orchestration.dispatch-receipt-test-contract.v1",
+    "issue": "Ozwasyd/FsusBlog#1818",
+    "authorityCommentId": 5145140476,
+    "revision": 6,
+    "supersedesTestContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+    "verifierRejectionReceiptDigest": "1ea332eb6f8428c989d0bec3b36891e3155ede8b2369acbc2f348ad8cdcb2076",
+    "priorVerifierRejectionReceiptDigests": [
+        "c3f4a78396201870d167c4cd3bc78f6c1ea4de03a8fb8a3471bf37371f6c6917",
+        "434947016c160f74f6dca65d08311d2f2d799781f0af101a49eb4a3cdd4fc9c0",
+        "5d899a51fe16acff92d82dba2bf06ff85d0f35fe3467aa8bbc5bb790dcb80e4b"
+    ],
+    "preservedFirstFailureRef": "evidence://1818/required-runtime-cli-no-op",
+    "preservedFirstFailureRefs": [
+        "evidence://1818/required-runtime-cli-no-op",
+        "evidence://1818/runtime-candidate-digest-unbound",
+        "evidence://1818/reviewer-write-policy-request-bypass",
+        "evidence://1818/test-owner-profile-request-bypass"
+    ],
+    "testContractHistory": [
+        {
+            "revision": 0,
+            "testContractDigest": "0ae08b1972250eaa1db93093fbab30682b131abf59abf2635c3011ef294722c5",
+            "frozenTestTreeDigest": "8fe5f8ce194ebbefd239e78355333134b8a305242581dbc531df53534fbeab7d",
+            "visibleTestMatrixDigest": "913d378aeafcfb57ecdd85b64f2cbeca382a44ecd016c1502eaf2e8912650d4e"
+        },
+        {
+            "revision": 1,
+            "testContractDigest": "0d22f09055f7a54a4afbe60c6459ae03584f76149618123eb4b7b2001eff4fa7",
+            "frozenTestTreeDigest": "f3be52a64924aaf96b6c12bfaf88bb5b6bff24cf7d517f7aa5da332614e3fe31",
+            "visibleTestMatrixDigest": "0b945525a9978fd52dc91f181a0cfa83f930ddf3beb11c561b54ccb5cacddf83"
+        },
+        {
+            "revision": 2,
+            "testContractDigest": "eb5e643dd32ae0362b4eee0831cff555fb588a68163d5e2388f327bb36283c77",
+            "frozenTestTreeDigest": "040afeed690535264e36e320bb9fd9e655137ee26627d43235d0415c6be7944e",
+            "visibleTestMatrixDigest": "229d41adb431124807fd012140ca6b92ce85673142dd5b89423fff494b9a8027"
+        },
+        {
+            "revision": 3,
+            "testContractDigest": "559f083517950356982681d3c264c8471659a49ef00e3b2c5681e15fff54841f",
+            "frozenTestTreeDigest": "496bf139c6e26acd628d2bd012f8f3c3b80e59903000b0840695d2463d404d5c",
+            "visibleTestMatrixDigest": "d85a0b40b47f7767cbdd88ba67328c3bd26bf479eceac4e6778c1def1ead51f9"
+        },
+        {
+            "revision": 4,
+            "testContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+            "frozenTestTreeDigest": "7d81e658ca18bcd5090c3898da43ad987b09feed67d7b7079c0eeb007afff267",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        },
+        {
+            "revision": 5,
+            "testContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+            "frozenTestTreeDigest": "aa4292f1e9910bc7af4ecb98d3d421b4673455f906a7e1a95216586238bd967d",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        }
+    ],
+    "testOwnerId": "test-owner-fsusblog-1818-18c6003eb5ad",
+    "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+    "deliveryBinding": {
+        "epochId": "epoch-1818-003",
+        "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "candidateSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "candidateIdentityRef": "#candidateIdentity"
+    },
+    "deliveryBindingHistory": [
+        {
+            "revision": 4,
+            "epochId": "epoch-1818-001",
+            "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+            "candidateSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "candidateDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+            "testContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+            "frozenTestTreeDigest": "7d81e658ca18bcd5090c3898da43ad987b09feed67d7b7079c0eeb007afff267",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        },
+        {
+            "revision": 5,
+            "epochId": "epoch-1818-002",
+            "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
+            "candidateSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "candidateDigest": "8c40894842241ae87aeaba98bc527e18c84ee800a98929b8e1e63306c1210497",
+            "testContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+            "frozenTestTreeDigest": "aa4292f1e9910bc7af4ecb98d3d421b4673455f906a7e1a95216586238bd967d",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        }
+    ],
+    "allowedTestPaths": [
+        "tests/tools/issue-orchestration-dispatch-receipt.test.mjs",
+        "tests/fixtures/issue-orchestration/dispatch-receipt-acceptance-map.json",
+        "tests/fixtures/issue-orchestration/dispatch-receipt-expected-initial-failures.json",
+        "tests/fixtures/issue-orchestration/dispatch-receipt-mutation-controls.json",
+        "tests/fixtures/issue-orchestration/dispatch-receipt-runtime-probes.json",
+        "tests/fixtures/issue-orchestration/dispatch-receipt-test-contract.json"
+    ],
+    "minimalImplementationPaths": [
+        "skills/issue-orchestration/scripts/dispatch-receipt.mjs"
+    ],
+    "satisfiedBaseDependencies": [
+        {
+            "issue": "Ozwasyd/FsusBlog#1817",
+            "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
+            "status": "satisfied-by-base",
+            "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
+        }
+    ],
+    "documentationStageBinding": {
+        "stage": "documentation",
+        "candidateImplementation": false,
+        "paths": [
+            "CHANGELOG.md",
+            "docs/development/issue-orchestration-scope.md",
+            "docs/troubleshooting.md"
+        ]
+    },
+    "visibleTestMatrix": [
+        {
+            "id": "dispatch-receipt-focused",
+            "kind": "test",
+            "required": true,
+            "command": ["node", "--test", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-runtime-cli-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P10 verify-runtime CLI", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-candidate-digest-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P15 candidateDigest", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-reviewer-write-policy-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P16 reviewer workspace-write", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-test-owner-profile-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P17 test-owner unsafe profile", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-dag-profile-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P18 non-root DAG unsafe profile", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-ui-design-authority-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P19 FsusBlog UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "dispatch-secret-observation-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P20 credential-bearing runtime observation", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "ledger-universal-dispatch-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P21 ordinary frozen contract cannot start", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "ledger-universal-self-test-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P22 ordinary frozen contract rejects", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "self-test-evidence-binding-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P23 self-test receipt digest binds", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "self-test-dispatch-binding-negative",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "--test", "--test-name-pattern", "^P24 self-test verifier rejects", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "event-ledger-receipt-regression",
+            "kind": "test",
+            "required": true,
+            "command": ["node", "--test", "tests/tools/issue-orchestration-event-ledger.test.mjs"]
+        },
+        {
+            "id": "ready-frontier-runtime-regression",
+            "kind": "test",
+            "required": true,
+            "command": ["node", "--test", "tests/tools/issue-orchestration-ready-frontier.test.mjs"]
+        },
+        {
+            "id": "dispatch-receipt-syntax",
+            "kind": "typecheck",
+            "required": true,
+            "command": ["node", "--check", "skills/issue-orchestration/scripts/dispatch-receipt.mjs"]
+        },
+        {
+            "id": "dispatch-receipt-style",
+            "kind": "lint",
+            "required": true,
+            "command": ["node", "tools/style/check-native-tooling-style.mjs", "--operation", "lint", "--mode", "changed", "--domain", "scripts", "--file", "skills/issue-orchestration/scripts/dispatch-receipt.mjs", "--file", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+        },
+        {
+            "id": "implementer-runtime-rollout-probe",
+            "kind": "probe",
+            "required": true,
+            "command": ["node", "skills/issue-orchestration/scripts/dispatch-receipt.mjs", "verify-runtime", "--request", "<state-root>/requests/<request-id>.json", "--rollout", "<runtime-rollout-jsonl>", "--machine-observations", "<state-root>/observations/<request-id>.json"]
+        }
+    ],
+    "lintTypecheckBuildPolicy": {
+        "lint": "required",
+        "typecheck": "required-node-syntax",
+        "build": "not-applicable-no-build-artifact"
+    },
+    "frozenTestTree": {
+        "algorithm": "sha256(canonical-json(sorted(path,sha256)))",
+        "manifestExcluded": "tests/fixtures/issue-orchestration/dispatch-receipt-test-contract.json",
+        "files": [
+            {
+                "path": "tests/fixtures/issue-orchestration/dispatch-receipt-acceptance-map.json",
+                "sha256": "b19264a4f5a3ff86fa898a5ca252ef717e4188a8e96e9550352f7b08ee9b54a4"
+            },
+            {
+                "path": "tests/fixtures/issue-orchestration/dispatch-receipt-expected-initial-failures.json",
+                "sha256": "5ab16808f5ae0f6e2a760fa282b01c3b33180af018f6bd1f59a4d7db776e41f7"
+            },
+            {
+                "path": "tests/fixtures/issue-orchestration/dispatch-receipt-mutation-controls.json",
+                "sha256": "ea74dccc894f6b2ed46760d0568df022ee89d1162670816b43fda9dcc6066246"
+            },
+            {
+                "path": "tests/fixtures/issue-orchestration/dispatch-receipt-runtime-probes.json",
+                "sha256": "7a484116a4c8aa3ee5a1b523d8332cbe26736081360a91885c45bf1e967dcedb"
+            },
+            {
+                "path": "tests/tools/issue-orchestration-dispatch-receipt.test.mjs",
+                "sha256": "af034662fd09db7902f11133021793ff3ec61b4bc0d7ca5c647e7432ee17109e"
+            }
+        ],
+        "digest": "fc53c748800a2bed4f9ce0771b39d2f04208a677cefcf7cffaa5ba2c1a907b2a"
+    },
+    "visibleTestMatrixDigest": "578b30bf5cdc3a1719ae526be69176c10882dbb02271b704fb43269224820044",
+    "testContractDigest": "f2980f1ae2dd28cb33f894b2dc0ebf598fc26fdd44bc89036d2ccdb63430acb1",
+    "candidateIdentity": {
+        "schema": "issue-orchestration.candidate-identity.v1",
+        "algorithm": "sha256-canonical-json-v1",
+        "policy": "two-stage-no-self-reference",
+        "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "candidateSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "testContractDigest": "f2980f1ae2dd28cb33f894b2dc0ebf598fc26fdd44bc89036d2ccdb63430acb1",
+        "implementationFiles": [
+            {
+                "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+                "sha256": "e6c26a2b16e145379689edbedc4ef21e52e517808ad34731b25b2f33beb7b833",
+                "gitMode": "100644"
+            }
+        ],
+        "candidateDigest": "4995c6bb21abd1013591c39b421531bb4240ec5b07641ae4cc7e81d3814e9542"
+    }
+}

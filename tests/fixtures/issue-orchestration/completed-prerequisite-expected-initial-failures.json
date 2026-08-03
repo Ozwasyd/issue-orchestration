@@ -1,0 +1,41 @@
+{
+  "schema": "issue-orchestration.completed-prerequisite-expected-initial-failures.v1",
+  "baseSha": "8940042d5c6d70305182e7bb0e24c34b5ac83621",
+  "expectedStatus": "red",
+  "expectedExitCode": 1,
+  "expectedSummary": {
+    "tests": 54,
+    "passed": 5,
+    "failed": 49,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "failureClasses": [
+    {
+      "id": "v2-schema-unsupported",
+      "observedCode": "dag-schema",
+      "appliesTo": "All v2 positive and mutation cases except the v1 cases",
+      "meaning": "The base gate accepts only issue-orchestration.dag.v1."
+    },
+    {
+      "id": "valid-v1-still-dispatches",
+      "observedCode": null,
+      "observedDispatchEnabled": true,
+      "appliesTo": "P07",
+      "meaning": "The base gate still treats a valid v1 DAG as dispatchable."
+    },
+    {
+      "id": "v1-placeholder-not-rebuild-classified",
+      "observedCode": "dependency-missing",
+      "appliesTo": "legacy-v1-placeholder",
+      "meaning": "The base gate diagnoses the missing node instead of requiring a remote/evidence rebuild."
+    }
+  ],
+  "passingControls": [
+    "mutation catalog and executable controls are exact-set equal",
+    "LIVE live-fsusblog-completed",
+    "LIVE live-fsusui-completed",
+    "LIVE live-open-is-not-completed",
+    "LIVE open issue is not completed"
+  ]
+}

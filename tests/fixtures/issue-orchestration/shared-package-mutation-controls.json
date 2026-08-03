@@ -1,0 +1,66 @@
+{
+  "schema": "issue-orchestration.shared-package-mutation-controls.v1",
+  "issue": "Ozwasyd/FsusBlog#1823",
+  "controls": [
+    {
+      "id": "N01-repo-local-skill-coexists",
+      "requiredCode": "repo-local-skill-authority-present",
+      "killedBy": ["P03", "P04"]
+    },
+    {
+      "id": "N02-repo-local-agent-coexists",
+      "requiredCode": "repo-local-agent-authority-present",
+      "killedBy": ["P03", "P04"]
+    },
+    {
+      "id": "N03-retired-role-or-fixed-sol-restored",
+      "requiredCode": "retired-authority-discoverable",
+      "killedBy": ["P03"]
+    },
+    {
+      "id": "N04-manifest-artifact-digest-drift",
+      "requiredCode": "manifest-artifact-drift",
+      "killedBy": ["P02", "P06"]
+    },
+    {
+      "id": "N05-protected-install-target",
+      "requiredCode": "install-target-protected-overlap",
+      "killedBy": ["P07"]
+    },
+    {
+      "id": "N06-half-install-artifact",
+      "requiredCode": "install-transaction-incomplete",
+      "killedBy": ["P05"]
+    },
+    {
+      "id": "N07-installed-hand-edit-overwritten",
+      "requiredCode": "install-target-ownership-drift",
+      "killedBy": ["P06"]
+    },
+    {
+      "id": "N08-cwd-specific-digest-or-agent-drift",
+      "requiredCode": "discovery-identity-drift",
+      "killedBy": ["P04"]
+    },
+    {
+      "id": "N09-root-or-ui-forbidden-profile",
+      "requiredCode": "routing-profile-forbidden",
+      "killedBy": ["P08"]
+    },
+    {
+      "id": "N10-delivery-echo-dispatches-updater",
+      "requiredCode": "projection-only-updater-dispatch-forbidden",
+      "killedBy": ["P08"]
+    },
+    {
+      "id": "N11-runtime-state-written-to-artifact",
+      "requiredCode": "runtime-state-leaked",
+      "killedBy": ["P09"]
+    },
+    {
+      "id": "N12-product-design-facts-copied",
+      "requiredCode": "product-design-copy-present",
+      "killedBy": ["P10"]
+    }
+  ]
+}

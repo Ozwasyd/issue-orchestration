@@ -1,0 +1,118 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-test-contract.v1",
+  "revision": 1,
+  "phase": "test-contract",
+  "status": "frozen-red",
+  "issueId": "Ozwasyd/FsusBlog#1833",
+  "authority": {
+    "kind": "live-issue",
+    "updatedAt": "2026-08-01T13:15:44Z"
+  },
+  "testOwnerId": "test-owner-fsusblog-1833-788737a0-sol-xhigh",
+  "actualProfile": {
+    "model": "gpt-5.6-sol",
+    "effort": "xhigh",
+    "role": "test-owner",
+    "phase": "test-contract"
+  },
+  "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-cases.json",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-test-contract.json"
+  ],
+  "allowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/semantic-runtime-projection.mjs",
+    "skills/issue-orchestration/scripts/scope-selector.mjs",
+    "skills/issue-orchestration/scripts/frontier-compiler.mjs",
+    "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+    "skills/issue-orchestration/scripts/event-ledger.mjs",
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs"
+  ],
+  "implementationPathActions": {
+    "skills/issue-orchestration/scripts/semantic-runtime-projection.mjs": "create"
+  },
+  "forbiddenScopes": [
+    "product code",
+    "tests, fixtures, runtime probes, mutation controls, snapshots, thresholds or acceptance mapping after freeze",
+    "formal documentation during implementation",
+    "DAG or bootstrap runtime state",
+    "other issue artifacts",
+    "telemetry changing correctness policy",
+    "compatibility fallback",
+    "commit, push, issue mutation or delivery"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/semantic-runtime-projection-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/semantic-runtime-projection-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/semantic-runtime-projection-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/semantic-runtime-projection-mutation-controls.json",
+  "visibleTestMatrix": [
+    {
+      "id": "semantic-runtime-focused",
+      "required": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs"
+      ]
+    },
+    {
+      "id": "scope-selector-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-scope-selector.test.mjs"
+      ]
+    },
+    {
+      "id": "ready-frontier-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-ready-frontier.test.mjs"
+      ]
+    },
+    {
+      "id": "event-ledger-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-event-ledger.test.mjs"
+      ]
+    },
+    {
+      "id": "dispatch-receipt-regression",
+      "requiredAfterImplementation": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"
+      ]
+    }
+  ],
+  "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
+  "selfHashPolicy": "fileHashes covers raw bytes of every allowedTestPath except this manifest; frozenTreeDigest covers canonical fileHashes; testContractDigest covers canonical manifest with testContractDigest omitted",
+  "fileHashes": {
+    "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs": "b3536181a0441722a98d38773c12a1c2d10a000c0b1e4c9e420764f60d487b9b",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-cases.json": "39ac4822f09242277accb57e99655006a9b0c73995cdaf7b68fa05bdbd4a80e0",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-acceptance-map.json": "d9a8e63ba58212adabffa196d46f76eef1d95bacf6eb3c0c1ec89895ecfafece",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-expected-initial-failures.json": "cf192235e94527d52a190ac63e708689264bc99bc8ba3cf0918ab81af04db226",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-runtime-probes.json": "8faa4c7c7fefddd95861d2acc586f6bed3025d04a603242ef25f659d32161457",
+    "tests/fixtures/issue-orchestration/semantic-runtime-projection-mutation-controls.json": "a1c9de193b4f2b87767fa088086953010d99c837418a0a7d5e34a56ae5c86de5"
+  },
+  "frozenTreeDigest": "3b620d4b84f461820a51caa55f036b35dfd9189dc688267b1bf232aba6ed9ddf",
+  "expectedBaseSummary": {
+    "tests": 33,
+    "pass": 1,
+    "fail": 32,
+    "skipped": 0
+  },
+  "testContractDigest": "33448d24e9b7f100956d12c04a4b4b016f37883041f83af9b7a15e25a109ff21"
+}

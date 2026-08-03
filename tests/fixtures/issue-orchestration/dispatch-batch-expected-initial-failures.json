@@ -1,0 +1,60 @@
+{
+    "schema": "issue-orchestration.dispatch-batch-expected-initial-failures.v1",
+    "contractRevision": 1,
+    "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+    "previousDeliveryEpoch": {
+        "baseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
+        "testTreeDigest": "800ec1cb9fcfc640a5b019190e90df7e7b367128d2e143ee9800371d0b97a37e",
+        "testContractDigest": "374a4fb2ccbcc4ef642fb4d0a2dffde9d9667997949db4b41244e306c130dcfd",
+        "candidateDigest": "54d401ed44ca536cc6178ea96e067a551e6ccedd27fd63be694a56b4601eb4ca",
+        "verifiedSummary": {
+            "tests": 92,
+            "passed": 92,
+            "failed": 0,
+            "cancelled": 0,
+            "skipped": 0
+        }
+    },
+    "previousRevision": {
+        "revision": 0,
+        "baseSha": "0cfb94f0ccd5f0cc74704b129751459c5cc2300e",
+        "testContractDigest": "588acfb637ac0f319344bf63e9134f895fd5a85a08cf323713d297caad6084a8",
+        "expectedStatus": "red",
+        "expectedExitCode": 1,
+        "expectedFailureClass": "dispatch-batch-selector-missing",
+        "expectedDiagnostic": "missing #1820 dispatch batch selector",
+        "expectedSummary": {
+            "tests": 64,
+            "passed": 4,
+            "failed": 60,
+            "cancelled": 0,
+            "skipped": 0
+        }
+    },
+    "expectedStatus": "red",
+    "expectedExitCode": 1,
+    "expectedFailureClasses": [
+        "dispatch-projection-all-fields-absent",
+        "dispatch-frontier-binding-incomplete",
+        "group-proposal-evidence-range",
+        "group-member-order-not-canonical"
+    ],
+    "expectedDiagnostic": "revision-1 executable negatives remain alive against the current candidate",
+    "minimalAllowedImplementationPaths": [
+        "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs",
+        "skills/issue-orchestration/scripts/check-dag-gate.mjs"
+    ],
+    "expectedSummary": {
+        "tests": 92,
+        "passed": 63,
+        "failed": 29,
+        "cancelled": 0,
+        "skipped": 0
+    },
+    "passingControls": [
+        "contract fixtures cover every acceptance and mutation identity",
+        "FsusUI 267-279 dependency sample is exact and owner-surface evidence is explicit",
+        "runtime probes and resource observation are frozen",
+        "revision-0 digest and RED summary remain preserved"
+    ]
+}

@@ -1,0 +1,44 @@
+{
+  "issue": "Ozwasyd/FsusBlog#1826",
+  "sourceOwner": "skills/issue-orchestration/scripts/telemetry.mjs",
+  "testOwner": "tests/tools/issue-orchestration-telemetry.test.mjs",
+  "schemas": [
+    "issue-orchestration.telemetry-event.v2",
+    "issue-orchestration.run-summary.v2",
+    "issue-orchestration.model-pool-summary.v1",
+    "issue-orchestration.acceptance-group-summary.v1",
+    "issue-orchestration.dag-update-summary.v1",
+    "issue-orchestration.landing-summary.v1",
+    "issue-orchestration.human-decision-summary.v1",
+    "issue-orchestration.slice-execution-summary.v1",
+    "issue-orchestration.execution-shape-summary.v1",
+    "issue-orchestration.checkpoint-continuation-summary.v1"
+  ],
+  "derivation": {
+    "input": "verified producer-agnostic source projections",
+    "ordering": "unicode-code-unit",
+    "durationUnit": "milliseconds",
+    "median": "middle value or arithmetic mean of the two middle values",
+    "p95": "nearest-rank",
+    "emptyObservation": "not-observed"
+  },
+  "privacyAllowlist": true,
+  "forbiddenStoredContent": [
+    "raw prompt",
+    "issue body",
+    "source diff",
+    "command output",
+    "human free text",
+    "secret",
+    "PII",
+    "chain-of-thought"
+  ],
+  "forbiddenPolicyMutations": [
+    "model routing",
+    "DAG",
+    "slice plan",
+    "human policy",
+    "landing policy",
+    "resource lifecycle"
+  ]
+}

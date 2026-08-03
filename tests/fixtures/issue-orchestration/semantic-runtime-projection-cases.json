@@ -1,0 +1,355 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-cases.v1",
+  "issue": "Ozwasyd/FsusBlog#1833",
+  "selector": {
+    "schema": "issue-orchestration.scope-selector.v1",
+    "selectorVersion": "fsusblog-codex-control-plane.v1",
+    "type": "label-query",
+    "repositories": [
+      "Ozwasyd/FsusBlog"
+    ],
+    "statePolicy": {
+      "open": "include",
+      "closed": "retain-completed-tombstone",
+      "reopen": "restore-active"
+    },
+    "parameters": {
+      "labels": [
+        "area:tooling"
+      ],
+      "match": "all",
+      "states": [
+        "OPEN",
+        "CLOSED"
+      ]
+    },
+    "selectorRelevantLabels": [
+      "area:tooling",
+      "confirmed-defect"
+    ],
+    "remoteQueryIdentity": "Ozwasyd/FsusBlog:area-tooling"
+  },
+  "remoteBefore": {
+    "schema": "issue-orchestration.remote-mutation-snapshot.v1",
+    "issues": [
+      {
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1819,
+        "state": "OPEN",
+        "stateReason": null,
+        "title": "model pool authority",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "labels": [
+          "area:tooling",
+          "delivery:active"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1817"
+          ],
+          "owner": "orchestration",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceGroup": null
+        }
+      },
+      {
+        "issueId": "Ozwasyd/FsusBlog#1833",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1833,
+        "state": "OPEN",
+        "stateReason": null,
+        "title": "semantic and runtime projection",
+        "body": "Depends on: #1819\nOwner: orchestration\nContract: semantic-runtime.v1",
+        "labels": [
+          "area:tooling",
+          "confirmed-defect"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1819"
+          ],
+          "owner": "orchestration",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "acceptanceGroup": null
+        }
+      }
+    ],
+    "runtime": {
+      "completed": [],
+      "active": [
+        "Ozwasyd/FsusBlog#1819"
+      ],
+      "blocked": [
+        "Ozwasyd/FsusBlog#1833"
+      ],
+      "availableSlots": 1,
+      "leases": [],
+      "epochId": "epoch-0",
+      "candidateCommits": {},
+      "deliveryCommits": {},
+      "cleanup": {}
+    }
+  },
+  "remoteAfterExpectedDelivery": {
+    "schema": "issue-orchestration.remote-mutation-snapshot.v1",
+    "issues": [
+      {
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1819,
+        "state": "CLOSED",
+        "stateReason": "completed",
+        "title": "model pool authority",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "labels": [
+          "area:tooling",
+          "delivery:complete"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [
+          {
+            "id": "completion-1819",
+            "kind": "delivery",
+            "bodyDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          }
+        ],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1817"
+          ],
+          "owner": "orchestration",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceGroup": null
+        }
+      },
+      {
+        "issueId": "Ozwasyd/FsusBlog#1833",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1833,
+        "state": "OPEN",
+        "stateReason": null,
+        "title": "semantic and runtime projection",
+        "body": "Depends on: #1819\nOwner: orchestration\nContract: semantic-runtime.v1",
+        "labels": [
+          "area:tooling",
+          "confirmed-defect"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1819"
+          ],
+          "owner": "orchestration",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "acceptanceGroup": null
+        }
+      }
+    ],
+    "runtime": {
+      "completed": [
+        "Ozwasyd/FsusBlog#1819"
+      ],
+      "active": [],
+      "blocked": [],
+      "availableSlots": 1,
+      "leases": [],
+      "epochId": "epoch-1",
+      "candidateCommits": {
+        "Ozwasyd/FsusBlog#1819": "1111111111111111111111111111111111111111"
+      },
+      "deliveryCommits": {
+        "Ozwasyd/FsusBlog#1819": "2222222222222222222222222222222222222222"
+      },
+      "cleanup": {
+        "Ozwasyd/FsusBlog#1819": "resources-clean"
+      }
+    }
+  },
+  "remoteAfterUnexpectedSemanticChange": {
+    "schema": "issue-orchestration.remote-mutation-snapshot.v1",
+    "issues": [
+      {
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1819,
+        "state": "OPEN",
+        "stateReason": null,
+        "title": "model pool authority",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "labels": [
+          "area:tooling",
+          "delivery:active"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1817"
+          ],
+          "owner": "orchestration",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "acceptanceGroup": null
+        }
+      },
+      {
+        "issueId": "Ozwasyd/FsusBlog#1833",
+        "repository": "Ozwasyd/FsusBlog",
+        "number": 1833,
+        "state": "OPEN",
+        "stateReason": null,
+        "title": "semantic and runtime projection",
+        "body": "Depends on: #1819, #1829\nOwner: orchestration-v2\nContract: semantic-runtime.v2",
+        "labels": [
+          "area:tooling",
+          "confirmed-defect"
+        ],
+        "milestone": null,
+        "confirmedDefectAdmission": true,
+        "comments": [
+          {
+            "id": "semantic-1833",
+            "kind": "semantic",
+            "bodyDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        ],
+        "semanticFacts": {
+          "dependencies": [
+            "Ozwasyd/FsusBlog#1819",
+            "Ozwasyd/FsusBlog#1829"
+          ],
+          "owner": "orchestration-v2",
+          "conflictKeys": [
+            "issue-orchestration"
+          ],
+          "contractDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "acceptanceGroup": "control-plane-cutover"
+        }
+      }
+    ],
+    "runtime": {
+      "completed": [],
+      "active": [
+        "Ozwasyd/FsusBlog#1819"
+      ],
+      "blocked": [
+        "Ozwasyd/FsusBlog#1833"
+      ],
+      "availableSlots": 1,
+      "leases": [],
+      "epochId": "epoch-0",
+      "candidateCommits": {},
+      "deliveryCommits": {},
+      "cleanup": {}
+    }
+  },
+  "semanticGraphInput": {
+    "nodes": [
+      {
+        "id": "Ozwasyd/FsusBlog#1819",
+        "owner": "orchestration",
+        "dependencyKeys": [],
+        "conflictKeys": [
+          "issue-orchestration"
+        ],
+        "riskClass": "authority",
+        "uiClass": "none",
+        "acceptanceGroup": null,
+        "contractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "id": "Ozwasyd/FsusBlog#1833",
+        "owner": "orchestration",
+        "dependencyKeys": [
+          "Ozwasyd/FsusBlog#1819"
+        ],
+        "conflictKeys": [
+          "issue-orchestration"
+        ],
+        "riskClass": "authority",
+        "uiClass": "none",
+        "acceptanceGroup": null,
+        "contractDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    ]
+  },
+  "expectedRemoteMutations": {
+    "schema": "issue-orchestration.expected-remote-mutations.v1",
+    "runId": "fsusblog-1833-contract",
+    "entries": [
+      {
+        "type": "completion-comment",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "commentDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "type": "state-transition",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "from": "OPEN",
+        "to": "CLOSED"
+      },
+      {
+        "type": "state-reason",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "from": null,
+        "to": "completed"
+      },
+      {
+        "type": "label-change",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "added": [
+          "delivery:complete"
+        ],
+        "removed": [
+          "delivery:active"
+        ]
+      }
+    ]
+  },
+  "ledgerBefore": {
+    "schema": "issue-orchestration.immutable-runtime-ledger.v1",
+    "events": []
+  },
+  "ledgerAfterCompletion": {
+    "schema": "issue-orchestration.immutable-runtime-ledger.v1",
+    "events": [
+      {
+        "eventId": "delivery-1819",
+        "eventType": "delivery.completed",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "commit": "2222222222222222222222222222222222222222"
+      },
+      {
+        "eventId": "cleanup-1819",
+        "eventType": "cleanup.completed",
+        "issueId": "Ozwasyd/FsusBlog#1819",
+        "status": "resources-clean"
+      }
+    ]
+  }
+}

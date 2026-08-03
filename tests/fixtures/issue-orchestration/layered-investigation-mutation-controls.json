@@ -1,0 +1,197 @@
+{
+  "schema": "issue-orchestration.layered-investigation-mutation-controls.v1",
+  "controls": [
+    {
+      "id": "root-constructs-scope",
+      "surface": "projection",
+      "expectedCode": "selector-receipt-mismatch",
+      "acceptanceIds": ["SCOPE-01", "ROLE-01"]
+    },
+    {
+      "id": "dag-agent-writes-dispatch-investigation",
+      "surface": "transition",
+      "expectedCode": "dag-agent-dispatch-authority-forbidden",
+      "acceptanceIds": ["ROLE-02"]
+    },
+    {
+      "id": "test-owner-writes-classification",
+      "surface": "transition",
+      "expectedCode": "test-owner-semantic-authority-forbidden",
+      "acceptanceIds": ["ROLE-03"]
+    },
+    {
+      "id": "discovery-agent-writes-ready",
+      "surface": "transition",
+      "expectedCode": "investigation-transition-authority",
+      "acceptanceIds": ["ROLE-04"]
+    },
+    {
+      "id": "classified-node-dispatched-to-implementer",
+      "surface": "prompt",
+      "expectedCode": "test-contract-disputed",
+      "acceptanceIds": ["PHASE-02", "PROMPT-01"]
+    },
+    {
+      "id": "placeholder-code-path",
+      "surface": "projection",
+      "expectedCode": "placeholder-path-forbidden",
+      "acceptanceIds": ["SCHEMA-02"]
+    },
+    {
+      "id": "empty-not-applicable-reason",
+      "surface": "projection",
+      "expectedCode": "invalid-not-applicable-reason",
+      "acceptanceIds": ["SCHEMA-03"]
+    },
+    {
+      "id": "affected-comment-reuses-classification",
+      "surface": "freshness",
+      "expectedCode": "issue-facts-stale",
+      "acceptanceIds": ["FRESH-02"]
+    },
+    {
+      "id": "base-reuses-dispatch-investigation",
+      "surface": "freshness",
+      "expectedCode": "base-drift",
+      "acceptanceIds": ["FRESH-03"]
+    },
+    {
+      "id": "agents-digest-reuses-dispatch-investigation",
+      "surface": "freshness",
+      "expectedCode": "instruction-drift",
+      "acceptanceIds": ["FRESH-04"]
+    },
+    {
+      "id": "current-doc-reuses-dispatch-investigation",
+      "surface": "freshness",
+      "expectedCode": "current-doc-drift",
+      "acceptanceIds": ["FRESH-04"]
+    },
+    {
+      "id": "legacy-full-investigation-schema",
+      "surface": "projection",
+      "expectedCode": "legacy-investigation-schema-forbidden",
+      "acceptanceIds": ["SCHEMA-01"]
+    },
+    {
+      "id": "prompt-missing-counterexample",
+      "surface": "prompt",
+      "expectedCode": "test-contract-disputed",
+      "acceptanceIds": ["PROMPT-01"]
+    },
+    {
+      "id": "prompt-missing-test-command",
+      "surface": "prompt",
+      "expectedCode": "test-contract-disputed",
+      "acceptanceIds": ["PROMPT-01"]
+    },
+    {
+      "id": "full-scope-reinvestigated-without-drift",
+      "surface": "projection",
+      "expectedCode": "investigation-reuse-violated",
+      "acceptanceIds": ["FRESH-01", "SCALE-01"]
+    },
+    {
+      "id": "priority-changes-with-array-order",
+      "surface": "validation",
+      "expectedCode": "investigation-projection-mismatch",
+      "acceptanceIds": ["QUEUE-01"]
+    },
+    {
+      "id": "ready-work-suppressed-by-future-investigation",
+      "surface": "scheduling",
+      "expectedCode": "dispatch-work-conservation",
+      "acceptanceIds": ["QUEUE-02", "SCALE-02"]
+    },
+    {
+      "id": "group-evidence-replaces-member-contract",
+      "surface": "projection",
+      "expectedCode": "member-investigation-required",
+      "acceptanceIds": ["GROUP-01"]
+    },
+    {
+      "id": "starvation-without-owner",
+      "surface": "projection",
+      "expectedCode": "investigation-starvation-unowned",
+      "acceptanceIds": ["QUEUE-03"]
+    },
+    {
+      "id": "implementer-fills-contract-gap",
+      "surface": "transition",
+      "expectedCode": "test-contract-disputed",
+      "acceptanceIds": ["ROLE-05", "PROMPT-01"]
+    },
+    {
+      "id": "gate-validator-import-only",
+      "surface": "integration",
+      "expectedCode": "gate-investigation-validator-not-called",
+      "acceptanceIds": ["INTEGRATION-01"]
+    },
+    {
+      "id": "bracket-legacy-fallback",
+      "surface": "integration",
+      "expectedCode": "legacy-investigation-fallback-forbidden",
+      "acceptanceIds": ["COMPAT-01"]
+    },
+    {
+      "id": "legacy-node-compat-accepted",
+      "surface": "frontier",
+      "expectedCode": "legacy-investigation-schema-forbidden",
+      "acceptanceIds": ["COMPAT-01"]
+    },
+    {
+      "id": "discovered-phase-rejected",
+      "surface": "projection",
+      "expectedCode": "discovered-phase-unreachable",
+      "acceptanceIds": ["PHASE-03"]
+    },
+    {
+      "id": "root-authored-investigation-layer",
+      "surface": "projection",
+      "expectedCode": "investigation-layer-authority",
+      "acceptanceIds": ["TRUST-01"]
+    },
+    {
+      "id": "arbitrary-layer-digest",
+      "surface": "projection",
+      "expectedCode": "investigation-layer-digest-mismatch",
+      "acceptanceIds": ["TRUST-02"]
+    },
+    {
+      "id": "nonexistent-evidence-path",
+      "surface": "projection",
+      "expectedCode": "path-missing",
+      "acceptanceIds": ["TRUST-02", "SCHEMA-02"]
+    },
+    {
+      "id": "implementation-task-missing-required-bindings",
+      "surface": "prompt",
+      "expectedCode": "implementation-task-incomplete",
+      "acceptanceIds": ["PROMPT-02"]
+    },
+    {
+      "id": "test-owner-runtime-identity-drift",
+      "surface": "transition",
+      "expectedCode": "test-owner-runtime-identity",
+      "acceptanceIds": ["ROLE-06"]
+    },
+    {
+      "id": "code-digest-drift-reused",
+      "surface": "freshness",
+      "expectedCode": "owner-code-drift",
+      "acceptanceIds": ["FRESH-05"]
+    },
+    {
+      "id": "test-digest-drift-reused",
+      "surface": "freshness",
+      "expectedCode": "test-entry-drift",
+      "acceptanceIds": ["FRESH-05"]
+    },
+    {
+      "id": "deep-member-dual-dispatched",
+      "surface": "scheduling",
+      "expectedCode": "investigation-action-duplicate",
+      "acceptanceIds": ["SCALE-03"]
+    }
+  ]
+}

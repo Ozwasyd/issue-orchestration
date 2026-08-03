@@ -1,0 +1,154 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-acceptance-map.v1",
+  "issue": "Ozwasyd/FsusBlog#1833",
+  "authority": {
+    "kind": "live-issue",
+    "updatedAt": "2026-08-01T13:15:44Z"
+  },
+  "acceptance": [
+    {
+      "id": "LAYER-01",
+      "requirement": "semanticGraph and runtimeProjection use independent schemas, validators, digests and persisted files; neither object accepts fields owned by the other layer.",
+      "tests": [
+        "P01",
+        "P09"
+      ],
+      "mutations": [
+        "N05-projector-modifies-semantic-edge",
+        "N17-runtime-projection-embeds-graph-patch"
+      ]
+    },
+    {
+      "id": "DIGEST-01",
+      "requirement": "scopeDigest, semanticGraphInputDigest and runtimeProjectionDigest cover only their declared facts and remain canonical under irrelevant ordering.",
+      "tests": [
+        "P02"
+      ],
+      "mutations": [
+        "N18-three-layer-digest-alias"
+      ]
+    },
+    {
+      "id": "MUTATION-01",
+      "requirement": "Completion comment, completed close and declared delivery-label changes are reconciled against one sealed expected mutation registry and classified projection-only.",
+      "tests": [
+        "P03",
+        "P04",
+        "P12"
+      ],
+      "mutations": [
+        "N01-completion-close-dispatches-updater",
+        "N04-root-skips-expected-mutation-reconciliation",
+        "N16-expected-mutation-digest-mismatch"
+      ]
+    },
+    {
+      "id": "MUTATION-02",
+      "requirement": "Ready, blocked, slot, lease, epoch, candidate, delivery, cleanup, telemetry and resource changes update runtimeProjection only and never dispatch a DAG updater.",
+      "tests": [
+        "P05",
+        "P13"
+      ],
+      "mutations": [
+        "N02-runtime-digest-treated-as-semantic",
+        "N06-local-failure-dispatches-updater"
+      ]
+    },
+    {
+      "id": "SEMANTIC-01",
+      "requirement": "Unexpected dependency, owner, conflict, contract or acceptance-group changes select semantic-patch and authorize exactly one fresh read-only DAG updater.",
+      "tests": [
+        "P06"
+      ],
+      "mutations": [
+        "N14-semantic-patch-without-exactly-one-dispatch"
+      ]
+    },
+    {
+      "id": "PATCH-01",
+      "requirement": "Ordinary semantic updates accept only minimal base-bound patches with allowed operations, direct evidence digests, a recomputable result digest and no embedded full graph.",
+      "tests": [
+        "P07"
+      ],
+      "mutations": [
+        "N07-patch-base-digest-mismatch",
+        "N09-root-authored-patch",
+        "N10-ordinary-patch-embeds-full-graph",
+        "N11-patch-operation-not-allowed",
+        "N12-patch-result-digest-mismatch"
+      ]
+    },
+    {
+      "id": "FULL-01",
+      "requirement": "Full proposals are limited to initial-create, graph-corruption-recovery and explicit scope-replacement, with machine-bound recovery evidence and reason.",
+      "tests": [
+        "P08"
+      ],
+      "mutations": [
+        "N03-ordinary-semantic-update-returns-full",
+        "N08-scope-replacement-without-reason",
+        "N13-graph-corruption-full-without-evidence"
+      ]
+    },
+    {
+      "id": "PROJECTOR-01",
+      "requirement": "The deterministic projector consumes immutable ledger plus semantic graph, does not reinterpret or edit semantic edges/classes, and recomputes completed prerequisites, ready/blocked nodes, critical path, conflicts, leases, slots and frontier.",
+      "tests": [
+        "P04",
+        "P09"
+      ],
+      "mutations": [
+        "N05-projector-modifies-semantic-edge",
+        "N17-runtime-projection-embeds-graph-patch"
+      ]
+    },
+    {
+      "id": "RECEIPT-01",
+      "requirement": "#1832 DAG update decision receipts bind all before/after layer digests, expected-mutation reconciliation, patch/full identities, updater dispatch identity and projector identity with mode-specific nullability.",
+      "tests": [
+        "P10"
+      ],
+      "mutations": [
+        "N14-semantic-patch-without-exactly-one-dispatch",
+        "N16-expected-mutation-digest-mismatch",
+        "N19-dag-decision-receipt-field-omitted"
+      ]
+    },
+    {
+      "id": "TELEMETRY-01",
+      "requirement": "#1826 counters are derived from verified decision receipts and falsePositiveDagDispatchCount is exactly zero.",
+      "tests": [
+        "P11"
+      ],
+      "mutations": [
+        "N15-false-positive-dag-dispatch-count-nonzero"
+      ]
+    },
+    {
+      "id": "AUTHORITY-01",
+      "requirement": "Root may register remote side effects and accept an unchanged updater output, but cannot author, edit or apply a graph patch; projector has no patch authority.",
+      "tests": [
+        "P07",
+        "P09"
+      ],
+      "mutations": [
+        "N09-root-authored-patch",
+        "N05-projector-modifies-semantic-edge"
+      ]
+    },
+    {
+      "id": "BOOTSTRAP-01",
+      "requirement": "One shared semantic/runtime contract has no compatibility fallback: one initial full graph, event append plus projection replay after completion, patch-only ordinary updates and full recovery only for bounded reasons.",
+      "tests": [
+        "P04",
+        "P06",
+        "P08",
+        "P13"
+      ],
+      "mutations": [
+        "N03-ordinary-semantic-update-returns-full",
+        "N06-local-failure-dispatches-updater"
+      ]
+    }
+  ]
+}

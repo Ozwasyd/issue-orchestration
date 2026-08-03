@@ -1,0 +1,142 @@
+{
+    "schema": "issue-orchestration.dispatch-batch-acceptance-map.v1",
+    "issue": "Ozwasyd/FsusBlog#1820",
+    "authorityCommentIds": [5142306910, 5143723173],
+    "acceptance": [
+        {
+            "id": "RANK-01",
+            "requirement": "A versioned machine policy ranks priority, downstream unlock, critical path, starvation, acceptance completion, validation placement, and stable task identity without input-order or issue-number authority.",
+            "tests": ["B01", "B02", "B03", "B04"],
+            "mutations": ["lower-unlock-ranked-first", "issue-number-priority-inversion", "input-order-controls-selection"]
+        },
+        {
+            "id": "STARVE-01",
+            "requirement": "Starvation eventually advances a same-priority eligible task but never crosses an unmet stage or semantic dependency.",
+            "tests": ["B04", "S04"],
+            "mutations": ["starvation-ignored", "starvation-crosses-blocker"]
+        },
+        {
+            "id": "PRIORITY-01",
+            "requirement": "Acceptance-group completion value never outranks a higher-priority or security-critical stage task.",
+            "tests": ["B03", "G04"],
+            "mutations": ["acceptance-group-overrides-p0"]
+        },
+        {
+            "id": "EXACT-01",
+            "requirement": "The selector returns the deterministic maximal safe batch, exactly fills fifteen slots from twenty independent tasks, selects exactly N safe tasks, and never exceeds available slots.",
+            "tests": ["B05", "B06", "B07", "V01"],
+            "mutations": ["twenty-safe-selects-eight", "safe-node-omitted", "slots-exceeded"]
+        },
+        {
+            "id": "CONFLICT-01",
+            "requirement": "Writers sharing an explicit owner/write conflict key or issue worktree write key are never selected together.",
+            "tests": ["C01", "C02"],
+            "mutations": ["conflict-writers-co-selected", "same-worktree-writers-co-selected"]
+        },
+        {
+            "id": "CONFLICT-02",
+            "requirement": "Semantic dependencies and conflict facts remain separate, and conflict keys require investigated evidence rather than path-prefix inference alone.",
+            "tests": ["C03", "C04"],
+            "mutations": ["false-dependency-for-conflict", "conflict-key-path-prefix-only"]
+        },
+        {
+            "id": "RESOURCE-01",
+            "requirement": "Active resource leases block only matching explicit keys; a long task occupies only its own slot and resources while unrelated ready tasks continue.",
+            "tests": ["L01", "L02"],
+            "mutations": ["resource-lease-bypassed", "long-task-freezes-unrelated"]
+        },
+        {
+            "id": "STAGE-01",
+            "requirement": "Only legal stage tasks are selectable; DAG agents and tasks with unmet receipt prerequisites cannot fill slots.",
+            "tests": ["S01", "S02", "S04"],
+            "mutations": ["unmet-stage-selected", "dag-agent-selected", "docs-before-ux"]
+        },
+        {
+            "id": "STAGE-02",
+            "requirement": "One issue worktree has at most one writer; ordinary code implementers cannot own UI paths; behavior and UX verifiers remain read-only.",
+            "tests": ["S03", "C02"],
+            "mutations": ["code-role-writes-ui", "verifier-takes-write-lease"]
+        },
+        {
+            "id": "REVIEW-01",
+            "requirement": "A read-only verifier may run beside a nonconflicting writer only against a frozen candidate identity.",
+            "tests": ["S03"],
+            "mutations": ["unstable-candidate-read"]
+        },
+        {
+            "id": "LEASE-01",
+            "requirement": "Every lease binds owner, attempt, acquisition, expiry/recovery rule, key set, and digest; duplicate ownership and tampering fail closed.",
+            "tests": ["L03", "L04"],
+            "mutations": ["lease-digest-tampered", "lease-owner-missing"]
+        },
+        {
+            "id": "LEASE-02",
+            "requirement": "Only the matching attempt releases a lease and an expired lease requires durable recovery evidence before another attempt acquires it.",
+            "tests": ["L04", "L05"],
+            "mutations": ["lease-attempt-release-mismatch", "expired-lease-stolen-without-recovery"]
+        },
+        {
+            "id": "OUTPUT-01",
+            "requirement": "Selected, deferred, structured reasons, blockers, rank components, and batchDigest are independently validated and root cannot reorder or rewrite the machine batch.",
+            "tests": ["B01", "V01", "V02"],
+            "mutations": ["free-text-defer-reason", "batch-digest-forged", "root-reorders-batch"]
+        },
+        {
+            "id": "PRESENCE-01",
+            "requirement": "The six frontier and dispatch fields are one required unit; deleting one is incomplete and deleting all six cannot bypass dispatch validation.",
+            "tests": ["P01"],
+            "mutations": ["frontier-dispatch-unit-absent"]
+        },
+        {
+            "id": "BIND-01",
+            "requirement": "The #1816 verified frontier binds complete conflict, resource, and candidate facts into each dispatch task; deleting a shared conflict cannot make two writers co-selectable.",
+            "tests": ["C05", "C06"],
+            "mutations": [
+                "frontier-binding-conflict-keys-removed",
+                "frontier-binding-conflict-evidence-removed",
+                "frontier-binding-resource-keys-removed",
+                "frontier-binding-resource-evidence-removed",
+                "frontier-binding-candidate-sha-drift",
+                "frontier-binding-candidate-frozen-drift"
+            ]
+        },
+        {
+            "id": "ROOT-01",
+            "requirement": "A root-only delivery action blocks only its repository or explicit keys and does not freeze the other repository or independent stages.",
+            "tests": ["L06"],
+            "mutations": []
+        },
+        {
+            "id": "GROUP-01",
+            "requirement": "A group proposal carries complete qualification evidence and falls back for unrelated members or hidden dependency/order violations.",
+            "tests": ["G01", "G02"],
+            "mutations": ["group-unrelated-members", "group-hidden-dependency"]
+        },
+        {
+            "id": "GROUP-02",
+            "requirement": "A group session occupies a slot only with an active member and cannot reduce work conservation or starve an independent ready task.",
+            "tests": ["G03", "G04"],
+            "mutations": ["group-session-no-active-member", "group-starves-ready-node"]
+        },
+        {
+            "id": "GROUP-03",
+            "requirement": "Group evidence uses finite typed values in bounded ranges, and independent memberOrder is canonical, order-sensitive, and cannot be reversed or replaced by a bogus permutation.",
+            "tests": ["G05", "G06"],
+            "mutations": [
+                "group-evidence-cold-start-negative",
+                "group-evidence-cold-start-unit-bogus",
+                "group-evidence-lost-parallelism-negative",
+                "group-evidence-lost-parallelism-out-of-range",
+                "group-evidence-lost-parallelism-unit-bogus",
+                "group-member-order-reversed",
+                "group-member-order-bogus"
+            ]
+        },
+        {
+            "id": "SAMPLE-01",
+            "requirement": "The live-bound FsusUI 267-279 sample preserves its explicit dependencies, investigated owner surfaces, P0/P1/P2 facts, ready stage set, writer conflict, and explainable maximal batch.",
+            "tests": ["F01", "F02"],
+            "mutations": []
+        }
+    ]
+}

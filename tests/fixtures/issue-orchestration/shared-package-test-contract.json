@@ -1,0 +1,147 @@
+{
+  "schema": "issue-orchestration.shared-package-test-contract.v1",
+  "phase": "test-contract",
+  "status": "frozen-red",
+  "issueId": "Ozwasyd/FsusBlog#1823",
+  "authority": {
+    "kind": "authoritative-issue-body",
+    "updatedAt": "2026-08-01T13:16:31Z"
+  },
+  "testOwnerId": "test-owner-fsusblog-1823-d98bed01",
+  "baseSha": "d98bed01a76fcca5dc1657e63886b8da48ce346d",
+  "groupId": null,
+  "pipeline": "ordinary-serial",
+  "ciPolicy": "out-of-scope-no-ci",
+  "dependencyBindings": [
+    {
+      "issue": "Ozwasyd/FsusBlog#1815",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-07-31T18:01:50Z",
+      "deliveredCommit": "e6739603601fd58ec4452cdb7876e77901ae48ac"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1816",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-07-31T22:52:07Z",
+      "deliveredCommit": "f99e6091165edc9dba7f2b1314568c3a07b69537"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1817",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-08-01T01:06:40Z",
+      "deliveredCommit": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1818",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-08-01T01:42:48Z",
+      "deliveredCommit": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1819",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-08-01T12:22:33Z",
+      "deliveredCommit": "aff9260d358171d7765e542e56bf18635b328583",
+      "postDeliveryDocumentationCommit": "788737a0ad22003544b2d439df995e1097de0ee2"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1832",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-08-01T14:19:22Z",
+      "deliveredCommit": "d98bed01a76fcca5dc1657e63886b8da48ce346d"
+    },
+    {
+      "issue": "Ozwasyd/FsusBlog#1833",
+      "state": "CLOSED",
+      "stateReason": "completed",
+      "closedAt": "2026-08-01T14:06:59Z",
+      "deliveredCommit": "b62e11f97258de57bd5122e79f3a77992c069bcc",
+      "postDeliveryDocumentationCommit": "d62539b9339558c646d945b43eb012fe0ee3acca"
+    }
+  ],
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-shared-package.test.mjs",
+    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/shared-package-test-contract.json"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json",
+  "allowedImplementationPaths": [
+    "**",
+    ".agents/skills/issue-orchestration/** (removal only)",
+    ".codex/agents/issue-code-implementer.toml (removal only)",
+    ".codex/agents/issue-dag-agent.toml (removal only)",
+    ".codex/agents/issue-documentation-writer.toml (removal only)",
+    ".codex/agents/issue-test-owner.toml (removal only)",
+    ".codex/agents/issue-ui-system-adjudicator.toml (removal only)",
+    ".codex/agents/issue-ui-ux-implementer.toml (removal only)",
+    ".codex/agents/issue-ux-acceptance-verifier.toml (removal only)"
+  ],
+  "forbiddenScopes": [
+    "the six frozen #1823 test/fixture/probe/mutation/acceptance assets after freeze",
+    "product code, UI, product design facts or product runtime",
+    "formal/current documentation, changelog or document lifecycle inventory",
+    "semantic DAG creation/update, bootstrap runner or external orchestration state",
+    "other issues or FsusUI writes",
+    "repo-local alias, fallback, duplicate authoring source or fixed-Sol compatibility authority",
+    "commit, push, issue mutation, comment, close or CI"
+  ],
+  "visibleTestMatrix": [
+    {
+      "id": "shared-package-focused",
+      "required": true,
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-shared-package.test.mjs"
+      ]
+    },
+    {
+      "id": "json-fixtures",
+      "required": true,
+      "command": [
+        "node",
+        "-e",
+        "for (const p of process.argv.slice(1)) JSON.parse(require('node:fs').readFileSync(p, 'utf8'))",
+        "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json",
+        "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json",
+        "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json",
+        "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json",
+        "tests/fixtures/issue-orchestration/shared-package-test-contract.json"
+      ]
+    },
+    {
+      "id": "frozen-path-diff-check",
+      "required": true,
+      "command": ["git", "diff", "--check"]
+    }
+  ],
+  "expectedBaseSummary": {
+    "tests": 11,
+    "pass": 2,
+    "fail": 9,
+    "skipped": 0
+  },
+  "fileHashes": {
+    "tests/tools/issue-orchestration-shared-package.test.mjs": "3a1ca97a165250c36675e56e5bf473ed87e99edbc6d70c65063f31c5f71d6dfd",
+    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json": "f8c24fad0511a0a18972c5ae25b652852985f5500bdfcc3ad6e155bf3254eb4d",
+    "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json": "fcdfa1a9b8e4ba1ca32a792968a2a7f0136cd2f12b140e3d754ebc6996147809",
+    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json": "470704f78df32102345ba296891caa90afe4e10cf722d0e336316a006dace1d0",
+    "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json": "1ae9d2f5b3a368767d7ccec82853accdab511c1777283cfb63b3cddc141ddb6d"
+  },
+  "frozenTreeDigest": "a8e3a1e86f12ae14722af74b6854d0cce9fbbdaa6f4f0af4e4ed005d3d63936c",
+  "hashAlgorithm": "sha256-raw-files-canonical-tree-and-canonical-json-v1",
+  "selfHashPolicy": "fileHashes binds raw bytes for every allowed path except this manifest; frozenTreeDigest binds canonical fileHashes; testContractDigest binds canonical JSON with only testContractDigest omitted",
+  "testContractDigest": "be6b9d3b5fb28f325ac8ce0db2a968ad30a82223244bcd7ec7c86c7b2b4511a2"
+}

@@ -447,6 +447,7 @@ async function gitHead(root) {
 
 export async function runCodexRuntimeCanary({
     projectsRoot,
+    packageRoot = path.resolve(import.meta.dirname, '../../..'),
     fsusBlogRoot,
     fsusUIRoot,
     model = 'gpt-5.6-terra',
@@ -458,8 +459,8 @@ export async function runCodexRuntimeCanary({
         fail('codex-runtime-root-profile')
     }
     const manifest = JSON.parse(await fs.readFile(path.join(
-        fsusBlogRoot,
-        'tools/codex/issue-orchestration-package/manifest.json'
+        packageRoot,
+        'manifest.json'
     ), 'utf8'))
     assertDigest(manifest.manifestDigest, 'codex-runtime-package-binding')
     const policyFiles = [
@@ -469,12 +470,12 @@ export async function runCodexRuntimeCanary({
     ]
     const policyDigest = digest(await Promise.all(policyFiles.map(
         (name) => fs.readFile(path.join(
-            fsusBlogRoot,
-            'tools/codex/issue-orchestration-package/policy',
+            packageRoot,
+            'policy',
             name
         ), 'utf8')
     )))
-    const sourceCommit = await gitHead(fsusBlogRoot)
+    const sourceCommit = await gitHead(packageRoot)
     const codexHome = await fs.mkdtemp(path.join(
         os.tmpdir(),
         'fsusblog-codex-runtime-canary-home-'

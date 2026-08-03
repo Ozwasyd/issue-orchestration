@@ -1,0 +1,82 @@
+{
+  "schema": "issue-orchestration.stage-profile-acceptance-map.v2",
+  "issue": "Ozwasyd/FsusBlog#1819",
+  "authority": {
+    "kind": "merged-issue-body",
+    "updatedAt": "2026-08-01T09:01:42Z"
+  },
+  "acceptance": [
+    {
+      "id": "CLASSIFICATION-01",
+      "requirement": "Every dispatchable node freezes the seven mandatory classification fields plus routingPolicyVersion, validates every published enum, and binds modelRoutingEvidenceDigest.",
+      "tests": ["P01", "P02"],
+      "mutations": []
+    },
+    {
+      "id": "PROFILE-SCHEMA-01",
+      "requirement": "One versioned machine policy and deterministic compiler emit the complete stage profile schema, including allowed pool, default and selected profile, routing authority/input digest, reason, permissions, Skill digests, and capability digest.",
+      "tests": ["P03"],
+      "mutations": []
+    },
+    {
+      "id": "ROOT-DAG-01",
+      "requirement": "Root is exactly Luna/low/normal and cannot choose profiles; DAG defaults to Terra/max, uses Sol/xhigh only for specified conflict/complexity evidence, and reserves Sol/max for a frontier exception.",
+      "tests": ["P04"],
+      "mutations": ["N01-root-sol-rejected"]
+    },
+    {
+      "id": "TEST-OWNER-01",
+      "requirement": "Test-contract and fresh read-only behavior-verification phases use the Sol/high, Terra/max, Sol/xhigh ladder selected from verification and contract evidence; neither phase gains implementation authority.",
+      "tests": ["P05"],
+      "mutations": ["N06-verifier-context-inheritance"]
+    },
+    {
+      "id": "CODE-01",
+      "requirement": "Code bounded, complex, high-risk, and frontier routes are respectively Luna/max, Sol/high, Terra/max, and Sol/xhigh; Sol/medium and Terra/xhigh are forbidden.",
+      "tests": ["P06"],
+      "mutations": ["N02-bounded-terra-without-evidence", "N03-high-risk-luna"]
+    },
+    {
+      "id": "UI-UX-01",
+      "requirement": "Prescribed and bounded-composition UI use Sol/low; layout and interaction judgment use Sol/medium; system-design disputes stop implementation and route to a fresh read-only Sol/high or Sol/xhigh adjudicator.",
+      "tests": ["P07"],
+      "mutations": ["N04-ui-forbidden-model", "N05-ui-dispute-bypasses-adjudicator"]
+    },
+    {
+      "id": "UX-VERIFY-01",
+      "requirement": "UX local, path, and system verification use Sol/medium, Sol/high, and Sol/xhigh in a fresh read-only context without implementation or redesign authority.",
+      "tests": ["P08"],
+      "mutations": []
+    },
+    {
+      "id": "DOC-CLEANUP-01",
+      "requirement": "Documentation uses only Luna/high or Luna/max after behavior and UX prerequisites; cleanup green is issued only by the deterministic machine verifier and no LLM cleanup profile exists.",
+      "tests": ["P09"],
+      "mutations": []
+    },
+    {
+      "id": "SELF-TEST-01",
+      "requirement": "An implementer reaches candidate-green in one attempt with an unchanged frozen test tree; its self-test receipt cannot sign independent behavior or UX acceptance.",
+      "tests": ["P10"],
+      "mutations": ["N07-frozen-test-modified", "N08-internal-red-escalates"]
+    },
+    {
+      "id": "RECLASSIFICATION-01",
+      "requirement": "Only a structured blocker matching the frozen policy can reclassify a route; implementation failures, rework count, balance, telemetry, or human preference cannot change correctness routing, and unavailable capability fails closed.",
+      "tests": ["P11"],
+      "mutations": ["N09-silent-capability-fallback", "N11-telemetry-controls-policy"]
+    },
+    {
+      "id": "CONTINUITY-01",
+      "requirement": "Every acceptance-group member has independent classification, routing, contract, lease, candidate, self-test and fresh verification receipts; continuity never inherits another member's profile, permissions, or verifier context.",
+      "tests": ["P12"],
+      "mutations": ["N10-group-member-inherits-route"]
+    },
+    {
+      "id": "LEGACY-01",
+      "requirement": "Legacy issue-implementer/reviewer aliases, node-local model/effort, implementationProfile/reviewProfile, and the fixed-Sol v1 shared install have no authority or fallback.",
+      "tests": ["P13"],
+      "mutations": ["N12-legacy-fixed-sol-discoverable"]
+    }
+  ]
+}

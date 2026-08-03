@@ -1,0 +1,151 @@
+{
+  "schema": "issue-orchestration.issue-1874-permanent-test-contract.v1",
+  "issue": "Ozwasyd/FsusBlog#1874",
+  "baseSha": "2499db9517ec4e340bb475443c6ec2984203323c",
+  "canonicalRuntimeOwners": {
+    "sliceAndCheckpoint": "skills/issue-orchestration/scripts/executable-slice-compiler.mjs",
+    "writerProgress": "skills/issue-orchestration/scripts/writer-stage-progress.mjs"
+  },
+  "requiredSchemas": [
+    "issue-orchestration.stage-work-plan.v1",
+    "issue-orchestration.executable-slice.v1",
+    "issue-orchestration.compiled-dispatch-prompt.v1",
+    "issue-orchestration.stage-progress-checkpoint.v1",
+    "issue-orchestration.stage-continuation-receipt.v1",
+    "issue-orchestration.slice-terminal-receipt.v1",
+    "issue-orchestration.writer-stage-failure-receipt.v1",
+    "issue-orchestration.writer-stage-retry-authorization.v1"
+  ],
+  "schemaFiles": {
+    "issue-orchestration.stage-work-plan.v1": "contracts/stage-work-plan.schema.json",
+    "issue-orchestration.executable-slice.v1": "contracts/executable-slice.schema.json",
+    "issue-orchestration.compiled-dispatch-prompt.v1": "contracts/compiled-dispatch-prompt.schema.json",
+    "issue-orchestration.stage-progress-checkpoint.v1": "contracts/stage-progress-checkpoint.schema.json",
+    "issue-orchestration.stage-continuation-receipt.v1": "contracts/stage-continuation-receipt.schema.json",
+    "issue-orchestration.slice-terminal-receipt.v1": "contracts/slice-terminal-receipt.schema.json",
+    "issue-orchestration.writer-stage-failure-receipt.v1": "contracts/writer-stage-failure-receipt.schema.json",
+    "issue-orchestration.writer-stage-retry-authorization.v1": "contracts/writer-stage-retry-authorization.schema.json"
+  },
+  "writerStages": [
+    {
+      "stagePhase": "test-contract",
+      "authorizedStageRoles": [
+        "test-owner"
+      ],
+      "requiredOutputs": [
+        "tests-or-fixtures",
+        "commands",
+        "checkpoint"
+      ]
+    },
+    {
+      "stagePhase": "implementation",
+      "authorizedStageRoles": [
+        "code-implementer"
+      ],
+      "requiredOutputs": [
+        "diff",
+        "commands",
+        "checkpoint"
+      ]
+    },
+    {
+      "stagePhase": "ui-implementation",
+      "authorizedStageRoles": [
+        "ui-ux-implementer"
+      ],
+      "requiredOutputs": [
+        "diff",
+        "render-evidence",
+        "checkpoint"
+      ]
+    },
+    {
+      "stagePhase": "documentation",
+      "authorizedStageRoles": [
+        "documentation-writer"
+      ],
+      "requiredOutputs": [
+        "diff-or-verified-no-change-evidence",
+        "checkpoint"
+      ]
+    },
+    {
+      "stagePhase": "landing-conflict-resolution",
+      "authorizedStageRoles": [
+        "code-implementer",
+        "ui-ux-implementer"
+      ],
+      "roleBinding": "member-writer-role-from-authorized-slice",
+      "frozenObservationRole": "landing-owner",
+      "requiredOutputs": [
+        "conflict-mapping",
+        "diff",
+        "checkpoint"
+      ]
+    }
+  ],
+  "writerEvents": [
+    "writer-stage.invocation-failed",
+    "writer-stage.environment-failed",
+    "writer-stage.runtime-capability-missing",
+    "writer-stage.first-action-not-executed",
+    "writer-stage.output-missing",
+    "writer-stage.checkpoint-missing",
+    "writer-stage.receipt-rejected",
+    "writer-stage.retry-authorized"
+  ],
+  "requiredBehavior": [
+    "deterministic-plan-slice-and-compiled-prompt",
+    "whole-issue-dispatch-rejected",
+    "root-authored-prompt-rejected",
+    "real-filesystem-git-and-command-checkpoint",
+    "continuation-resumes-sealed-cursor",
+    "partial-checkpoint-is-not-candidate-green",
+    "output-missing-is-stage-generic-and-terminal",
+    "unchanged-failure-breaker-survives-identity-shell-changes",
+    "retry-requires-substantive-revision-evidence",
+    "no-natural-language-success-or-second-authority"
+  ],
+  "frozenAudit": {
+    "runId": "cdfdbdbe-d901-4482-bafe-c4ba92c17779",
+    "testTreeAlgorithm": "sha256-of-sorted-path-tab-sha256-lines-v1",
+    "testTreeDigest": "8cc16879c64785ebbe40af198eca61318c03792ae783c3e9e2efd3def5576eb4",
+    "freezeReceiptDigest": "48d164c8948e28184fb0cead66eb312337cb274cf446e0f55393dab9c617b494",
+    "verifiedTestContractReceiptDigest": "2d42ae42ca67795845006d2563046f19afba81365a3bd4b474c8f9b69982731e",
+    "sliceTerminalReceiptDigests": {
+      "compiled-dispatch-prompt": "135f0cde2a881bd8c2fa86ad87030ca2c7d4d7441bc91994b365235766f0e357",
+      "progress-checkpoint": "322d1f97b236e1f37132b315cf7ff4ec6ae5c544fe942120a92b21c62ae249da",
+      "writer-stage-failure": "9be188b459dc11d053a98a3f52fd06edbb5712e8b497ab96b44c703ffc19a3f5"
+    },
+    "files": {
+      "tests/tools/issue-orchestration-compiled-dispatch-prompt.test.mjs": {
+        "sha256": "d16cd8ae5bb8443e96843919208d60304143c5f45d7caf4cb9f97bf9c226145f",
+        "expectedInitialRed": {
+          "tests": 8,
+          "pass": 0,
+          "fail": 8,
+          "failureOwner": "skills/issue-orchestration/scripts/executable-slice-compiler.mjs"
+        }
+      },
+      "tests/tools/issue-orchestration-progress-checkpoint.test.mjs": {
+        "sha256": "643ddafe62617c9528c35070e2dc5676adf2363aa7a27ee3f11f541b296a28a8",
+        "expectedInitialRed": {
+          "tests": 8,
+          "pass": 0,
+          "fail": 8,
+          "failureOwner": "skills/issue-orchestration/scripts/executable-slice-compiler.mjs"
+        }
+      },
+      "tests/tools/issue-orchestration-writer-stage-failure.test.mjs": {
+        "sha256": "e21817ba08105239e22fa3408ecc89235963918ccdab3fc66900919ef19ba650",
+        "expectedInitialRed": {
+          "tests": 14,
+          "pass": 0,
+          "fail": 14,
+          "failureOwner": "skills/issue-orchestration/scripts/writer-stage-progress.mjs"
+        }
+      }
+    }
+  }
+}

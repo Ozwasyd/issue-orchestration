@@ -1,0 +1,22 @@
+{
+  "mutationIds": [
+    "N01-runtime-event-dag-updater",
+    "N02-requested-copied-effective",
+    "N03-whole-issue-unsliced",
+    "N04-prompt-missing-first-path",
+    "N05-prose-as-checkpoint",
+    "N06-continuation-restarts",
+    "N07-output-missing-upgrades",
+    "N08-high-risk-single-field-terra",
+    "N09-group-masks-member",
+    "N10-source-commit-unmapped",
+    "N11-force-push",
+    "N12-old-receipt-replay",
+    "N13-ordinary-conflict-asks-human",
+    "N14-authority-conflict-model-decides",
+    "N15-human-decision-direct-green",
+    "N16-human-preference-routing",
+    "N17-cleanup-overwrites-first-failure",
+    "N18-resource-contract-modified"
+  ]
+}

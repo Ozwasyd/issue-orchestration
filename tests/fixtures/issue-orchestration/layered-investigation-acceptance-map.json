@@ -1,0 +1,209 @@
+{
+  "schema": "issue-orchestration.layered-investigation-acceptance-map.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "acceptance": [
+    {
+      "id": "SCHEMA-01",
+      "requirement": "Every member has distinct discoveryFacts, classificationFacts, and dispatchInvestigation layers; the legacy all-nodes-full-investigation schema and fallback are rejected.",
+      "tests": ["L01", "I01"],
+      "mutations": ["legacy-full-investigation-schema"]
+    },
+    {
+      "id": "SCHEMA-02",
+      "requirement": "Dispatch-grade paths are non-placeholder, repository-relative, existing when required, and issue-specific.",
+      "tests": ["L02"],
+      "mutations": ["placeholder-code-path"]
+    },
+    {
+      "id": "SCHEMA-03",
+      "requirement": "Not-applicable values use stable machine reason codes, never empty strings, TODO, N/A, or empty-array padding.",
+      "tests": ["L03"],
+      "mutations": ["empty-not-applicable-reason"]
+    },
+    {
+      "id": "PHASE-01",
+      "requirement": "Discovered and dependency-classified members can remain shallow without code, test, or current-doc paths.",
+      "tests": ["L01", "D01"],
+      "mutations": []
+    },
+    {
+      "id": "PHASE-02",
+      "requirement": "Classification alone cannot produce an implementation prompt; complete current dispatch investigation is mandatory.",
+      "tests": ["L04", "P01"],
+      "mutations": ["classified-node-dispatched-to-implementer"]
+    },
+    {
+      "id": "SCOPE-01",
+      "requirement": "Projection inputs and per-member evidence derive from one versioned selector receipt; root cannot construct or silently rewrite scope.",
+      "tests": ["S01"],
+      "mutations": ["root-constructs-scope"]
+    },
+    {
+      "id": "FRESH-01",
+      "requirement": "Unchanged per-member inputs are reused idempotently and unrelated member drift does not invalidate unaffected layers.",
+      "tests": ["F01"],
+      "mutations": ["full-scope-reinvestigated-without-drift"]
+    },
+    {
+      "id": "FRESH-02",
+      "requirement": "Issue or relevant-comment drift invalidates only the affected member discovery/classification and downstream dispatch layers.",
+      "tests": ["F02"],
+      "mutations": ["affected-comment-reuses-classification"]
+    },
+    {
+      "id": "FRESH-03",
+      "requirement": "Base SHA or delivery-epoch drift invalidates dispatchInvestigation without discarding valid discovery/classification.",
+      "tests": ["F03"],
+      "mutations": ["base-reuses-dispatch-investigation"]
+    },
+    {
+      "id": "FRESH-04",
+      "requirement": "AGENTS, current-doc, owner-code, and test-entry identity drift invalidates the affected dispatchInvestigation.",
+      "tests": ["F04"],
+      "mutations": [
+        "agents-digest-reuses-dispatch-investigation",
+        "current-doc-reuses-dispatch-investigation"
+      ]
+    },
+    {
+      "id": "QUEUE-01",
+      "requirement": "Investigation priority is deterministic and auditable: ready-adjacent, unlocking, critical-path, high-priority, then long-wait.",
+      "tests": ["Q01"],
+      "mutations": ["priority-changes-with-array-order"]
+    },
+    {
+      "id": "QUEUE-02",
+      "requirement": "Machine-ready stage work and free slots are dispatched before background investigation; root cannot suppress ready nodes.",
+      "tests": ["Q02"],
+      "mutations": ["ready-work-suppressed-by-future-investigation"]
+    },
+    {
+      "id": "QUEUE-03",
+      "requirement": "Long-running deep investigation records blockedSince, blocker owner, evidence, and a stable starvation denial.",
+      "tests": ["Q03"],
+      "mutations": ["starvation-without-owner"]
+    },
+    {
+      "id": "ROLE-01",
+      "requirement": "Root scheduler only verifies selector/proposal receipts and manages resources; it cannot author semantic or dispatch investigation facts.",
+      "tests": ["R01"],
+      "mutations": ["root-constructs-scope"]
+    },
+    {
+      "id": "ROLE-02",
+      "requirement": "The Sol/max read-only one-shot DAG agent owns only discovery/classification semantic proposals.",
+      "tests": ["R01"],
+      "mutations": ["dag-agent-writes-dispatch-investigation"]
+    },
+    {
+      "id": "ROLE-03",
+      "requirement": "The Sol/max test owner owns dispatch-grade investigation and may write only the issue test contract paths.",
+      "tests": ["R01"],
+      "mutations": ["test-owner-writes-classification"]
+    },
+    {
+      "id": "ROLE-04",
+      "requirement": "Discovery agents and prose cannot author ready or a legal phase transition.",
+      "tests": ["R01"],
+      "mutations": ["discovery-agent-writes-ready"]
+    },
+    {
+      "id": "ROLE-05",
+      "requirement": "The Sol/low implementer consumes a frozen prompt and returns test-contract-disputed for any owner/design/acceptance gap.",
+      "tests": ["R02"],
+      "mutations": ["implementer-fills-contract-gap"]
+    },
+    {
+      "id": "PROMPT-01",
+      "requirement": "Every implementation prompt is issue-specific, base-bound, receipt-bound, and includes acceptance, counterexamples, commands, probes, mutations, failure classes, and stop conditions.",
+      "tests": ["P01"],
+      "mutations": [
+        "classified-node-dispatched-to-implementer",
+        "prompt-missing-counterexample",
+        "prompt-missing-test-command",
+        "implementer-fills-contract-gap"
+      ]
+    },
+    {
+      "id": "SCALE-01",
+      "requirement": "A 100-node selected scope can dispatch two ready-adjacent test owners without deep-investigating the other 98 nodes.",
+      "tests": ["D01"],
+      "mutations": ["full-scope-reinvestigated-without-drift"]
+    },
+    {
+      "id": "SCALE-02",
+      "requirement": "With at least fifteen eligible stage candidates, fifteen slots stay filled and background investigation cannot starve dispatch.",
+      "tests": ["D02"],
+      "mutations": ["ready-work-suppressed-by-future-investigation"]
+    },
+    {
+      "id": "GROUP-01",
+      "requirement": "Shared indexes may be reused, but every acceptance-group member keeps issue-specific paths, constraints, owner, acceptance map, and investigation digest.",
+      "tests": ["G01"],
+      "mutations": ["group-evidence-replaces-member-contract"]
+    },
+    {
+      "id": "INTEGRATION-01",
+      "requirement": "The executable DAG gate calls validateInvestigationProjection on the current selector-bound projection; importing the symbol without invoking it is insufficient.",
+      "tests": ["I02"],
+      "mutations": ["gate-validator-import-only"]
+    },
+    {
+      "id": "COMPAT-01",
+      "requirement": "Corrected #1816 uses a validated layered projection. Production scripts contain no dot- or bracket-syntax legacy investigation fallback, compile rejects legacy node authority, and direct eligibility without a validated layered projection is never dispatchable.",
+      "tests": ["MIG01"],
+      "mutations": [
+        "bracket-legacy-fallback",
+        "legacy-node-compat-accepted"
+      ]
+    },
+    {
+      "id": "PHASE-03",
+      "requirement": "A discovery-complete node with no classification is a valid reachable discovered phase and is neither test-owner nor implementation dispatchable.",
+      "tests": ["L05"],
+      "mutations": ["discovered-phase-rejected"]
+    },
+    {
+      "id": "TRUST-01",
+      "requirement": "Discovery/classification facts reject root authorship and require the exact DAG creator/updater Sol/max read-only proposal authority.",
+      "tests": ["R03"],
+      "mutations": ["root-authored-investigation-layer"]
+    },
+    {
+      "id": "TRUST-02",
+      "requirement": "Layer digests are recomputed from content and every required dispatch evidence path must exist; arbitrary 64-hex values are not authority.",
+      "tests": ["L06"],
+      "mutations": [
+        "arbitrary-layer-digest",
+        "nonexistent-evidence-path"
+      ]
+    },
+    {
+      "id": "PROMPT-02",
+      "requirement": "The valid implementation task carries all seven revision-1 bindings: test owner, epoch, classification digest, AGENTS chain, allowed test paths, acceptance group, and member evidence digest.",
+      "tests": ["P02"],
+      "mutations": ["implementation-task-missing-required-bindings"]
+    },
+    {
+      "id": "ROLE-06",
+      "requirement": "Dispatch investigation transition rejects a test-owner candidate with any wrong model or effort.",
+      "tests": ["R04"],
+      "mutations": ["test-owner-runtime-identity-drift"]
+    },
+    {
+      "id": "FRESH-05",
+      "requirement": "Owner-code and test-entry digest drift invalidate only dispatchInvestigation and must never report reuse=true.",
+      "tests": ["F05"],
+      "mutations": [
+        "code-digest-drift-reused",
+        "test-digest-drift-reused"
+      ]
+    },
+    {
+      "id": "SCALE-03",
+      "requirement": "A deeply investigated member appears exactly once in scheduler output as implementation work and is removed from the dispatch-investigation queue.",
+      "tests": ["D03"],
+      "mutations": ["deep-member-dual-dispatched"]
+    }
+  ]
+}

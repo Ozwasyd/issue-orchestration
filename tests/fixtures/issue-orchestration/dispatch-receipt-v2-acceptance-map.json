@@ -1,0 +1,101 @@
+{
+  "schema": "issue-orchestration.dispatch-receipt-v2-acceptance-map.v1",
+  "issue": "Ozwasyd/FsusBlog#1832",
+  "authority": {
+    "kind": "merged-issue-body",
+    "updatedAt": "2026-08-01T09:04:48Z"
+  },
+  "acceptance": [
+    {
+      "id": "REQUEST-V2-01",
+      "requirement": "dispatch-request.v2 is immutable and binds the versioned route, stable reason code, actual scope/dependency identity, request/run/node/attempt, prompt/DAG/frontier, repository/base/epoch/candidate, Skills, paths, permissions, contract and explicit serial group identity.",
+      "tests": ["P01", "P05"],
+      "mutations": [
+        "N02-bounded-terra-without-reclassification",
+        "N03-high-risk-luna",
+        "N04-ui-prescribed-forbidden-family",
+        "N05-ui-implementer-sol-high",
+        "N06-ui-dispute-bypasses-adjudicator",
+        "N07-root-balance-model-substitution",
+        "N12-old-policy-digest-replay",
+        "N16-root-direct-profile-selection",
+        "N19-non-group-id-omitted"
+      ]
+    },
+    {
+      "id": "ROOT-STARTUP-01",
+      "requirement": "An independent root-startup-receipt.v2 proves actual root-scheduler, gpt-5.6-terra, low effort, Codex V2 backend and normal mode from root runtime metadata; unobservable or Sol-root metadata fails closed.",
+      "tests": ["P03", "P04"],
+      "mutations": [
+        "N01-root-actual-sol-low",
+        "N08-root-runtime-metadata-unobservable"
+      ]
+    },
+    {
+      "id": "RUNTIME-ACTUAL-01",
+      "requirement": "dispatch-receipt.v2 binds independently observed effective model, effort, role, mode, sandbox, fork, cwd, Skills, capability, routing and runtimeMetadataDigest; requested values cannot be copied as actual evidence.",
+      "tests": ["P02", "P04"],
+      "mutations": [
+        "N15-unavailable-profile-silent-fallback",
+        "N21-runtime-skill-digest-drift"
+      ]
+    },
+    {
+      "id": "ROUTING-01",
+      "requirement": "The v2 request and receipt deterministically recompute selectedProfileId from frozen classification, stage role/phase and stage-model-pool.v3; root narration, balance, failure count and silent fallback have no routing authority.",
+      "tests": ["P05"],
+      "mutations": [
+        "N02-bounded-terra-without-reclassification",
+        "N03-high-risk-luna",
+        "N04-ui-prescribed-forbidden-family",
+        "N05-ui-implementer-sol-high",
+        "N06-ui-dispute-bypasses-adjudicator",
+        "N07-root-balance-model-substitution",
+        "N12-old-policy-digest-replay",
+        "N15-unavailable-profile-silent-fallback",
+        "N16-root-direct-profile-selection"
+      ]
+    },
+    {
+      "id": "SERIAL-SCOPE-01",
+      "requirement": "This ordinary serial issue has groupId=null and no group continuity/lease inheritance; its request and receipt bind Ozwasyd/FsusBlog#1832 plus exact live scope, repository and completed #1817/#1818/#1819 dependency identities.",
+      "tests": ["P06"],
+      "mutations": [
+        "N09-group-member-inherits-previous-route",
+        "N17-scope-identity-drift",
+        "N18-dependency-identity-drift",
+        "N19-non-group-id-omitted",
+        "N20-receipt-replay-new-base-candidate"
+      ]
+    },
+    {
+      "id": "SELF-TEST-V2-01",
+      "requirement": "implementer-self-test-receipt.v2 binds the verified v2 dispatch, route, request/base/candidate/contract, complete visible matrix, unchanged frozen tree, diff, command results, quality results, first failures, fix cycles, remaining failures and working-tree status.",
+      "tests": ["P07"],
+      "mutations": [
+        "N14-v1-self-test-transition-authority",
+        "N22-frozen-test-tree-drift"
+      ]
+    },
+    {
+      "id": "TRANSITION-V2-01",
+      "requirement": "Only verified v2 receipts authorize v2 transitions: self-test green can enter candidate-green but cannot sign behavior-green, and independent behavior green requires a fresh read-only verifier receipt bound to the same candidate.",
+      "tests": ["P08", "P09"],
+      "mutations": [
+        "N10-behavior-verifier-not-fresh",
+        "N11-self-test-signs-behavior-green",
+        "N13-v1-dispatch-transition-authority",
+        "N14-v1-self-test-transition-authority"
+      ]
+    },
+    {
+      "id": "HISTORY-V1-01",
+      "requirement": "dispatch-receipt.v1 and implementer-self-test-receipt.v1 remain readable historical evidence only and have no runtime compatibility entry that can satisfy a v2 transition.",
+      "tests": ["P08"],
+      "mutations": [
+        "N13-v1-dispatch-transition-authority",
+        "N14-v1-self-test-transition-authority"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "schema": "issue-orchestration.ready-frontier-expected-initial-failures.v2",
+  "issue": "Ozwasyd/FsusBlog#1816",
+  "revision": "corrective-layered-integrity-4",
+  "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+  "history": {
+    "revision1": {
+      "revision": "corrective-layered-projection-1",
+      "testContractDigest": "0d1a03bf57e6bee57194b35f79e16222c1e5ec6af7311b18310b2c8bac47d976",
+      "frozenTreeDigest": "3f6c0f8baa64fa6fc6efc4807c6ab1a8f0a5ab0f611e3dee3d9400989f4d0250",
+      "manifestRawSha256": "2a4b0e28bbf6fb25b15298bd045530c89045fb85845b8602efc494437a33b9e4",
+      "expectedSummary": {
+        "tests": 63,
+        "passed": 34,
+        "failed": 29,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "firstFailure": {
+        "test": "[F01] compiler emits the canonical maximal member-stage projection",
+        "diagnostic": "readyFrontier was [] instead of Ozwasyd/FsusBlog#9101@test-contract-ready plus Ozwasyd/FsusUI#2901@implementation-ready; the base compiler ignored investigationProjection and treated the layered-only nodes as investigation-incomplete"
+      }
+    },
+    "revision2": {
+      "revision": "corrective-layered-projection-2",
+      "testContractDigest": "f19115196b933b984c6d5107141127380ffa47f6bafbc059b150b1b39b534fb3",
+      "frozenTreeDigest": "3f6c0f8baa64fa6fc6efc4807c6ab1a8f0a5ab0f611e3dee3d9400989f4d0250",
+      "manifestRawSha256": "db18ab564912daae4cec403aa49cb3ac6c5a90ab71df9adbdcdbc4ade0cd88d4",
+      "candidateIdentityDigest": "dcfd8a86f2b6c04a052475e8c95c63efcd42a51c588969179acf2aefef586caf",
+      "focusedSummary": {
+        "tests": 63,
+        "passed": 63,
+        "failed": 0,
+        "exitCode": 0
+      },
+      "freshVerifierRejection": {
+        "rejectedReceiptDigest": "58f18e70fcd0e716308ba4554bb6815fdccaec49e44171ed5cfcabc7009155c5",
+        "firstFailureEvidenceDigest": "451e9961742d23b09fe909be7fa1158749928bcf8c3acbcabfcf8dc76e4252e3",
+        "failure": "discovery/classification effort=max changed to effort=low and all dependent digests resealed, but production accepted the frontier instead of investigation-layer-authority"
+      }
+    },
+    "revision3": {
+      "revision": "corrective-layered-authority-3",
+      "testContractDigest": "c61e9ba9a231e7f2dea43b77df7b02b8869e8234a07fdfd777e0b94c5219699d",
+      "frozenTreeDigest": "1b5d7ce3fa3ccb2b50cee04879933bbd65a59dc9a2992b94ffebc27f4b8ac3a6",
+      "manifestRawSha256": "7884a193a3194e10c428b6638a286ac722b3217af6b6544201105e478de6b57b",
+      "initialRedSummary": {
+        "tests": 64,
+        "passed": 16,
+        "failed": 48,
+        "exitCode": 1
+      },
+      "focusedCandidateSummary": {
+        "tests": 64,
+        "passed": 64,
+        "failed": 0,
+        "exitCode": 0
+      },
+      "candidateManifestDigest": "d4972274a7a2355058bf40d687149f6afce705886f1d47aca5bfba9d92c96379",
+      "freshVerifierRejection": {
+        "rejectedReceiptDigest": "cc0b0e8be529cd507b7aec12b64b5a605dda168dcb12823f494cd96bcd06b7f9",
+        "aggregateFailureEvidenceDigest": "0d1626b6ac055d68c94f0d63a5360e188906eae98929b414841f8bff11a82305",
+        "firstFailureEvidenceDigest": "f8ad0a51ce7b6b5d38e318a01d725d35805f3e42aabccd0f5bd5de94fc4449c5",
+        "unexpectedAcceptedMutationCount": 11
+      }
+    }
+  },
+  "expectedStatus": "red",
+  "expectedExitCode": 1,
+  "expectedSummary": {
+    "tests": 75,
+    "passed": 64,
+    "failed": 11,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "expectedFailureClass": "layered-authority-and-projection-integrity-unbound",
+  "firstFailure": {
+    "test": "MUTATION discovery-root-like-actor-id is killed with investigation-layer-authority",
+    "diagnostic": "The revision-3 candidate accepted discoveryFacts authored by actorId=root-scheduler:forged after every dependent digest and validation receipt was recomputed."
+  },
+  "revision4ExpectedFailingTests": [
+    "MUTATION discovery-root-like-actor-id is killed with investigation-layer-authority",
+    "MUTATION classification-root-like-actor-id is killed with investigation-layer-authority",
+    "MUTATION semantic-layer-actor-continuity-drift is killed with investigation-layer-authority",
+    "MUTATION dispatch-owner-substitution is killed with investigation-layer-authority",
+    "MUTATION discovery-schema-resigned is killed with investigation-layer-schema",
+    "MUTATION discovery-status-incomplete-resigned is killed with investigation-layer-status",
+    "MUTATION discovery-input-digest-resigned is killed with investigation-layer-input-digest-mismatch",
+    "MUTATION projection-schema-resigned is killed with investigation-projection-schema",
+    "MUTATION validation-root-authored-resigned is killed with investigation-validation-authority",
+    "MUTATION projection-duplicate-member-resigned is killed with investigation-projection-member-duplicate",
+    "MUTATION projection-derived-lists-forged is killed with investigation-projection-derived-list-mismatch"
+  ],
+  "revision3HistoricalFailurePartition": {
+    "primary": [
+      "[TRUST-01] MUTATION layer-authority-runtime-policy-drift is killed with investigation-layer-authority"
+    ],
+    "downstreamCount": 47,
+    "downstreamDiagnostic": "The revision-2 candidate rejects the exact role=dag-creator-updater valid authority before prior frontier assertions can execute; those tests remain frozen and recover after the authority policy is implemented."
+  },
+  "implementationPaths": [
+    "skills/issue-orchestration/scripts/frontier-compiler.mjs",
+    "skills/issue-orchestration/scripts/check-dag-gate.mjs"
+  ],
+  "correctiveFailureScope": [
+    "frontier compiler ignores investigationProjection and still reads node.investigation",
+    "DAG gate does not pass a validated layered investigation projection to frontier validation",
+    "legacy input, unvalidated or stale projections, root-authored layers, and wrong selector/freshness/digests are not rejected"
+  ],
+  "notIndependentlyForcedRed": [
+    {
+      "guarantee": "maximal frontier, stable reason codes, completed tombstones, role/stage permissions, work conservation, and group overlays",
+      "reason": "The unchanged base implementation already passed all 48 original #1816 tests. These guarantees remain asserted, but no fake defect or unrelated mutation is introduced solely to make them fail. Any shared-scenario RED is attributable to the required layered-only fixture cutover."
+    }
+  ],
+  "oldCorrectBaseline": {
+    "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "tests": 48,
+    "passed": 48,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "oldAffectedMatrixBaseline": {
+    "command": "node --test tests/tools/issue-orchestration-scope-selector.test.mjs tests/tools/issue-orchestration-ready-frontier.test.mjs tests/tools/issue-orchestration-completed-prerequisite.test.mjs",
+    "tests": 139,
+    "passed": 139,
+    "failed": 0,
+    "exitCode": 0
+  },
+  "revision1ExpectedFailingTests": [
+    "[F01] compiler emits the canonical maximal member-stage projection",
+    "[L02] candidate-ready unlocks only test-contract and later stages require dispatch investigation",
+    "[F05] the validator independently rejects root-edited frontier and reasons",
+    "[F07] valid completed tombstones unlock and reopen removes dependents",
+    "[S01] non-UI stage progression is deterministic through cleanup",
+    "[S02] UI behavior green advances only to UX acceptance, then documentation",
+    "[R01] wrong test-owner runtime identity is a capability blocker",
+    "[R02] UI implementation rejects ordinary code role or missing design authority",
+    "[D01] fifteen eligible members fill fifteen available slots",
+    "[D02] N eligible members produce exactly N candidates",
+    "[G03] ineligible grouping falls back without serializing independent members",
+    "MUTATION eligible-member-omitted is killed with frontier-projection-mismatch",
+    "MUTATION non-current-stage-dispatched is killed with dispatch-candidate-mismatch",
+    "MUTATION ready-slots-empty-batch is killed with dispatch-work-conservation",
+    "MUTATION group-serializes-independent-members is killed with dispatch-maximality",
+    "MUTATION legacy-node-investigation-accepted is killed with legacy-investigation-schema-forbidden",
+    "MUTATION legacy-property-fallback-present is killed with legacy-investigation-fallback-forbidden",
+    "MUTATION layered-projection-binding-removed is killed with layered-projection-binding-missing",
+    "MUTATION unvalidated-layered-projection is killed with investigation-projection-unvalidated",
+    "MUTATION layered-projection-digest-forged is killed with investigation-projection-digest-mismatch",
+    "MUTATION layered-selector-drift is killed with selector-receipt-mismatch",
+    "MUTATION layered-freshness-stale is killed with investigation-projection-stale",
+    "MUTATION layered-member-fact-drift is killed with issue-facts-stale",
+    "MUTATION root-authored-discovery-facts is killed with investigation-layer-authority",
+    "MUTATION root-authored-classification-facts is killed with investigation-layer-authority",
+    "MUTATION root-authored-dispatch-investigation is killed with investigation-layer-authority",
+    "MUTATION layer-digest-forged is killed with investigation-layer-digest-mismatch",
+    "MUTATION dispatch-investigation-base-drift is killed with base-drift",
+    "[B01] gate and compiler bind validated layered projection without legacy authority"
+  ],
+  "passingControls": [
+    "frozen corrective contract covers every acceptance, probe, and mutation identity",
+    "[L01] canonical fixture is layered-only and carries a validated projection",
+    "[F02] issue, dependency, candidate, and traversal order do not affect digests",
+    "[F03] all eleven blocker reasons are stable and directly evidence-bound",
+    "[F04] multiple blocker reasons follow the frozen canonical reason order",
+    "[F06] an empty frontier is proven by complete blocker coverage",
+    "[F08] remote, base, terminal, and candidate permission drift invalidate old input",
+    "[S03] local stage progress changes execution frontier without semantic DAG update",
+    "[D03] root-only delivery action is the sole permitted ready-work empty batch",
+    "[G01] group ready cannot mask a blocked member",
+    "[G02] group green cannot advance an individually failed member",
+    "mutation catalog and executable controls are exact-set equal"
+  ]
+}

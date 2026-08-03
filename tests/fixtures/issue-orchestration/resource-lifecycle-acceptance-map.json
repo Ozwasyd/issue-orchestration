@@ -1,0 +1,21 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-acceptance.v3",
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "acceptance": [
+    { "id": "B02", "requirement": "current package owns real inventory, observation, and cleanup runtime", "mutations": ["legacy-owner-alias", "missing-runtime-owner"], "runtimeProbes": ["P01"] },
+    { "id": "B03", "requirement": "registry binds immutable run/attempt/stage/worktree/path/contract/epoch owner fields", "mutations": ["registry-owner-omitted", "registry-epoch-omitted"], "runtimeProbes": ["P01"] },
+    { "id": "B04", "requirement": "unowned post-baseline resources fail closed before cleanup", "mutations": ["unowned-resource-ignored", "create-before-plan"], "runtimeProbes": ["P02"] },
+    { "id": "B05", "requirement": "terminal, slot, and lease transitions require a verified machine cleanup receipt", "mutations": ["terminal-without-cleanup", "slot-release-before-cleanup", "agent-self-signs-clean"], "runtimeProbes": ["P03"] },
+    { "id": "B06", "requirement": "ordinary internal red cycles retain one attempt/worktree/slot/writer and first failure", "mutations": ["red-cycle-new-attempt", "red-cycle-new-worktree", "red-cycle-releases-writer", "cleanup-overwrites-first-failure"], "runtimeProbes": ["P04"] },
+    { "id": "B07", "requirement": "clean owned worktree/process/port/temp/lock/lease cleanup uses real observation and git prune", "mutations": ["rm-rf-worktree", "remove-without-prune", "leader-only-kill", "delete-lock-file-only"], "runtimeProbes": ["P05"] },
+    { "id": "B08", "requirement": "dirty worktree quarantines and blocks force delete, delivery, and lease release", "mutations": ["dirty-worktree-force-remove", "quarantine-allows-delivery"], "runtimeProbes": ["P06"] },
+    { "id": "B09", "requirement": "baseline/external worktrees, branches, and temporary roots are never removed", "mutations": ["delete-baseline-worktree", "delete-prefix-user-branch", "delete-external-temp"], "runtimeProbes": ["P07"] },
+    { "id": "B10", "requirement": "leader exit, descendants, ports, and real locks require machine post-observation", "mutations": ["leader-exit-is-clean", "port-holder-ignored", "lock-file-delete-is-release"], "runtimeProbes": ["P05"] },
+    { "id": "B11", "requirement": "stopped Docker resource is not removed and cannot be clean", "mutations": ["docker-stop-is-clean", "unlabeled-docker-removed"], "runtimeProbes": ["P08"] },
+    { "id": "B12", "requirement": "crash/retry recovery retains dirty candidates, external resources, and ownership separation", "mutations": ["orphan-ignored", "dirty-candidate-lost", "retry-owner-reuse", "wrong-lease-release"], "runtimeProbes": ["P09"] },
+    { "id": "B13", "requirement": "#1817 ledger, #1818 dispatch receipt, and #1821 epoch bind resource state transitions", "mutations": ["ledger-binding-omitted", "dispatch-binding-omitted", "stale-epoch-cleanup"], "runtimeProbes": ["P10"] },
+    { "id": "B14", "requirement": "group/member cleanup retains group resources until bound group cleanup", "mutations": ["member-deletes-group-worktree", "group-session-mismatch-accepted"], "runtimeProbes": ["P11"] },
+    { "id": "B15", "requirement": "two repositories and shared workspace retain unrelated metadata/resources", "mutations": ["shared-workspace-overdelete", "sibling-worktree-pruned"], "runtimeProbes": ["P12"] },
+    { "id": "B16", "requirement": "cleanup receipt has all required machine-observed fields and self-consistent digest", "mutations": ["receipt-missing-post-inventory", "receipt-digest-unchecked"], "runtimeProbes": ["P03"] }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-cases.v3",
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "baseSha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9",
+  "requiredExports": [
+    "createResourceRegistry",
+    "applyResourceEvent",
+    "verifyCleanupReceipt",
+    "recoverResourceRegistry",
+    "captureBaselineInventory",
+    "observeResourceInventory",
+    "cleanupAttemptResources"
+  ],
+  "identities": {
+    "runId": "run-1828-resource-lifecycle",
+    "attemptId": "attempt-1828-1",
+    "retryAttemptId": "attempt-1828-2",
+    "epochId": "epoch-1828-1",
+    "writeLeaseId": "lease-1828-write",
+    "ledgerDigest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "dispatchReceiptDigest": "2222222222222222222222222222222222222222222222222222222222222222",
+    "groupSessionDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "baselineDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+    "ownedResourceDigest": "5555555555555555555555555555555555555555555555555555555555555555",
+    "postInventoryDigest": "6666666666666666666666666666666666666666666666666666666666666666"
+  },
+  "resourceTypes": [
+    "worktree",
+    "branch",
+    "process-group",
+    "port",
+    "container",
+    "network",
+    "volume",
+    "temporary-directory",
+    "lock",
+    "lease"
+  ],
+  "cleanupReceiptRequiredFields": [
+    "schema",
+    "runId",
+    "attemptId",
+    "epochId",
+    "baselineDigest",
+    "ownedResourceDigest",
+    "cleanupActions",
+    "retainedResources",
+    "quarantinedResources",
+    "failedResources",
+    "postInventory",
+    "postCleanupInventoryDigest",
+    "status",
+    "verifiedAt",
+    "receiptDigest"
+  ],
+  "groupRegistry": {
+    "schema": "issue-orchestration.resource-registry.v1",
+    "runId": "run-1828-group",
+    "issueId": "Ozwasyd/FsusBlog#1828",
+    "stageAttemptId": "attempt-1828-group-member-1",
+    "stageRole": "code-implementer",
+    "issueWorktreeId": "group-worktree",
+    "epochId": "epoch-1828-1",
+    "allowedPathsDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+    "testContractDigest": "8888888888888888888888888888888888888888888888888888888888888888",
+    "groupSessionDigest": "3333333333333333333333333333333333333333333333333333333333333333",
+    "resources": [
+      {
+        "resourceId": "group-worktree",
+        "resourceType": "worktree",
+        "ownerClass": "group-owned",
+        "ownerRunId": "run-1828-group",
+        "ownerAttemptId": "attempt-1828-group-member-1",
+        "state": "retained"
+      },
+      {
+        "resourceId": "member-port",
+        "resourceType": "port",
+        "ownerClass": "member-stage",
+        "memberId": "member-1",
+        "ownerRunId": "run-1828-group",
+        "ownerAttemptId": "attempt-1828-group-member-1",
+        "state": "active"
+      }
+    ]
+  },
+  "retryRegistry": {
+    "schema": "issue-orchestration.resource-registry.v1",
+    "runId": "run-1828-resource-lifecycle",
+    "issueId": "Ozwasyd/FsusBlog#1828",
+    "stageAttemptId": "attempt-1828-1",
+    "stageRole": "code-implementer",
+    "issueWorktreeId": "worktree-1828-retained",
+    "epochId": "epoch-1828-1",
+    "allowedPathsDigest": "9999999999999999999999999999999999999999999999999999999999999999",
+    "testContractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "slotHeld": true,
+    "writeLease": { "id": "lease-1828-write", "ownerAttemptId": "attempt-1828-1", "mode": "write", "state": "active" },
+    "resources": [
+      {
+        "resourceId": "worktree-1828-retained",
+        "resourceType": "worktree",
+        "ownerClass": "attempt-owned",
+        "ownerRunId": "run-1828-resource-lifecycle",
+        "ownerAttemptId": "attempt-1828-1",
+        "state": "active"
+      }
+    ]
+  },
+  "crashRecovery": {
+    "baseline": [
+      { "resourceId": "external-cache", "resourceType": "temporary-directory", "ownerClass": "externally-owned" }
+    ],
+    "observed": [
+      { "resourceId": "external-cache", "resourceType": "temporary-directory", "ownerClass": "externally-owned" },
+      { "resourceId": "orphan-worktree", "resourceType": "worktree", "ownerClass": "unknown-owner" },
+      { "resourceId": "dirty-candidate", "resourceType": "worktree", "ownerClass": "attempt-owned", "state": "quarantined-dirty" }
+    ]
+  }
+}

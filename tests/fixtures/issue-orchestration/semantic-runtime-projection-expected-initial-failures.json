@@ -1,0 +1,69 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-expected-initial-failures.v1",
+  "issueId": "Ozwasyd/FsusBlog#1833",
+  "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
+  "expectedStatus": "red",
+  "baselineCommand": [
+    "node",
+    "--test",
+    "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs"
+  ],
+  "sourceRealityDigests": {
+    "skills/issue-orchestration/scripts/scope-selector.mjs": "df3f832304361663b3df649d7154899afbc741b507865c87f8af333182e57e63",
+    "skills/issue-orchestration/scripts/frontier-compiler.mjs": "268c8bb5f068c4e40ac83484392f17e321f24d9797def1d2a84e9cd8d0b47398",
+    "skills/issue-orchestration/scripts/event-ledger.mjs": "27f678f81b342af8a6ece5edf009c48d782c664dd888fdcfc0065963f8358cf6",
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "cd6985fcaaddf2380b40351608abe5fd38845b63f2cf4148dc4108e670fe534a",
+    "docs/development/issue-orchestration-scope.md": "508fcc06d8978e67516ace06586c0936d27e5f376ee5cd08d12e923c5548cff2"
+  },
+  "legacyFalsePositiveProbe": {
+    "input": "expected completion comment plus OPEN to CLOSED and delivery completion event",
+    "observedSemanticAction": "update",
+    "observedDagUpdateRequired": true,
+    "observedCode": "dag-launch-required"
+  },
+  "expectedFailures": [
+    "semantic-runtime-module-missing",
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10",
+    "P11",
+    "P12",
+    "P13",
+    "N01-completion-close-dispatches-updater",
+    "N02-runtime-digest-treated-as-semantic",
+    "N03-ordinary-semantic-update-returns-full",
+    "N04-root-skips-expected-mutation-reconciliation",
+    "N05-projector-modifies-semantic-edge",
+    "N06-local-failure-dispatches-updater",
+    "N07-patch-base-digest-mismatch",
+    "N08-scope-replacement-without-reason",
+    "N09-root-authored-patch",
+    "N10-ordinary-patch-embeds-full-graph",
+    "N11-patch-operation-not-allowed",
+    "N12-patch-result-digest-mismatch",
+    "N13-graph-corruption-full-without-evidence",
+    "N14-semantic-patch-without-exactly-one-dispatch",
+    "N15-false-positive-dag-dispatch-count-nonzero",
+    "N16-expected-mutation-digest-mismatch",
+    "N17-runtime-projection-embeds-graph-patch",
+    "N18-three-layer-digest-alias",
+    "N19-dag-decision-receipt-field-omitted"
+  ],
+  "observedSummary": {
+    "tests": 33,
+    "pass": 1,
+    "fail": 32,
+    "skipped": 0,
+    "firstFailure": "semantic-runtime-module-missing",
+    "semanticCapabilityFailures": 32,
+    "observedAt": "2026-08-01T21:41:25+08:00",
+    "evidencePath": "/tmp/fsusblog-1833-frozen-red.tap"
+  }
+}

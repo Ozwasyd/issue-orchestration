@@ -1,0 +1,29 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-runtime-probes.v3",
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "baseSha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9",
+  "ciEvidence": "out-of-scope",
+  "historicalDelivery": {
+    "commits": ["fc497b2759d1a1a3eb9c027643b69d745d530be1", "9a8ab8cd80a4cdc7f76866f0c475b8fa64218731"],
+    "disposition": "historical-input-only"
+  },
+  "oldBaseline": {
+    "ownerPath": ".agents/skills/issue-orchestration/scripts/resource-lifecycle.mjs",
+    "firstFailure": "legacy-owner-path-retired",
+    "observationDisposition": "preserved-first-failure-not-current-acceptance"
+  },
+  "probes": [
+    { "id": "P01", "kind": "real-git-baseline-inventory", "evidenceClass": "runtime", "required": true },
+    { "id": "P02", "kind": "post-baseline-unowned-temp-observation", "evidenceClass": "runtime", "required": true },
+    { "id": "P03", "kind": "machine-cleanup-receipt-and-slot-gate", "evidenceClass": "runtime", "required": true },
+    { "id": "P04", "kind": "internal-fix-cycle-reuse", "evidenceClass": "runtime", "required": true },
+    { "id": "P05", "kind": "real-worktree-process-port-lock-lease-cleanup", "evidenceClass": "runtime", "required": true },
+    { "id": "P06", "kind": "real-dirty-worktree-quarantine", "evidenceClass": "runtime", "required": true },
+    { "id": "P07", "kind": "baseline-external-branch-and-temp-retention", "evidenceClass": "runtime", "required": true },
+    { "id": "P08", "kind": "docker-availability-gated-stop-versus-remove", "evidenceClass": "runtime", "required": true, "availabilityPolicy": "report-unavailable-never-pass-by-agent-assertion" },
+    { "id": "P09", "kind": "crash-recovery-and-retry-owner-separation", "evidenceClass": "runtime", "required": true },
+    { "id": "P10", "kind": "ledger-dispatch-epoch-binding", "evidenceClass": "runtime", "required": true },
+    { "id": "P11", "kind": "group-member-retention", "evidenceClass": "runtime", "required": true },
+    { "id": "P12", "kind": "two-repository-shared-workspace-inventory", "evidenceClass": "runtime", "required": true }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "issue-orchestration.ci-post-delivery-initial-failures.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 9,
+  "baseSha": "f394429c02c4ac7e83f1e277918c87e6ffb525cd",
+  "expectedStatus": "green-external-impacts-remain",
+  "expectedExitCode": 0,
+  "expectedSummary": { "tests": 5, "passed": 5, "failed": 0 },
+  "expectedFailingTests": [],
+  "remoteWorkflowConclusion": "failure",
+  "remoteWorkflowDisposition": "possible-remote-contract-impact"
+}

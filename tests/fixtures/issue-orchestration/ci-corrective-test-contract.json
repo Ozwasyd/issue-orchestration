@@ -1,0 +1,51 @@
+{
+  "schema": "issue-orchestration.ci-corrective-test-contract.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 8,
+  "status": "frozen-red-ci-corrective-revision-8",
+  "baseSha": "ecf80ba62dbf7d2fb468c99849b6c4fb08712486",
+  "dagProposalDigest": "87478f",
+  "supplementDigest": "5149402479",
+  "allowedTestPaths": [
+    "tests/tools/issue-1822-ci-regressions.test.mjs",
+    "tests/fixtures/issue-orchestration/ci-corrective-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/ci-corrective-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/ci-corrective-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/ci-corrective-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/ci-corrective-test-contract.json"
+  ],
+  "allowedImplementationPaths": [
+    ".github/workflows/change-contract.yml",
+    ".github/workflows/quality-gate.yml",
+    "tools/test/aggregate-data-scale-evidence.mjs"
+  ],
+  "forbiddenScopes": [
+    "product source",
+    "product tests",
+    "documentation",
+    "issue orchestration implementation",
+    "required-evidence softening"
+  ],
+  "fileHashes": {
+    "tests/tools/issue-1822-ci-regressions.test.mjs": "9063f3b81f60ca9c97820771262dabe0f7ba293e20c8d6aaba82916d8b896f77",
+    "tests/fixtures/issue-orchestration/ci-corrective-acceptance-map.json": "03435ac6773407a8cd4eceac4e13381c887d8a6037749bbf88d835d56f3f8f4b",
+    "tests/fixtures/issue-orchestration/ci-corrective-expected-initial-failures.json": "549c527e88079acdb5d9842e544e0971ec319f37e15539d87e67f647cd243a07",
+    "tests/fixtures/issue-orchestration/ci-corrective-mutation-controls.json": "c8b5c69aadad909016860489afd67f23ba3d57499d2aade7dab3c9868f980b25",
+    "tests/fixtures/issue-orchestration/ci-corrective-runtime-probes.json": "2e9d31c1132b8b1dbf9e009b9599561658b2c8e3e675cc9f9d2213be3cd12a20"
+  },
+  "frozenTreeDigest": "85e45039fe2082d2dae5f82be5afeacce3e8ea0274607b477a8a03ee6fea1b08",
+  "candidateIdentity": {
+    "schema": "issue-orchestration.ci-corrective-candidate.v1",
+    "baseSha": "ecf80ba62dbf7d2fb468c99849b6c4fb08712486",
+    "contractDigest": "ceaa50293488f80a8f975ef46ca0f3e9592a8328846354c6351625d51d0b9410",
+    "implementationFiles": [
+      { "path": ".github/workflows/change-contract.yml", "sha256": "fba005cdbb404e5ecaf7ea3dcd51aad775d00c0414a9dde8dac2ac9d406676c7", "gitMode": "100644" },
+      { "path": ".github/workflows/quality-gate.yml", "sha256": "16402c9f7c472dd31e59e168dcf9e94b0fdaeb5ce5bdd8a1da17f88d3df0a887", "gitMode": "100644" },
+      { "path": "tools/test/aggregate-data-scale-evidence.mjs", "sha256": "de8c726799fe9c342d3c01c12402c6d16a097571c13803b64e83b861a77fd0b5", "gitMode": "100755" }
+    ],
+    "candidateDigest": "e514eaaf1d22195d8159e725edb8737746882930b1025a6c0ad0c02f90d2b36b"
+  },
+  "hashAlgorithm": "sha256-raw-file-bytes",
+  "selfHashPolicy": "contractDigest omits contractDigest and candidateIdentity; candidateDigest binds baseSha, contractDigest, and exact implementation records",
+  "contractDigest": "ceaa50293488f80a8f975ef46ca0f3e9592a8328846354c6351625d51d0b9410"
+}

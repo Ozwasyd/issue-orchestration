@@ -1,0 +1,102 @@
+{
+  "schema": "issue-orchestration.completed-prerequisite-acceptance-map.v1",
+  "issue": "Ozwasyd/FsusBlog#1815",
+  "acceptance": [
+    {
+      "id": "AC-01",
+      "requirement": "Active open nodes and completed prerequisites are represented separately.",
+      "tests": ["P02", "P03", "P04", "P05"],
+      "mutations": ["closed-prerequisite-in-active-nodes"]
+    },
+    {
+      "id": "AC-02",
+      "requirement": "A completed edge retains remote identity, full delivered commit, default branch, and evidence digest.",
+      "tests": ["P02", "P03", "P04", "LIVE live-fsusblog-completed", "LIVE live-fsusui-completed"],
+      "mutations": ["dependency-identity-mismatch", "short-delivered-commit", "wrong-default-branch", "evidence-digest-mismatch"]
+    },
+    {
+      "id": "AC-03",
+      "requirement": "Completed prerequisites consume no node, frontier, slot, or attempt.",
+      "tests": ["P05"],
+      "mutations": ["closed-prerequisite-in-active-nodes", "closed-prerequisite-in-frontier", "closed-prerequisite-has-attempt"]
+    },
+    {
+      "id": "AC-04",
+      "requirement": "Active, satisfied, and unknown dependencies have stable machine reason codes.",
+      "tests": ["P01", "P02", "P03", "P04"],
+      "mutations": ["unknown-dependency"]
+    },
+    {
+      "id": "AC-05",
+      "requirement": "A reopened prerequisite invalidates the tombstone before ready through deliverable.",
+      "tests": [],
+      "mutations": ["remote-reopened"]
+    },
+    {
+      "id": "AC-06",
+      "requirement": "Not-planned, duplicate, missing/unreachable delivery, and missing/mismatched evidence do not satisfy dependencies.",
+      "tests": ["LIVE a reachable delivery commit and completion-sounding comment do not satisfy an OPEN issue"],
+      "mutations": ["closed-not-planned", "duplicate-without-substitute", "delivered-commit-missing", "delivered-commit-unreachable", "completion-evidence-missing", "evidence-digest-mismatch"]
+    },
+    {
+      "id": "AC-07",
+      "requirement": "Overlaps, duplicates, identity drift, short SHA, branch drift, future time, and evidence tampering fail closed.",
+      "tests": [],
+      "mutations": ["active-satisfied-overlap", "duplicate-tombstone", "wrong-repository", "wrong-issue-number", "short-delivered-commit", "wrong-default-branch", "future-closed-at", "evidence-payload-tampered"]
+    },
+    {
+      "id": "AC-08",
+      "requirement": "A v1 DAG is diagnostic-only and requires remote/evidence rebuild.",
+      "tests": ["P07"],
+      "mutations": ["legacy-v1-placeholder"]
+    },
+    {
+      "id": "AC-09",
+      "requirement": "Dynamic paths cover FsusBlog, FsusUI, and cross-repository open-to-closed transitions.",
+      "tests": ["P02", "P03", "P04", "LIVE live-fsusblog-completed", "LIVE live-fsusui-completed"],
+      "mutations": []
+    },
+    {
+      "id": "AC-10",
+      "requirement": "Rebuild preserves incomplete and completed edges instead of deleting or auto-satisfying them.",
+      "tests": ["P01", "P02", "P03", "P04"],
+      "mutations": ["dependency-edge-deleted", "remote-reopened"]
+    },
+    {
+      "id": "AC-11",
+      "requirement": "The gate consumes one tombstone truth table rather than parallel completion decisions.",
+      "tests": ["mutation catalog and executable controls are exact-set equal"],
+      "mutations": ["evidence-payload-tampered", "unknown-dependency"]
+    },
+    {
+      "id": "ROLE-01",
+      "requirement": "Root scheduler is Sol/low and cannot author or delete tombstones.",
+      "tests": ["P06"],
+      "mutations": ["root-authored-tombstone", "dependency-edge-deleted", "root-runtime-identity-drift"]
+    },
+    {
+      "id": "ROLE-02",
+      "requirement": "Only root starts a read-only fresh Sol/max DAG updater, and only remote snapshot change triggers updates.",
+      "tests": ["P06"],
+      "mutations": ["non-root-spawns-dag-updater", "dag-updater-direct-write", "local-event-refresh-trigger", "dag-updater-runtime-identity-drift"]
+    },
+    {
+      "id": "ROLE-03",
+      "requirement": "Sol/max test owner and Sol/low implementer have disjoint actors and write leases.",
+      "tests": ["P06"],
+      "mutations": ["test-owner-implementer-same-actor", "implementer-modifies-frozen-test", "test-owner-runtime-identity-drift", "implementer-runtime-identity-drift"]
+    },
+    {
+      "id": "ROLE-04",
+      "requirement": "Dispatch and verification receipts bind stage role, candidate SHA, remote snapshot digest, and test contract digest.",
+      "tests": ["P06"],
+      "mutations": ["dispatch-stage-role-missing", "verification-candidate-sha-drift", "dispatch-remote-snapshot-drift", "verification-test-contract-drift"]
+    },
+    {
+      "id": "ROLE-05",
+      "requirement": "Documentation starts only after a green behavior receipt.",
+      "tests": ["P06"],
+      "mutations": ["documentation-before-behavior-green"]
+    }
+  ]
+}

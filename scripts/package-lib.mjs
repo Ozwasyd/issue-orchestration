@@ -91,8 +91,19 @@ export function packageRelativePath(sourceRoot, file) {
 export function collectArtifactDigests(sourceRoot) {
     const resolvedRoot = path.resolve(sourceRoot)
     const manifestPath = path.join(resolvedRoot, 'manifest.json')
+    const artifactRoots = new Set([
+        'agents',
+        'contracts',
+        'graph',
+        'policy',
+        'scripts',
+        'skills'
+    ])
     return Object.fromEntries(walkFiles(resolvedRoot)
         .filter((file) => path.resolve(file) !== manifestPath)
+        .filter((file) => artifactRoots.has(
+            packageRelativePath(resolvedRoot, file).split('/')[0]
+        ))
         .map((file) => [
             packageRelativePath(resolvedRoot, file),
             fileDigest(file)
@@ -150,6 +161,7 @@ export function parseArguments(argv) {
         const key = {
             '--source-root': 'sourceRoot',
             '--install-root': 'installRoot',
+            '--workspace-root': 'workspaceRoot',
             '--protected-root': 'protectedRoots',
             '--probe-cwd': 'probeCwds',
             '--runtime-state-root': 'runtimeStateRoot',

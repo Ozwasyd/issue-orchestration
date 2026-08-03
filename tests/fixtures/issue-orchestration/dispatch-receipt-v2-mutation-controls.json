@@ -1,0 +1,138 @@
+{
+  "schema": "issue-orchestration.dispatch-receipt-v2-mutation-controls.v1",
+  "issue": "Ozwasyd/FsusBlog#1832",
+  "controls": [
+    {
+      "id": "N01-root-actual-sol-low",
+      "surface": "root-startup",
+      "requirement": "Root actual is gpt-5.6-sol/low instead of Terra/low.",
+      "expectedCode": "root-startup-profile-mismatch"
+    },
+    {
+      "id": "N02-bounded-terra-without-reclassification",
+      "surface": "request",
+      "requirement": "Bounded code selects Terra/max without a policy-authorized reclassification.",
+      "expectedCode": "dispatch-execution-route-binding"
+    },
+    {
+      "id": "N03-high-risk-luna",
+      "surface": "request",
+      "requirement": "High-risk control-plane implementation selects Luna/max.",
+      "expectedCode": "dispatch-routing-selection-mismatch"
+    },
+    {
+      "id": "N04-ui-prescribed-forbidden-family",
+      "surface": "request",
+      "requirement": "Prescribed UI implementation selects Luna or Terra.",
+      "expectedCode": "dispatch-routing-selection-mismatch"
+    },
+    {
+      "id": "N05-ui-implementer-sol-high",
+      "surface": "request",
+      "requirement": "UI implementer selects Sol/high.",
+      "expectedCode": "dispatch-routing-selection-mismatch"
+    },
+    {
+      "id": "N06-ui-dispute-bypasses-adjudicator",
+      "surface": "request",
+      "requirement": "A UI system-design dispute enters implementation without a fresh read-only adjudicator receipt.",
+      "expectedCode": "dispatch-ui-adjudication-required"
+    },
+    {
+      "id": "N07-root-balance-model-substitution",
+      "surface": "request",
+      "requirement": "Root substitutes a profile using balance or quota state.",
+      "expectedCode": "dispatch-routing-authority"
+    },
+    {
+      "id": "N08-root-runtime-metadata-unobservable",
+      "surface": "root-startup",
+      "requirement": "Root runtime omits actual model and effort but claims verified startup.",
+      "expectedCode": "root-startup-capability-unverified"
+    },
+    {
+      "id": "N09-group-member-inherits-previous-route",
+      "surface": "request",
+      "requirement": "A grouped member inherits the previous member routing receipt or profile.",
+      "expectedCode": "dispatch-member-routing-inherited"
+    },
+    {
+      "id": "N10-behavior-verifier-not-fresh",
+      "surface": "transition",
+      "requirement": "freshVerificationRollout=false signs behavior-green.",
+      "expectedCode": "independent-verifier-freshness-required"
+    },
+    {
+      "id": "N11-self-test-signs-behavior-green",
+      "surface": "transition",
+      "requirement": "An implementer self-test receipt directly signs behavior-green.",
+      "expectedCode": "receipt-schema-stage-mismatch"
+    },
+    {
+      "id": "N12-old-policy-digest-replay",
+      "surface": "request",
+      "requirement": "A receipt bound to an old routing policy digest is replayed.",
+      "expectedCode": "dispatch-routing-policy-replay"
+    },
+    {
+      "id": "N13-v1-dispatch-transition-authority",
+      "surface": "transition",
+      "requirement": "A v1 dispatch receipt authorizes a v2 transition.",
+      "expectedCode": "receipt-v1-historical-only"
+    },
+    {
+      "id": "N14-v1-self-test-transition-authority",
+      "surface": "transition",
+      "requirement": "A v1 implementer self-test receipt authorizes candidate-green.",
+      "expectedCode": "receipt-v1-historical-only"
+    },
+    {
+      "id": "N15-unavailable-profile-silent-fallback",
+      "surface": "runtime",
+      "requirement": "The requested profile is unavailable and runtime silently uses another effective profile.",
+      "expectedCode": "runtime-capability-missing"
+    },
+    {
+      "id": "N16-root-direct-profile-selection",
+      "surface": "request",
+      "requirement": "Root directly selects or replaces a route instead of consuming compiler output.",
+      "expectedCode": "dispatch-routing-authority"
+    },
+    {
+      "id": "N17-scope-identity-drift",
+      "surface": "runtime",
+      "requirement": "Runtime scope identity differs from the frozen #1832 scope.",
+      "expectedCode": "runtime-scope-identity-mismatch"
+    },
+    {
+      "id": "N18-dependency-identity-drift",
+      "surface": "runtime",
+      "requirement": "Runtime dependency identity differs from the frozen #1817/#1818/#1819 tombstones.",
+      "expectedCode": "runtime-dependency-identity-mismatch"
+    },
+    {
+      "id": "N19-non-group-id-omitted",
+      "surface": "request",
+      "requirement": "An ordinary serial dispatch omits explicit groupId=null.",
+      "expectedCode": "dispatch-group-identity-missing"
+    },
+    {
+      "id": "N20-receipt-replay-new-base-candidate",
+      "surface": "runtime",
+      "requirement": "A verified receipt is replayed for a new base or candidate identity.",
+      "expectedCode": "dispatch-receipt-replay"
+    },
+    {
+      "id": "N21-runtime-skill-digest-drift",
+      "surface": "runtime",
+      "requirement": "The actual Skill load digest differs from the request.",
+      "expectedCode": "runtime-skill-digest-mismatch"
+    },
+    {
+      "id": "N22-frozen-test-tree-drift",
+      "surface": "self-test",
+      "requirement": "Self-test claims candidate-green after the frozen test tree changes.",
+      "expectedCode": "self-test-frozen-tree-drift"
+    }
+  ]
+}

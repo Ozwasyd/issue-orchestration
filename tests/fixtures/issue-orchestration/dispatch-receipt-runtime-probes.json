@@ -1,0 +1,193 @@
+{
+    "schema": "issue-orchestration.dispatch-receipt-runtime-probes.v1",
+    "revision": 6,
+    "supersedesTestContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+    "probes": [
+        {
+            "id": "RP01",
+            "scenario": "Parse a real child rollout session_meta and every turn_context record.",
+            "requiredObservedFields": ["threadId", "rolloutId", "effectiveRole", "effectiveModel", "effectiveEffort", "effectiveSandbox", "effectiveForkTurns", "effectiveWorkingDirectory", "startedAt"],
+            "failClosedWhenMissing": true,
+            "resources": {"network": "none", "writes": "external-state-root-only", "cpuWeight": 1, "memoryMiB": 128, "timeoutSeconds": 15}
+        },
+        {
+            "id": "RP02",
+            "scenario": "Real writable implementer rollout binds request, base, candidate, path policy, frozen test contract, and member write lease.",
+            "stageRole": "code-implementer",
+            "expectedModel": "gpt-5.6-sol",
+            "expectedEffort": "low",
+            "expectedSandbox": "workspace-write",
+            "resources": {"network": "none", "writes": "target-worktree-and-external-state-root", "cpuWeight": 1, "memoryMiB": 256, "timeoutSeconds": 30}
+        },
+        {
+            "id": "RP03",
+            "scenario": "Fresh independent test-owner rollout has only its tests/fixtures write scope and cannot reuse the implementer thread or self-test receipt.",
+            "stageRole": "test-owner",
+            "freshVerificationRollout": true,
+            "expectedModel": "gpt-5.6-sol",
+            "expectedEffort": "max",
+            "expectedSandbox": "workspace-write",
+            "expectedWritableRoots": ["tests/tools", "tests/fixtures/issue-orchestration"],
+            "resources": {"network": "none", "writes": "owned-tests-fixtures-and-external-state-root", "cpuWeight": 1, "memoryMiB": 256, "timeoutSeconds": 30}
+        },
+        {
+            "id": "RP04",
+            "scenario": "UI implementer and UX verifier loaded Skill IDs/digests and design authority/baseline digests come from machine load observations.",
+            "requiredSkillSets": {"FsusBlog": ["fsusblog-design-conformance", "fsusui-design-conformance"], "FsusUI": ["fsusui-design-conformance"]},
+            "resources": {"network": "none", "writes": "external-state-root-only", "cpuWeight": 1, "memoryMiB": 128, "timeoutSeconds": 15}
+        },
+        {
+            "id": "RP05",
+            "scenario": "Machine lease registry proves one active write lease maps to exactly one group member, candidate, worktree, and branch.",
+            "failClosedOnConflict": true,
+            "resources": {"network": "none", "writes": "external-state-root-only", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP06",
+            "scenario": "Filesystem observations hash the complete frozen test tree before and after implementation and independently hash implementation diff and working tree.",
+            "mustMatch": ["frozenTestTreeDigestBefore", "frozenTestTreeDigestAfter"],
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 128, "timeoutSeconds": 15}
+        },
+        {
+            "id": "RP07",
+            "scenario": "Root startup receipt observes actual gpt-5.6-sol/low separately from every child dispatch.",
+            "stageRole": "root-scheduler",
+            "expectedModel": "gpt-5.6-sol",
+            "expectedEffort": "low",
+            "resources": {"network": "none", "writes": "external-state-root-only", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP08",
+            "scenario": "Execute verify-runtime with three nonexistent required input paths; the CLI must fail nonzero and emit a deterministic rejection diagnostic.",
+            "command": ["node", "skills/issue-orchestration/scripts/dispatch-receipt.mjs", "verify-runtime", "--request", "<nonexistent-state-root>/request.json", "--rollout", "<nonexistent-state-root>/rollout.jsonl", "--machine-observations", "<nonexistent-state-root>/observations.json"],
+            "expectedExitStatus": "nonzero",
+            "requiredDiagnostic": true,
+            "firstFailureId": "required-runtime-cli-no-op",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP09",
+            "scenario": "Replay the authoritative event ledger with implementation.started lacking a dispatch receipt and with a legacy verified-candidate receipt; both transitions must reject.",
+            "expectedCodes": ["verified-dispatch-receipt-required", "receipt-schema-stage-mismatch"],
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP10",
+            "scenario": "Replay a verified implementer self-test receipt against a different request, candidate, and epoch; transition authorization must reject the old receipt.",
+            "expectedCode": "self-test-candidate-mismatch",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP11",
+            "scenario": "Seal candidateDigest 86d9dbd5a099ace8965762706dc52ae5876da065db915435ee7d03df63bbcdbf, mutate only the machine-observed candidateDigest to all zeroes, and execute verifyRuntimeDispatch.",
+            "command": ["node", "--test", "--test-name-pattern", "^P15 candidateDigest", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "requestCandidateDigest": "86d9dbd5a099ace8965762706dc52ae5876da065db915435ee7d03df63bbcdbf",
+            "observedCandidateDigestMutation": "0000000000000000000000000000000000000000000000000000000000000000",
+            "expectedStatus": "rejected",
+            "expectedReason": "runtime-candidate-identity-mismatch",
+            "firstFailureId": "runtime-candidate-digest-unbound",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP12",
+            "scenario": "Request ux-acceptance-verifier with workspace-write and a write lease, then provide matching workspace-write runtime metadata; sealing must reject before runtime verification.",
+            "command": ["node", "--test", "--test-name-pattern", "^P16 reviewer workspace-write", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "stageRole": "ux-acceptance-verifier",
+            "requestedSandboxMutation": "workspace-write",
+            "effectiveSandboxMutation": "workspace-write",
+            "requestedWritePolicyMutation": "stage-scoped-write-lease",
+            "expectedSealingCode": "dispatch-stage-profile-policy",
+            "forbiddenFallback": "verified runtime receipt matching an invalid request",
+            "firstFailureId": "reviewer-write-policy-request-bypass",
+            "evidenceDigest": "7ad949997138762210cba3150249aba9b7fab9b6d33a69088d5b000aacfac669",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP13",
+            "scenario": "Request test-owner as Terra/low/danger-full-access/unrestricted and provide matching runtime metadata; sealing must reject the unsafe profile before runtime verification.",
+            "command": ["node", "--test", "--test-name-pattern", "^P17 test-owner unsafe profile", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "stageRole": "test-owner",
+            "requestedModelMutation": "gpt-5.6-terra",
+            "requestedEffortMutation": "low",
+            "requestedSandboxMutation": "danger-full-access",
+            "requestedWritePolicyMutation": "unrestricted",
+            "expectedSealingCode": "dispatch-stage-profile-policy",
+            "directFailureId": "test-owner-profile-request-bypass",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP14",
+            "scenario": "Request non-root dag-creator-updater as Terra/low/workspace-write and provide matching runtime metadata; sealing must reject the unsafe profile.",
+            "command": ["node", "--test", "--test-name-pattern", "^P18 non-root DAG unsafe profile", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "stageRole": "dag-creator-updater",
+            "requestedModelMutation": "gpt-5.6-terra",
+            "requestedEffortMutation": "low",
+            "requestedSandboxMutation": "workspace-write",
+            "expectedSealingCode": "dispatch-stage-profile-policy",
+            "directFailureId": "non-root-dag-profile-request-bypass",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP15",
+            "scenario": "Seal an FsusBlog ui-ux-implementer request with requiredSkills and designAuthorityDigests both empty; sealing must reject before an empty runtime skill observation can verify.",
+            "command": ["node", "--test", "--test-name-pattern", "^P19 FsusBlog UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "stageRole": "ui-ux-implementer",
+            "requiredSkillsMutation": [],
+            "designAuthorityDigestsMutation": [],
+            "expectedSealingCode": "dispatch-ui-design-authority-policy",
+            "directFailureId": "ui-required-skills-empty-bypass",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP16",
+            "scenario": "Add a credential-bearing field to a digest-valid machine observation; dispatch must reject and the credential value must not appear anywhere in the returned runtime observation or receipt.",
+            "command": ["node", "--test", "--test-name-pattern", "^P20 credential-bearing runtime observation", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "expectedStatus": "rejected",
+            "expectedReason": "dispatch-secret-material",
+            "expectedSecretEcho": false,
+            "directFailureId": "credential-bearing-observation-leak",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP17",
+            "scenario": "Replay an ordinary frozen contract whose frozenFiles omit the issue #1818 dispatch test, then attempt implementation.started without a dispatch receipt; replay must reject universally.",
+            "command": ["node", "--test", "--test-name-pattern", "^P21 ordinary frozen contract cannot start", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "expectedCode": "verified-dispatch-receipt-required",
+            "directFailureId": "ledger-frozen-path-dispatch-bypass",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP18",
+            "scenario": "Replay an ordinary frozen contract with a verified dispatch followed by a legacy verified-candidate receipt; candidate-green must require implementer-self-test-receipt.v1 universally.",
+            "command": ["node", "--test", "--test-name-pattern", "^P22 ordinary frozen contract rejects", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "expectedCode": "receipt-schema-stage-mismatch",
+            "directFailureId": "ledger-frozen-path-legacy-candidate-bypass",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP19",
+            "scenario": "Verify two otherwise valid self-test executions that differ in implementation diff, command result evidence, and failure evidence; their receipt digests must differ.",
+            "command": ["node", "--test", "--test-name-pattern", "^P23 self-test receipt digest binds", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "expectedDigestRelation": "distinct",
+            "directFailureId": "self-test-evidence-digest-collision",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        },
+        {
+            "id": "RP20",
+            "scenario": "Pass a minimal forged object containing only dispatch schema and verificationStatus=verified into self-test verification; it must have no dispatch authority.",
+            "command": ["node", "--test", "--test-name-pattern", "^P24 self-test verifier rejects", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "expectedStatus": "rejected",
+            "expectedReason": "verified-dispatch-receipt-required",
+            "directFailureId": "self-test-minimal-dispatch-forgery",
+            "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+            "resources": {"network": "none", "writes": "none", "cpuWeight": 1, "memoryMiB": 64, "timeoutSeconds": 10}
+        }
+    ]
+}

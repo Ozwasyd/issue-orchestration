@@ -1,0 +1,547 @@
+{
+  "schema": "issue-orchestration.quiescence-observation.v1",
+  "runId": "run-1829-quiescence-1",
+  "targetIssueSet": [
+    "Ozwasyd/FsusBlog#1829"
+  ],
+  "verifiedAt": "2026-08-02T06:00:00.000Z",
+  "verifier": {
+    "actorRole": "independent-machine-inventory-verifier",
+    "actorId": "machine-inventory-verifier-1829",
+    "observationMethod": "machine-inventory",
+    "mode": "observe-only",
+    "readOnly": true,
+    "machineIdentityDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "implementationDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "packageDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "independent": true,
+    "rootScheduler": false
+  },
+  "baseline": {
+    "schema": "issue-orchestration.resource-baseline-inventory.v1",
+    "verificationStatus": "verified",
+    "baselineDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "allowedRetention": {
+    "schema": "issue-orchestration.quiescence-allowed-retention.v1",
+    "verificationStatus": "verified",
+    "artifacts": []
+  },
+  "sources": {
+    "projection": {
+      "schema": "issue-orchestration.semantic-runtime-projection.v1",
+      "verificationStatus": "verified",
+      "digest": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "receipts": {
+      "schema": "issue-orchestration.terminal-receipt-set.v1",
+      "verificationStatus": "verified",
+      "digest": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "registries": {
+      "schema": "issue-orchestration.final-registry-inventory.v1",
+      "verificationStatus": "verified",
+      "digest": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  },
+  "inventories": {
+    "issues": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "issues",
+      "availability": "available",
+      "sourceRefs": [
+        "projection"
+      ],
+      "summary": {
+        "openCount": 0
+      },
+      "records": [
+        {
+          "target": "Ozwasyd/FsusBlog#1829",
+          "state": "closed",
+          "completionEvidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
+          "remoteSnapshotDigest": "1212121212121212121212121212121212121212121212121212121212121212"
+        }
+      ]
+    },
+    "stages": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "stages",
+      "availability": "available",
+      "sourceRefs": [
+        "projection",
+        "receipts"
+      ],
+      "summary": {
+        "incompleteCount": 0,
+        "digestMismatchCount": 0,
+        "authorityViolationCount": 0
+      },
+      "records": [
+        {
+          "target": "Ozwasyd/FsusBlog#1829",
+          "status": "complete",
+          "uiNode": false,
+          "frozenTestContractDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+          "implementationCandidateDigest": "7777777777777777777777777777777777777777777777777777777777777777",
+          "behaviorGreenReceiptDigest": "8888888888888888888888888888888888888888888888888888888888888888",
+          "documentationGreenReceiptDigest": "9999999999999999999999999999999999999999999999999999999999999999",
+          "remoteDeliveryEvidenceDigest": "abababababababababababababababababababababababababababababababab",
+          "resourceCleanupReceiptDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+          "candidateEpochDigest": "bcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbcbc",
+          "roleSkillReceiptDigest": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
+          "authorityValid": true,
+          "digestsConsistent": true
+        }
+      ]
+    },
+    "attempts": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "attempts",
+      "availability": "available",
+      "sourceRefs": [
+        "projection",
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "expiredUnrecoveredCount": 0,
+        "cleanupFailureCount": 0,
+        "retainedCount": 0,
+        "missingTerminalCount": 0
+      },
+      "records": []
+    },
+    "groups": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "groups",
+      "availability": "available",
+      "sourceRefs": [
+        "projection",
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "activeSessionCount": 0,
+        "activeWriteLeaseCount": 0,
+        "activeMemberStageCount": 0,
+        "ownedResourceCount": 0,
+        "retainedServiceCount": 0,
+        "unfinishedDeliveryWindowCount": 0,
+        "undisposedCommitPrefixCount": 0,
+        "missingTerminalCleanupReceiptCount": 0,
+        "missingMemberReceiptCount": 0
+      },
+      "records": []
+    },
+    "actors": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "actors",
+      "availability": "available",
+      "sourceRefs": [
+        "projection"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "pendingActionCount": 0
+      },
+      "records": []
+    },
+    "workPlans": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "workPlans",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "staleCount": 0,
+        "retainedCount": 0
+      },
+      "records": []
+    },
+    "slices": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "slices",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "abandonedCount": 0,
+        "retainedCount": 0,
+        "writeLeaseCount": 0,
+        "partialPromotedCount": 0,
+        "uncompiledWholeIssueDispatchCount": 0
+      },
+      "records": []
+    },
+    "checkpoints": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "checkpoints",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "ownerlessCount": 0,
+        "staleCount": 0,
+        "withoutNextActionCount": 0,
+        "identityMismatchCount": 0,
+        "supersededStillReferencedCount": 0
+      },
+      "records": []
+    },
+    "continuations": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "continuations",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "pendingCount": 0,
+        "ownerlessCount": 0,
+        "missingCursorCount": 0,
+        "missingResourceCount": 0,
+        "retainedCount": 0
+      },
+      "records": []
+    },
+    "outputMissingBreakers": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "outputMissingBreakers",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "unresolvedCount": 0,
+        "illegalRetryCount": 0,
+        "bypassCount": 0
+      },
+      "records": []
+    },
+    "routes": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "routes",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "staleCount": 0,
+        "routeWithoutVerifiedSliceCount": 0,
+        "unauthorizedOverrideCount": 0,
+        "unverifiedEffectiveProfileCount": 0,
+        "illegalFailurePromotionCount": 0
+      },
+      "records": []
+    },
+    "profileCapabilities": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "profileCapabilities",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "pendingMismatchCount": 0,
+        "unverifiedCount": 0
+      },
+      "records": []
+    },
+    "git": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "git",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "orphanWorktreeCount": 0,
+        "staleMetadataCount": 0,
+        "dirtyCount": 0,
+        "registryMismatchCount": 0,
+        "remoteIdentityMismatchCount": 0,
+        "unreachableCandidateCount": 0,
+        "unretiredCandidateCount": 0
+      },
+      "records": []
+    },
+    "resources": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "resources",
+      "availability": "available",
+      "sourceRefs": [
+        "registries",
+        "receipts"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "retainedCount": 0,
+        "unknownCount": 0,
+        "missingTerminalCount": 0,
+        "quarantineCount": 0,
+        "cleanupFailureCount": 0,
+        "orphanCount": 0
+      },
+      "records": []
+    },
+    "processes": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "processes",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "activeOwnedCount": 0,
+        "descendantCount": 0,
+        "deletedCwdCount": 0,
+        "watcherCount": 0
+      },
+      "records": []
+    },
+    "ports": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "ports",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "ownedListeningCount": 0
+      },
+      "records": []
+    },
+    "docker": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "docker",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "containerCount": 0,
+        "networkCount": 0,
+        "unhandledVolumeCount": 0
+      },
+      "records": []
+    },
+    "locks": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "locks",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "busyCount": 0,
+        "staleCount": 0
+      },
+      "records": []
+    },
+    "leases": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "leases",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "busyCount": 0,
+        "staleCount": 0
+      },
+      "records": []
+    },
+    "slots": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "slots",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "busyCount": 0
+      },
+      "records": []
+    },
+    "filesystem": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "filesystem",
+      "availability": "available",
+      "sourceRefs": [
+        "registries"
+      ],
+      "summary": {
+        "unfinishedRootCount": 0,
+        "scratchCount": 0,
+        "ownerlessCount": 0,
+        "halfWrittenCount": 0,
+        "repoLocalDuplicateSkillCount": 0,
+        "unapprovedRetentionCount": 0
+      },
+      "records": []
+    },
+    "skills": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "skills",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "duplicateCount": 0,
+        "halfInstalledCount": 0,
+        "activeRuntimeStateCount": 0,
+        "singleSharedArtifact": true,
+        "legacyRepoLocalAuthoritiesAbsent": true,
+        "legacyAliasesAbsent": true,
+        "fsusuiOrchestrationCopyAbsent": true,
+        "designAuthoritiesUnique": true,
+        "roleSkillReceiptVerified": true,
+        "digestConsistent": true,
+        "runtimeStateInInstallAbsent": true,
+        "installDigest": "dededededededededededededededededededededededededededededededede",
+        "roleSkillReceiptDigest": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+      },
+      "records": []
+    },
+    "bootstrap": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "bootstrap",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "activeStateCount": 0,
+        "lockCount": 0,
+        "slotCount": 0,
+        "fallbackDiscoverable": false,
+        "disposition": "retired",
+        "retirementReceiptDigest": "fafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafa"
+      },
+      "records": []
+    },
+    "landing": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "landing",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "activeLeaseCount": 0,
+        "activeAttemptCount": 0,
+        "activeSliceCount": 0,
+        "continuationPendingCount": 0,
+        "multiMemberConflictSliceCount": 0,
+        "pendingReverificationCount": 0,
+        "unresolvedConflictManifestCount": 0,
+        "sourceTipMutationViolationCount": 0,
+        "forcePushAttemptCount": 0,
+        "cleanupReceiptMissingCount": 0
+      },
+      "records": []
+    },
+    "sourceCandidates": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "sourceCandidates",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "activeCount": 0,
+        "unretiredCount": 0,
+        "retainedCount": 0,
+        "unknownOwnerCount": 0
+      },
+      "records": []
+    },
+    "commitMappings": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "commitMappings",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "incompleteCount": 0
+      },
+      "records": []
+    },
+    "humanDecisions": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "humanDecisions",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts"
+      ],
+      "summary": {
+        "activeRequestCount": 0,
+        "recordedButUnappliedCount": 0,
+        "invalidatedReplayCount": 0,
+        "postDecisionResumePendingCount": 0
+      },
+      "records": []
+    },
+    "humanRetentions": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "humanRetentions",
+      "availability": "available",
+      "sourceRefs": [
+        "receipts",
+        "registries"
+      ],
+      "summary": {
+        "ownerlessCount": 0,
+        "expiredCount": 0,
+        "retainedCount": 0
+      },
+      "records": []
+    },
+    "dag": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "dag",
+      "availability": "available",
+      "sourceRefs": [
+        "projection"
+      ],
+      "summary": {
+        "residentUpdaterCount": 0,
+        "unauthorizedProposalCount": 0,
+        "unappliedManualPatchCount": 0,
+        "latestRemoteSnapshotBound": true,
+        "remoteSnapshotDigest": "1212121212121212121212121212121212121212121212121212121212121212"
+      },
+      "records": []
+    },
+    "telemetry": {
+      "schema": "issue-orchestration.quiescence-inventory.v1",
+      "category": "telemetry",
+      "availability": "available",
+      "sourceRefs": [
+        "projection",
+        "receipts"
+      ],
+      "summary": {
+        "pendingEventCount": 0,
+        "digestRecomputable": true,
+        "finalSummaryDigest": "1313131313131313131313131313131313131313131313131313131313131313"
+      },
+      "records": []
+    }
+  }
+}

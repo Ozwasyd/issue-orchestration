@@ -1,0 +1,45 @@
+{
+  "schema": "issue-orchestration.completed-prerequisite-runtime-probes.v1",
+  "digestAlgorithm": "sha256 of the exact UTF-8 GitHub comment body without an added newline",
+  "probes": [
+    {
+      "id": "live-fsusblog-completed",
+      "repository": "Ozwasyd/FsusBlog",
+      "repositoryIdentity": "FsusBlog",
+      "issueNumber": 1799,
+      "expectedState": "closed",
+      "expectedStateReason": "completed",
+      "expectedClosedAt": "2026-07-30T05:56:32Z",
+      "defaultBranch": "master",
+      "deliveredCommit": "e76d68068e1b1750029af73b836d5678aefbdf3e",
+      "evidenceCommentId": 5127159262,
+      "evidenceCommentDigest": "06b8a8b82d90b38bd2cfe3c95a2a7df25a9038a3bd396610620b942b78f19f16"
+    },
+    {
+      "id": "live-fsusui-completed",
+      "repository": "Ozwasyd/FsusUI",
+      "repositoryIdentity": "FsusUI",
+      "issueNumber": 266,
+      "expectedState": "closed",
+      "expectedStateReason": "completed",
+      "expectedClosedAt": "2026-07-29T17:39:50Z",
+      "defaultBranch": "main",
+      "deliveredCommit": "d198bedc6e8cd4500e16543684f14e99abbfab8c",
+      "evidenceCommentId": 5121435417,
+      "evidenceCommentDigest": "9ea9a751be8db3fe9414b0356d60437bf4c66a2d92444aa8e5fae0dc945dbeaa"
+    },
+    {
+      "id": "live-open-is-not-completed",
+      "repository": "Ozwasyd/FsusUI",
+      "repositoryIdentity": "FsusUI",
+      "issueNumber": 268,
+      "expectedState": "open",
+      "expectedStateReason": null,
+      "expectedClosedAt": null,
+      "defaultBranch": "main",
+      "deliveredCommit": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
+      "evidenceCommentId": 5138603602,
+      "evidenceCommentDigest": "c7b71df3e99441783f31ee2b14572f283ab6bfe821af61e01a471ffef7c23b1e"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "schema": "issue-orchestration.shared-package-acceptance-map.v1",
+  "issue": "Ozwasyd/FsusBlog#1823",
+  "authority": {
+    "kind": "authoritative-issue-body",
+    "updatedAt": "2026-08-01T13:16:31Z"
+  },
+  "acceptance": [
+    {
+      "id": "CONTRACT-01",
+      "requirement": "The #1823 test owner freezes exact base, allowed test paths, acceptance mapping, expected red baseline, runtime probes, mutation controls and a self-consistent contract digest before implementation.",
+      "tests": ["P01"],
+      "mutations": []
+    },
+    {
+      "id": "SOURCE-01",
+      "requirement": "Exactly one editable FsusBlog authoring package owns the orchestration skill, runtime, policies, graph schemas, templates, installer and seven roles; repository-local copies, retired roles, aliases and fixed-Sol policy are absent.",
+      "tests": ["P02", "P03"],
+      "mutations": [
+        "N01-repo-local-skill-coexists",
+        "N02-repo-local-agent-coexists",
+        "N03-retired-role-or-fixed-sol-restored"
+      ]
+    },
+    {
+      "id": "MANIFEST-01",
+      "requirement": "The package manifest binds schema/version, source commit/tree, skill/agent/template artifacts, model pool, routing, stage permissions, remote mutation policy, graph/patch/runtime schemas, projector, supported repositories, required capabilities, install targets and its own canonical digest.",
+      "tests": ["P02"],
+      "mutations": [
+        "N04-manifest-artifact-digest-drift"
+      ]
+    },
+    {
+      "id": "INSTALL-01",
+      "requirement": "Install, verify and uninstall are deterministic, atomic, external to both repositories/common workspace/worktrees and ownership-safe; unknown edits fail closed and no half install or unrelated deletion is allowed.",
+      "tests": ["P04", "P05", "P06", "P07"],
+      "mutations": [
+        "N05-protected-install-target",
+        "N06-half-install-artifact",
+        "N07-installed-hand-edit-overwritten"
+      ]
+    },
+    {
+      "id": "DISCOVERY-01",
+      "requirement": "FsusBlog root, FsusUI root, common workspace and one worktree from each repository discover the same skill identity/digest, exact seven-agent set and model/routing/remote-mutation/graph/projector digests.",
+      "tests": ["P04"],
+      "mutations": [
+        "N08-cwd-specific-digest-or-agent-drift"
+      ]
+    },
+    {
+      "id": "RUNTIME-01",
+      "requirement": "The shared artifact carries stage-model-pool.v3 routing, root Luna/low, separated semantic graph/runtime projection, dispatch/self-test receipt authority and deterministic runtime modules without semantic compatibility fallback.",
+      "tests": ["P08"],
+      "mutations": [
+        "N09-root-or-ui-forbidden-profile",
+        "N10-delivery-echo-dispatches-updater"
+      ]
+    },
+    {
+      "id": "STATE-01",
+      "requirement": "Semantic graph, ledger, runtime projection, receipts and resource state stay in a caller-supplied external runtime root and never enter authoring or installed artifacts.",
+      "tests": ["P09"],
+      "mutations": [
+        "N11-runtime-state-written-to-artifact"
+      ]
+    },
+    {
+      "id": "PRODUCT-BOUNDARY-01",
+      "requirement": "The shared package owns only orchestration semantics and references repository AGENTS/current facts at runtime; it does not copy FsusBlog/FsusUI product design, API, documentation or runtime authority.",
+      "tests": ["P10"],
+      "mutations": [
+        "N12-product-design-facts-copied"
+      ]
+    },
+    {
+      "id": "EVIDENCE-01",
+      "requirement": "Every acceptance gate is mapped to executable focused tests, real install/discovery/runtime probes and explicit negative mutation controls, with the old base recorded as red.",
+      "tests": ["P11"],
+      "mutations": []
+    }
+  ]
+}

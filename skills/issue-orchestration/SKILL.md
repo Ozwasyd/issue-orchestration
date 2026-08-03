@@ -4,7 +4,7 @@ name: issue-orchestration
 description: Use only to coordinate multiple open FsusBlog/FsusUI issues that require a dependency DAG, sustained parallel dispatch, or overlapping acceptance groups. Do not use for one independent issue or ordinary single-task work.
 ---
 
-<!-- Authoritative source: tools/codex/issue-orchestration-package -->
+<!-- Authoritative source: https://github.com/Ozwasyd/issue-orchestration -->
 
 # Issue Orchestration
 

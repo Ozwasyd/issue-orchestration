@@ -1,0 +1,235 @@
+{
+  "schema": "issue-orchestration.layered-investigation-cases.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 7,
+  "previousContractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
+  "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+  "observedAt": "2026-08-01T12:00:00.000+08:00",
+  "computedAt": "2026-08-01T04:00:00.000Z",
+  "laterComputedAt": "2026-08-01T04:05:00.000Z",
+  "deliveryEpoch": "bootstrap-repair-1822-epoch-4",
+  "largeScopeNodeCount": 100,
+  "saturationNodeCount": 120,
+  "configuredSlots": 15,
+  "schemas": {
+    "projection": "issue-orchestration.investigation-projection.v1",
+    "discovery": "issue-orchestration.discovery-facts.v1",
+    "classification": "issue-orchestration.classification-facts.v1",
+    "dispatch": "issue-orchestration.dispatch-investigation.v1",
+    "prompt": "issue-orchestration.implementation-task.v1"
+  },
+  "phases": [
+    "discovered",
+    "dependency-classified",
+    "candidate-ready",
+    "dispatch-investigated"
+  ],
+  "phaseTruthTable": [
+    {
+      "phase": "discovered",
+      "discoveryComplete": true,
+      "classificationComplete": false,
+      "dispatchComplete": false,
+      "testOwnerDispatchable": false,
+      "implementationDispatchable": false
+    },
+    {
+      "phase": "dependency-classified",
+      "discoveryComplete": true,
+      "classificationComplete": true,
+      "dispatchComplete": false,
+      "testOwnerDispatchable": false,
+      "implementationDispatchable": false
+    },
+    {
+      "phase": "candidate-ready",
+      "discoveryComplete": true,
+      "classificationComplete": true,
+      "dispatchComplete": false,
+      "testOwnerDispatchable": true,
+      "implementationDispatchable": false
+    },
+    {
+      "phase": "dispatch-investigated",
+      "discoveryComplete": true,
+      "classificationComplete": true,
+      "dispatchComplete": true,
+      "testOwnerDispatchable": false,
+      "implementationDispatchable": true
+    }
+  ],
+  "freshnessInputs": {
+    "discoveryFacts": [
+      "selectorDigest",
+      "scopeMembership",
+      "issueId",
+      "memberRemoteFactDigest"
+    ],
+    "classificationFacts": [
+      "discoveryFactsDigest",
+      "dependencyFactDigests",
+      "candidateOwnerEvidenceDigest",
+      "conflictResourceEvidenceDigest",
+      "requiredInstructionRoots"
+    ],
+    "dispatchInvestigation": [
+      "classificationFactsDigest",
+      "baseSha",
+      "worktreeIdentity",
+      "deliveryEpoch",
+      "nearestAgentsChainDigests",
+      "codePathDigests",
+      "testPathDigests",
+      "currentDocDigests",
+      "implementationDecisionDigest",
+      "acceptanceMapDigest",
+      "runtimeProbeDigest",
+      "mutationControlDigest"
+    ]
+  },
+  "stableReasonCodes": [
+    "classification-incomplete",
+    "classification-owner-unresolved",
+    "classification-dependency-unsatisfied",
+    "classification-unresolved-decision",
+    "dispatch-investigation-incomplete",
+    "dispatch-investigation-stale",
+    "issue-facts-stale",
+    "selector-membership-stale",
+    "base-drift",
+    "instruction-drift",
+    "owner-code-drift",
+    "current-doc-drift",
+    "test-entry-drift",
+    "invalid-not-applicable-reason",
+    "placeholder-path-forbidden",
+    "path-missing",
+    "test-owner-unassigned",
+    "investigation-starved",
+    "test-contract-disputed"
+  ],
+  "notApplicableReasonCodes": [
+    "no-external-runtime-boundary",
+    "no-current-product-doc-change",
+    "no-ui-design-authority",
+    "no-cross-repository-owner"
+  ],
+  "investigationPriorityOrder": [
+    "candidate-ready",
+    "unlocks-ready-dependent",
+    "critical-path",
+    "high-priority",
+    "long-wait"
+  ],
+  "canonicalization": {
+    "algorithm": "SHA-256 over recursively key-sorted JSON with set-like arrays sorted by canonical identity",
+    "unrelatedMemberRemoteChangesPreserve": [
+      "unchanged member discoveryFacts",
+      "unchanged member classificationFacts",
+      "unchanged member dispatchInvestigation"
+    ],
+    "baseChangesInvalidateOnly": [
+      "dispatchInvestigation"
+    ],
+    "issueOrRelevantCommentChangesInvalidate": [
+      "affected member discoveryFacts",
+      "affected member classificationFacts",
+      "affected member dispatchInvestigation"
+    ]
+  },
+  "legacyFixtureMigration": {
+    "ownerIssue": "Ozwasyd/FsusBlog#1816",
+    "correctedLayeredTestPath": "tests/tools/issue-orchestration-ready-frontier.test.mjs",
+    "correctedLayeredTestSha256": "c9e7db362339b77482ad27b24b158434c3e4c0f063a3283b20957815e9ed16f5",
+    "correctedFixtureUsesValidatedProjection": true,
+    "historicalReasonCodeMayRemain": "investigation-incomplete",
+    "runtimeLegacyPropertyReadsAllowed": false,
+    "legacyDiagnosticReplayAllowed": false,
+    "productionLegacyNodeInputDisposition": "reject-before-dispatch",
+    "legacyNodeInputCode": "legacy-investigation-schema-forbidden",
+    "legacyNonDispatchReasonCode": "investigation-incomplete",
+    "compatibilityModeAllowed": false,
+    "fallbackAuthorityAllowed": false
+  },
+  "disputeResolution": {
+    "supersededContractDigest": "22145baca448a1d3783cb0a99dcf01a9ea57a5473a3898e39ed609206a952578",
+    "possibleRemoteContractImpactEvidenceDigest": "5956498067f991fc87b4de5dbc1b6e88f0ff25160f1c511acdb9d6f56468e23a",
+    "implementationConflictEvidenceDigest": "af7989a636ff169f7b38ca03e3d1889349200ba9087efe19fac548adc3f40432",
+    "resolution": "corrected-1816-layered-projection-removes-the-claimed-legacy-fixture-conflict",
+    "legacyCompatibilityGranted": false,
+    "candidateIdentityDispute": {
+      "supersededRevision": 2,
+      "supersededContractDigest": "2ede2128636458cdad467c9a4ffa9326937424d65f41f67debb3c934f130f462",
+      "supersededCandidateDigest": "a5105105ab9c573fb9e2b050960bd56a3da3759d46334aed6e1435676bc15258",
+      "resolution": "stage-one-contract-excludes-candidate-identity-and-stage-two-binds-all-six-post-implementation-records",
+      "liveImplementationHashEqualityRequired": true
+    }
+  },
+  "deliveryEpochRebind": {
+    "sourceIssue": "Ozwasyd/FsusBlog#1818",
+    "previousBaseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+    "currentBaseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
+    "baseDependencyPath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+    "baseDependencySha256": "e6c26a2b16e145379689edbedc4ef21e52e517808ad34731b25b2f33beb7b833",
+    "candidateDisposition": "base-dependency-not-candidate"
+  },
+  "correctiveRemoteTreeEvidence": {
+    "baselineDisposition": "remote-delivered-but-issue-open",
+    "missingPaths": [
+      "agents/dag-creator-updater.toml",
+      "agents/test-owner.toml"
+    ],
+    "priorClaimedFiles": [
+      {
+        "path": "agents/dag-creator-updater.toml",
+        "sha256": "81c48323cffa7f484896a08ac86bf928a3a218ba347b29905bd43328f95ffdb5"
+      },
+      {
+        "path": "agents/test-owner.toml",
+        "sha256": "717f36bc98949a53988fc03bd422225ddbfc75336b54bd4abd5bd9c9466ba147"
+      }
+    ],
+    "correctiveAllowedImplementationPaths": [
+      "agents/dag-creator-updater.toml",
+      "agents/test-owner.toml"
+    ]
+  },
+  "implementationPromptRequiredFields": [
+    "issueId",
+    "baseSha",
+    "worktree",
+    "selectorReceiptDigest",
+    "memberRemoteFactDigest",
+    "testContractDigest",
+    "confirmedOwner",
+    "allowedImplementationPaths",
+    "forbiddenPaths",
+    "codePaths",
+    "testPaths",
+    "currentDocs",
+    "implementationDecision",
+    "acceptanceMap",
+    "testCommands",
+    "counterexamples",
+    "runtimeProbes",
+    "mutationControls",
+    "failureClassification",
+    "stopConditions",
+    "testOwnerId",
+    "deliveryEpoch",
+    "classificationFactsDigest",
+    "nearestAgentsChain",
+    "allowedTestPaths",
+    "acceptanceGroup",
+    "issueSpecificEvidenceDigest"
+  ],
+  "revision1RequiredTaskFields": [
+    "testOwnerId",
+    "deliveryEpoch",
+    "classificationFactsDigest",
+    "nearestAgentsChain",
+    "allowedTestPaths",
+    "acceptanceGroup",
+    "issueSpecificEvidenceDigest"
+  ]
+}

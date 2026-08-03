@@ -1,0 +1,170 @@
+{
+    "schema": "issue-orchestration.event-ledger-acceptance-map.v1",
+    "issue": "Ozwasyd/FsusBlog#1817",
+    "authorityCommentId": 5148362773,
+    "supersedesAuthorityCommentId": 5145136921,
+    "acceptance": [
+        {
+            "id": "SCHEMA-01",
+            "requirement": "The ledger and every event use versioned machine schemas and carry the complete source, repository, payload, evidence, sequence, identity, time, and hash-chain fields.",
+            "tests": ["P01", "P02"],
+            "mutations": ["event-field-missing", "payload-digest-tampered", "event-digest-tampered"]
+        },
+        {
+            "id": "TRANSITION-01",
+            "requirement": "Every state-changing transition is represented by one machine transition rule; old investigated, ready, review, verifying, deliverable, and delivered authority is removed.",
+            "tests": ["P01", "P03", "P04"],
+            "mutations": ["old-review-event", "old-verification-event", "old-direct-state-event", "discovered-to-delivery-ready", "test-contracting-to-closed", "implementing-to-closed"]
+        },
+        {
+            "id": "DISPATCH-01",
+            "requirement": "Every frozen test contract requires a digest-valid verified dispatch receipt before implementation starts; discovery actorRole values cannot opt out of the universal gate.",
+            "tests": ["P03", "P04", "P05", "P06", "P09"],
+            "mutations": ["implementation-start-dispatch-missing", "implementation-start-dispatch-nonverified", "implementation-start-discovery-actor-opt-out"]
+        },
+        {
+            "id": "SELFTEST-01",
+            "requirement": "Implementation is one implementing-self-testing attempt whose private red/green log may contain multiple failures without increasing global reworkCount.",
+            "tests": ["P03"],
+            "mutations": ["duplicate-implementation-start", "self-test-red-candidate-green", "self-test-matrix-incomplete", "self-test-candidate-identity-missing"]
+        },
+        {
+            "id": "SELFTEST-02",
+            "requirement": "Candidate-green binds issue-orchestration.implementer-self-test-receipt.v1 and the unchanged frozen test contract; obsolete verified-candidate receipts cannot satisfy the stage.",
+            "tests": ["P03"],
+            "mutations": ["frozen-test-contract-modified", "self-test-red-candidate-green", "self-test-matrix-incomplete", "self-test-candidate-identity-missing", "obsolete-verified-candidate-receipt"]
+        },
+        {
+            "id": "VERIFY-01",
+            "requirement": "Candidate-green cannot become behavior-green without a fresh independent test-owner receipt bound to the same candidate SHA.",
+            "tests": ["P03", "P05"],
+            "mutations": ["candidate-direct-to-behavior-green", "implementer-verifies-own-candidate", "independent-verification-not-fresh", "independent-verification-candidate-drift", "root-declares-behavior-green"]
+        },
+        {
+            "id": "VERIFY-02",
+            "requirement": "Independent rejection returns to the same implementation attempt or an explicit continuation, increments global reworkCount once, and preserves first-failure evidence.",
+            "tests": ["P05"],
+            "mutations": ["rejection-loses-first-failure", "rejection-resets-rework-count", "rejection-unbound-continuation"]
+        },
+        {
+            "id": "UX-01",
+            "requirement": "UI/UX issues require an independent UX accepted receipt before documentation or delivery.",
+            "tests": ["P04"],
+            "mutations": ["ui-documentation-before-ux-accepted", "ui-delivery-before-ux-accepted", "ux-verifier-modifies-code"]
+        },
+        {
+            "id": "UX-02",
+            "requirement": "UX rejection returns only to the same UI/UX implementation owner and retains low implementation effort.",
+            "tests": ["P04"],
+            "mutations": ["ux-rejection-owner-drift", "ux-rejection-effort-drift"]
+        },
+        {
+            "id": "DOC-01",
+            "requirement": "Documentation can start only after behavior-green for non-UI work or ux-accepted for UI/UX work, and cannot erase an earlier behavior failure.",
+            "tests": ["P03", "P04", "P05"],
+            "mutations": ["documentation-before-behavior-green", "documentation-overwrites-first-failure"]
+        },
+        {
+            "id": "DELIVERY-01",
+            "requirement": "Delivery cannot start before documentation-green and issue closure requires delivery completion plus machine cleanup completion.",
+            "tests": ["P03", "P04"],
+            "mutations": ["delivery-before-documentation-green", "close-before-delivery-completed", "close-before-cleanup-completed"]
+        },
+        {
+            "id": "CLEANUP-01",
+            "requirement": "Cleanup failure or quarantine cannot release a slot or lease, enter closed, or overwrite the first failure.",
+            "tests": ["P06"],
+            "mutations": ["cleanup-failure-releases-lease", "cleanup-success-overwrites-first-failure"]
+        },
+        {
+            "id": "REPLAY-01",
+            "requirement": "Empty state plus ledger replay deterministically reconstructs node status, attempt, reworkCount, terminal data, evidence keys, timestamps, and a stable projection digest.",
+            "tests": ["P02", "P03", "P04", "P05"],
+            "mutations": ["projection-status-edited", "projection-attempt-edited", "projection-rework-edited", "projection-evidence-edited"]
+        },
+        {
+            "id": "CHAIN-01",
+            "requirement": "Sequence, eventId, attempt creation, runId, nodeId, base SHA, previous digest, payload digest, event digest, deletion, and ordering tampering fail closed.",
+            "tests": ["P02"],
+            "mutations": ["sequence-gap", "duplicate-event-id", "duplicate-implementation-start", "run-id-tampered", "node-id-tampered", "base-sha-tampered", "previous-event-digest-tampered", "payload-digest-tampered", "event-digest-tampered", "historical-event-deleted", "events-reordered"]
+        },
+        {
+            "id": "FAILURE-01",
+            "requirement": "Cancellation, timeout, invocation failure, environment failure, contract dispute, external block, and resource failure remain distinct auditable events and later success cannot overwrite the first failure.",
+            "tests": ["P05", "P06"],
+            "mutations": ["conflicting-attempt-terminal-events", "documentation-overwrites-first-failure", "cleanup-success-overwrites-first-failure"]
+        },
+        {
+            "id": "CORRECTION-01",
+            "requirement": "Historical events cannot be edited for correction; a correction is a new hash-chained event referencing the original event.",
+            "tests": ["P07"],
+            "mutations": ["historical-event-edited", "correction-target-missing"]
+        },
+        {
+            "id": "RECOVERY-01",
+            "requirement": "A durable event with a missing/stale projection is replayed, while a projection ahead of the ledger is discarded and rebuilt.",
+            "tests": ["R01", "R02"],
+            "mutations": []
+        },
+        {
+            "id": "RECOVERY-02",
+            "requirement": "A truncated or corrupt ledger tail fails closed, reports the final valid sequence, and does not dispatch or skip the bad event.",
+            "tests": ["R03"],
+            "mutations": ["truncated-ledger-tail"]
+        },
+        {
+            "id": "RECOVERY-03",
+            "requirement": "Recovery does not repeat an already completed implementation attempt, delivery side effect, commit, or cleanup action.",
+            "tests": ["R04"],
+            "mutations": ["duplicate-side-effect-after-recovery"]
+        },
+        {
+            "id": "TERMINAL-01",
+            "requirement": "Terminal entry and recovery require a legal category, direct evidence, and a changed recovery fingerprint; an unchanged fingerprint cannot redispatch.",
+            "tests": ["P08"],
+            "mutations": ["terminal-category-invalid", "terminal-evidence-missing", "terminal-recovery-fingerprint-unchanged"]
+        },
+        {
+            "id": "REOPEN-01",
+            "requirement": "Issue reopen is an event that invalidates closed projection, clears release authority, and marks dependency/frontier recomputation required.",
+            "tests": ["P09"],
+            "mutations": ["reopen-retains-closed-projection"]
+        },
+        {
+            "id": "AUTHORITY-01",
+            "requirement": "Only the root scheduler appends verified candidate events; implementer, test owner, UX verifier, documentation writer, cleanup verifier, subagent, and old reviewer cannot write the ledger directly.",
+            "tests": ["R05"],
+            "mutations": ["implementer-writes-ledger", "test-owner-writes-ledger", "reviewer-writes-pass-event", "root-authors-pass-without-receipt"]
+        },
+        {
+            "id": "PATH-01",
+            "requirement": "The ledger lives only below the validated external state root and never below or above either repository, common workspace, or worktree.",
+            "tests": ["R05", "R06"],
+            "mutations": ["ledger-inside-repository", "ledger-inside-workspace", "ledger-path-symlink"]
+        },
+        {
+            "id": "POLLUTION-01",
+            "requirement": "Ledger append, replay, recovery, rejection, and cleanup leave tracked and untracked state of both repositories, the common workspace, and worktrees unchanged.",
+            "tests": ["R06"],
+            "mutations": []
+        },
+        {
+            "id": "GROUP-01",
+            "requirement": "Group session and member projection are replay-only; every member retains its own test, lease, candidate, verification, commit, and delivery state.",
+            "tests": ["G01"],
+            "mutations": ["group-member-skips-verification", "group-member-inherits-green"]
+        },
+        {
+            "id": "GROUP-02",
+            "requirement": "Illegal group order, duplicate active member, and one lease bound to multiple members fail closed.",
+            "tests": ["G01"],
+            "mutations": ["group-event-out-of-order", "group-duplicate-active-member", "group-lease-multiple-members"]
+        },
+        {
+            "id": "DAG-01",
+            "requirement": "Semantic DAG proposal events are accepted only after a remote live snapshot change and never from local stage or rework events.",
+            "tests": ["P10"],
+            "mutations": ["dag-proposal-local-stage-trigger", "dag-proposal-root-authored"]
+        }
+    ]
+}

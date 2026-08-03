@@ -1,0 +1,222 @@
+{
+  "schema": "issue-orchestration.layered-investigation-test-contract.v8",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 7,
+  "phase": "test-contract",
+  "status": "frozen-green-delivery-epoch-revision-7",
+  "supersedesContractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
+  "testContractHistory": [
+    {
+      "revision": 0,
+      "baseSha": "0cfb94f0ccd5f0cc74704b129751459c5cc2300e",
+      "contractDigest": "aaf89eef42888119c4697f95d46f0ab6e1dc923d8d82e18db1f03139e68acd2c",
+      "manifestRawSha256": "fa0fbd16fc0ed08d4c36d37e641d4899e74d32f6f0dee27b2c4f8f50d0bb3da1",
+      "redSummary": {
+        "tests": 41,
+        "passed": 2,
+        "failed": 39,
+        "exitCode": 1
+      }
+    },
+    {
+      "revision": 1,
+      "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+      "contractDigest": "22145baca448a1d3783cb0a99dcf01a9ea57a5473a3898e39ed609206a952578",
+      "manifestRawSha256": "d0de52ef7216ae3b737e15c4660e8445358b81fe1338a665c716004354792f95",
+      "redSummary": {
+        "tests": 62,
+        "passed": 39,
+        "failed": 23,
+        "exitCode": 1
+      },
+      "disputeEvidenceDigests": [
+        "5956498067f991fc87b4de5dbc1b6e88f0ff25160f1c511acdb9d6f56468e23a",
+        "af7989a636ff169f7b38ca03e3d1889349200ba9087efe19fac548adc3f40432"
+      ]
+    },
+    {
+      "revision": 2,
+      "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+      "contractDigest": "2ede2128636458cdad467c9a4ffa9326937424d65f41f67debb3c934f130f462",
+      "manifestRawSha256": "8e7360e53073663e3bb56614c845caa7e6a0902ae3fe5a8072f59136a7e103da",
+      "frozenTreeDigest": "b76b9e595e51e055c2b3119a85e8381431a155b996922e74413e51412046b10b",
+      "matrixIdentityDigest": "6984522c2e58dd99756ad3d1fe694aa4bff39e863268c0f1a398b829ca71e50a",
+      "candidateDigest": "a5105105ab9c573fb9e2b050960bd56a3da3759d46334aed6e1435676bc15258",
+      "redSummary": {
+        "tests": 62,
+        "passed": 43,
+        "failed": 19,
+        "exitCode": 1
+      },
+      "supersededReason": "candidate identity captured pre-implementation hashes"
+    },
+    {
+      "revision": 3,
+      "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+      "contractDigest": "479a60b5f027372e7c68df7cdf67de56d8d16664bdc685e4d7fc28d221f1588b",
+      "manifestRawSha256": "5eee2164810de190fbfb2b3be70da2ad8ad616d1224c51cb58e1f7d659419365",
+      "frozenTreeDigest": "6c04e3c31b4c6eee9f9d487627421f3119ba1bae420f7d21e1a8e00774b0d03c",
+      "matrixIdentityDigest": "c454817c13a048a3d5d6ec1951bfa82081b1e342622b73580a2af22bc8e91fe5",
+      "candidateDigest": "1324146eb499d6b68be8ec91e55fd68527d214ac7ecb7d21194c02aafc490016",
+      "greenSummary": {
+        "tests": 62,
+        "passed": 62,
+        "failed": 0,
+        "exitCode": 0
+      }
+    },
+    {
+      "revision": 4,
+      "baseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
+      "contractDigest": "7ca89125778a08ba63a4f835cc80333a467ac148ab2d006b7630ec73b8fdcc9a",
+      "manifestRawSha256": "25f4838feffa938af13e339f132d08eb85210667b075950bfaf58760e0b669e3",
+      "frozenTreeDigest": "8f793db0ac16ac896d88eacc70de1cbb1715ed64fa10246cfbe432bb1a68922c",
+      "matrixIdentityDigest": "3c4352d5c985d5d07bc69df57bb5284edf4a5f1bd3dc51686af727c1aaddbb47",
+      "candidateDigest": "29f86434c5805741856221720c96a325670a25c9d77d9320b55f94fa659ca7f3",
+      "greenSummary": {
+        "tests": 62,
+        "passed": 62,
+        "failed": 0,
+        "exitCode": 0
+      }
+    },
+    {
+      "revision": 5,
+      "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+      "contractDigest": "3c1f8e4c83c9addef7949c065191c8003a9dcddcbf49fddd920213f6f8549a24",
+      "manifestRawSha256": "2084e028b842b697d83480c22d8ddfb4831ced3aa1a9633bfb14914480c65dac",
+      "frozenTreeDigest": "1430d9f03b45b774c23f443212a5ba747340a9e304b2f1228ddb0cf5bdcef166",
+      "matrixIdentityDigest": "ddf7de250260c47ac49e2782f4054b2d03bbed86721c01d715ef1246e72954c0",
+      "candidateDigest": "a043fa0bf7a0a30906e1bf3424326d92bb69c64e4107f50881f5159809e2cdf6",
+      "redSummary": {
+        "tests": 62,
+        "passed": 61,
+        "failed": 1,
+        "exitCode": 1
+      },
+      "supersededReason": "implemented candidate files require a live identity rebind"
+    },
+    {
+      "revision": 6,
+      "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+      "contractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
+      "manifestRawSha256": "977e18637805aae220b7c90a9c22af8ac700d642828dd218bfd1ac4a5f4cec94",
+      "frozenTreeDigest": "1c327e04d468715eb39f5e0bb7235bdd3afacda860c42ac6321beb21d5273064",
+      "matrixIdentityDigest": "e4a3bea372a99634d9e38d92dea0c0e17fc8ef35741ece513be38b8bcc512e95",
+      "candidateDigest": "7eda3311fbc8f7e04899f76614e99ce0525b2707e077c07098ea207de2ea88f1",
+      "greenSummary": {
+        "tests": 62,
+        "passed": 62,
+        "failed": 0,
+        "exitCode": 0
+      }
+    }
+  ],
+  "testOwnerId": "test-owner-1822",
+  "base": {
+    "sha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+    "worktree": "/home/lyuaoss/.local/state/codex/bootstrap-issue-orchestration-repair/cdfdbdbe-d901-4482-bafe-c4ba92c17779/tmp/worktrees/1822-corrective",
+    "branch": "bootstrap-repair/1822-corrective"
+  },
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-layered-investigation.test.mjs",
+    "tests/fixtures/issue-orchestration/layered-investigation-cases.json",
+    "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/layered-investigation-test-contract.json"
+  ],
+  "minimalAllowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/investigation-compiler.mjs",
+    "skills/issue-orchestration/scripts/frontier-compiler.mjs",
+    "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+    "agents/dag-creator-updater.toml",
+    "agents/test-owner.toml",
+    "agents/code-implementer.toml"
+  ],
+  "correctiveAllowedImplementationPaths": [
+    "agents/dag-creator-updater.toml",
+    "agents/test-owner.toml"
+  ],
+  "expectedMissingCandidatePaths": [],
+  "forbiddenImplementationScopes": [
+    "product source",
+    "product tests",
+    "product documentation",
+    "DAG/bootstrap runtime state",
+    "other issue artifacts"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json",
+  "mutations": "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json",
+  "fileHashes": {
+    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "6a2c3e0abc8c282f023e57efb65198a0ca01c021970133ec248aef3147811528",
+    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "ee911ee24a57a8560a42009ed0b2a2859627c208d8029a639039d819f9ee41b9",
+    "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json": "63b71d7d3258f825faff6d791357d2add489501e0f85000175646f3d77003ef9",
+    "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json": "d7d61bb36c16cbc3266bd2e12c0d5fc79df1f646a9fcb1e25b10a47ea72674ed",
+    "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json": "1a79003f132edb084ffbd3aff4d76a66e248b0b5dce87656eb09741cc51c37ec",
+    "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json": "d4ef682b931650668f1f44ab3d02f7619d9911d69eb9aa36493f38e45ec3e583"
+  },
+  "frozenTreeDigest": "868fc1c6690a657cf8759e1ccb2357e986d6567275acadc82efbdfa48aa78b2d",
+  "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
+  "baseDependencyFiles": [
+    {
+      "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+      "sha256": "c3d74f3ce04079cd2472f06b82dc19a86c61c39e0f7f95316d7a9cfc4829e22a",
+      "gitMode": "100644",
+      "ownerIssue": "Ozwasyd/FsusBlog#1818",
+      "disposition": "base-dependency-not-candidate"
+    }
+  ],
+  "candidateIdentity": {
+    "schema": "issue-orchestration.candidate-identity.v1",
+    "algorithm": "sha256-canonical-json-v1",
+    "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+    "contractDigest": "dcad364f98a6dda3f988967e72fc41912001fc46951f0edfed511ed3fe2b4c9f",
+    "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
+    "implementationFiles": [
+      {
+        "path": "skills/issue-orchestration/scripts/investigation-compiler.mjs",
+        "presence": "present",
+        "sha256": "9bd8db272f795e309a7c588ff57511726414a039d17c59a8efacd3de2be65156",
+        "gitMode": "100644"
+      },
+      {
+        "path": "skills/issue-orchestration/scripts/frontier-compiler.mjs",
+        "presence": "present",
+        "sha256": "bfc91becf1af9a5d5967b26ae38db903d19860d79c901644d1780379186e25ff",
+        "gitMode": "100644"
+      },
+      {
+        "path": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+        "presence": "present",
+        "sha256": "e024312836f101bc100879114c1e4f49a3d22c910d6291da4eb42ab3565254fe",
+        "gitMode": "100644"
+      },
+      {
+        "path": "agents/dag-creator-updater.toml",
+        "presence": "present",
+        "sha256": "1c24187aaf493f49b5334b24b75a6c129df87bea137b56de4f983d7e55e2b411",
+        "gitMode": "100644"
+      },
+      {
+        "path": "agents/test-owner.toml",
+        "presence": "present",
+        "sha256": "a47291f6d6786bc4f0123338d701711d4ea1f5496c5acf449e6128cfe7c88844",
+        "gitMode": "100644"
+      },
+      {
+        "path": "agents/code-implementer.toml",
+        "presence": "present",
+        "sha256": "66c30ca0e70c0a4fab3b2b9354d635b1d9fdbed1dae3aca0eb04e8943ae5646f",
+        "gitMode": "100644"
+      }
+    ],
+    "candidateDigest": "afdc7fde9eb4b79e4307c15c73cf0157f2280f0cd3f67d83437d4b0ad94ab42b"
+  },
+  "hashAlgorithm": "sha256-raw-file-bytes",
+  "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
+  "contractDigest": "dcad364f98a6dda3f988967e72fc41912001fc46951f0edfed511ed3fe2b4c9f"
+}

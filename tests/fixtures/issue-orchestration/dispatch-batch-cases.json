@@ -1,0 +1,272 @@
+{
+    "schema": "issue-orchestration.dispatch-batch-cases.v1",
+    "issue": "Ozwasyd/FsusBlog#1820",
+    "contractRevision": 1,
+    "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+    "previousDeliveryEpoch": {
+        "baseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
+        "testTreeDigest": "800ec1cb9fcfc640a5b019190e90df7e7b367128d2e143ee9800371d0b97a37e",
+        "testContractDigest": "374a4fb2ccbcc4ef642fb4d0a2dffde9d9667997949db4b41244e306c130dcfd",
+        "candidateDigest": "54d401ed44ca536cc6178ea96e067a551e6ccedd27fd63be694a56b4601eb4ca",
+        "green": {
+            "tests": 92,
+            "passed": 92,
+            "failed": 0,
+            "exitCode": 0
+        }
+    },
+    "previousRevision": {
+        "revision": 0,
+        "baseSha": "0cfb94f0ccd5f0cc74704b129751459c5cc2300e",
+        "testContractDigest": "588acfb637ac0f319344bf63e9134f895fd5a85a08cf323713d297caad6084a8",
+        "red": {
+            "tests": 64,
+            "passed": 4,
+            "failed": 60,
+            "exitCode": 1,
+            "failureClass": "dispatch-batch-selector-missing"
+        }
+    },
+    "computedAt": "2026-08-01T03:00:00.000Z",
+    "laterComputedAt": "2026-08-01T03:05:00.000Z",
+    "receiptIdentityPolicy": {
+        "schema": "issue-orchestration.receipt-identity-policy.v1",
+        "canonicalEncoding": "utf8-json-recursive-object-key-sort-array-order-preserved",
+        "hashAlgorithm": "sha256-lowercase-hex",
+        "testTreeDigestInput": "path-sorted testFiles[{path,sha256,gitMode}]",
+        "testContractDigestOmittedFields": [
+            "testContractDigest",
+            "candidateDigest"
+        ],
+        "candidateDigestInput": "{baseSha,testContractDigest,path-sorted implementationFiles[{path,sha256,gitMode}]}",
+        "implementationFiles": [
+            {
+                "path": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+                "sha256": "7ca98a2349e9f3eb6014cf61faeb5867b6adcde0a28a2046215104c71209a84d",
+                "gitMode": "100644"
+            },
+            {
+                "path": "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs",
+                "sha256": "36c4d3607b87e11f9fcd796377a3ff6e93f1b471befcf14241d8dbede9d48f42",
+                "gitMode": "100644"
+            }
+        ]
+    },
+    "selectorVersion": "critical-unlock-conflict.v1",
+    "rankingPolicy": {
+        "schema": "issue-orchestration.dispatch-ranking-policy.v1",
+        "selectorVersion": "critical-unlock-conflict.v1",
+        "priorityOrder": ["P0", "P1", "P2"],
+        "withinPriorityWeights": {
+            "downstreamBlockedCount": 1000,
+            "criticalPathLength": 100,
+            "starvationAge": 10,
+            "acceptanceGroupCompletionValue": 5,
+            "validationPlacement": 1
+        },
+        "priorityIsStrict": true,
+        "stableTieBreak": "taskId:ascending",
+        "longTaskPolicy": "occupies-only-own-slot-and-explicit-resource-keys"
+    },
+    "stageKinds": [
+        "test-contract",
+        "code-implementation",
+        "ui-ux-implementation",
+        "behavior-verification",
+        "ux-acceptance",
+        "documentation",
+        "delivery",
+        "cleanup"
+    ],
+    "selectableStageRoles": [
+        "test-owner",
+        "code-implementer",
+        "ui-ux-implementer",
+        "ux-verifier",
+        "documentation-writer",
+        "root-scheduler"
+    ],
+    "structuredDeferReasonCodes": [
+        "ranked-beyond-slot-limit",
+        "write-conflict",
+        "worktree-write-conflict",
+        "resource-lease-held",
+        "active-stage-task",
+        "candidate-not-frozen",
+        "stage-prerequisite-unsatisfied",
+        "stage-role-not-selectable",
+        "group-proposal-ineligible"
+    ],
+    "acceptanceGroupEvidencePolicy": {
+        "estimatedColdStartSavings": {
+            "unit": "seconds",
+            "minimumExclusive": 0,
+            "finite": true
+        },
+        "lostParallelismEstimate": {
+            "unit": "slots",
+            "minimumInclusive": 0,
+            "maximumExclusive": "memberIssueIds.length",
+            "integer": true
+        },
+        "memberOrder": {
+            "canonicalIndependentOrder": "stable issue identity ascending",
+            "digestSemantics": "order-sensitive"
+        }
+    },
+    "conflictKeyCatalog": [
+        {
+            "key": "write:FsusUI:markdown-editor-contract-tests",
+            "kind": "write-surface",
+            "evidence": [
+                "vue/packages/components/markdown-editor/__tests__/markdown-editor.test.tsx",
+                "vue/packages/components/markdown-editor/__tests__/markdown-editor-transaction.property.test.ts"
+            ],
+            "derivation": "investigated-owner-write-surface"
+        },
+        {
+            "key": "write:FsusUI:markdown-editor-core",
+            "kind": "write-surface",
+            "evidence": [
+                "vue/packages/components/markdown-editor/src/markdown-editor.ts",
+                "vue/packages/components/markdown-editor/src/markdown-editor.vue"
+            ],
+            "derivation": "investigated-owner-write-surface"
+        },
+        {
+            "key": "resource:browser:native-ime",
+            "kind": "exclusive-runtime",
+            "evidence": [
+                "FsusUI#268 owner comment 5138603602"
+            ],
+            "derivation": "explicit-runtime-requirement"
+        },
+        {
+            "key": "worktree:FsusUI:issue-267:write",
+            "kind": "issue-worktree-write",
+            "evidence": [
+                "FsusUI#267 test-contract stage"
+            ],
+            "derivation": "stage-write-lease"
+        }
+    ],
+    "fsusUiSample": {
+        "repository": "Ozwasyd/FsusUI",
+        "baseSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
+        "issues": [
+            {
+                "issueId": "Ozwasyd/FsusUI#267",
+                "priorityClass": "P0",
+                "dependsOn": [],
+                "ownerSurfaces": ["markdown-editor-public-api", "markdown-editor-template", "markdown-editor-theme", "markdown-editor-tests"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#268",
+                "priorityClass": "P0",
+                "dependsOn": [],
+                "ownerSurfaces": ["markdown-editor-transaction", "markdown-editor-template", "markdown-editor-tests"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#269",
+                "priorityClass": "P0",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-live-preview", "markdown-runtime", "markdown-editor-tests"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#270",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-command-contract", "markdown-editor-public-api", "markdown-editor-tests"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#271",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268", "Ozwasyd/FsusUI#270"],
+                "ownerSurfaces": ["markdown-editor-command-surface", "markdown-editor-template", "markdown-editor-theme"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#272",
+                "priorityClass": "P1",
+                "dependsOn": [],
+                "ownerSurfaces": ["markdown-editor-locale-status", "markdown-editor-template", "markdown-editor-tests"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#273",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-outline", "markdown-runtime", "markdown-editor-public-api"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#274",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-table", "markdown-editor-command-contract", "markdown-editor-template"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#275",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268", "Ozwasyd/FsusUI#270"],
+                "ownerSurfaces": ["markdown-editor-attachment", "markdown-editor-command-contract", "markdown-editor-template"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#276",
+                "priorityClass": "P2",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-writing-aids", "markdown-editor-template", "markdown-editor-theme"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#277",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268"],
+                "ownerSurfaces": ["markdown-editor-search", "markdown-editor-template", "markdown-editor-public-api"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#278",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268", "Ozwasyd/FsusUI#270"],
+                "ownerSurfaces": ["markdown-editor-technical-block", "markdown-runtime", "markdown-editor-command-contract"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#279",
+                "priorityClass": "P1",
+                "dependsOn": ["Ozwasyd/FsusUI#268", "Ozwasyd/FsusUI#270", "Ozwasyd/FsusUI#275"],
+                "ownerSurfaces": ["markdown-editor-link-media-properties", "markdown-editor-attachment", "markdown-editor-command-contract"]
+            }
+        ],
+        "readyStageTasks": [
+            {
+                "issueId": "Ozwasyd/FsusUI#267",
+                "stageKind": "test-contract",
+                "stageRole": "test-owner",
+                "conflictKeys": ["write:FsusUI:markdown-editor-contract-tests", "worktree:FsusUI:issue-267:write"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#268",
+                "stageKind": "behavior-verification",
+                "stageRole": "test-owner",
+                "conflictKeys": [],
+                "exclusiveResourceKeys": ["resource:browser:native-ime"]
+            },
+            {
+                "issueId": "Ozwasyd/FsusUI#272",
+                "stageKind": "test-contract",
+                "stageRole": "test-owner",
+                "conflictKeys": ["write:FsusUI:markdown-editor-contract-tests", "worktree:FsusUI:issue-272:write"]
+            }
+        ],
+        "blockedIssueIds": [
+            "Ozwasyd/FsusUI#269",
+            "Ozwasyd/FsusUI#270",
+            "Ozwasyd/FsusUI#271",
+            "Ozwasyd/FsusUI#273",
+            "Ozwasyd/FsusUI#274",
+            "Ozwasyd/FsusUI#275",
+            "Ozwasyd/FsusUI#276",
+            "Ozwasyd/FsusUI#277",
+            "Ozwasyd/FsusUI#278",
+            "Ozwasyd/FsusUI#279"
+        ],
+        "expectedSelectedIssueIds": ["Ozwasyd/FsusUI#267", "Ozwasyd/FsusUI#268"],
+        "expectedDeferredIssueIds": ["Ozwasyd/FsusUI#272"]
+    }
+}

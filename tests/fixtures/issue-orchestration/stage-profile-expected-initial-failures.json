@@ -1,0 +1,42 @@
+{
+  "schema": "issue-orchestration.stage-profile-expected-initial-failures.v2",
+  "issueId": "Ozwasyd/FsusBlog#1819",
+  "baseSha": "d01f7269fb9819446f106806d96ea12269d0797b",
+  "expectedStatus": "red",
+  "baselineCommand": ["node","--test","tests/tools/issue-orchestration-stage-profiles.test.mjs"],
+  "sourceRealityDigests": {
+    "skills/issue-orchestration/scripts/stage-profile-policy.mjs": "58c623f9baf96b8d789c21f6e41763b80fa987b95dfe60e1c8af4749f4228328",
+    "skills/issue-orchestration/scripts/check-dag-gate.mjs": "7ca98a2349e9f3eb6014cf61faeb5867b6adcde0a28a2046215104c71209a84d",
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "a4159677a39c4ed81505bc20e9512c9aca75df05902a29d364ae5d662bb06b50",
+    "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "bac705ad5cf8d6abc7f6c37c330586fbdc88a1beb4131548a58f756e7ee1649a",
+    "docs/development/issue-orchestration-scope.md": "91856594ade5c7605881d6ad0e0a74df55530599aab86d486ea5b1d0eb457144"
+  },
+  "expectedFailures": [
+    "mandatory-routing-classification-contract-missing",
+    "routing-classification-validator-missing",
+    "stage-model-pool-v2-manifest-missing",
+    "deterministic-routing-compiler-missing",
+    "route-reclassification-validator-missing",
+    "legacy-fixed-profile-authority-discoverable",
+    "N01-root-sol-rejected",
+    "N02-bounded-terra-without-evidence",
+    "N03-high-risk-luna",
+    "N04-ui-forbidden-model",
+    "N05-ui-dispute-bypasses-adjudicator",
+    "N06-verifier-context-inheritance",
+    "N07-frozen-test-modified",
+    "N08-internal-red-escalates",
+    "N09-silent-capability-fallback",
+    "N10-group-member-inherits-route",
+    "N11-telemetry-controls-policy",
+    "N12-legacy-fixed-sol-discoverable"
+  ],
+  "observedSummary": {
+    "tests": 19,
+    "pass": 1,
+    "fail": 18,
+    "skipped": 0,
+    "firstFailure": "mandatory-routing-classification-contract-missing",
+    "observedAt": "2026-08-01T19:00:00+08:00"
+  }
+}

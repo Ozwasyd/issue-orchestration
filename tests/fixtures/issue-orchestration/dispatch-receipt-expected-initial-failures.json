@@ -1,0 +1,378 @@
+{
+    "schema": "issue-orchestration.dispatch-receipt-expected-initial-failures.v1",
+    "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+    "revision": 6,
+    "supersedesTestContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+    "expectedStatus": "red",
+    "deliveryBinding": {
+        "epochId": "epoch-1818-003",
+        "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "candidateSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+        "candidateIdentityRef": "tests/fixtures/issue-orchestration/dispatch-receipt-test-contract.json#candidateIdentity"
+    },
+    "deliveryBindingHistory": [
+        {
+            "revision": 4,
+            "epochId": "epoch-1818-001",
+            "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+            "candidateSha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "candidateDigest": "6666666666666666666666666666666666666666666666666666666666666666",
+            "testContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+            "frozenTestTreeDigest": "7d81e658ca18bcd5090c3898da43ad987b09feed67d7b7079c0eeb007afff267",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        },
+        {
+            "revision": 5,
+            "epochId": "epoch-1818-002",
+            "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
+            "candidateSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "candidateDigest": "8c40894842241ae87aeaba98bc527e18c84ee800a98929b8e1e63306c1210497",
+            "testContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+            "frozenTestTreeDigest": "aa4292f1e9910bc7af4ecb98d3d421b4673455f906a7e1a95216586238bd967d",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        }
+    ],
+    "testContractHistory": [
+        {
+            "revision": 0,
+            "testContractDigest": "0ae08b1972250eaa1db93093fbab30682b131abf59abf2635c3011ef294722c5",
+            "frozenTestTreeDigest": "8fe5f8ce194ebbefd239e78355333134b8a305242581dbc531df53534fbeab7d",
+            "visibleTestMatrixDigest": "913d378aeafcfb57ecdd85b64f2cbeca382a44ecd016c1502eaf2e8912650d4e"
+        },
+        {
+            "revision": 1,
+            "testContractDigest": "0d22f09055f7a54a4afbe60c6459ae03584f76149618123eb4b7b2001eff4fa7",
+            "frozenTestTreeDigest": "f3be52a64924aaf96b6c12bfaf88bb5b6bff24cf7d517f7aa5da332614e3fe31",
+            "visibleTestMatrixDigest": "0b945525a9978fd52dc91f181a0cfa83f930ddf3beb11c561b54ccb5cacddf83"
+        },
+        {
+            "revision": 2,
+            "testContractDigest": "eb5e643dd32ae0362b4eee0831cff555fb588a68163d5e2388f327bb36283c77",
+            "frozenTestTreeDigest": "040afeed690535264e36e320bb9fd9e655137ee26627d43235d0415c6be7944e",
+            "visibleTestMatrixDigest": "229d41adb431124807fd012140ca6b92ce85673142dd5b89423fff494b9a8027"
+        },
+        {
+            "revision": 3,
+            "testContractDigest": "559f083517950356982681d3c264c8471659a49ef00e3b2c5681e15fff54841f",
+            "frozenTestTreeDigest": "496bf139c6e26acd628d2bd012f8f3c3b80e59903000b0840695d2463d404d5c",
+            "visibleTestMatrixDigest": "d85a0b40b47f7767cbdd88ba67328c3bd26bf479eceac4e6778c1def1ead51f9"
+        },
+        {
+            "revision": 4,
+            "testContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
+            "frozenTestTreeDigest": "7d81e658ca18bcd5090c3898da43ad987b09feed67d7b7079c0eeb007afff267",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        },
+        {
+            "revision": 5,
+            "testContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
+            "frozenTestTreeDigest": "aa4292f1e9910bc7af4ecb98d3d421b4673455f906a7e1a95216586238bd967d",
+            "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
+        }
+    ],
+    "verifierRejection": {
+        "schema": "issue-orchestration.behavior-receipt.v1",
+        "issue": "Ozwasyd/FsusBlog#1818",
+        "epochId": "epoch4",
+        "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+        "candidateDigest": "e6f8793a673b8488e8f2f3d5e107cd07e11180d34b4a217f3a71c91d491e97a8",
+        "implementationDiffDigest": "b3b6dca0711caa8268cf5b1094f1d15ba634a6bc55487b8c44a985b2894d292c",
+        "testContractDigest": "0ae08b1972250eaa1db93093fbab30682b131abf59abf2635c3011ef294722c5",
+        "frozenTestTreeDigest": "8fe5f8ce194ebbefd239e78355333134b8a305242581dbc531df53534fbeab7d",
+        "visibleTestMatrixDigest": "913d378aeafcfb57ecdd85b64f2cbeca382a44ecd016c1502eaf2e8912650d4e",
+        "verificationStatus": "rejected",
+        "firstFailure": "required-runtime-cli-no-op",
+        "receiptDigest": "c3f4a78396201870d167c4cd3bc78f6c1ea4de03a8fb8a3471bf37371f6c6917"
+    },
+    "firstFailureEvidence": {
+        "id": "required-runtime-cli-no-op",
+        "observedAt": "2026-07-31T21:03:35Z",
+        "command": [
+            "node",
+            "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "verify-runtime",
+            "--request",
+            "/definitely/missing/request.json",
+            "--rollout",
+            "/definitely/missing/rollout.jsonl",
+            "--machine-observations",
+            "/definitely/missing/observations.json"
+        ],
+        "actualExitStatus": 0,
+        "stdoutBytes": 0,
+        "stderrBytes": 0,
+        "requiredExitStatus": "nonzero",
+        "requiredDiagnostic": "nonempty"
+    },
+    "revisionTwoVerifierRejection": {
+        "schema": "issue-orchestration.behavior-receipt.v1",
+        "issue": "Ozwasyd/FsusBlog#1818",
+        "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+        "candidateDigest": "86d9dbd5a099ace8965762706dc52ae5876da065db915435ee7d03df63bbcdbf",
+        "testContractDigest": "0d22f09055f7a54a4afbe60c6459ae03584f76149618123eb4b7b2001eff4fa7",
+        "frozenTestTreeDigest": "f3be52a64924aaf96b6c12bfaf88bb5b6bff24cf7d517f7aa5da332614e3fe31",
+        "visibleTestMatrixDigest": "0b945525a9978fd52dc91f181a0cfa83f930ddf3beb11c561b54ccb5cacddf83",
+        "verificationStatus": "rejected",
+        "firstFailure": "runtime-candidate-digest-unbound",
+        "receiptDigest": "434947016c160f74f6dca65d08311d2f2d799781f0af101a49eb4a3cdd4fc9c0"
+    },
+    "revisionTwoFirstFailureEvidence": {
+        "id": "runtime-candidate-digest-unbound",
+        "requestCandidateDigest": "86d9dbd5a099ace8965762706dc52ae5876da065db915435ee7d03df63bbcdbf",
+        "observedCandidateDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "actualVerificationStatus": "verified",
+        "actualMismatchReasons": [],
+        "requiredVerificationStatus": "rejected",
+        "requiredMismatchReason": "runtime-candidate-identity-mismatch"
+    },
+    "revisionThreeVerifierRejection": {
+        "schema": "issue-orchestration.behavior-receipt.v1",
+        "issue": "Ozwasyd/FsusBlog#1818",
+        "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+        "testContractDigest": "eb5e643dd32ae0362b4eee0831cff555fb588a68163d5e2388f327bb36283c77",
+        "frozenTestTreeDigest": "040afeed690535264e36e320bb9fd9e655137ee26627d43235d0415c6be7944e",
+        "visibleTestMatrixDigest": "229d41adb431124807fd012140ca6b92ce85673142dd5b89423fff494b9a8027",
+        "verificationStatus": "rejected",
+        "firstFailure": "reviewer-write-policy-request-bypass",
+        "evidenceDigest": "7ad949997138762210cba3150249aba9b7fab9b6d33a69088d5b000aacfac669",
+        "receiptDigest": "5d899a51fe16acff92d82dba2bf06ff85d0f35fe3467aa8bbc5bb790dcb80e4b"
+    },
+    "revisionThreeFirstFailureEvidence": {
+        "id": "reviewer-write-policy-request-bypass",
+        "stageRole": "ux-acceptance-verifier",
+        "requestedModel": "gpt-5.6-sol",
+        "requestedEffort": "max",
+        "requestedSandbox": "workspace-write",
+        "requestedWritePolicy": "stage-scoped-write-lease",
+        "effectiveSandbox": "workspace-write",
+        "actualSealingStatus": "accepted",
+        "actualRuntimeVerificationStatus": "verified",
+        "actualRuntimeMismatchReasons": [],
+        "requiredSealingStatus": "rejected",
+        "requiredSealingCode": "dispatch-stage-profile-policy",
+        "evidenceDigest": "7ad949997138762210cba3150249aba9b7fab9b6d33a69088d5b000aacfac669"
+    },
+    "revisionFourVerifierRejection": {
+        "schema": "issue-orchestration.behavior-receipt.v1",
+        "issue": "Ozwasyd/FsusBlog#1818",
+        "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+        "testContractDigest": "559f083517950356982681d3c264c8471659a49ef00e3b2c5681e15fff54841f",
+        "frozenTestTreeDigest": "496bf139c6e26acd628d2bd012f8f3c3b80e59903000b0840695d2463d404d5c",
+        "visibleTestMatrixDigest": "d85a0b40b47f7767cbdd88ba67328c3bd26bf479eceac4e6778c1def1ead51f9",
+        "verificationStatus": "rejected",
+        "firstFailure": "test-owner-profile-request-bypass",
+        "directFailureCount": 8,
+        "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+        "receiptDigest": "1ea332eb6f8428c989d0bec3b36891e3155ede8b2369acbc2f348ad8cdcb2076"
+    },
+    "revisionFourFirstFailureEvidence": {
+        "id": "test-owner-profile-request-bypass",
+        "directFailureCount": 8,
+        "evidenceDigest": "abec4ef1b8e62d24c0dba29a3270faba7ec7605c38f1874f160804762fbb6273",
+        "directFailures": [
+            {
+                "id": "test-owner-profile-request-bypass",
+                "stageRole": "test-owner",
+                "requestedModel": "gpt-5.6-terra",
+                "requestedEffort": "low",
+                "requestedSandbox": "danger-full-access",
+                "requestedWritePolicy": "unrestricted",
+                "actualSealingStatus": "accepted",
+                "actualRuntimeVerificationStatus": "verified",
+                "requiredSealingStatus": "rejected",
+                "requiredSealingCode": "dispatch-stage-profile-policy"
+            },
+            {
+                "id": "non-root-dag-profile-request-bypass",
+                "stageRole": "dag-creator-updater",
+                "requestedModel": "gpt-5.6-terra",
+                "requestedEffort": "low",
+                "requestedSandbox": "workspace-write",
+                "actualSealingStatus": "accepted",
+                "actualRuntimeVerificationStatus": "verified",
+                "requiredSealingStatus": "rejected",
+                "requiredSealingCode": "dispatch-stage-profile-policy"
+            },
+            {
+                "id": "ui-required-skills-empty-bypass",
+                "stageRole": "ui-ux-implementer",
+                "requiredSkills": [],
+                "designAuthorityDigests": [],
+                "actualSealingStatus": "accepted",
+                "actualRuntimeVerificationStatus": "verified",
+                "requiredSealingStatus": "rejected",
+                "requiredSealingCode": "dispatch-ui-design-authority-policy"
+            },
+            {
+                "id": "credential-bearing-observation-leak",
+                "actualRuntimeVerificationStatus": "verified",
+                "actualRuntimeObservationSecretEcho": true,
+                "requiredRuntimeVerificationStatus": "rejected",
+                "requiredMismatchReason": "dispatch-secret-material",
+                "requiredRuntimeObservationSecretEcho": false
+            },
+            {
+                "id": "ledger-frozen-path-dispatch-bypass",
+                "frozenContractIncludesIssue1818TestPath": false,
+                "dispatchReceiptPresent": false,
+                "actualFinalState": "implementing-self-testing",
+                "requiredError": "verified-dispatch-receipt-required"
+            },
+            {
+                "id": "ledger-frozen-path-legacy-candidate-bypass",
+                "frozenContractIncludesIssue1818TestPath": false,
+                "receiptSchema": "issue-orchestration.verified-candidate-receipt.v1",
+                "actualFinalState": "candidate-green",
+                "requiredError": "receipt-schema-stage-mismatch"
+            },
+            {
+                "id": "self-test-evidence-digest-collision",
+                "changedEvidence": [
+                    "implementationDiffDigest",
+                    "commandResults.resultDigest",
+                    "firstFailureRefs",
+                    "failureHistory"
+                ],
+                "actualReceiptDigestRelation": "equal",
+                "requiredReceiptDigestRelation": "distinct"
+            },
+            {
+                "id": "self-test-minimal-dispatch-forgery",
+                "forgedDispatchFields": [
+                    "schema",
+                    "verificationStatus"
+                ],
+                "actualSelfTestVerificationStatus": "verified",
+                "requiredSelfTestVerificationStatus": "rejected",
+                "requiredMismatchReason": "verified-dispatch-receipt-required"
+            }
+        ]
+    },
+    "revisionOneObservedRedControls": [
+        "runtime-cli-nonexistent-input-no-op",
+        "sealed-request-nested-mutable",
+        "runtime-working-directory-unobservable",
+        "runtime-thread-id-unobservable",
+        "runtime-rollout-id-unobservable",
+        "runtime-started-at-unobservable",
+        "test-owner-write-root-overreach",
+        "runtime-fork-exact-mismatch",
+        "runtime-request-id-drift",
+        "runtime-epoch-drift",
+        "code-profile-terra-max",
+        "root-profile-wrong",
+        "skill-observation-self-hashed-forgery",
+        "group-session-drift",
+        "group-member-stage-drift",
+        "group-member-test-contract-drift",
+        "group-test-owner-continuity-drift",
+        "group-implementer-continuity-drift",
+        "implementation-diff-digest-missing",
+        "ledger-start-without-dispatch-receipt",
+        "ledger-legacy-candidate-receipt",
+        "self-test-cross-candidate-replay"
+    ],
+    "revisionTwoObservedRedControls": [
+        "runtime-candidate-digest-drift"
+    ],
+    "revisionThreeObservedRedControls": [
+        "reviewer-write-policy-request-bypass"
+    ],
+    "revisionFourObservedRedControls": [
+        "test-owner-profile-request-bypass",
+        "non-root-dag-profile-request-bypass",
+        "ui-required-skills-empty-bypass",
+        "credential-bearing-observation-leak",
+        "ledger-frozen-path-dispatch-bypass",
+        "ledger-frozen-path-legacy-candidate-bypass",
+        "self-test-evidence-digest-collision",
+        "self-test-minimal-dispatch-forgery"
+    ],
+    "failureClasses": [
+        {
+            "id": "required-runtime-cli-no-op",
+            "expectedError": "verify-runtime must reject unreadable or nonexistent required inputs",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "The executable currently ignores verify-runtime arguments, exits zero, and emits no receipt or diagnostic; this remains the preserved first failure."
+        },
+        {
+            "id": "dispatch-receipt-runtime-missing",
+            "expectedError": "ERR_MODULE_NOT_FOUND",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "The base has no deterministic request, runtime-observation, dispatch-receipt, self-test-receipt, replay, or transition verifier."
+        },
+        {
+            "id": "legacy-candidate-receipt-too-weak",
+            "sourcePath": "skills/issue-orchestration/scripts/event-ledger.mjs",
+            "meaning": "The base candidate-green path accepts issue-orchestration.verified-candidate-receipt.v1 without request/base/full-matrix/frozen-tree/runtime dispatch identity."
+        },
+        {
+            "id": "runtime-role-and-fork-unobservable",
+            "expectedStatus": "capability-unverified",
+            "meaning": "Observed current child session metadata exposes model, effort, sandbox, cwd, thread and rollout but has null agent_role and no effective fork_turns; verification must fail closed."
+        },
+        {
+            "id": "runtime-candidate-digest-unbound",
+            "expectedStatus": "rejected",
+            "expectedReason": "runtime-candidate-identity-mismatch",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "A machine-observed candidateDigest drift to all zeroes is accepted when candidateSha still matches; both identities must be bound."
+        },
+        {
+            "id": "reviewer-write-policy-request-bypass",
+            "expectedError": "dispatch-stage-profile-policy",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "An invalid workspace-write reviewer request is sealed and later verified when runtime matches it; reviewer read-only policy must be enforced during sealing."
+        },
+        {
+            "id": "test-owner-profile-request-bypass",
+            "expectedError": "dispatch-stage-profile-policy",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "An unsafe test-owner request is sealed and verified when runtime matches it; the Sol/max/scoped-write profile must be enforced during sealing."
+        },
+        {
+            "id": "non-root-dag-profile-request-bypass",
+            "expectedError": "dispatch-stage-profile-policy",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "A non-root DAG request can self-select Terra/low/workspace-write and verify; DAG creation and updates require the frozen Sol/max/read-only profile."
+        },
+        {
+            "id": "ui-required-skills-empty-bypass",
+            "expectedError": "dispatch-ui-design-authority-policy",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "An FsusBlog UI request with empty required Skills and design-authority digests verifies because an empty declaration is treated as complete."
+        },
+        {
+            "id": "credential-bearing-observation-leak",
+            "expectedStatus": "rejected",
+            "expectedReason": "dispatch-secret-material",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "Credential-bearing machine evidence verifies and is copied into runtimeObservation; secret material must reject without being returned."
+        },
+        {
+            "id": "ledger-frozen-path-dispatch-bypass",
+            "expectedError": "verified-dispatch-receipt-required",
+            "sourcePath": "skills/issue-orchestration/scripts/event-ledger.mjs",
+            "meaning": "Dispatch enforcement is incorrectly enabled only when one issue-specific test path appears in frozenFiles, allowing ordinary frozen contracts to start without a receipt."
+        },
+        {
+            "id": "ledger-frozen-path-legacy-candidate-bypass",
+            "expectedError": "receipt-schema-stage-mismatch",
+            "sourcePath": "skills/issue-orchestration/scripts/event-ledger.mjs",
+            "meaning": "The same issue-specific frozen-path switch allows ordinary contracts to enter candidate-green with a legacy verified-candidate receipt."
+        },
+        {
+            "id": "self-test-evidence-digest-collision",
+            "expectedDigestRelation": "distinct",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "Self-test receipts omit implementation diff, command-result, and failure-history evidence from their digest authority, so materially different executions collide."
+        },
+        {
+            "id": "self-test-minimal-dispatch-forgery",
+            "expectedStatus": "rejected",
+            "expectedReason": "verified-dispatch-receipt-required",
+            "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+            "meaning": "Self-test verification trusts a minimal forged object containing only the dispatch schema and a verified status instead of validating full request-bound receipt identity."
+        }
+    ]
+}

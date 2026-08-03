@@ -1,0 +1,100 @@
+{
+  "schema": "issue-orchestration.stage-profile-test-contract.v2",
+  "revision": 2,
+  "supersedesTestContractDigest": "d9c3777e542684000310a2d258d41e5c47346fd786e61088380577afcdf3d1bb",
+  "phase": "test-contract",
+  "status": "frozen-red",
+  "issueId": "Ozwasyd/FsusBlog#1819",
+  "authority": {
+    "kind": "merged-issue-body",
+    "updatedAt": "2026-08-01T09:01:42Z"
+  },
+  "testOwnerId": "test-owner-fsusblog-1819-d01f7269",
+  "baseSha": "d01f7269fb9819446f106806d96ea12269d0797b",
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-stage-profiles.test.mjs",
+    "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/stage-profile-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/stage-profile-test-contract.json"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/stage-profile-mutation-controls.json",
+  "allowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/stage-profile-policy.mjs",
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+    "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs",
+    "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+    "skills/issue-orchestration/scripts/investigation-compiler.mjs",
+    "skills/issue-orchestration/scripts/frontier-compiler.mjs",
+    "skills/issue-orchestration/scripts/event-ledger.mjs",
+    "skills/issue-orchestration/scripts/resource-lifecycle.mjs",
+    ".codex/agents/issue-dag-agent.toml",
+    ".codex/agents/issue-test-owner.toml",
+    ".codex/agents/issue-code-implementer.toml",
+    ".codex/agents/issue-ui-ux-implementer.toml",
+    ".codex/agents/issue-ui-system-adjudicator.toml",
+    ".codex/agents/issue-ux-acceptance-verifier.toml",
+    ".codex/agents/issue-documentation-writer.toml",
+    ".codex/agents/issue-cleanup-verifier.toml"
+  ],
+  "implementationPathActions": {
+    ".codex/agents/issue-ui-system-adjudicator.toml": "create",
+    ".codex/agents/issue-cleanup-verifier.toml": "remove"
+  },
+  "forbiddenScopes": [
+    "product code",
+    "tests, fixtures, probes, mutation controls, thresholds, snapshots or acceptance mapping after freeze",
+    "formal documentation during implementation",
+    "DAG or bootstrap runtime state",
+    "other issue tests or fixtures",
+    "telemetry policy changes",
+    "commit, push, issue mutation or delivery"
+  ],
+  "visibleTestMatrix": [
+    {
+      "id": "stage-profile-focused",
+      "required": true,
+      "command": ["node","--test","tests/tools/issue-orchestration-stage-profiles.test.mjs"]
+    },
+    {
+      "id": "dispatch-receipt-regression",
+      "requiredAfterImplementation": true,
+      "command": ["node","--test","tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+    },
+    {
+      "id": "dispatch-batch-regression",
+      "requiredAfterImplementation": true,
+      "command": ["node","--test","tests/tools/issue-orchestration-dispatch-batch.test.mjs"]
+    },
+    {
+      "id": "dag-gate-regression",
+      "requiredAfterImplementation": true,
+      "command": ["node","--test","tests/tools/issue-orchestration-ready-frontier.test.mjs"]
+    },
+    {
+      "id": "event-ledger-regression",
+      "requiredAfterImplementation": true,
+      "command": ["node","--test","tests/tools/issue-orchestration-event-ledger.test.mjs"]
+    }
+  ],
+  "fileHashes": {
+    "tests/tools/issue-orchestration-stage-profiles.test.mjs": "12fc92cf2989d8db97b095b862c4b5be9bf95358c72b1665d998e97964a9f249",
+    "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json": "c8ddb8b01c8e94f282907fb6629b35ccb3d1d48b06de9163fdb109089d0eab85",
+    "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json": "b7b2bfd48fcf324637798260960bf2834ee5591793aa7659c4a75ac61a31ff5d",
+    "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json": "4cf09200238c28e0b2c755113fd4dc05d86f800d91663f4bb65ff5d25c5209f1",
+    "tests/fixtures/issue-orchestration/stage-profile-mutation-controls.json": "9ac289777de98b04b8f37e19845c014c44ce1526f59a0cfca8ba83f77e9836c8"
+  },
+  "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
+  "selfHashPolicy": "fileHashes covers raw bytes of all allowedTestPaths except this manifest; testContractDigest covers canonical JSON with testContractDigest omitted",
+  "expectedBaseSummary": {
+    "tests": 19,
+    "pass": 1,
+    "fail": 18,
+    "skipped": 0
+  },
+  "testContractDigest": "a64399fa7fb2056d3fc4f893bf0e90f86dcaa21bce2a7264cd64dd66f0ec5155"
+}

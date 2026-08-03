@@ -1,0 +1,69 @@
+{
+  "schema": "issue-orchestration.shared-package-runtime-probes.v1",
+  "issue": "Ozwasyd/FsusBlog#1823",
+  "probes": [
+    {
+      "id": "RP01-real-external-install",
+      "test": "P04",
+      "kind": "real-filesystem-and-git",
+      "observation": "invoke install.mjs against two temporary Git repositories and two real linked worktrees with an external install root",
+      "expected": "installed receipt with canonical source/install digests"
+    },
+    {
+      "id": "RP02-five-cwd-discovery",
+      "test": "P04",
+      "kind": "real-process-cwd-matrix",
+      "observation": "verify from FsusBlog root, FsusUI root, common workspace, FsusBlog worktree and FsusUI worktree",
+      "expected": "one package/Skill identity and digest plus the same seven agents and policy/graph/projector digests"
+    },
+    {
+      "id": "RP03-idempotent-reinstall",
+      "test": "P05",
+      "kind": "real-filesystem",
+      "observation": "run install twice and hash the complete installed artifact tree",
+      "expected": "already-current with byte-identical install tree and no temporary/partial artifact"
+    },
+    {
+      "id": "RP04-hand-edit-rejection",
+      "test": "P06",
+      "kind": "real-filesystem-mutation",
+      "observation": "append an unknown edit to the installed Skill and run verify then install",
+      "expected": "installed-artifact-drift then install-target-ownership-drift; the edit remains untouched"
+    },
+    {
+      "id": "RP05-protected-root-rejection",
+      "test": "P07",
+      "kind": "real-path-boundary",
+      "observation": "attempt installation inside the FsusBlog repository",
+      "expected": "install-target-protected-overlap and zero installed files"
+    },
+    {
+      "id": "RP06-ownership-safe-uninstall",
+      "test": "P07",
+      "kind": "real-filesystem",
+      "observation": "uninstall a verified artifact beside an externally owned sentinel",
+      "expected": "only the owned install root is removed"
+    },
+    {
+      "id": "RP07-runtime-module-load",
+      "test": "P08",
+      "kind": "real-node-import",
+      "observation": "load the shared stage policy, semantic/runtime projector and dispatch receipt modules",
+      "expected": "stage-model-pool.v3 with Luna/low root and required graph/receipt exports"
+    },
+    {
+      "id": "RP08-external-runtime-state",
+      "test": "P09",
+      "kind": "real-filesystem",
+      "observation": "create semantic graph and runtime projection files only under the external runtime root, then verify the installation",
+      "expected": "verified external root with no runtime state in source or install targets"
+    },
+    {
+      "id": "RP09-zero-residue",
+      "test": "P09",
+      "kind": "real-resource-lifecycle",
+      "observation": "allow each Node test cleanup hook to remove temporary repositories, worktrees, install and state roots",
+      "expected": "no test-owned runtime root remains after the focused process exits"
+    }
+  ]
+}

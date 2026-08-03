@@ -1,0 +1,21 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-initial-failures.v3",
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "baseSha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9",
+  "expectedStatus": "red",
+  "observedBaseline": {
+    "command": "node --test tests/tools/issue-orchestration-resource-lifecycle.test.mjs",
+    "summary": { "tests": 18, "passed": 3, "failed": 15, "skipped": 0, "cancelled": 0 },
+    "exitCode": 1
+  },
+  "firstFailure": {
+    "acceptanceId": "B02",
+    "diagnostic": "missing export captureBaselineInventory",
+    "classification": "current-resource-runtime-owner-missing"
+  },
+  "expectedFailingAcceptance": ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B09", "B10", "B11", "B12", "B13", "B14", "B15", "B16"],
+  "historicalFirstFailure": {
+    "diagnostic": "legacy-owner-path-retired",
+    "classification": "historical-tombstone-not-current-acceptance"
+  }
+}

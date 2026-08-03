@@ -1,0 +1,14 @@
+{
+  "probes": [
+    {"id": "P01", "observation": "Input order and exact duplicate sources do not change output digests."},
+    {"id": "P02", "observation": "Tampered source projections and conflicting duplicate source digests fail closed."},
+    {"id": "P03", "observation": "Requested runtime metadata never fills unobserved effective fields."},
+    {"id": "P04", "observation": "Durations are derived from verified timestamps and use deterministic median and nearest-rank p95."},
+    {"id": "P05", "observation": "Unknown or sensitive fields are rejected by the projection allowlist."},
+    {"id": "P06", "observation": "Semantic failure identity ignores attempt, profile, prompt, worktree, slice, base, epoch and candidate lineage."},
+    {"id": "P07", "observation": "Acceptance-group members remain separately visible, including pending members."},
+    {"id": "P08", "observation": "Resource state from any authority other than resource-lifecycle fails closed."},
+    {"id": "P09", "observation": "The run summary exports final git, attempt, slice, checkpoint, breaker, route, profile, process, Docker, lock, filesystem, install, landing and human state digests."},
+    {"id": "P10", "observation": "The compiler returns all ten versioned telemetry documents without mutating source or policy inputs."}
+  ]
+}

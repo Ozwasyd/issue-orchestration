@@ -1,0 +1,101 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-mutation-controls.v1",
+  "issue": "Ozwasyd/FsusBlog#1833",
+  "controls": [
+    {
+      "id": "N01-completion-close-dispatches-updater",
+      "surface": "dag-update-decision",
+      "expectedCode": "projection-only-updater-dispatch-forbidden"
+    },
+    {
+      "id": "N02-runtime-digest-treated-as-semantic",
+      "surface": "remote-mutation-classification",
+      "expectedCode": "remote-mutation-classification-mismatch"
+    },
+    {
+      "id": "N03-ordinary-semantic-update-returns-full",
+      "surface": "full-proposal",
+      "expectedCode": "full-proposal-reason-forbidden"
+    },
+    {
+      "id": "N04-root-skips-expected-mutation-reconciliation",
+      "surface": "dag-update-decision",
+      "expectedCode": "expected-remote-mutation-reconciliation-required"
+    },
+    {
+      "id": "N05-projector-modifies-semantic-edge",
+      "surface": "runtime-projector",
+      "expectedCode": "projector-semantic-write-forbidden"
+    },
+    {
+      "id": "N06-local-failure-dispatches-updater",
+      "surface": "dag-update-decision",
+      "expectedCode": "projection-only-updater-dispatch-forbidden"
+    },
+    {
+      "id": "N07-patch-base-digest-mismatch",
+      "surface": "graph-patch",
+      "expectedCode": "graph-patch-base-digest-mismatch"
+    },
+    {
+      "id": "N08-scope-replacement-without-reason",
+      "surface": "full-proposal",
+      "expectedCode": "full-proposal-reason-required"
+    },
+    {
+      "id": "N09-root-authored-patch",
+      "surface": "graph-patch",
+      "expectedCode": "graph-patch-authority"
+    },
+    {
+      "id": "N10-ordinary-patch-embeds-full-graph",
+      "surface": "graph-patch",
+      "expectedCode": "graph-patch-full-graph-forbidden"
+    },
+    {
+      "id": "N11-patch-operation-not-allowed",
+      "surface": "graph-patch",
+      "expectedCode": "graph-patch-operation-forbidden"
+    },
+    {
+      "id": "N12-patch-result-digest-mismatch",
+      "surface": "graph-patch",
+      "expectedCode": "graph-patch-result-digest-mismatch"
+    },
+    {
+      "id": "N13-graph-corruption-full-without-evidence",
+      "surface": "full-proposal",
+      "expectedCode": "full-proposal-recovery-evidence-required"
+    },
+    {
+      "id": "N14-semantic-patch-without-exactly-one-dispatch",
+      "surface": "dag-update-decision",
+      "expectedCode": "semantic-patch-updater-dispatch-required"
+    },
+    {
+      "id": "N15-false-positive-dag-dispatch-count-nonzero",
+      "surface": "telemetry",
+      "expectedCode": "false-positive-dag-dispatch"
+    },
+    {
+      "id": "N16-expected-mutation-digest-mismatch",
+      "surface": "dag-update-decision",
+      "expectedCode": "expected-remote-mutation-digest-mismatch"
+    },
+    {
+      "id": "N17-runtime-projection-embeds-graph-patch",
+      "surface": "runtime-projector",
+      "expectedCode": "runtime-projection-semantic-field-forbidden"
+    },
+    {
+      "id": "N18-three-layer-digest-alias",
+      "surface": "digest-layering",
+      "expectedCode": "digest-layer-alias-forbidden"
+    },
+    {
+      "id": "N19-dag-decision-receipt-field-omitted",
+      "surface": "dag-update-decision",
+      "expectedCode": "dag-update-decision-field-required"
+    }
+  ]
+}

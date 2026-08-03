@@ -1,0 +1,32 @@
+{
+  "schema": "issue-orchestration.ci-baseline-mutations.v1",
+  "issue": "Ozwasyd/FsusBlog#1822",
+  "revision": 10,
+  "controls": [
+    { "id": "relative-url-forwarded-to-node-fetch", "killedBy": "R10CI01", "consequence": "required-job-red" },
+    { "id": "absolute-only-test-environment", "killedBy": "R10CI01", "consequence": "required-job-red" },
+    { "id": "binary-transport-real-fetch-leak", "killedBy": "R10CI01", "consequence": "required-job-red" },
+    { "id": "partial-61-test-green", "killedBy": "R10CI01", "consequence": "required-job-red" },
+    { "id": "consumer-self-rebuild-fallback", "killedBy": "R10CI02", "consequence": "required-job-red" },
+    { "id": "historical-wasm-artifact-reuse", "killedBy": "R10CI02", "consequence": "required-job-red" },
+    { "id": "wasm-receipt-without-manifest", "killedBy": "R10CI02", "consequence": "required-job-red" },
+    { "id": "local-component-copy", "killedBy": "R10CI03", "consequence": "required-job-red" },
+    { "id": "invented-fsusui-release", "killedBy": "R10CI03", "consequence": "required-job-red" },
+    { "id": "missing-replacement-ignored", "killedBy": "R10CI04", "consequence": "required-job-red" },
+    { "id": "deleted-test-evidence-file-used-as-test", "killedBy": "R10CI04", "consequence": "required-job-red" },
+    { "id": "browser-probe-direct-child-process", "killedBy": "R10CI04", "consequence": "required-job-red" },
+    { "id": "partial-node-ownership-registry", "killedBy": "R10CI04", "consequence": "required-job-red" },
+    { "id": "unrelated-test-source-cleanup", "killedBy": "R10CI04", "consequence": "required-job-red" },
+    { "id": "appcontext-parent-traversal-retained", "killedBy": "R10CI05", "consequence": "required-job-red" },
+    { "id": "private-root-probe-renamed", "killedBy": "R10CI05", "consequence": "required-job-red" },
+    { "id": "downstream-stale-artifact-fallback", "killedBy": "R10CI06", "consequence": "required-job-red" },
+    { "id": "workflow-only-wasm-producer", "killedBy": "R10CI07", "consequence": "required-job-red" },
+    { "id": "non-doc-validate-failure-reclassified-as-documentation", "killedBy": "R10CI08", "consequence": "required-job-red" },
+    { "id": "multiple-doc-mismatches-treated-as-unique", "killedBy": "R10CI08", "consequence": "required-job-red" },
+    { "id": "postgres-estimated-facts-manifest-stale", "killedBy": "R10CI09", "consequence": "required-job-red" },
+    { "id": "retention-before-snapshot-shallow-checkout", "killedBy": "R10CI10", "consequence": "required-job-red" },
+    { "id": "process-group-esrch-race-unhandled", "killedBy": "R10CI11", "consequence": "required-job-red" },
+    { "id": "frontend-unit-global-module-reset-leak", "killedBy": "R10CI12", "consequence": "required-job-red" },
+    { "id": "binary-adapter-stale-cardinality", "killedBy": "R10CI12", "consequence": "required-job-red" }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "issue-orchestration.resource-lifecycle-test-contract.v3",
+  "revision": 3,
+  "status": "frozen-red",
+  "owner": {
+    "id": "test-owner-1828",
+    "stageRole": "test-owner:test-contract",
+    "profile": "gpt-5.6-terra/max",
+    "writeLease": "tests-fixtures-runtime-probes-mutation-controls-acceptance-map-only"
+  },
+  "issueId": "Ozwasyd/FsusBlog#1828",
+  "base": {
+    "repository": "Ozwasyd/FsusBlog",
+    "ref": "origin/master",
+    "sha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9"
+  },
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-test-contract.json"
+  ],
+  "allowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/resource-lifecycle.mjs",
+    "skills/issue-orchestration/scripts/event-ledger.mjs",
+    "skills/issue-orchestration/scripts/dispatch-receipt.mjs"
+  ],
+  "allowedPaths": {
+    "test": [
+      "tests/tools/issue-orchestration-resource-lifecycle.test.mjs",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json",
+      "tests/fixtures/issue-orchestration/resource-lifecycle-test-contract.json"
+    ],
+    "implementation": [
+      "skills/issue-orchestration/scripts/resource-lifecycle.mjs",
+      "skills/issue-orchestration/scripts/event-ledger.mjs",
+      "skills/issue-orchestration/scripts/dispatch-receipt.mjs"
+    ]
+  },
+  "allowedPathsDigest": "15e3590496cb0a6727b7fde5502ed2c3915319630ab6ba23b6be26d82c4dce3e",
+  "currentOwner": {
+    "resourceLifecycle": "skills/issue-orchestration/scripts/resource-lifecycle.mjs",
+    "eventLedger": "skills/issue-orchestration/scripts/event-ledger.mjs",
+    "dispatchReceipt": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
+    "legacyAuthority": ".agents/skills/issue-orchestration",
+    "legacyDisposition": "retired-tombstone"
+  },
+  "baselineImplementationIdentity": {
+    "resourceLifecycle": "7bc2658981f8593eb3eb33e27c1db9dc77bb094d19726f3b53c272e25df4ca28",
+    "eventLedger": "8b3bfad2af1d6a726c59176fa39ae2e192270bdae84950e6ead49af4e331c380",
+    "dispatchReceipt": "2e52eb840c0d0fa93bfc3e348fe5bc84ec9501d0b7f18ae31eebb1174ac265ba",
+    "disposition": "baseline-input-not-frozen-candidate-output"
+  },
+  "acceptanceMap": "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json",
+  "forbiddenScopes": [
+    "implementation outside allowedImplementationPaths",
+    "formal documentation",
+    "DAG or bootstrap state",
+    "other issue contracts",
+    "GitHub comments, close, push, or commit",
+    "CI acceptance",
+    "destructive operations outside test-created temporary roots"
+  ],
+  "fileHashes": {
+    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs": "832818532a1389f65a5579c375ba255824976032117ae8f9638421fe56bc4670",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json": "5ef2f288e921c9b230854fdaaaa45a89d41211807cffbdabaa61c4518b73db31",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json": "8812a4a1d9eb171fa7b28fa332a7b075dc050090c5550208491561a2896f8742",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json": "b4fbd107315bcdc117475c55be58028c8106b57a7c602beb07305078f019e8b8",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json": "e3177496ff68f5f0f09db40dcd9ffb1d3faa77df5b439040f44b990496a265e0",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json": "144ae0f11cd8831ef1c5e2f8cbd933bbdc384278700156826e2fde014d79e1a5"
+  },
+  "frozenTreeDigest": "edc23a0a5ca7a10bfd4540fd408736c5c8f312450464bdf64d65cca4c1a061a9",
+  "hashAlgorithm": "sha256-raw-file-bytes-and-canonical-json",
+  "contractDigest": "f62089c22dc4ec3d7be567cc1f50e4b9f577014c8b05d3a47ef52d509701b726"
+}

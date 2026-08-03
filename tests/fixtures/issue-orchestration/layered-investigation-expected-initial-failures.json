@@ -1,0 +1,167 @@
+{
+  "schema": "issue-orchestration.layered-investigation-expected-initial-failures.v2",
+  "revision": 7,
+  "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+  "expectedStatus": "green",
+  "expectedExitCode": 0,
+  "expectedSummary": {
+    "tests": 62,
+    "passed": 62,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0
+  },
+  "expectedFailureClass": "none-corrective-candidate-satisfies-contract",
+  "expectedDiagnostic": "revision-6 binds the implemented operational policy asset identities",
+  "implementationPath": "agents/dag-creator-updater.toml",
+  "implementationExpectedToExist": true,
+  "expectedFailingTests": [],
+  "passingControls": [
+    "frozen test-owner manifest, acceptance map, and mutation identities are self-consistent",
+    "mutation catalog and executable controls are exact-set equal",
+    "[I01] gate and frontier consume layered investigation without legacy fallback",
+    "[MIG01] corrected #1816 is layered-only and legacy input has no dispatch authority",
+    "MUTATION bracket-legacy-fallback is killed with legacy-investigation-fallback-forbidden",
+    "MUTATION legacy-node-compat-accepted is killed with legacy-investigation-schema-forbidden"
+  ],
+  "matrixIdentity": {
+    "schema": "issue-orchestration.test-matrix-identity.v1",
+    "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+    "commands": [
+      {
+        "command": "node --test tests/tools/issue-orchestration-layered-investigation.test.mjs",
+        "tests": 62,
+        "passed": 62,
+        "failed": 0,
+        "exitCode": 0
+      },
+      {
+        "command": "node --test tests/tools/issue-orchestration-ready-frontier.test.mjs",
+        "tests": 75,
+        "passed": 75,
+        "failed": 0,
+        "exitCode": 0
+      },
+      {
+        "command": "node --test tests/tools/issue-orchestration-event-ledger.test.mjs",
+        "tests": 89,
+        "passed": 89,
+        "failed": 0,
+        "exitCode": 0
+      },
+      {
+        "command": "node --test tests/tools/issue-orchestration-scope-selector.test.mjs",
+        "tests": 41,
+        "passed": 41,
+        "failed": 0,
+        "exitCode": 0
+      }
+    ],
+    "expectedFailingTests": [],
+    "matrixDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6"
+  },
+  "revision4Evidence": {
+    "baseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
+    "contractDigest": "7ca89125778a08ba63a4f835cc80333a467ac148ab2d006b7630ec73b8fdcc9a",
+    "contractRawSha256": "25f4838feffa938af13e339f132d08eb85210667b075950bfaf58760e0b669e3",
+    "treeDigest": "8f793db0ac16ac896d88eacc70de1cbb1715ed64fa10246cfbe432bb1a68922c",
+    "matrixDigest": "3c4352d5c985d5d07bc69df57bb5284edf4a5f1bd3dc51686af727c1aaddbb47",
+    "candidateDigest": "29f86434c5805741856221720c96a325670a25c9d77d9320b55f94fa659ca7f3",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 62,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 0
+    }
+  },
+  "revision5Evidence": {
+    "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+    "contractDigest": "3c1f8e4c83c9addef7949c065191c8003a9dcddcbf49fddd920213f6f8549a24",
+    "contractRawSha256": "2084e028b842b697d83480c22d8ddfb4831ced3aa1a9633bfb14914480c65dac",
+    "treeDigest": "1430d9f03b45b774c23f443212a5ba747340a9e304b2f1228ddb0cf5bdcef166",
+    "matrixDigest": "ddf7de250260c47ac49e2782f4054b2d03bbed86721c01d715ef1246e72954c0",
+    "candidateDigest": "a043fa0bf7a0a30906e1bf3424326d92bb69c64e4107f50881f5159809e2cdf6",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 61,
+      "failed": 1,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 1
+    }
+  },
+  "revision6Evidence": {
+    "baseSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+    "contractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
+    "contractRawSha256": "977e18637805aae220b7c90a9c22af8ac700d642828dd218bfd1ac4a5f4cec94",
+    "treeDigest": "1c327e04d468715eb39f5e0bb7235bdd3afacda860c42ac6321beb21d5273064",
+    "matrixDigest": "e4a3bea372a99634d9e38d92dea0c0e17fc8ef35741ece513be38b8bcc512e95",
+    "candidateDigest": "7eda3311fbc8f7e04899f76614e99ce0525b2707e077c07098ea207de2ea88f1",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 62,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 0
+    }
+  },
+  "revision3Evidence": {
+    "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+    "contractDigest": "479a60b5f027372e7c68df7cdf67de56d8d16664bdc685e4d7fc28d221f1588b",
+    "contractRawSha256": "5eee2164810de190fbfb2b3be70da2ad8ad616d1224c51cb58e1f7d659419365",
+    "treeDigest": "6c04e3c31b4c6eee9f9d487627421f3119ba1bae420f7d21e1a8e00774b0d03c",
+    "matrixDigest": "c454817c13a048a3d5d6ec1951bfa82081b1e342622b73580a2af22bc8e91fe5",
+    "candidateDigest": "1324146eb499d6b68be8ec91e55fd68527d214ac7ecb7d21194c02aafc490016",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 62,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 0
+    }
+  },
+  "revision2Evidence": {
+    "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
+    "contractDigest": "2ede2128636458cdad467c9a4ffa9326937424d65f41f67debb3c934f130f462",
+    "contractRawSha256": "8e7360e53073663e3bb56614c845caa7e6a0902ae3fe5a8072f59136a7e103da",
+    "candidateDigest": "a5105105ab9c573fb9e2b050960bd56a3da3759d46334aed6e1435676bc15258",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 43,
+      "failed": 19,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 1
+    }
+  },
+  "revision1Evidence": {
+    "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
+    "contractDigest": "22145baca448a1d3783cb0a99dcf01a9ea57a5473a3898e39ed609206a952578",
+    "contractRawSha256": "d0de52ef7216ae3b737e15c4660e8445358b81fe1338a665c716004354792f95",
+    "expectedSummary": {
+      "tests": 62,
+      "passed": 39,
+      "failed": 23,
+      "cancelled": 0,
+      "skipped": 0,
+      "exitCode": 1
+    }
+  },
+  "revision0Evidence": {
+    "baseSha": "0cfb94f0ccd5f0cc74704b129751459c5cc2300e",
+    "contractDigest": "aaf89eef42888119c4697f95d46f0ab6e1dc923d8d82e18db1f03139e68acd2c",
+    "expectedFailureClass": "layered-investigation-compiler-missing",
+    "expectedDiagnostic": "missing #1822 layered investigation compiler",
+    "expectedSummary": {
+      "tests": 41,
+      "passed": 2,
+      "failed": 39,
+      "cancelled": 0,
+      "skipped": 0
+    }
+  }
+}

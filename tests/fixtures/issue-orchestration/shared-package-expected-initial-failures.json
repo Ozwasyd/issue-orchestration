@@ -1,0 +1,31 @@
+{
+  "schema": "issue-orchestration.shared-package-expected-initial-failures.v1",
+  "issue": "Ozwasyd/FsusBlog#1823",
+  "baseSha": "d98bed01a76fcca5dc1657e63886b8da48ce346d",
+  "expectedOutcome": "red",
+  "expectedPassingTests": ["P01", "P11"],
+  "expectedFailingTests": [
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10"
+  ],
+  "expectedFailureReasons": {
+    "P02": ". and its digest-bound manifest do not exist",
+    "P03": "the editable Skill and custom agents still live in .agents and .codex",
+    "P04": "there is no deterministic shared installer or five-cwd verifier",
+    "P05": "there is no idempotent atomic reinstall receipt",
+    "P06": "there is no installed-artifact ownership/drift guard",
+    "P07": "there is no protected-root install guard or ownership-safe uninstaller",
+    "P08": "routing, semantic/runtime and receipt modules are not present in a shared source package",
+    "P09": "no shared verifier can prove external runtime-state isolation",
+    "P10": "the shared manifest cannot declare its narrow orchestration ownership boundary"
+  },
+  "ciPolicy": "out-of-scope-no-ci",
+  "retryPolicy": "Do not rerun the unchanged base, command and environment after the expected red baseline is captured."
+}

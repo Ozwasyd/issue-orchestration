@@ -7,16 +7,13 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..')
-const defaultRepositoryRoot = path.resolve(
-    import.meta.dirname,
-    '../../../../../..'
-)
+const defaultRepositoryRoot = packageRoot
 const contractRelative =
     'tests/fixtures/issue-orchestration/final-e2e-contract.json'
 const mutationsRelative =
     'tests/fixtures/issue-orchestration/final-e2e-mutation-controls.json'
 const manifestRelative =
-    'tools/codex/issue-orchestration-package/manifest.json'
+    'manifest.json'
 const runtimeArtifactRelative =
     'skills/issue-orchestration/scripts/permanent-e2e.mjs'
 const HASH = /^[a-f0-9]{64}$/u
@@ -86,22 +83,22 @@ const LANE_EVIDENCE = {
     ],
     'profile-capability-matrix.test.mjs': [
         'tests/tools/issue-orchestration-execution-routing.test.mjs',
-        'tools/codex/issue-orchestration-package/contracts/profile-capability-matrix.schema.json'
+        'contracts/profile-capability-matrix.schema.json'
     ],
     'implementer-self-test-v2.test.mjs': [
         'tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs'
     ],
     'stage-model-pool-policy.test.mjs': [
         'tests/tools/issue-orchestration-stage-profiles.test.mjs',
-        'tools/codex/issue-orchestration-package/policy/model-pool.json'
+        'policy/model-pool.json'
     ],
     'ui-ux-skill-routing.test.mjs': [
         'tests/tools/issue-orchestration-blog-ui.test.mjs',
-        '.agents/skills/fsusblog-design-conformance/contracts/blog-ui-stage-policy.json'
+        '../FsusBlog/.agents/skills/fsusblog-design-conformance/contracts/blog-ui-stage-policy.json'
     ],
     'ui-system-adjudication.test.mjs': [
         'tests/tools/issue-orchestration-blog-ui.test.mjs',
-        '.agents/skills/fsusblog-design-conformance/contracts/ui-system-adjudication-receipt.schema.json'
+        '../FsusBlog/.agents/skills/fsusblog-design-conformance/contracts/ui-system-adjudication-receipt.schema.json'
     ],
     'human-decision-gate.test.mjs': [
         'tests/tools/issue-orchestration-human-decision.test.mjs'

@@ -1,0 +1,190 @@
+{
+  "schema": "issue-orchestration.completed-prerequisite-mutation-controls.v1",
+  "controls": [
+    {
+      "id": "remote-reopened",
+      "expectedCode": "tombstone-remote-state-drift",
+      "acceptanceIds": ["AC-05", "NEG-02"]
+    },
+    {
+      "id": "closed-not-planned",
+      "expectedCode": "tombstone-state-reason",
+      "acceptanceIds": ["AC-06", "NEG-03"]
+    },
+    {
+      "id": "duplicate-without-substitute",
+      "expectedCode": "tombstone-duplicate-disposition",
+      "acceptanceIds": ["AC-06", "NEG-04"]
+    },
+    {
+      "id": "delivered-commit-missing",
+      "expectedCode": "tombstone-delivered-commit-missing",
+      "acceptanceIds": ["AC-06"]
+    },
+    {
+      "id": "delivered-commit-unreachable",
+      "expectedCode": "tombstone-delivered-commit-unreachable",
+      "acceptanceIds": ["AC-06", "NEG-05"]
+    },
+    {
+      "id": "evidence-digest-mismatch",
+      "expectedCode": "tombstone-evidence-digest-mismatch",
+      "acceptanceIds": ["AC-06", "NEG-06"]
+    },
+    {
+      "id": "evidence-payload-tampered",
+      "expectedCode": "tombstone-evidence-tampered",
+      "acceptanceIds": ["AC-07", "NEG-06"]
+    },
+    {
+      "id": "dependency-identity-mismatch",
+      "expectedCode": "tombstone-identity-mismatch",
+      "acceptanceIds": ["AC-07", "NEG-07"]
+    },
+    {
+      "id": "active-satisfied-overlap",
+      "expectedCode": "dependency-classification-overlap",
+      "acceptanceIds": ["AC-07", "NEG-08"]
+    },
+    {
+      "id": "dependency-edge-deleted",
+      "expectedCode": "dependency-edge-deleted",
+      "acceptanceIds": ["AC-10", "NEG-09", "ROLE-01"]
+    },
+    {
+      "id": "duplicate-tombstone",
+      "expectedCode": "tombstone-duplicate",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "wrong-repository",
+      "expectedCode": "tombstone-repository-mismatch",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "wrong-issue-number",
+      "expectedCode": "tombstone-issue-number-mismatch",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "short-delivered-commit",
+      "expectedCode": "tombstone-delivered-commit-format",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "wrong-default-branch",
+      "expectedCode": "tombstone-default-branch-mismatch",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "future-closed-at",
+      "expectedCode": "tombstone-closed-at-future",
+      "acceptanceIds": ["AC-07"]
+    },
+    {
+      "id": "completion-evidence-missing",
+      "expectedCode": "tombstone-completion-evidence-missing",
+      "acceptanceIds": ["AC-06"]
+    },
+    {
+      "id": "unknown-dependency",
+      "expectedCode": "dependency-unknown",
+      "acceptanceIds": ["AC-04"]
+    },
+    {
+      "id": "closed-prerequisite-in-active-nodes",
+      "expectedCode": "tombstone-active-node-forbidden",
+      "acceptanceIds": ["AC-01", "AC-03"]
+    },
+    {
+      "id": "closed-prerequisite-in-frontier",
+      "expectedCode": "tombstone-frontier-forbidden",
+      "acceptanceIds": ["AC-03"]
+    },
+    {
+      "id": "closed-prerequisite-has-attempt",
+      "expectedCode": "tombstone-attempt-forbidden",
+      "acceptanceIds": ["AC-03"]
+    },
+    {
+      "id": "legacy-v1-placeholder",
+      "expectedCode": "dag-v1-rebuild-required",
+      "acceptanceIds": ["AC-08", "NEG-10"]
+    },
+    {
+      "id": "root-authored-tombstone",
+      "expectedCode": "tombstone-authority-role",
+      "acceptanceIds": ["ROLE-01"]
+    },
+    {
+      "id": "non-root-spawns-dag-updater",
+      "expectedCode": "dag-updater-caller-role",
+      "acceptanceIds": ["ROLE-02"]
+    },
+    {
+      "id": "dag-updater-direct-write",
+      "expectedCode": "dag-updater-direct-write",
+      "acceptanceIds": ["ROLE-02"]
+    },
+    {
+      "id": "local-event-refresh-trigger",
+      "expectedCode": "remote-snapshot-trigger-required",
+      "acceptanceIds": ["ROLE-02"]
+    },
+    {
+      "id": "test-owner-implementer-same-actor",
+      "expectedCode": "stage-role-write-conflict",
+      "acceptanceIds": ["ROLE-03"]
+    },
+    {
+      "id": "implementer-modifies-frozen-test",
+      "expectedCode": "frozen-test-contract-modified",
+      "acceptanceIds": ["ROLE-03"]
+    },
+    {
+      "id": "dispatch-stage-role-missing",
+      "expectedCode": "stage-receipt-stage-role",
+      "acceptanceIds": ["ROLE-04"]
+    },
+    {
+      "id": "verification-candidate-sha-drift",
+      "expectedCode": "stage-receipt-candidate-sha",
+      "acceptanceIds": ["ROLE-04"]
+    },
+    {
+      "id": "dispatch-remote-snapshot-drift",
+      "expectedCode": "stage-receipt-remote-snapshot",
+      "acceptanceIds": ["ROLE-04"]
+    },
+    {
+      "id": "verification-test-contract-drift",
+      "expectedCode": "stage-receipt-test-contract",
+      "acceptanceIds": ["ROLE-04"]
+    },
+    {
+      "id": "documentation-before-behavior-green",
+      "expectedCode": "documentation-before-behavior-green",
+      "acceptanceIds": ["ROLE-05"]
+    },
+    {
+      "id": "root-runtime-identity-drift",
+      "expectedCode": "root-scheduler-runtime-identity",
+      "acceptanceIds": ["ROLE-01", "ROLE-04"]
+    },
+    {
+      "id": "dag-updater-runtime-identity-drift",
+      "expectedCode": "dag-updater-runtime-identity",
+      "acceptanceIds": ["ROLE-02", "ROLE-04"]
+    },
+    {
+      "id": "test-owner-runtime-identity-drift",
+      "expectedCode": "test-owner-runtime-identity",
+      "acceptanceIds": ["ROLE-03", "ROLE-04"]
+    },
+    {
+      "id": "implementer-runtime-identity-drift",
+      "expectedCode": "implementer-runtime-identity",
+      "acceptanceIds": ["ROLE-03", "ROLE-04"]
+    }
+  ]
+}

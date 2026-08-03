@@ -1,0 +1,214 @@
+{
+  "schema": "issue-orchestration.fixed-scope-test-contract.v1",
+  "scope": "Ozwasyd/FsusBlog#1877-#1887",
+  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "issues": {
+    "1877": {
+      "dependsOn": [1876],
+      "runtimeOwner": "skills/issue-orchestration/scripts/check-dag-gate.mjs",
+      "schemas": [
+        "node-member-runtime-projection.schema.json",
+        "dag-startup-gate-receipt.schema.json"
+      ],
+      "negativeControls": [
+        "cross-member-behavior-receipt",
+        "group-summary-for-member",
+        "legacy-global-stage-receipts",
+        "node-model-effort-authority",
+        "rework-profile-promotion",
+        "stale-route-identity",
+        "writer-without-unique-lease",
+        "invalid-completed-tombstone",
+        "forbidden-profile-or-backend",
+        "medium-root-without-recovery",
+        "temporary-scheduler-authority",
+        "legacy-gate-fallback"
+      ]
+    },
+    "1878": {
+      "dependsOn": [1876],
+      "runtimeOwner": "skills/issue-orchestration/scripts/issue-requirement-authority.mjs",
+      "schemas": [
+        "issue-requirement-inventory.schema.json",
+        "issue-acceptance-contract.schema.json"
+      ],
+      "negativeControls": [
+        "missing-normative-block",
+        "normative-context-without-reason",
+        "missing-work-plan-acceptance",
+        "unbound-work-plan-acceptance",
+        "root-modified-proposal",
+        "relevant-comment-drift",
+        "irrelevant-comment-correctness-drift",
+        "implicit-authority-choice"
+      ]
+    },
+    "1879": {
+      "dependsOn": [1876, 1878],
+      "runtimeOwner": "skills/issue-orchestration/scripts/test-contract-cold-start.mjs",
+      "schemas": [
+        "test-contract-planning-request.schema.json",
+        "test-contract-plan-receipt.schema.json",
+        "test-contract-writer-dispatch.schema.json"
+      ],
+      "negativeControls": [
+        "writer-requires-frozen-contract",
+        "root-authored-contract",
+        "fabricated-dispatch-history",
+        "planning-writes-files",
+        "writer-receives-full-issue",
+        "acceptance-digest-mismatch",
+        "recovery-repeats-planning",
+        "contract-gap-to-implementer"
+      ]
+    },
+    "1880": {
+      "dependsOn": [1878, 1879],
+      "runtimeOwner": "skills/issue-orchestration/scripts/slice-plan-validator.mjs",
+      "schemas": [
+        "slice-plan-proposal.schema.json",
+        "slice-plan-validation-receipt.schema.json"
+      ],
+      "negativeControls": [
+        "root-authored-ordered-slices",
+        "proposal-missing-acceptance",
+        "duplicate-acceptance-owner",
+        "validator-mutates-proposal",
+        "stale-validation-receipt",
+        "non-executable-first-action",
+        "whole-issue-slice",
+        "writer-mutates-boundary"
+      ]
+    },
+    "1881": {
+      "dependsOn": [1878, 1879, 1880],
+      "runtimeOwner": "skills/issue-orchestration/scripts/root-control-plane.mjs",
+      "schemas": [
+        "semantic-investigation-receipt-v2.schema.json",
+        "test-planning-investigation-receipt.schema.json",
+        "dispatch-investigation-projection.schema.json",
+        "root-control-action-receipt.schema.json"
+      ],
+      "negativeControls": [
+        "root-authored-semantics",
+        "dag-agent-test-fixture-authority",
+        "test-owner-dependency-authority",
+        "writer-whole-issue-context",
+        "duplicate-investigation",
+        "root-merges-conflicting-proposals",
+        "ordinary-conflict-human-gate",
+        "second-investigation-reviewer",
+        "root-semantic-profile-promotion",
+        "medium-root-without-recovery",
+        "temporary-runner-control",
+        "root-direct-write"
+      ]
+    },
+    "1882": {
+      "dependsOn": [],
+      "runtimeOwner": "skills/issue-orchestration/scripts/transient-rollout-retry.mjs",
+      "schemas": ["transient-rollout-retry-authorization.schema.json"],
+      "negativeControls": [
+        "missing-runtime-rollout",
+        "tool-call-before-empty",
+        "third-same-contract-attempt",
+        "semantic-identity-change",
+        "first-failure-overwritten",
+        "profile-mismatch-as-transient",
+        "elapsed-time-only",
+        "rework-or-human-side-effect"
+      ]
+    },
+    "1883": {
+      "dependsOn": [],
+      "runtimeOwner": "skills/issue-orchestration/scripts/behavior-revalidation.mjs",
+      "schemas": [
+        "verifier-blocker-receipt-v2.schema.json",
+        "verification-impact-plan.schema.json",
+        "behavior-receipt-v3.schema.json"
+      ],
+      "negativeControls": [
+        "old-candidate-behavior-receipt",
+        "root-behavior-green",
+        "blocker-only-delta",
+        "shared-helper-omitted",
+        "high-risk-partial-verification",
+        "inherited-verifier-context",
+        "read-write-verifier",
+        "stale-artifact-reuse"
+      ]
+    },
+    "1884": {
+      "dependsOn": [1876, 1877, 1878, 1879, 1880, 1881],
+      "runtimeOwner": "skills/issue-orchestration/scripts/codex-runtime-canary.mjs",
+      "schemas": ["codex-runtime-canary-receipt.schema.json"],
+      "negativeControls": [
+        "node-process-as-codex-rollout",
+        "caller-supplied-install-root",
+        "root-runtime-profile-mismatch",
+        "medium-root-without-recovery",
+        "metadata-source-conflict",
+        "fabricated-cold-start-history",
+        "writer-without-artifact",
+        "inherited-planner-context",
+        "root-authored-semantics",
+        "temporary-runner-trace",
+        "forbidden-production-profile",
+        "remote-side-effect"
+      ]
+    },
+    "1885": {
+      "dependsOn": [1877],
+      "runtimeOwner": "skills/issue-orchestration/scripts/quiescence-observation-collector.mjs",
+      "schemas": ["quiescence-observation-collector-receipt.schema.json"],
+      "negativeControls": [
+        "static-quiescent-fixture",
+        "caller-summary-mismatch",
+        "collector-self-cleanup",
+        "unobservable-inventory",
+        "unknown-worktree-as-baseline",
+        "stale-observation",
+        "active-bootstrap-fallback",
+        "collector-state-mutation"
+      ]
+    },
+    "1886": {
+      "dependsOn": [1882, 1883, 1884, 1885, 1887],
+      "runtimeOwner": "skills/issue-orchestration/scripts/permanent-e2e.mjs",
+      "schemas": ["permanent-e2e-receipt.schema.json"],
+      "negativeControls": [
+        "caller-final-boolean",
+        "mutation-list-only",
+        "node-child-as-runtime",
+        "static-quiescence",
+        "mixed-policy-generations",
+        "missing-live-discovery",
+        "missing-watchdog",
+        "not-executed-production",
+        "caller-override",
+        "root-profile-mismatch",
+        "root-semantic-work",
+        "temporary-scheduler-trace",
+        "forbidden-profile",
+        "reducer-side-effect"
+      ]
+    },
+    "1887": {
+      "dependsOn": [1876, 1879, 1880],
+      "runtimeOwner": "skills/issue-orchestration/scripts/writer-runtime-watchdog.mjs",
+      "schemas": ["writer-runtime-watchdog-receipt.schema.json"],
+      "negativeControls": [
+        "wrong-first-action",
+        "tool-budget-exceeded",
+        "posthoc-watchdog",
+        "repeated-read-heartbeat",
+        "sleep-or-prose-progress",
+        "required-command-false-timeout",
+        "invalid-checkpoint-budget-reset",
+        "watchdog-crash-unmanaged-writer",
+        "cancellation-resource-leak",
+        "watchdog-profile-promotion"
+      ]
+    }
+  }
+}

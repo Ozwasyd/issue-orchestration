@@ -1,0 +1,61 @@
+{
+    "schema": "issue-orchestration.dispatch-batch-runtime-probes.v1",
+    "observedAt": "2026-08-01T03:00:00+08:00",
+    "probes": [
+        {
+            "id": "RP-FSUSBLOG-BASE",
+            "repository": "Ozwasyd/FsusBlog",
+            "defaultBranch": "master",
+            "headSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
+            "command": "gh api repos/Ozwasyd/FsusBlog/commits/master --jq .sha"
+        },
+        {
+            "id": "RP-FSUSUI-BASE",
+            "repository": "Ozwasyd/FsusUI",
+            "defaultBranch": "main",
+            "headSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
+            "command": "gh api repos/Ozwasyd/FsusUI/commits/main --jq .sha"
+        },
+        {
+            "id": "RP-FSUSUI-ISSUES",
+            "repository": "Ozwasyd/FsusUI",
+            "issueRange": [267, 279],
+            "expectedState": "OPEN",
+            "issueCount": 13,
+            "onlyCommentedIssue": 268,
+            "commentId": 5138603602,
+            "command": "for n in $(seq 267 279); do gh issue view \"$n\" --repo Ozwasyd/FsusUI --json number,state,updatedAt,body,comments; done"
+        },
+        {
+            "id": "RP-FSUSUI-OWNER-SURFACE",
+            "repository": "Ozwasyd/FsusUI",
+            "headSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
+            "paths": [
+                "vue/packages/components/markdown-editor/src/markdown-editor.ts",
+                "vue/packages/components/markdown-editor/src/markdown-editor.vue",
+                "vue/packages/components/markdown-editor/src/markdown-editor-transaction.ts",
+                "vue/packages/components/markdown-editor/__tests__/markdown-editor.test.tsx",
+                "vue/packages/components/markdown-editor/__tests__/markdown-editor-transaction.property.test.ts",
+                "vue/packages/theme-chalk/src/markdown-editor.scss",
+                "docs/components/markdown-editor.md"
+            ],
+            "command": "git show --name-only --format= 7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164"
+        },
+        {
+            "id": "RP-LONG-TASK-LEASE",
+            "repository": "Ozwasyd/FsusUI",
+            "issue": 268,
+            "evidenceCommentId": 5138603602,
+            "observedRequirement": "native IME verification remains outstanding and is modeled by resource:browser:native-ime; it does not block unrelated stage tasks",
+            "command": "gh api repos/Ozwasyd/FsusUI/issues/comments/5138603602 --jq .body"
+        }
+    ],
+    "resourceObservation": {
+        "ports": [],
+        "containers": [],
+        "networks": [],
+        "locks": [],
+        "persistentProcesses": [],
+        "temporaryRoots": []
+    }
+}

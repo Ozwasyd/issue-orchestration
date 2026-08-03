@@ -1,0 +1,396 @@
+{
+  "schema": "issue-orchestration.scope-selector-test-cases.v1",
+  "resolvedAt": "2026-08-01T00:00:00.000Z",
+  "remoteIssues": [
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 101,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:00:00.000Z",
+      "title": "fix(codex): canonical scope target",
+      "body": "The explicit root issue.",
+      "comments": [
+        {
+          "id": "IC_101_relevant",
+          "body": "Acceptance-changing owner comment.",
+          "updatedAt": "2026-07-31T10:01:00.000Z",
+          "relevant": true
+        },
+        {
+          "id": "IC_101_incidental",
+          "body": "Incidental discussion.",
+          "updatedAt": "2026-07-31T10:02:00.000Z",
+          "relevant": false
+        }
+      ],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": {
+        "number": 7,
+        "title": "orchestration-v2"
+      },
+      "dependsOn": [
+        "Ozwasyd/FsusBlog#102"
+      ],
+      "related": [
+        "Ozwasyd/FsusBlog#103"
+      ],
+      "mentioned": [
+        "Ozwasyd/FsusBlog#105"
+      ],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 102,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:03:00.000Z",
+      "title": "fix(codex): declared dependency",
+      "body": "A declared dependency.",
+      "comments": [],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": {
+        "number": 7,
+        "title": "orchestration-v2"
+      },
+      "dependsOn": [
+        "Ozwasyd/FsusBlog#104"
+      ],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 103,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:04:00.000Z",
+      "title": "fix(codex): canonical scope target follow-up",
+      "body": "Same label and a similar title, but no dependency edge.",
+      "comments": [],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 104,
+      "state": "CLOSED",
+      "stateReason": "COMPLETED",
+      "updatedAt": "2026-07-31T10:05:00.000Z",
+      "title": "fix(codex): closed dependency",
+      "body": "A closed issue retained only by declared closure or tracking.",
+      "comments": [],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 105,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:06:00.000Z",
+      "title": "chore(codex): label-query member",
+      "body": "A dynamic label-query member.",
+      "comments": [],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 106,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:07:00.000Z",
+      "title": "chore(codex): milestone-query member",
+      "body": "A milestone member without the label-query label.",
+      "comments": [],
+      "labels": [
+        "area:tooling"
+      ],
+      "milestone": {
+        "number": 7,
+        "title": "orchestration-v2"
+      },
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 108,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:08:00.000Z",
+      "title": "fix(codex): tracked open child",
+      "body": "An explicitly tracked child.",
+      "comments": [],
+      "labels": [
+        "area:tooling"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 109,
+      "state": "CLOSED",
+      "stateReason": "NOT_PLANNED",
+      "updatedAt": "2026-07-31T10:09:00.000Z",
+      "title": "fix(codex): tracked closed child",
+      "body": "A tracked child whose history must not disappear.",
+      "comments": [],
+      "labels": [
+        "area:tooling"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    },
+    {
+      "repository": "Ozwasyd/FsusBlog",
+      "number": 110,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:10:00.000Z",
+      "title": "tracking: orchestration children",
+      "body": "- [ ] #108\n- [x] #109",
+      "comments": [],
+      "labels": [
+        "area:tooling"
+      ],
+      "milestone": null,
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": [
+        "Ozwasyd/FsusBlog#108",
+        "Ozwasyd/FsusBlog#109"
+      ]
+    },
+    {
+      "repository": "Ozwasyd/FsusUI",
+      "number": 201,
+      "state": "OPEN",
+      "stateReason": null,
+      "updatedAt": "2026-07-31T10:11:00.000Z",
+      "title": "fix(codex): other repository issue",
+      "body": "Must not enter a FsusBlog-only selector.",
+      "comments": [],
+      "labels": [
+        "area:tooling",
+        "scope:selector"
+      ],
+      "milestone": {
+        "number": 7,
+        "title": "orchestration-v2"
+      },
+      "dependsOn": [],
+      "related": [],
+      "mentioned": [],
+      "trackedIssueIds": []
+    }
+  ],
+  "selectors": {
+    "explicitIssues": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "explicit-2026-08-01.v1",
+      "type": "explicit-issues",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "retain-if-explicit",
+        "reopen": "retain"
+      },
+      "dependencyClosure": "none",
+      "implicitExpansion": "forbidden",
+      "parameters": {
+        "issueIds": [
+          "Ozwasyd/FsusBlog#101"
+        ]
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:explicit-101"
+    },
+    "repositoryOpenIssues": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "repository-open-2026-08-01.v1",
+      "type": "repository-open-issues",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "depart-with-history",
+        "reopen": "reenter"
+      },
+      "dependencyClosure": "none",
+      "implicitExpansion": "query-results-only",
+      "parameters": {
+        "states": [
+          "OPEN"
+        ]
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:state-open"
+    },
+    "labelQuery": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "label-2026-08-01.v1",
+      "type": "label-query",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "depart-with-history",
+        "reopen": "reenter-if-matching"
+      },
+      "dependencyClosure": "none",
+      "implicitExpansion": "query-results-only",
+      "parameters": {
+        "labels": [
+          "scope:selector"
+        ],
+        "match": "all",
+        "states": [
+          "OPEN"
+        ]
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:label-scope-selector"
+    },
+    "milestoneQuery": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "milestone-2026-08-01.v1",
+      "type": "milestone-query",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "depart-with-history",
+        "reopen": "reenter-if-matching"
+      },
+      "dependencyClosure": "none",
+      "implicitExpansion": "query-results-only",
+      "parameters": {
+        "milestoneNumber": 7,
+        "states": [
+          "OPEN"
+        ]
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:milestone-7"
+    },
+    "dependencyClosure": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "dependency-2026-08-01.v1",
+      "type": "dependency-closure",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "retain-if-dependency",
+        "reopen": "retain"
+      },
+      "dependencyClosure": "recursive-depends-on",
+      "implicitExpansion": "declared-dependencies-only",
+      "parameters": {
+        "rootIssueIds": [
+          "Ozwasyd/FsusBlog#101"
+        ],
+        "dependencyRelation": "dependsOn"
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:dependency-closure-101"
+    },
+    "parentTrackingIssue": {
+      "schema": "issue-orchestration.scope-selector.v1",
+      "selectorVersion": "tracking-2026-08-01.v1",
+      "type": "parent-tracking-issue",
+      "repositories": [
+        "Ozwasyd/FsusBlog"
+      ],
+      "statePolicy": {
+        "open": "include",
+        "closed": "retain-if-tracked",
+        "reopen": "retain"
+      },
+      "dependencyClosure": "none",
+      "implicitExpansion": "tracked-children-only",
+      "parameters": {
+        "parentIssueId": "Ozwasyd/FsusBlog#110",
+        "includeParent": true
+      },
+      "remoteQueryIdentity": "github:Ozwasyd/FsusBlog:issues:tracking-110"
+    }
+  },
+  "expectedIssueSets": {
+    "explicitIssues": [
+      "Ozwasyd/FsusBlog#101"
+    ],
+    "repositoryOpenIssues": [
+      "Ozwasyd/FsusBlog#101",
+      "Ozwasyd/FsusBlog#102",
+      "Ozwasyd/FsusBlog#103",
+      "Ozwasyd/FsusBlog#105",
+      "Ozwasyd/FsusBlog#106",
+      "Ozwasyd/FsusBlog#108",
+      "Ozwasyd/FsusBlog#110"
+    ],
+    "labelQuery": [
+      "Ozwasyd/FsusBlog#101",
+      "Ozwasyd/FsusBlog#102",
+      "Ozwasyd/FsusBlog#103",
+      "Ozwasyd/FsusBlog#105"
+    ],
+    "milestoneQuery": [
+      "Ozwasyd/FsusBlog#101",
+      "Ozwasyd/FsusBlog#102",
+      "Ozwasyd/FsusBlog#106"
+    ],
+    "dependencyClosure": [
+      "Ozwasyd/FsusBlog#101",
+      "Ozwasyd/FsusBlog#102",
+      "Ozwasyd/FsusBlog#104"
+    ],
+    "parentTrackingIssue": [
+      "Ozwasyd/FsusBlog#108",
+      "Ozwasyd/FsusBlog#109",
+      "Ozwasyd/FsusBlog#110"
+    ]
+  }
+}

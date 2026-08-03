@@ -1,0 +1,77 @@
+{
+  "schema": "issue-orchestration.semantic-runtime-projection-runtime-probes.v1",
+  "issue": "Ozwasyd/FsusBlog#1833",
+  "probes": [
+    {
+      "id": "RP01",
+      "observation": "Completion comment, close, completed reason and delivery labels reconcile to projection-only with zero updater dispatches.",
+      "tests": [
+        "P03",
+        "P04"
+      ]
+    },
+    {
+      "id": "RP02",
+      "observation": "Slot, lease, epoch, ready and cleanup changes alter runtimeProjectionDigest without altering semanticGraphDigest.",
+      "tests": [
+        "P05"
+      ]
+    },
+    {
+      "id": "RP03",
+      "observation": "An external dependency, owner, contract or acceptance-group change yields exactly one semantic-patch updater decision.",
+      "tests": [
+        "P06"
+      ]
+    },
+    {
+      "id": "RP04",
+      "observation": "Patch application recomputes the declared result semantic graph digest and rejects base drift.",
+      "tests": [
+        "P07"
+      ]
+    },
+    {
+      "id": "RP05",
+      "observation": "Only initial-create, graph-corruption-recovery and explicit scope-replacement validate as full proposals.",
+      "tests": [
+        "P08"
+      ]
+    },
+    {
+      "id": "RP06",
+      "observation": "Immutable ledger replay unlocks a completed prerequisite and recomputes ready frontier, critical path, conflict, slot and lease projections without semantic writes.",
+      "tests": [
+        "P09"
+      ]
+    },
+    {
+      "id": "RP07",
+      "observation": "#1832 decision receipt replay verifies every required field and all mode-specific nullability rules.",
+      "tests": [
+        "P10"
+      ]
+    },
+    {
+      "id": "RP08",
+      "observation": "#1826 telemetry derives projection/full/patch counts and reports falsePositiveDagDispatchCount=0.",
+      "tests": [
+        "P11"
+      ]
+    },
+    {
+      "id": "RP09",
+      "observation": "Acceptance-group delivery windows containing only expected mutations produce projection-only decisions and zero updater dispatches.",
+      "tests": [
+        "P12"
+      ]
+    },
+    {
+      "id": "RP10",
+      "observation": "Local test failure, verifier reject, candidate, cleanup and telemetry events remain projection-only and never request a DAG updater.",
+      "tests": [
+        "P13"
+      ]
+    }
+  ]
+}
