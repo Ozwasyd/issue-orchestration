@@ -4,7 +4,7 @@
   "supersedesTestContractDigest": "a2fc609a42a5e04560087ab7d0f614e61747ee96bd5f41313c0e07a4a006d51f",
   "phase": "test-contract",
   "status": "frozen-green",
-  "issueId": "Ozwasyd/FsusBlog#1819",
+  "issueId": "ExampleOrg/RepositoryA#1819",
   "authority": {
     "kind": "superseding-package-issues",
     "issueIds": [
@@ -14,7 +14,7 @@
     ],
     "updatedAt": "2026-08-03T08:16:44Z"
   },
-  "testOwnerId": "test-owner-fsusblog-1819-d01f7269",
+  "testOwnerId": "test-owner-repositorya-1819-d01f7269",
   "baseSha": "d01f7269fb9819446f106806d96ea12269d0797b",
   "allowedTestPaths": [
     "tests/tools/issue-orchestration-stage-profiles.test.mjs",
@@ -63,35 +63,55 @@
     {
       "id": "stage-profile-focused",
       "required": true,
-      "command": ["node","--test","tests/tools/issue-orchestration-stage-profiles.test.mjs"]
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-stage-profiles.test.mjs"
+      ]
     },
     {
       "id": "dispatch-receipt-regression",
       "requiredAfterImplementation": true,
-      "command": ["node","--test","tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"
+      ]
     },
     {
       "id": "dispatch-batch-regression",
       "requiredAfterImplementation": true,
-      "command": ["node","--test","tests/tools/issue-orchestration-dispatch-batch.test.mjs"]
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-dispatch-batch.test.mjs"
+      ]
     },
     {
       "id": "dag-gate-regression",
       "requiredAfterImplementation": true,
-      "command": ["node","--test","tests/tools/issue-orchestration-ready-frontier.test.mjs"]
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-ready-frontier.test.mjs"
+      ]
     },
     {
       "id": "event-ledger-regression",
       "requiredAfterImplementation": true,
-      "command": ["node","--test","tests/tools/issue-orchestration-event-ledger.test.mjs"]
+      "command": [
+        "node",
+        "--test",
+        "tests/tools/issue-orchestration-event-ledger.test.mjs"
+      ]
     }
   ],
   "fileHashes": {
-    "tests/tools/issue-orchestration-stage-profiles.test.mjs": "3d29f6dd748328e1b2744159e144dbd05b1747d58c8e395a88804242303f779d",
-    "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json": "c8ddb8b01c8e94f282907fb6629b35ccb3d1d48b06de9163fdb109089d0eab85",
-    "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json": "b7b2bfd48fcf324637798260960bf2834ee5591793aa7659c4a75ac61a31ff5d",
-    "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json": "4cf09200238c28e0b2c755113fd4dc05d86f800d91663f4bb65ff5d25c5209f1",
-    "tests/fixtures/issue-orchestration/stage-profile-mutation-controls.json": "9ac289777de98b04b8f37e19845c014c44ce1526f59a0cfca8ba83f77e9836c8"
+    "tests/tools/issue-orchestration-stage-profiles.test.mjs": "2d6d61bd8ffdf02be0999d8b82702b3c0f6572a9716c3d0ff8dc8c172a2bfcfd",
+    "tests/fixtures/issue-orchestration/stage-profile-acceptance-map.json": "98beffa537a392021738d76e253e16aeba8006f3aa96adf00cde91672d084d8b",
+    "tests/fixtures/issue-orchestration/stage-profile-expected-initial-failures.json": "36bd1712fd87570be42d4799c76756c84d15269c00a2220dbe6880f3bdcb02cc",
+    "tests/fixtures/issue-orchestration/stage-profile-runtime-probes.json": "59848d5e469e871f04f64395fa2061042526385f48adaeecfa45e651d68f2298",
+    "tests/fixtures/issue-orchestration/stage-profile-mutation-controls.json": "7ce0a7490f84580cbbefbdf46f94f25a5fe22f4fa2772b3554aa0a24aaa9c7ab"
   },
   "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
   "selfHashPolicy": "fileHashes covers raw bytes of all allowedTestPaths except this manifest; testContractDigest covers canonical JSON with testContractDigest omitted",
@@ -101,5 +121,5 @@
     "fail": 18,
     "skipped": 0
   },
-  "testContractDigest": "3d849186bd7d53287c8e4beb74a256e784ae3cc8760086f690aa06977691fcfc"
+  "testContractDigest": "32ef76385995dcee3a1389461636db4eb59b8c589e593d4de37bc5404477bc43"
 }

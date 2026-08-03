@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.semantic-runtime-projection-acceptance-map.v1",
-  "issue": "Ozwasyd/FsusBlog#1833",
+  "issue": "ExampleOrg/RepositoryA#1833",
   "authority": {
     "kind": "live-issue",
     "updatedAt": "2026-08-01T13:15:44Z"

@@ -53,7 +53,7 @@
     },
     "passingControls": [
         "contract fixtures cover every acceptance and mutation identity",
-        "FsusUI 267-279 dependency sample is exact and owner-surface evidence is explicit",
+        "RepositoryB 267-279 dependency sample is exact and owner-surface evidence is explicit",
         "runtime probes and resource observation are frozen",
         "revision-0 digest and RED summary remain preserved"
     ]

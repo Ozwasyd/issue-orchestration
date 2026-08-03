@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.completed-prerequisite-acceptance-map.v1",
-  "issue": "Ozwasyd/FsusBlog#1815",
+  "issue": "ExampleOrg/RepositoryA#1815",
   "acceptance": [
     {
       "id": "AC-01",
@@ -11,7 +11,7 @@
     {
       "id": "AC-02",
       "requirement": "A completed edge retains remote identity, full delivered commit, default branch, and evidence digest.",
-      "tests": ["P02", "P03", "P04", "LIVE live-fsusblog-completed", "LIVE live-fsusui-completed"],
+      "tests": ["P02", "P03", "P04", "LIVE live-repositorya-completed", "LIVE live-repositoryb-completed"],
       "mutations": ["dependency-identity-mismatch", "short-delivered-commit", "wrong-default-branch", "evidence-digest-mismatch"]
     },
     {
@@ -52,8 +52,8 @@
     },
     {
       "id": "AC-09",
-      "requirement": "Dynamic paths cover FsusBlog, FsusUI, and cross-repository open-to-closed transitions.",
-      "tests": ["P02", "P03", "P04", "LIVE live-fsusblog-completed", "LIVE live-fsusui-completed"],
+      "requirement": "Dynamic paths cover RepositoryA, RepositoryB, and cross-repository open-to-closed transitions.",
+      "tests": ["P02", "P03", "P04", "LIVE live-repositorya-completed", "LIVE live-repositoryb-completed"],
       "mutations": []
     },
     {

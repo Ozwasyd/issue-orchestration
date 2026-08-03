@@ -1,15 +1,14 @@
 # issue-orchestration
 
-Permanent multi-issue orchestration Skill and runtime shared by
-`Ozwasyd/FsusBlog` and `Ozwasyd/FsusUI`.
+Permanent, repository-independent multi-issue orchestration Skill and runtime.
 
 This repository is the only editable source for the Skill, runtime scripts,
 contracts, policies, graph schemas, and agent definitions. Runtime state must
 remain outside this repository and outside every product worktree.
 
 It builds, tests, installs, and runs its permanent acceptance suite from this
-checkout alone. FsusBlog and FsusUI are supported runtime target identities,
-not source, test, installation, issue-API, or sibling-checkout dependencies.
+checkout alone. It has no source, test, installation, issue-API,
+sibling-checkout, or release dependency on a target repository.
 
 ## Runtime trust model
 
@@ -19,14 +18,13 @@ scheduler runs with `approval_policy=never` and an observed
 effective profile; the package therefore does not claim machine-enforced
 per-child read-only isolation.
 
-This mode is restricted by
-`policy/runtime-trust-policy.json` to the explicit `Ozwasyd/FsusBlog` and
-`Ozwasyd/FsusUI` repository identities. Startup and continuation fail closed
-when an origin URL cannot be resolved, is outside that exact allowlist, or
-drifts after the trust binding was compiled. Role separation remains semantic
-and receipt-based, with required mutation postconditions. Full runtime access
-does not authorize Root to author product code, tests, UI, or product
-documentation.
+`policy/runtime-trust-policy.json` admits only repositories explicitly supplied
+for the current run by the operator. It contains no product-repository
+allowlist. Startup and continuation fail closed when an origin URL cannot be
+resolved, does not match the caller-supplied identity, or drifts after the trust
+binding was compiled. Role separation remains semantic and receipt-based, with
+required mutation postconditions. Full runtime access does not authorize Root
+to author target-repository code, tests, UI, or documentation.
 
 This threat model is only for repositories owned and trusted by the operator.
 It is unsuitable for third-party, untrusted, or multi-tenant workloads. A
@@ -146,12 +144,12 @@ ISSUE_ORCHESTRATION_E2E_LIVE=1 node --test --test-concurrency=1 \
   tests/tools/issue-orchestration/*.test.mjs
 ```
 
-Live mode requires authenticated Codex and read-only GitHub access plus a
+Live mode requires authenticated Codex plus a
 clean, single-worktree, single-branch, remote-synchronized checkout of this
 repository only. It installs the current committed Skill into an isolated
 standard Codex home and proves discovery from five fresh sessions. It also
 executes non-zero child test groups, an isolated local Git/bare-remote landing,
 a live observe-only quiescence collection, and all mutation controls. It
 deletes its isolated home, temporary workspaces, Git remote, and state root,
-then proves this repository is unchanged. Product repositories and product
-issues are not queried or required.
+then proves this repository is unchanged. Target repositories and their issues
+are not queried or required.

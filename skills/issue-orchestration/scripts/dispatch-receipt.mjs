@@ -480,13 +480,7 @@ function assertV2SkillBinding(input) {
     if (!['ui-ux-implementer', 'ux-acceptance-verifier'].includes(input.stageRole)) {
         return
     }
-    const expectedIds = input.repository === 'Ozwasyd/FsusUI'
-        ? ['fsusui-design-conformance']
-        : ['fsusblog-design-conformance', 'fsusui-design-conformance']
-    if (input.repository !== 'Ozwasyd/FsusBlog' && input.repository !== 'Ozwasyd/FsusUI') {
-        fail('dispatch-ui-design-authority-policy')
-    }
-    if (JSON.stringify(ids) !== JSON.stringify(expectedIds) ||
+    if (ids.length === 0 ||
         JSON.stringify(input.designAuthorityDigests) !== JSON.stringify(digests)) {
         fail('dispatch-ui-design-authority-policy')
     }

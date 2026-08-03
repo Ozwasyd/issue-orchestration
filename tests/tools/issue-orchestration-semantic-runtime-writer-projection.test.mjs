@@ -424,9 +424,9 @@ function appendWriterTerminal({
 
 function compileTwoSliceArtifacts(fixture) {
     return compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874:writer-projection',
+        node: 'ExampleOrg/RepositoryA#1874:writer-projection',
         stageRole: 'test-owner',
         stagePhase: 'test-contract',
         baseSha: fixture.baseSha,
@@ -518,10 +518,10 @@ test('canonical test-contract predecessor projects the exact active implementati
     current.after(() => fixture.dispose())
     const canonicalLedger = await buildCanonicalWriterStageLedger({
         current,
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
         node:
-            'Ozwasyd/FsusBlog#1874:canonical-implementation-projection',
+            'ExampleOrg/RepositoryA#1874:canonical-implementation-projection',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         baseSha: fixture.baseSha,

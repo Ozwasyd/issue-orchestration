@@ -266,9 +266,9 @@ function artifactsFor({
     }`
 }) {
     return compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874',
+        node: 'ExampleOrg/RepositoryA#1874',
         stageRole,
         stagePhase,
         baseSha: fixture.baseSha,

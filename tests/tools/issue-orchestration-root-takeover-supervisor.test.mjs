@@ -47,7 +47,7 @@ function schema(name) {
 function classification() {
     return {
         domain: 'orchestration-core',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',

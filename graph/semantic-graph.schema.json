@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://fsusblog.local/issue-orchestration/semantic-graph.schema.json",
+  "$id": "https://issue-orchestration.local/semantic-graph.schema.json",
   "title": "Issue orchestration semantic graph",
   "type": "object",
   "additionalProperties": false,

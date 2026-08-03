@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.stage-profile-acceptance-map.v2",
-  "issue": "Ozwasyd/FsusBlog#1819",
+  "issue": "ExampleOrg/RepositoryA#1819",
   "authority": {
     "kind": "merged-issue-body",
     "updatedAt": "2026-08-01T09:01:42Z"

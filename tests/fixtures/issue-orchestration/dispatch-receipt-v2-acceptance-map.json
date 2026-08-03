@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.dispatch-receipt-v2-acceptance-map.v1",
-  "issue": "Ozwasyd/FsusBlog#1832",
+  "issue": "ExampleOrg/RepositoryA#1832",
   "authority": {
     "kind": "merged-issue-body",
     "updatedAt": "2026-08-01T09:04:48Z"
@@ -58,7 +58,7 @@
     },
     {
       "id": "SERIAL-SCOPE-01",
-      "requirement": "This ordinary serial issue has groupId=null and no group continuity/lease inheritance; its request and receipt bind Ozwasyd/FsusBlog#1832 plus exact live scope, repository and completed #1817/#1818/#1819 dependency identities.",
+      "requirement": "This ordinary serial issue has groupId=null and no group continuity/lease inheritance; its request and receipt bind ExampleOrg/RepositoryA#1832 plus exact live scope, repository and completed #1817/#1818/#1819 dependency identities.",
       "tests": ["P06"],
       "mutations": [
         "N09-group-member-inherits-previous-route",

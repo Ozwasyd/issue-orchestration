@@ -36,9 +36,9 @@ function planInput() {
     return {
         schema: 'issue-orchestration.stage-work-plan-input.v1',
         runId: 'run-1874-compiled-prompt-contract',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874',
+        node: 'ExampleOrg/RepositoryA#1874',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         baseSha: '2499db9517ec4e340bb475443c6ec2984203323c',

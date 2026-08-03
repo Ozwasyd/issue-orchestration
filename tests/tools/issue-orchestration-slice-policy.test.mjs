@@ -21,9 +21,9 @@ function compileBoundFixture(t) {
     })
     t.after(() => fixture.dispose())
     return compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874:slice-policy',
+        node: 'ExampleOrg/RepositoryA#1874:slice-policy',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         baseSha: fixture.baseSha,

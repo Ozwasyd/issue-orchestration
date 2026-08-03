@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.stage-profile-mutation-controls.v2",
-  "issue": "Ozwasyd/FsusBlog#1819",
+  "issue": "ExampleOrg/RepositoryA#1819",
   "controls": [
     {
       "id": "N01-root-sol-rejected",

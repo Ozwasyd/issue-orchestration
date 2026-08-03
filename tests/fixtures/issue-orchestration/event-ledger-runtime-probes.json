@@ -39,7 +39,7 @@
         {
             "id": "R06",
             "scenario": "external state root leaves protected roots byte-for-byte and git-status unchanged",
-            "protectedResources": ["FsusBlog repository", "FsusUI repository", "common workspace", "FsusBlog worktree", "FsusUI worktree"]
+            "protectedResources": ["RepositoryA repository", "RepositoryB repository", "common workspace", "RepositoryA worktree", "RepositoryB worktree"]
         }
     ]
 }

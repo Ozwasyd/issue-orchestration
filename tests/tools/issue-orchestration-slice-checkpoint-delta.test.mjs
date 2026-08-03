@@ -23,7 +23,7 @@ function setup(current) {
     })
     current.after(() => fixture.dispose())
     const artifacts = compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
@@ -33,7 +33,7 @@ function setup(current) {
         allowedPaths: FILES,
         requiredFiles: FILES.slice(0, 2),
         sliceCount: 2,
-        sliceId: 'fsusblog-1874-checkpoint-delta-slice-1'
+        sliceId: 'repositorya-1874-checkpoint-delta-slice-1'
     })
     return {
         artifacts,

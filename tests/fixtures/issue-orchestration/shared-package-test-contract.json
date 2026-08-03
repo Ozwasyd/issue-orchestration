@@ -2,47 +2,47 @@
   "schema": "issue-orchestration.shared-package-test-contract.v1",
   "phase": "test-contract",
   "status": "frozen-red",
-  "issueId": "Ozwasyd/FsusBlog#1823",
+  "issueId": "ExampleOrg/RepositoryA#1823",
   "authority": {
     "kind": "authoritative-issue-body",
     "updatedAt": "2026-08-01T13:16:31Z"
   },
-  "testOwnerId": "test-owner-fsusblog-1823-d98bed01",
+  "testOwnerId": "test-owner-repositorya-1823-d98bed01",
   "baseSha": "d98bed01a76fcca5dc1657e63886b8da48ce346d",
   "groupId": null,
   "pipeline": "ordinary-serial",
   "ciPolicy": "out-of-scope-no-ci",
   "dependencyBindings": [
     {
-      "issue": "Ozwasyd/FsusBlog#1815",
+      "issue": "ExampleOrg/RepositoryA#1815",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-07-31T18:01:50Z",
       "deliveredCommit": "e6739603601fd58ec4452cdb7876e77901ae48ac"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1816",
+      "issue": "ExampleOrg/RepositoryA#1816",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-07-31T22:52:07Z",
       "deliveredCommit": "f99e6091165edc9dba7f2b1314568c3a07b69537"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1817",
+      "issue": "ExampleOrg/RepositoryA#1817",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-08-01T01:06:40Z",
       "deliveredCommit": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1818",
+      "issue": "ExampleOrg/RepositoryA#1818",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-08-01T01:42:48Z",
       "deliveredCommit": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1819",
+      "issue": "ExampleOrg/RepositoryA#1819",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-08-01T12:22:33Z",
@@ -50,14 +50,14 @@
       "postDeliveryDocumentationCommit": "788737a0ad22003544b2d439df995e1097de0ee2"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1832",
+      "issue": "ExampleOrg/RepositoryA#1832",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-08-01T14:19:22Z",
       "deliveredCommit": "d98bed01a76fcca5dc1657e63886b8da48ce346d"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1833",
+      "issue": "ExampleOrg/RepositoryA#1833",
       "state": "CLOSED",
       "stateReason": "completed",
       "closedAt": "2026-08-01T14:06:59Z",
@@ -93,7 +93,7 @@
     "product code, UI, product design facts or product runtime",
     "formal/current documentation, changelog or document lifecycle inventory",
     "semantic DAG creation/update, bootstrap runner or external orchestration state",
-    "other issues or FsusUI writes",
+    "other issues or RepositoryB writes",
     "repo-local alias, fallback, duplicate authoring source or fixed-Sol compatibility authority",
     "commit, push, issue mutation, comment, close or CI"
   ],
@@ -124,24 +124,28 @@
     {
       "id": "frozen-path-diff-check",
       "required": true,
-      "command": ["git", "diff", "--check"]
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ]
     }
   ],
   "expectedBaseSummary": {
-    "tests": 11,
+    "tests": 12,
     "pass": 2,
-    "fail": 9,
+    "fail": 10,
     "skipped": 0
   },
   "fileHashes": {
-    "tests/tools/issue-orchestration-shared-package.test.mjs": "0f378c791275e483e6e935fc9a392dd870fdebe431429395fad67c6843a50e76",
-    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json": "0f91b3fa166be649e34955603ac44b50bd2ed0d05bd351ff64878c2e5e028dc4",
-    "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json": "fcdfa1a9b8e4ba1ca32a792968a2a7f0136cd2f12b140e3d754ebc6996147809",
-    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json": "1b8b691ca356d9342f3933e7528184c4d71144c6079f545e1a759d77f3794003",
-    "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json": "1ae9d2f5b3a368767d7ccec82853accdab511c1777283cfb63b3cddc141ddb6d"
+    "tests/tools/issue-orchestration-shared-package.test.mjs": "7c29297d505bea9d4698a25bfa288e14050430e842e67bb33802b4f2200444a9",
+    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json": "9a51c606a3b8e68b11206341693571e3fed3164bbf007b6986ab6e96010fbedc",
+    "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json": "6581033b4b940d3e16a4b3a90e6990bc7c0f591b7d8de85bcc5915e567b2516f",
+    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json": "79ebbdf6d70e12c951e02d6f55c15b5e76b9a5434a50685d5f59c2ac4fe7c73d",
+    "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json": "a700f77157ed9b3031314113ae91a4e682efde4013fb246b2f6c937b91f0dcd9"
   },
-  "frozenTreeDigest": "f98d688dc10d865f56f0bd11c86c9643952f1b4f39a31f6adf50917134ff247c",
+  "frozenTreeDigest": "b7d7601dc27193c3f9329d7b7ed2cee58507c338d0376c8e96102607fd42da54",
   "hashAlgorithm": "sha256-raw-files-canonical-tree-and-canonical-json-v1",
   "selfHashPolicy": "fileHashes binds raw bytes for every allowed path except this manifest; frozenTreeDigest binds canonical fileHashes; testContractDigest binds canonical JSON with only testContractDigest omitted",
-  "testContractDigest": "2100333287be74273a1d758f7c95f26cddaf97a79e4f94d4eb6516ba3cd62d5b"
+  "testContractDigest": "ca12c31a8c39581f9050aee6cc059b7cb82c9d9917e822382c9d0024aa5b596c"
 }

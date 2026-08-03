@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.dispatch-receipt-v2-expected-initial-failures.v1",
-  "issueId": "Ozwasyd/FsusBlog#1832",
+  "issueId": "ExampleOrg/RepositoryA#1832",
   "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
   "expectedStatus": "red",
   "baselineCommand": [

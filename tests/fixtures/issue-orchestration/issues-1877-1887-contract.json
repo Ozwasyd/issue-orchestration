@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.fixed-scope-test-contract.v1",
-  "scope": "Ozwasyd/FsusBlog#1877-#1887",
+  "scope": "ExampleOrg/RepositoryA#1877-#1887",
   "modelPoolPolicyVersion": "stage-model-pool.v3",
   "issues": {
     "1877": {

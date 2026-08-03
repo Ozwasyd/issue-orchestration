@@ -59,11 +59,11 @@ function runtimeFixture() {
         'remote',
         'add',
         'origin',
-        'https://github.com/Ozwasyd/FsusBlog.git'
+        'https://github.com/ExampleOrg/RepositoryA.git'
     ])
     const startup = verifiedRuntimeStartup({})
     const repositoryTargets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath
     }]
     const runtimeTrustBinding = compileRuntimeTrustBinding({
@@ -144,8 +144,8 @@ function remoteSnapshot({
 } = {}) {
     return sealRemoteStateSnapshot({
         producerAuthority: 'trusted-remote-observer',
-        repository: 'Ozwasyd/FsusBlog',
-        issueId: 'Ozwasyd/FsusBlog#1900',
+        repository: 'ExampleOrg/RepositoryA',
+        issueId: 'ExampleOrg/RepositoryA#1900',
         defaultBranch: 'master',
         defaultBranchSha: sha,
         issueStateDigest: digest(issueState),
@@ -166,8 +166,8 @@ function authorization(fixture, pre, overrides = {}) {
         runId: 'run-remote-1',
         deliveryEpoch: 'delivery-epoch-1',
         ...fixture,
-        repository: 'Ozwasyd/FsusBlog',
-        issueId: 'Ozwasyd/FsusBlog#1900',
+        repository: 'ExampleOrg/RepositoryA',
+        issueId: 'ExampleOrg/RepositoryA#1900',
         candidateSha: 'b'.repeat(40),
         defaultBranchSha: pre.defaultBranchSha,
         terminalEvidenceDigest: digest('terminal'),

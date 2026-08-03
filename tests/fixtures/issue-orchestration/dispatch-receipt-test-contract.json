@@ -1,6 +1,6 @@
 {
     "schema": "issue-orchestration.dispatch-receipt-test-contract.v1",
-    "issue": "Ozwasyd/FsusBlog#1818",
+    "issue": "ExampleOrg/RepositoryA#1818",
     "authorityCommentId": 5145140476,
     "revision": 6,
     "supersedesTestContractDigest": "99e14648bad3cb4b6b6c96512332969ce42fce7a9f8748bf9ecee5606ba4cd51",
@@ -55,7 +55,7 @@
             "visibleTestMatrixDigest": "f22aed9931ca0138ca6233393aa9c0a55edc16b11f9325f0c00e0e0ab0ace5a0"
         }
     ],
-    "testOwnerId": "test-owner-fsusblog-1818-18c6003eb5ad",
+    "testOwnerId": "test-owner-repositorya-1818-18c6003eb5ad",
     "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
     "deliveryBinding": {
         "epochId": "epoch-1818-003",
@@ -98,7 +98,7 @@
     ],
     "satisfiedBaseDependencies": [
         {
-            "issue": "Ozwasyd/FsusBlog#1817",
+            "issue": "ExampleOrg/RepositoryA#1817",
             "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
             "status": "satisfied-by-base",
             "baseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
@@ -154,7 +154,7 @@
             "id": "dispatch-ui-design-authority-negative",
             "kind": "probe",
             "required": true,
-            "command": ["node", "--test", "--test-name-pattern", "^P19 FsusBlog UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
+            "command": ["node", "--test", "--test-name-pattern", "^P19 RepositoryA UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"]
         },
         {
             "id": "dispatch-secret-observation-negative",

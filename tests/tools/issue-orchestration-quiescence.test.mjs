@@ -85,7 +85,7 @@ async function validObservation() {
     const receipt = await cleanupReceipt()
     observation.inventories.attempts.records = [{
         attemptId: receipt.attemptId,
-        issueTarget: 'Ozwasyd/FsusBlog#1829',
+        issueTarget: 'ExampleOrg/RepositoryA#1829',
         runId: receipt.runId,
         epochId: receipt.epochId,
         status: 'completed',
@@ -199,7 +199,7 @@ test('Q02 a complete verified inventory produces the recomputable v1 receipt', a
     assert.equal(receipt.schema, 'issue-orchestration.quiescence-receipt.v1')
     assert.equal(receipt.status, 'quiescent')
     assert.deepEqual(receipt.violations, [])
-    assert.deepEqual(receipt.targetIssueSet, ['Ozwasyd/FsusBlog#1829'])
+    assert.deepEqual(receipt.targetIssueSet, ['ExampleOrg/RepositoryA#1829'])
     assert.equal(receipt.completedIssueEvidence.length, 1)
     assert.equal(receipt.bootstrapDisposition.status, 'retired')
     assert.equal(receipt.bootstrapDisposition.fallbackEnabled, false)

@@ -61,11 +61,6 @@ function canonicalRepositoryFromRemote(remoteUrl) {
     fail('runtime-trust-repository-identity-unresolved')
 }
 
-function allowlistedRepository(repository, modePolicy) {
-    return modePolicy.repositoryAllowlist.find((candidate) =>
-        candidate.toLowerCase() === repository.toLowerCase())
-}
-
 export function resolveTrustedRepositoryIdentity({
     repository,
     repositoryPath
@@ -99,7 +94,7 @@ export function resolveTrustedRepositoryIdentity({
         fail('runtime-trust-repository-identity-mismatch')
     }
     return Object.freeze({
-        repository,
+        repository: resolvedRepository,
         canonicalPath,
         remoteUrl,
         remoteIdentityDigest: digest({
@@ -116,7 +111,7 @@ function validatePolicy() {
     const strict =
         RUNTIME_TRUST_POLICY.modes?.['strict-machine-isolation']
     if (RUNTIME_TRUST_POLICY.schema !==
-            'issue-orchestration.runtime-trust-policy.v1' ||
+            'issue-orchestration.runtime-trust-policy.v2' ||
         RUNTIME_TRUST_POLICY.defaultMode !==
             'trusted-owner-repositories' ||
         trusted?.mode !== 'trusted-owner-repositories' ||
@@ -131,11 +126,13 @@ function validatePolicy() {
         trusted.mutationPostconditionRequired !== true ||
         trusted.permissionGuarantee !==
             'contract-and-postcondition' ||
-        !Array.isArray(trusted.repositoryAllowlist) ||
-        trusted.repositoryAllowlist.length === 0 ||
+        trusted.repositoryAdmission !==
+            'caller-supplied-operator-owned-remote-identity' ||
         strict?.mode !== 'strict-machine-isolation' ||
         strict.enabled !== false ||
-        strict.machineEnforcedRoleIsolation !== true) {
+        strict.machineEnforcedRoleIsolation !== true ||
+        strict.repositoryAdmission !==
+            'caller-supplied-operator-owned-remote-identity') {
         fail('runtime-trust-policy-invalid')
     }
 }
@@ -200,19 +197,6 @@ export function compileRuntimeTrustBinding({
     )
     const identities = targets.map((target) =>
         resolveTrustedRepositoryIdentity(target))
-        .map((identity) => {
-            const allowlisted = allowlistedRepository(
-                identity.repository,
-                selected
-            )
-            if (!allowlisted) {
-                fail('runtime-trust-repository-not-allowlisted')
-            }
-            return {
-                ...identity,
-                repository: allowlisted
-            }
-        })
         .sort((left, right) =>
             left.repository.localeCompare(right.repository))
     if (new Set(identities.map(({ repository }) =>
@@ -328,20 +312,14 @@ export function validateRuntimeTrustBinding(value, {
         fail('runtime-trust-repository-identity-mismatch')
     }
     for (const identity of identities) {
-        const allowlisted = allowlistedRepository(
-            identity.repository,
-            selected
-        )
-        if (!allowlisted ||
-            identity.repository !== allowlisted ||
+        if (typeof identity.repository !== 'string' ||
+            !/^[^/\s]+\/[^/\s]+$/u.test(identity.repository) ||
             identity.remoteIdentityDigest !== digest({
                 repository: identity.repository.toLowerCase(),
                 canonicalPath: identity.canonicalPath,
                 remoteUrl: identity.remoteUrl
             })) {
-            fail(allowlisted
-                ? 'runtime-trust-repository-identity-mismatch'
-                : 'runtime-trust-repository-not-allowlisted')
+            fail('runtime-trust-repository-identity-mismatch')
         }
     }
     if (expectedRepositories !== undefined) {

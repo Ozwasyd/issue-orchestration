@@ -76,10 +76,9 @@ const manifest = {
         selectArtifactDigests(WRITER_STAGE_CONTRACT_FILES),
     writerStageRuntimeDigests:
         selectArtifactDigests(WRITER_STAGE_RUNTIME_FILES),
-    supportedRepositories: [
-        'Ozwasyd/FsusBlog',
-        'Ozwasyd/FsusUI'
-    ],
+    repositoryTargetPolicy:
+        'caller-supplied-operator-owned-remote-identity',
+    sourceRepositoryDependencies: [],
     requiredCapabilities: [
         'external-runtime-state-root',
         'fresh-context-routing',
@@ -94,7 +93,7 @@ const manifest = {
         'bounded-control-plane-advisor',
         'root-recovery-takeover',
         'invocation-bound-downstream-authority',
-        'trusted-owner-repository-allowlist',
+        'caller-supplied-repository-identity',
         'stage-scoped-write-lease'
     ],
     installTargets: [

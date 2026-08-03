@@ -71,7 +71,7 @@ function fixture({
     git(repositoryPath, 'config', 'user.email',
         'issue-orchestration@example.invalid')
     git(repositoryPath, 'remote', 'add', 'origin',
-        'https://github.com/Ozwasyd/FsusBlog.git')
+        'https://github.com/ExampleOrg/RepositoryA.git')
     fs.writeFileSync(path.join(repositoryPath, 'allowed.mjs'),
         'export const value = 1\n')
     fs.writeFileSync(path.join(repositoryPath, 'protected.mjs'),
@@ -83,7 +83,7 @@ function fixture({
     const baseSha = git(repositoryPath, 'rev-parse', 'HEAD')
     const startup = verifiedRuntimeStartup({})
     const repositoryTargets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath
     }]
     const runtimeTrustBinding = compileRuntimeTrustBinding({
@@ -168,7 +168,7 @@ function fixture({
             : 'observer-attempt-1',
         stageRole,
         stagePhase,
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath,
         stateRootPath,
         resourceIdentityDigest: digest(repositoryPath),

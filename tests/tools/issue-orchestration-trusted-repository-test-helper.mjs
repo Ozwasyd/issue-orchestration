@@ -14,7 +14,7 @@ function git(repository, ...args) {
 }
 
 export function createTrustedRepositoryFixture(
-    remoteUrl = 'https://github.com/Ozwasyd/FsusBlog.git'
+    remoteUrl = 'https://github.com/ExampleOrg/RepositoryA.git'
 ) {
     const repositoryPath = fs.mkdtempSync(path.join(
         os.tmpdir(),

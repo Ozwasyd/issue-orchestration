@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.stage-profile-runtime-probes.v2",
-  "issue": "Ozwasyd/FsusBlog#1819",
+  "issue": "ExampleOrg/RepositoryA#1819",
   "probes": [
     {"id":"RP01","mutation":"N01-root-sol-rejected","observation":"requested/effective root is gpt-5.6-sol/low","expectedCode":"routing-root-profile"},
     {"id":"RP02","mutation":"N02-bounded-terra-without-evidence","observation":"bounded code selects terra-max with no frozen blocker evidence","expectedCode":"routing-selected-profile"},

@@ -72,7 +72,7 @@
     ],
     "verifierRejection": {
         "schema": "issue-orchestration.behavior-receipt.v1",
-        "issue": "Ozwasyd/FsusBlog#1818",
+        "issue": "ExampleOrg/RepositoryA#1818",
         "epochId": "epoch4",
         "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
         "candidateDigest": "e6f8793a673b8488e8f2f3d5e107cd07e11180d34b4a217f3a71c91d491e97a8",
@@ -106,7 +106,7 @@
     },
     "revisionTwoVerifierRejection": {
         "schema": "issue-orchestration.behavior-receipt.v1",
-        "issue": "Ozwasyd/FsusBlog#1818",
+        "issue": "ExampleOrg/RepositoryA#1818",
         "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
         "candidateDigest": "86d9dbd5a099ace8965762706dc52ae5876da065db915435ee7d03df63bbcdbf",
         "testContractDigest": "0d22f09055f7a54a4afbe60c6459ae03584f76149618123eb4b7b2001eff4fa7",
@@ -127,7 +127,7 @@
     },
     "revisionThreeVerifierRejection": {
         "schema": "issue-orchestration.behavior-receipt.v1",
-        "issue": "Ozwasyd/FsusBlog#1818",
+        "issue": "ExampleOrg/RepositoryA#1818",
         "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
         "testContractDigest": "eb5e643dd32ae0362b4eee0831cff555fb588a68163d5e2388f327bb36283c77",
         "frozenTestTreeDigest": "040afeed690535264e36e320bb9fd9e655137ee26627d43235d0415c6be7944e",
@@ -154,7 +154,7 @@
     },
     "revisionFourVerifierRejection": {
         "schema": "issue-orchestration.behavior-receipt.v1",
-        "issue": "Ozwasyd/FsusBlog#1818",
+        "issue": "ExampleOrg/RepositoryA#1818",
         "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
         "testContractDigest": "559f083517950356982681d3c264c8471659a49ef00e3b2c5681e15fff54841f",
         "frozenTestTreeDigest": "496bf139c6e26acd628d2bd012f8f3c3b80e59903000b0840695d2463d404d5c",
@@ -340,7 +340,7 @@
             "id": "ui-required-skills-empty-bypass",
             "expectedError": "dispatch-ui-design-authority-policy",
             "sourcePath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
-            "meaning": "An FsusBlog UI request with empty required Skills and design-authority digests verifies because an empty declaration is treated as complete."
+            "meaning": "An RepositoryA UI request with empty required Skills and design-authority digests verifies because an empty declaration is treated as complete."
         },
         {
             "id": "credential-bearing-observation-leak",

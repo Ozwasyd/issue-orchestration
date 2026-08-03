@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.resource-lifecycle-initial-failures.v3",
-  "issueId": "Ozwasyd/FsusBlog#1828",
+  "issueId": "ExampleOrg/RepositoryA#1828",
   "baseSha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9",
   "expectedStatus": "red",
   "observedBaseline": {

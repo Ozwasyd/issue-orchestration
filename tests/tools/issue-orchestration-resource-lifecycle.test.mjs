@@ -138,7 +138,7 @@ function killProcessGroup(child) {
 }
 
 function createSandbox() {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), 'fsusblog-1828-resource-'))
+    const sandboxRoot = mkdtempSync(join(tmpdir(), 'repositorya-1828-resource-'))
     const repositoryRoot = join(sandboxRoot, 'repository')
     const temporaryParent = join(sandboxRoot, 'temporary')
     const worktreePath = join(sandboxRoot, 'attempt-worktree')
@@ -427,7 +427,7 @@ test('frozen #1828 v3 contract is self-consistent and scoped to current package 
     assert.equal(contract.schema, 'issue-orchestration.resource-lifecycle-test-contract.v3')
     assert.equal(contract.owner.id, 'test-owner-1828')
     assert.equal(contract.owner.profile, 'gpt-5.6-terra/max')
-    assert.equal(contract.issueId, 'Ozwasyd/FsusBlog#1828')
+    assert.equal(contract.issueId, 'ExampleOrg/RepositoryA#1828')
     assert.equal(contract.base.sha, cases.baseSha)
     assert.equal(contract.status, 'frozen-red')
     assert.equal(contract.currentOwner.resourceLifecycle, implementationRelative)

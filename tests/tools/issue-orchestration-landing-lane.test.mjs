@@ -30,7 +30,7 @@ const landing = await import(
     + 'issue-orchestration/scripts/repository-landing-lane.mjs'
 )
 
-const repository = 'Ozwasyd/FsusBlog'
+const repository = 'ExampleOrg/RepositoryA'
 const members = [`${repository}#1834-a`, `${repository}#1834-b`]
 const sha = (character) => character.repeat(40)
 const hash = (value) => writerTestDigest(value)
@@ -354,7 +354,7 @@ test('L02 one repository has one landing lease while another repository is indep
 
     const uiLane = landing.acquireRepositoryLandingLease(
         landing.createRepositoryLandingLane({
-            repository: 'Ozwasyd/FsusUI',
+            repository: 'ExampleOrg/RepositoryB',
             defaultBranch: 'main'
         }),
         {

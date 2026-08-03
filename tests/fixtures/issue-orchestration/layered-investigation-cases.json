@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.layered-investigation-cases.v1",
-  "issue": "Ozwasyd/FsusBlog#1822",
+  "issue": "ExampleOrg/RepositoryA#1822",
   "revision": 7,
   "previousContractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
   "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
@@ -138,9 +138,9 @@
     ]
   },
   "legacyFixtureMigration": {
-    "ownerIssue": "Ozwasyd/FsusBlog#1816",
+    "ownerIssue": "ExampleOrg/RepositoryA#1816",
     "correctedLayeredTestPath": "tests/tools/issue-orchestration-ready-frontier.test.mjs",
-    "correctedLayeredTestSha256": "7f4284b015a696aa32e52de8bdd7791c264aecb3ee5b157034fdad5ca38c0b6c",
+    "correctedLayeredTestSha256": "54ecc0bf57d32d5e30e18c0462a6c5eaff7c586d901763d62c04012b0f7b956f",
     "correctedFixtureUsesValidatedProjection": true,
     "historicalReasonCodeMayRemain": "investigation-incomplete",
     "runtimeLegacyPropertyReadsAllowed": false,
@@ -166,7 +166,7 @@
     }
   },
   "deliveryEpochRebind": {
-    "sourceIssue": "Ozwasyd/FsusBlog#1818",
+    "sourceIssue": "ExampleOrg/RepositoryA#1818",
     "previousBaseSha": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18",
     "currentBaseSha": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed",
     "baseDependencyPath": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",

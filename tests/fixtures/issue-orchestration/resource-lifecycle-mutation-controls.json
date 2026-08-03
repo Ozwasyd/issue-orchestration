@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.resource-lifecycle-mutations.v3",
-  "issueId": "Ozwasyd/FsusBlog#1828",
+  "issueId": "ExampleOrg/RepositoryA#1828",
   "controls": [
     { "id": "legacy-owner-alias", "killedBy": "B02" }, { "id": "missing-runtime-owner", "killedBy": "B02" },
     { "id": "registry-owner-omitted", "killedBy": "B03" }, { "id": "registry-epoch-omitted", "killedBy": "B03" },

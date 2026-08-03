@@ -34,9 +34,9 @@ function compileBound(fixture, {
     sliceCount = 1
 } = {}) {
     return compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: `Ozwasyd/FsusBlog#1874:${suffix}`,
+        node: `ExampleOrg/RepositoryA#1874:${suffix}`,
         stageRole: role,
         stagePhase: phase,
         baseSha: fixture.baseSha,

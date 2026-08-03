@@ -125,7 +125,7 @@ async function frontierImplementation() {
 function remoteIssue(index, dependencies = []) {
     const issueNumber = 10000 + index
     return {
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         number: issueNumber,
         state: 'OPEN',
         stateReason: null,
@@ -155,7 +155,7 @@ function selectorFor(issueIds, version = 'layered-investigation.v1') {
         schema: 'issue-orchestration.scope-selector.v1',
         selectorVersion: version,
         type: 'explicit-issues',
-        repositories: ['Ozwasyd/FsusBlog'],
+        repositories: ['ExampleOrg/RepositoryA'],
         statePolicy: {
             open: 'include',
             closed: 'retain-if-explicit',
@@ -257,7 +257,7 @@ function discoveryFacts(issue, selectorReceipt) {
         explicitDependencyReferences: [...issue.dependsOn],
         priority: issue.labels.includes('priority:high') ? 'high' : 'normal',
         scopeMembership: 'selected',
-        candidateRepositoryOwner: 'Ozwasyd/FsusBlog',
+        candidateRepositoryOwner: 'ExampleOrg/RepositoryA',
         selectorDigest: selectorReceipt.selectorDigest,
         selectorReceiptDigest: selectorReceipt.receiptDigest,
         memberRemoteFactDigest: selectorReceipt.remoteFactDigests[issueId]
@@ -274,7 +274,7 @@ function classificationFacts(issue, discovery, { candidateReady, index }) {
             discoveryFactsDigest: discovery.digest,
             activeDependencies: issue.dependsOn,
             candidateOwnerEvidenceDigest: digest({
-                repository: 'Ozwasyd/FsusBlog',
+                repository: 'ExampleOrg/RepositoryA',
                 roots: ['AGENTS.md']
             }),
             conflictResourceEvidenceDigest: digest({
@@ -283,7 +283,7 @@ function classificationFacts(issue, discovery, { candidateReady, index }) {
             }),
             requiredInstructionRoots: ['AGENTS.md']
         }),
-        candidateOwner: 'Ozwasyd/FsusBlog',
+        candidateOwner: 'ExampleOrg/RepositoryA',
         candidateOwnerEvidence: [{
             path: 'skills/issue-orchestration/scripts/check-dag-gate.mjs',
             claim: 'existing DAG schema owner'
@@ -359,7 +359,7 @@ function dispatchInvestigation(issue, classification, selectorReceipt) {
         memberRemoteFactDigest: selectorReceipt.remoteFactDigests[issueId],
         classificationFactsDigest: classification.digest,
         nearestAgentsChain: [pathEvidence('AGENTS.md')],
-        confirmedOwner: 'Ozwasyd/FsusBlog',
+        confirmedOwner: 'ExampleOrg/RepositoryA',
         allowedTestPaths: [...allowedTestPaths],
         allowedImplementationPaths: [...minimalAllowedImplementationPaths],
         forbiddenPaths: [
@@ -452,7 +452,7 @@ async function scenario({
     const issues = Array.from({ length: count }, (_, index) => {
         const dependencies = index < candidateCount
             ? []
-            : [`Ozwasyd/FsusBlog#${10000 + (index % candidateCount)}`]
+            : [`ExampleOrg/RepositoryA#${10000 + (index % candidateCount)}`]
         return remoteIssue(index, dependencies)
     })
     const selector = selectorFor(
@@ -500,7 +500,7 @@ async function scenario({
         dagProposal: proposal,
         runtimeState: {
             repositoryBases: {
-                'Ozwasyd/FsusBlog': cases.baseSha
+                'ExampleOrg/RepositoryA': cases.baseSha
             },
             deliveryEpoch: cases.deliveryEpoch,
             currentPathDigests: clone(currentPathDigests),
@@ -601,7 +601,7 @@ function nodeOutcome(projection, issueId) {
 }
 
 test('frozen test-owner manifest, acceptance map, and mutation identities are self-consistent', () => {
-    assert.equal(cases.issue, 'Ozwasyd/FsusBlog#1822')
+    assert.equal(cases.issue, 'ExampleOrg/RepositoryA#1822')
     assert.equal(cases.baseSha, expectedFailures.baseSha)
     assert.equal(runtimeProbes.baseProbe.worktreeHead, cases.baseSha)
     assert.equal(frozenContract.testOwnerId, 'test-owner-1822')
@@ -669,7 +669,7 @@ test('frozen test-owner manifest, acceptance map, and mutation identities are se
         gitMode: statSync(resolve(root, path)).mode & 0o111
             ? '100755'
             : '100644',
-        ownerIssue: 'Ozwasyd/FsusBlog#1818',
+        ownerIssue: 'ExampleOrg/RepositoryA#1818',
         disposition: 'base-dependency-not-candidate'
     }))
     assert.deepEqual(frozenContract.baseDependencyFiles, baseDependencyFiles)
@@ -854,7 +854,7 @@ test('[L06] root-authored facts, arbitrary digests, and nonexistent paths fail c
 
     const forged = await scenario({ deepIndices: [0] })
     forged.dagProposal.nodes[0].classificationFacts.candidateOwner =
-        'Ozwasyd/FsusUI'
+        'ExampleOrg/RepositoryB'
     await expectDenied(
         () => compile(forged),
         'investigation-layer-digest-mismatch'
@@ -958,7 +958,7 @@ test('[F02] changed member comment invalidates only that member and downstream l
 test('[F03] base and epoch drift invalidate dispatch only', async () => {
     for (const mutate of [
         (changed) => {
-            changed.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] = 'f'.repeat(40)
+            changed.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] = 'f'.repeat(40)
         },
         (changed) => {
             changed.runtimeState.deliveryEpoch = 'bootstrap-repair-1822-epoch-5'
@@ -1048,7 +1048,7 @@ test('[Q01] investigation priority is stable, deterministic, and auditable', asy
 test('[Q02] ready stage work cannot be suppressed by future investigation', async () => {
     const input = await scenario({ count: 8, candidateCount: 5 })
     input.runtimeState.readyStageCandidates = [{
-        issueId: 'Ozwasyd/FsusBlog#9901',
+        issueId: 'ExampleOrg/RepositoryA#9901',
         stage: 'implementation-ready',
         capabilityReceiptDigest: 'a'.repeat(64)
     }]
@@ -1424,7 +1424,7 @@ for (const control of mutationControls) {
         const first = input.dagProposal.nodes[0]
 
         if (control.id === 'root-constructs-scope') {
-            input.dagProposal.resolvedIssueSet.push('Ozwasyd/FsusBlog#99999')
+            input.dagProposal.resolvedIssueSet.push('ExampleOrg/RepositoryA#99999')
             await expectDenied(() => compile(input), control.expectedCode)
             return
         }
@@ -1500,7 +1500,7 @@ for (const control of mutationControls) {
         }
         if (control.id === 'base-reuses-dispatch-investigation') {
             const projection = await compile(input)
-            input.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] = 'f'.repeat(40)
+            input.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] = 'f'.repeat(40)
             const report = await freshness(input, projection)
             assert.ok(report.byIssue[first.id].reasons.some(
                 ({ code }) => code === control.expectedCode
@@ -1569,7 +1569,7 @@ for (const control of mutationControls) {
         }
         if (control.id === 'ready-work-suppressed-by-future-investigation') {
             input.runtimeState.readyStageCandidates = [{
-                issueId: 'Ozwasyd/FsusBlog#9998',
+                issueId: 'ExampleOrg/RepositoryA#9998',
                 stage: 'implementation-ready',
                 capabilityReceiptDigest: 'a'.repeat(64)
             }]
@@ -1686,7 +1686,7 @@ for (const control of mutationControls) {
             return
         }
         if (control.id === 'arbitrary-layer-digest') {
-            first.classificationFacts.candidateOwner = 'Ozwasyd/FsusUI'
+            first.classificationFacts.candidateOwner = 'ExampleOrg/RepositoryB'
             await expectDenied(() => compile(input), control.expectedCode)
             return
         }

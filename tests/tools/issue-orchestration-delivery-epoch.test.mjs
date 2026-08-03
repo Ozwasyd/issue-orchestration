@@ -7,8 +7,8 @@ const digest = (character) => character.repeat(64)
 
 function canonicalEpoch() {
     return {
-        epochId: 'fsusblog-master-epoch-7',
-        repository: 'Ozwasyd/FsusBlog',
+        epochId: 'repositorya-master-epoch-7',
+        repository: 'ExampleOrg/RepositoryA',
         defaultBranch: 'master',
         baseSha: sha('a'),
         repositoryFingerprint: digest('b'),
@@ -52,14 +52,14 @@ test('delivery epoch refuses a second receipt for an already-bound stage', () =>
     const epoch = deliveryEpoch.bindStageReceipt(
         canonicalEpoch(),
         'behavior',
-        { epochId: 'fsusblog-master-epoch-7', baseSha: sha('a'), receiptDigest: digest('e') }
+        { epochId: 'repositorya-master-epoch-7', baseSha: sha('a'), receiptDigest: digest('e') }
     )
 
     assert.throws(
         () => deliveryEpoch.bindStageReceipt(
             epoch,
             'behavior',
-            { epochId: 'fsusblog-master-epoch-7', baseSha: sha('a'), receiptDigest: digest('f') }
+            { epochId: 'repositorya-master-epoch-7', baseSha: sha('a'), receiptDigest: digest('f') }
         ),
         /replay|already.*bound/ui
     )

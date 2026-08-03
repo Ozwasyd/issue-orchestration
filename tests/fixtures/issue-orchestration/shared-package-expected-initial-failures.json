@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.shared-package-expected-initial-failures.v1",
-  "issue": "Ozwasyd/FsusBlog#1823",
+  "issue": "ExampleOrg/RepositoryA#1823",
   "baseSha": "d98bed01a76fcca5dc1657e63886b8da48ce346d",
   "expectedOutcome": "red",
   "expectedPassingTests": ["P01", "P11"],

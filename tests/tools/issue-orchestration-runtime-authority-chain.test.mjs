@@ -49,14 +49,14 @@ function fixture({
         'remote',
         'add',
         'origin',
-        'https://github.com/Ozwasyd/FsusBlog.git'
+        'https://github.com/ExampleOrg/RepositoryA.git'
     ])
     const startup = verifiedRuntimeStartup({
         invocationId,
         sessionId
     })
     const repositoryTargets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath
     }]
     const runtimeTrustBinding = compileRuntimeTrustBinding({

@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.shared-package-runtime-probes.v1",
-  "issue": "Ozwasyd/FsusBlog#1823",
+  "issue": "ExampleOrg/RepositoryA#1823",
   "probes": [
     {
       "id": "RP01-real-external-install",

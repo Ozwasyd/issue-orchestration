@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.ready-frontier-expected-initial-failures.v2",
-  "issue": "Ozwasyd/FsusBlog#1816",
+  "issue": "ExampleOrg/RepositoryA#1816",
   "revision": "corrective-layered-integrity-4",
   "baseSha": "18c6003eb5ad8697f4b74ac2d42a45e74fe18756",
   "history": {
@@ -18,7 +18,7 @@
       },
       "firstFailure": {
         "test": "[F01] compiler emits the canonical maximal member-stage projection",
-        "diagnostic": "readyFrontier was [] instead of Ozwasyd/FsusBlog#9101@test-contract-ready plus Ozwasyd/FsusUI#2901@implementation-ready; the base compiler ignored investigationProjection and treated the layered-only nodes as investigation-incomplete"
+        "diagnostic": "readyFrontier was [] instead of ExampleOrg/RepositoryA#9101@test-contract-ready plus ExampleOrg/RepositoryB#2901@implementation-ready; the base compiler ignored investigationProjection and treated the layered-only nodes as investigation-incomplete"
       }
     },
     "revision2": {

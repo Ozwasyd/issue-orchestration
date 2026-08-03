@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.dispatch-receipt-v2-mutation-controls.v1",
-  "issue": "Ozwasyd/FsusBlog#1832",
+  "issue": "ExampleOrg/RepositoryA#1832",
   "controls": [
     {
       "id": "N01-root-actual-sol-low",

@@ -21,7 +21,7 @@ const controls = JSON.parse(fs.readFileSync(
 )).controls
 const contractDigest = 'c'.repeat(64)
 const fixtureRoot = fs.mkdtempSync(
-  path.join(os.tmpdir(), 'fsusblog-completed-prerequisite-')
+  path.join(os.tmpdir(), 'repositorya-completed-prerequisite-')
 )
 const workspace = path.join(fixtureRoot, 'workspace')
 const statesRoot = path.join(fixtureRoot, 'states')
@@ -103,8 +103,8 @@ function createRepository(name, defaultBranch) {
 }
 
 const repositories = {
-  FsusBlog: createRepository('FsusBlog', 'master'),
-  FsusUI: createRepository('FsusUI', 'main')
+  RepositoryA: createRepository('RepositoryA', 'master'),
+  RepositoryB: createRepository('RepositoryB', 'main')
 }
 
 function repositoryFacts() {
@@ -392,9 +392,9 @@ function baseDag(snapshot, nodes, ownerRepository) {
 
 function satisfiedFixture({
   dependentNumber = 2001,
-  dependentRepository = 'FsusBlog',
+  dependentRepository = 'RepositoryA',
   prerequisiteNumber = 1700,
-  prerequisiteRepository = 'FsusBlog'
+  prerequisiteRepository = 'RepositoryA'
 } = {}) {
   const dependent = openIssue(dependentRepository, dependentNumber)
   const observation = closedObservation(
@@ -423,9 +423,9 @@ function satisfiedFixture({
 
 function activeFixture({
   dependentNumber = 2001,
-  dependentRepository = 'FsusBlog',
+  dependentRepository = 'RepositoryA',
   prerequisiteNumber = 1700,
-  prerequisiteRepository = 'FsusBlog'
+  prerequisiteRepository = 'RepositoryA'
 } = {}) {
   const dependent = openIssue(dependentRepository, dependentNumber)
   const prerequisite = openIssue(
@@ -477,10 +477,10 @@ function runGate(fixture, id) {
     '--state-root', files.stateRoot,
     '--dag', files.dagPath,
     '--issues-snapshot', files.snapshotPath,
-    '--repository', `FsusBlog=${repositories.FsusBlog.path}`,
-    '--repository', `FsusUI=${repositories.FsusUI.path}`,
-    '--default-branch', 'FsusBlog=master',
-    '--default-branch', 'FsusUI=main',
+    '--repository', `RepositoryA=${repositories.RepositoryA.path}`,
+    '--repository', `RepositoryB=${repositories.RepositoryB.path}`,
+    '--default-branch', 'RepositoryA=master',
+    '--default-branch', 'RepositoryB=main',
     '--workspace', workspace,
     '--startup-time', '2026-01-01T00:00:00Z'
   ], {
@@ -524,7 +524,7 @@ function assertRejected(fixture, id, expectedCode) {
 function legacyFixture({ placeholder = false } = {}) {
   const source = satisfiedFixture()
   const node = clone(source.dag.nodes[0])
-  node.dependencies = placeholder ? ['FsusBlog#1700'] : []
+  node.dependencies = placeholder ? ['RepositoryA#1700'] : []
   delete node.activeDependencies
   delete node.dependencyKeys
   if (!placeholder) delete node.satisfiedDependencies
@@ -566,7 +566,7 @@ const mutations = {
     delete fixture.dag.nodes[0].satisfiedDependencies[0].deliveredCommit
   },
   'delivered-commit-unreachable': (fixture) => {
-    const unreachable = repositories.FsusBlog.unreachableCommit
+    const unreachable = repositories.RepositoryA.unreachableCommit
     fixture.snapshot.prerequisiteObservations[0].deliveredCommit = unreachable
     fixture.dag.nodes[0].satisfiedDependencies[0].deliveredCommit = unreachable
   },
@@ -578,10 +578,10 @@ const mutations = {
       .completionEvidence.verifiedChecks[0].outcome = 'failed'
   },
   'dependency-identity-mismatch': (fixture) => {
-    fixture.dag.nodes[0].satisfiedDependencies[0].issue = 'FsusBlog#1701'
+    fixture.dag.nodes[0].satisfiedDependencies[0].issue = 'RepositoryA#1701'
   },
   'active-satisfied-overlap': (fixture) => {
-    fixture.dag.nodes[0].activeDependencies = ['FsusBlog#1700']
+    fixture.dag.nodes[0].activeDependencies = ['RepositoryA#1700']
   },
   'dependency-edge-deleted': (fixture) => {
     fixture.dag.nodes[0].satisfiedDependencies = []
@@ -592,14 +592,14 @@ const mutations = {
     )
   },
   'wrong-repository': (fixture) => {
-    fixture.dag.nodes[0].satisfiedDependencies[0].repository = 'FsusUI'
+    fixture.dag.nodes[0].satisfiedDependencies[0].repository = 'RepositoryB'
   },
   'wrong-issue-number': (fixture) => {
     fixture.dag.nodes[0].satisfiedDependencies[0].issueNumber = 1701
   },
   'short-delivered-commit': (fixture) => {
     fixture.dag.nodes[0].satisfiedDependencies[0].deliveredCommit =
-      repositories.FsusBlog.deliveredCommit.slice(0, 12)
+      repositories.RepositoryA.deliveredCommit.slice(0, 12)
   },
   'wrong-default-branch': (fixture) => {
     fixture.dag.nodes[0].satisfiedDependencies[0].remoteDefaultBranch = 'main'
@@ -614,13 +614,13 @@ const mutations = {
     delete fixture.snapshot.prerequisiteObservations[0].completionEvidence
   },
   'unknown-dependency': (fixture) => {
-    fixture.dag.nodes[0].dependencyKeys = ['FsusBlog#9999']
+    fixture.dag.nodes[0].dependencyKeys = ['RepositoryA#9999']
     fixture.dag.nodes[0].satisfiedDependencies = []
     fixture.snapshot.prerequisiteObservations = []
   },
   'closed-prerequisite-in-active-nodes': (fixture) => {
     const closed = clone(fixture.dag.nodes[0])
-    closed.id = 'FsusBlog#1700'
+    closed.id = 'RepositoryA#1700'
     closed.issueNumber = 1700
     closed.activeDependencies = []
     closed.dependencyKeys = []
@@ -629,11 +629,11 @@ const mutations = {
     fixture.dag.acceptanceGroups[0].nodes.push(closed.id)
   },
   'closed-prerequisite-in-frontier': (fixture) => {
-    fixture.dag.readyFrontier.push('FsusBlog#1700')
+    fixture.dag.readyFrontier.push('RepositoryA#1700')
   },
   'closed-prerequisite-has-attempt': (fixture) => {
     fixture.dag.activeAttempts.push({
-      issue: 'FsusBlog#1700',
+      issue: 'RepositoryA#1700',
       slot: 'slot-02'
     })
   },
@@ -693,25 +693,25 @@ test('P01 active dependencies resolve to active DAG nodes with a stable reason c
 
 for (const scenario of [
   {
-    id: 'P02-fsusblog-open-to-closed',
+    id: 'P02-repositorya-open-to-closed',
     options: {}
   },
   {
-    id: 'P03-fsusui-open-to-closed',
+    id: 'P03-repositoryb-open-to-closed',
     options: {
       dependentNumber: 3001,
-      dependentRepository: 'FsusUI',
+      dependentRepository: 'RepositoryB',
       prerequisiteNumber: 260,
-      prerequisiteRepository: 'FsusUI'
+      prerequisiteRepository: 'RepositoryB'
     }
   },
   {
     id: 'P04-cross-repository-closed-prerequisite',
     options: {
       dependentNumber: 2002,
-      dependentRepository: 'FsusBlog',
+      dependentRepository: 'RepositoryA',
       prerequisiteNumber: 260,
-      prerequisiteRepository: 'FsusUI'
+      prerequisiteRepository: 'RepositoryB'
     }
   }
 ]) {
@@ -734,8 +734,8 @@ for (const scenario of [
 test('P05 a completed prerequisite is not an execution node, frontier member, or attempt', () => {
   const fixture = satisfiedFixture()
   assert.deepEqual(fixture.snapshot.issues.map((issue) => issue.number), [2001])
-  assert.deepEqual(fixture.dag.nodes.map((node) => node.id), ['FsusBlog#2001'])
-  assert.deepEqual(fixture.dag.readyFrontier, ['FsusBlog#2001'])
+  assert.deepEqual(fixture.dag.nodes.map((node) => node.id), ['RepositoryA#2001'])
+  assert.deepEqual(fixture.dag.readyFrontier, ['RepositoryA#2001'])
   assert.deepEqual(fixture.dag.activeAttempts, [])
   assertAccepted(fixture, 'closed-is-not-executable', ['dependency-satisfied'])
 })

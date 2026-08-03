@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.shared-package-mutation-controls.v1",
-  "issue": "Ozwasyd/FsusBlog#1823",
+  "issue": "ExampleOrg/RepositoryA#1823",
   "controls": [
     {
       "id": "N01-repo-local-skill-coexists",

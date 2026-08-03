@@ -1,6 +1,6 @@
 # Issue orchestration scope and remote snapshot
 
-本文件是多 issue 调度中 scope selector、远端 live snapshot、分层 investigation projection、frontier 和 DAG 更新触发条件的 current authority。它只约束调度运行态，不改变 FsusBlog 产品 API、数据库、发布或前端运行时。
+本文件是多 issue 调度中 scope selector、远端 live snapshot、分层 investigation projection、frontier 和 DAG 更新触发条件的 current authority。它只约束调度运行态，不改变任何目标仓库的产品 API、数据库、发布或前端运行时。
 
 ## Versioned selector
 
@@ -193,7 +193,7 @@ Root 启动必须先由 launcher/runtime integration 产生 `issue-orchestration
 
 `writer-stage.output-missing` 不能按次数或措辞变化重路由。只有 `profile-capability-mismatch` 机器证据、最小或实质修订 slice、旧 failure/route/candidate receipt、breaker reset/retry authorization、不同的新 candidate identity及可观察 requested/effective runtime metadata全部成立时，才允许 `compileExecutionReroute`。Acceptance-group member、landing conflict 和 reverification各自独立编译 route；Telemetry只消费 route/outcome receipt作观察，不反向控制 correctness。Quiescence inventory必须保留 route decision、failure、retry和runtime receipt的引用，资源清理由机器 verifier签发。
 
-Documentation 仅在 behavior-green，且 UI work 已 ux-accepted 后启动；普通同步使用 `terra-medium`，跨文档 authority 迁移可使用 `terra-high`，不得按余额、失败次数、reworkCount、telemetry 或人工偏好切换。FsusBlog UI/UX stage 必须从机器 load evidence 取得 `fsusblog-design-conformance` 与 `fsusui-design-conformance` 的 exact digest。`uiDecisionClass=system-design-dispute` 时必须先由 fresh observe-only `ui-system-adjudicator` 使用 `sol-high`/`sol-xhigh` 输出 machine-readable owner、边界、design authority 和允许的 low/medium implementation class；裁决者没有实现权。behavior verification、UX acceptance 和 adjudication 都必须 fresh、observe-only 且不继承 implementer 对话；每个结果必须绑定 passed mutation postcondition。group continuity 必须重新按 member 分类和 routing，不能继承上一 member 的 profile、权限或 verifier context。
+Documentation 仅在 behavior-green，且 UI work 已 ux-accepted 后启动；普通同步使用 `terra-medium`，跨文档 authority 迁移可使用 `terra-high`，不得按余额、失败次数、reworkCount、telemetry 或人工偏好切换。UI/UX stage 必须从目标仓库当前指令与机器 load evidence 取得一个或多个 caller-supplied design-authority Skill exact digest；本仓不内置仓名或设计 Skill 名。`uiDecisionClass=system-design-dispute` 时必须先由 fresh observe-only `ui-system-adjudicator` 使用 `sol-high`/`sol-xhigh` 输出 machine-readable owner、边界、design authority 和允许的 low/medium implementation class；裁决者没有实现权。behavior verification、UX acceptance 和 adjudication 都必须 fresh、observe-only 且不继承 implementer 对话；每个结果必须绑定 passed mutation postcondition。group continuity 必须重新按 member 分类和 routing，不能继承上一 member 的 profile、权限或 verifier context。
 
 旧 `issue-implementer`、`issue-reviewer`、`cleanup-verifier` role/agent alias，以及 node-local `model`/`effort`、`implementationProfile`、`reviewProfile` 均无 authority 或 fallback。Code/UI implementer 不能签 behavior/UX receipt；behavior verification 仍由冻结合同的独立 `test-owner` 执行。Cleanup 不进入 LLM model pool：确定性 resource registry、inventory 和 machine resource verifier 才能签发 `resources-clean`，异常诊断可读但不能替代机器绿色 authority。
 
@@ -201,7 +201,7 @@ dispatch receipt `issue-orchestration.dispatch-receipt.v2` 只有在 request dig
 
 ## Append-only event ledger 与 projection
 
-Issue execution history 的唯一事实源是仓库外状态根中的追加式事件账本；`dag.json` 只保存由账本重放得到的 projection，不再是可独立编辑的状态事实。账本不进入 FsusBlog、FsusUI、共同工作区或任一 worktree。
+Issue execution history 的唯一事实源是仓库外状态根中的追加式事件账本；`dag.json` 只保存由账本重放得到的 projection，不再是可独立编辑的状态事实。账本不进入任何目标仓库、共同工作区或 worktree。
 
 ### Versioned schemas 与 hash chain
 

@@ -397,7 +397,7 @@ function buildRuntimeOutputs() {
     const filePath = fixture.filePaths[0]
     const command = `node --check ${filePath}`
     const artifacts = compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
@@ -529,9 +529,9 @@ function buildDocumentationNoChangeCheckpoint() {
     const plan = compileStageWorkPlan({
         schema: 'issue-orchestration.stage-work-plan-input.v1',
         runId: 'run-1874-schema-documentation-no-change',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874:documentation-no-change-schema',
+        node: 'ExampleOrg/RepositoryA#1874:documentation-no-change-schema',
         stageRole: 'documentation-writer',
         stagePhase: 'documentation',
         baseSha: fixture.baseSha,
@@ -647,7 +647,7 @@ test('a chained checkpoint and continuation pass their schemas and reject a brok
     runtimeFixtures.add(fixture)
     try {
         const artifacts = compileWriterStageTestArtifacts({
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             issue: 1874,
             stageRole: 'code-implementer',
             stagePhase: 'implementation',
@@ -798,10 +798,10 @@ test('all five permanent writer phases produce schema-valid plan, slice and prom
         runtimeFixtures.add(fixture)
         try {
             const artifacts = compileWriterStageTestArtifacts({
-                repository: 'Ozwasyd/FsusBlog',
+                repository: 'ExampleOrg/RepositoryA',
                 issue: 1874,
                 node:
-                    `Ozwasyd/FsusBlog#1874:schema-binding-${index + 1}`,
+                    `ExampleOrg/RepositoryA#1874:schema-binding-${index + 1}`,
                 ...binding,
                 baseSha: fixture.baseSha,
                 epochId:
@@ -854,9 +854,9 @@ test('a two-slice plan produces schema-valid ordered slices and deterministic pr
     runtimeFixtures.add(fixture)
     try {
         const artifacts = compileWriterStageTestArtifacts({
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             issue: 1874,
-            node: 'Ozwasyd/FsusBlog#1874:schema-two-slice',
+            node: 'ExampleOrg/RepositoryA#1874:schema-two-slice',
             stageRole: 'code-implementer',
             stagePhase: 'implementation',
             baseSha: fixture.baseSha,
@@ -900,9 +900,9 @@ test('ordered multi-slice terminal receipts pass the schema without premature gr
     runtimeFixtures.add(fixture)
     try {
         const artifacts = compileWriterStageTestArtifacts({
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             issue: 1874,
-            node: 'Ozwasyd/FsusBlog#1874:schema-terminal-chain',
+            node: 'ExampleOrg/RepositoryA#1874:schema-terminal-chain',
             stageRole: 'code-implementer',
             stagePhase: 'implementation',
             baseSha: fixture.baseSha,

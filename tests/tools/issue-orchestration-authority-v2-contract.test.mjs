@@ -107,7 +107,7 @@ function runtimeMetadata(profile = 'terra-low') {
 
 function rootRuntimeTrust(startup = runtimeStartup) {
     const repositoryTargets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath: repositoryRoot
     }]
     return {
@@ -174,7 +174,7 @@ function route({
 }
 
 function gateFixture() {
-    const members = ['Ozwasyd/FsusBlog#1877', 'Ozwasyd/FsusBlog#1878']
+    const members = ['ExampleOrg/RepositoryA#1877', 'ExampleOrg/RepositoryA#1878']
         .map((memberId, index) => {
             const sliceDigest = digest(`slice-${index}`)
             const selectedRoute = route({ sliceDigest })
@@ -186,7 +186,7 @@ function gateFixture() {
             })
             return {
                 memberId,
-                repository: 'Ozwasyd/FsusBlog',
+                repository: 'ExampleOrg/RepositoryA',
                 issueNumber: 1877 + index,
                 stageState: 'active',
                 stageRole: 'code-implementer',
@@ -317,7 +317,7 @@ test('A77-02 rejects all frozen startup-gate mutation classes', async () => {
 
 function requirementSnapshot() {
     return {
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issueNumber: 1878,
         selectorReceiptDigest: digest('selector'),
         remoteSnapshotDigest: digest('remote'),
@@ -371,7 +371,7 @@ function requirementProposal(snapshot = requirementSnapshot()) {
             (block) => block.sourceIdentity === sourceIdentity
         ).spanDigest,
         classification,
-        ownerRepository: 'Ozwasyd/FsusBlog',
+        ownerRepository: 'ExampleOrg/RepositoryA',
         affectedStageClasses: ['test-contract', 'implementation']
     }))
     const value = {
@@ -508,7 +508,7 @@ test('A78-03 requires exact work-plan acceptance and ignores discussion-only dri
 function acceptanceContract() {
     const value = {
         schema: 'issue-orchestration.issue-acceptance-contract.v1',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issueNumber: 1879,
         selectorReceiptDigest: digest('selector'),
         remoteSnapshotDigest: digest('remote'),
@@ -537,7 +537,7 @@ function planningReceipt() {
             digest('runtime-execution-binding'),
         mutationPostconditionReceiptDigest:
             digest('planning-postcondition'),
-        ownerRepository: 'Ozwasyd/FsusBlog',
+        ownerRepository: 'ExampleOrg/RepositoryA',
         testPaths: ['tests/tools/issue-1879.test.mjs'],
         commands: ['node --test tests/tools/issue-1879.test.mjs'],
         fixturePaths: [],
@@ -772,7 +772,7 @@ function dispatchProjection() {
     const value = {
         schema:
             'issue-orchestration.dispatch-investigation-projection.v1',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issueNumber: 1881,
         sourceFingerprint: digest('source-fingerprint'),
         semanticReceiptDigest: digest('semantic'),
@@ -833,7 +833,7 @@ test('A81-02 rejects Root-authored semantics, expanded context and profile leaka
         (v) => { v.fullIssueBodyIncluded = true },
         (v) => { v.fullDagIncluded = true },
         (v) => { v.stateRootIncluded = true },
-        (v) => { v.ownerSelection = 'Ozwasyd/FsusBlog' },
+        (v) => { v.ownerSelection = 'ExampleOrg/RepositoryA' },
         (v) => { v.rootAuthoredSlice = true }
     ]) {
         const value = dispatchProjection()

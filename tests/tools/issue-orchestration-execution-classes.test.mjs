@@ -49,7 +49,7 @@ function schema(file) {
 function trustFixture() {
     const startup = verifiedRuntimeStartup({})
     const repositoryTargets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath: repositoryRoot
     }]
     const runtimeTrustBinding = compileRuntimeTrustBinding({
@@ -169,7 +169,7 @@ test('stage-permissions.v2 defines every stage by semantic execution class', () 
 test('logical stage routes contain execution semantics but no runtime sandbox authority', () => {
     const route = compileStageRoute({
         domain: 'generic-code',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',
@@ -186,7 +186,7 @@ test('logical stage routes contain execution semantics but no runtime sandbox au
     assert.equal(Object.hasOwn(route, 'sandbox'), false)
     assert.throws(() => compileStageRoute({
         domain: 'generic-code',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',

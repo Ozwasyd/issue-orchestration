@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.resource-lifecycle-cases.v3",
-  "issueId": "Ozwasyd/FsusBlog#1828",
+  "issueId": "ExampleOrg/RepositoryA#1828",
   "baseSha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9",
   "requiredExports": [
     "createResourceRegistry",
@@ -56,7 +56,7 @@
   "groupRegistry": {
     "schema": "issue-orchestration.resource-registry.v1",
     "runId": "run-1828-group",
-    "issueId": "Ozwasyd/FsusBlog#1828",
+    "issueId": "ExampleOrg/RepositoryA#1828",
     "stageAttemptId": "attempt-1828-group-member-1",
     "stageRole": "code-implementer",
     "issueWorktreeId": "group-worktree",
@@ -87,7 +87,7 @@
   "retryRegistry": {
     "schema": "issue-orchestration.resource-registry.v1",
     "runId": "run-1828-resource-lifecycle",
-    "issueId": "Ozwasyd/FsusBlog#1828",
+    "issueId": "ExampleOrg/RepositoryA#1828",
     "stageAttemptId": "attempt-1828-1",
     "stageRole": "code-implementer",
     "issueWorktreeId": "worktree-1828-retained",

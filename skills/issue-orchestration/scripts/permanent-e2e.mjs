@@ -454,8 +454,8 @@ async function runChildRollout(group, repositoryRoot, runId) {
             cwd: repositoryRoot,
             env: {
                 NODE_TEST_CONTEXT: null,
-                FSUSBLOG_ORCHESTRATION_E2E_RUN_ID: runId,
-                FSUSBLOG_ORCHESTRATION_E2E_ROLLOUT_ID:
+                ISSUE_ORCHESTRATION_ORCHESTRATION_E2E_RUN_ID: runId,
+                ISSUE_ORCHESTRATION_ORCHESTRATION_E2E_ROLLOUT_ID:
                     group.rolloutId
             }
         }

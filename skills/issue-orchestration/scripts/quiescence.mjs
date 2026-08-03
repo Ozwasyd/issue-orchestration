@@ -149,7 +149,7 @@ const ZERO_SUMMARY_FIELDS = Object.freeze({
 const TRUE_SUMMARY_FIELDS = Object.freeze({
     skills: [
         'singleSharedArtifact', 'legacyRepoLocalAuthoritiesAbsent',
-        'legacyAliasesAbsent', 'fsusuiOrchestrationCopyAbsent',
+        'legacyAliasesAbsent', 'secondaryOrchestrationCopyAbsent',
         'designAuthoritiesUnique', 'roleSkillReceiptVerified',
         'digestConsistent', 'runtimeStateInInstallAbsent'
     ],
@@ -1532,8 +1532,8 @@ export function evaluateQuiescence(input) {
         designAuthorityInventoryDigest: computeQuiescenceDigest({
             designAuthoritiesUnique:
                 inventories.skills?.summary?.designAuthoritiesUnique,
-            fsusuiOrchestrationCopyAbsent:
-                inventories.skills?.summary?.fsusuiOrchestrationCopyAbsent
+            secondaryOrchestrationCopyAbsent:
+                inventories.skills?.summary?.secondaryOrchestrationCopyAbsent
         }),
         bootstrapDisposition: {
             status: bootstrap.disposition ?? 'unknown',

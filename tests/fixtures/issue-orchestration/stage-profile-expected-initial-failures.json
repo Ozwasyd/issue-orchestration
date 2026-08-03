@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.stage-profile-expected-initial-failures.v2",
-  "issueId": "Ozwasyd/FsusBlog#1819",
+  "issueId": "ExampleOrg/RepositoryA#1819",
   "baseSha": "d01f7269fb9819446f106806d96ea12269d0797b",
   "expectedStatus": "red",
   "baselineCommand": ["node","--test","tests/tools/issue-orchestration-stage-profiles.test.mjs"],

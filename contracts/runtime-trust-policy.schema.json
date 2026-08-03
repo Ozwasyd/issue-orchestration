@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:issue-orchestration:runtime-trust-policy:v1",
-  "title": "issue-orchestration.runtime-trust-policy.v1",
+  "$id": "urn:issue-orchestration:runtime-trust-policy:v2",
+  "title": "issue-orchestration.runtime-trust-policy.v2",
   "type": "object",
   "required": [
     "schema",
@@ -10,7 +10,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "issue-orchestration.runtime-trust-policy.v1"
+      "const": "issue-orchestration.runtime-trust-policy.v2"
     },
     "defaultMode": {
       "const": "trusted-owner-repositories"
@@ -34,21 +34,12 @@
   },
   "additionalProperties": false,
   "$defs": {
-    "repositoryAllowlist": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
-      }
-    },
     "trustedMode": {
       "type": "object",
       "required": [
         "mode",
         "enabled",
-        "repositoryAllowlist",
+        "repositoryAdmission",
         "rootPermissionProfile",
         "approvalPolicy",
         "childPermissionInheritance",
@@ -64,8 +55,8 @@
         "enabled": {
           "const": true
         },
-        "repositoryAllowlist": {
-          "$ref": "#/$defs/repositoryAllowlist"
+        "repositoryAdmission": {
+          "const": "caller-supplied-operator-owned-remote-identity"
         },
         "rootPermissionProfile": {
           "const": "danger-full-access"
@@ -96,7 +87,7 @@
       "required": [
         "mode",
         "enabled",
-        "repositoryAllowlist",
+        "repositoryAdmission",
         "rootPermissionProfile",
         "approvalPolicy",
         "childPermissionInheritance",
@@ -112,8 +103,8 @@
         "enabled": {
           "const": false
         },
-        "repositoryAllowlist": {
-          "$ref": "#/$defs/repositoryAllowlist"
+        "repositoryAdmission": {
+          "const": "caller-supplied-operator-owned-remote-identity"
         },
         "rootPermissionProfile": {
           "const": "runtime-defined"

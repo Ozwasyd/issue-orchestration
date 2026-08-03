@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.ready-frontier-runtime-probes.v2",
-  "issue": "Ozwasyd/FsusBlog#1816",
+  "issue": "ExampleOrg/RepositoryA#1816",
   "revision": "corrective-layered-integrity-4",
   "observedAt": "2026-08-01T06:21:39+08:00",
   "baseProbe": {

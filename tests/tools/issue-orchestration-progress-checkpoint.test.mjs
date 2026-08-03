@@ -17,7 +17,7 @@ const testRelativePath =
 const testPath = path.join(root, testRelativePath)
 const syntaxCommand = `node --check ${testRelativePath}`
 const sliceId =
-    'fsusblog-1874-test-contract-slice-2-checkpoint-continuation'
+    'repositorya-1874-test-contract-slice-2-checkpoint-continuation'
 const sliceDigest =
     'c1afa3895f88d5e365ccf781a813c576729c0063b9fe449577c05701ab5be599'
 const wholeIssueBody = [
@@ -99,9 +99,9 @@ function plan() {
         schema: 'issue-orchestration.stage-work-plan.v1',
         status: 'verified',
         runId: 'run-1874-checkpoint-contract',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874',
+        node: 'ExampleOrg/RepositoryA#1874',
         stageRole: 'test-contract-author',
         stagePhase: 'test-contract',
         baseSha: git('rev-parse', 'HEAD'),
@@ -255,7 +255,7 @@ test('continuation binds the original slice identity and sealed checkpoint dynam
     assert.equal(continuation.checkpointDigest, checkpoint.checkpointDigest)
 
     const reboundSlice = clone(originalSlice)
-    reboundSlice.sliceId = 'fsusblog-1874-unrelated-slice'
+    reboundSlice.sliceId = 'repositorya-1874-unrelated-slice'
     reboundSlice.sliceDigest = 'b'.repeat(64)
     assert.throws(
         () => module.compileContinuation({

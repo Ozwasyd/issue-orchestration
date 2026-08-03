@@ -24,9 +24,9 @@ import {
     buildVerifiedWriterProgressCheckpoint
 } from './issue-orchestration-writer-progress-test-helper.mjs'
 
-const REPOSITORY = 'Ozwasyd/FsusBlog'
+const REPOSITORY = 'ExampleOrg/RepositoryA'
 const ISSUE = 1874
-const NODE = 'Ozwasyd/FsusBlog#1874:retry-carry'
+const NODE = 'ExampleOrg/RepositoryA#1874:retry-carry'
 
 function seal(value) {
     return {

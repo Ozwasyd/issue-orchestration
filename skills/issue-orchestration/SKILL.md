@@ -1,14 +1,14 @@
 ---
-schema: fsusblog.markdown-document.v1
+schema: issue-orchestration.markdown-document.v1
 name: issue-orchestration
-description: Use only to coordinate multiple open FsusBlog/FsusUI issues that require a dependency DAG, sustained parallel dispatch, or overlapping acceptance groups. Do not use for one independent issue or ordinary single-task work.
+description: Use only to coordinate multiple open issues in caller-supplied target repositories when they require a dependency DAG, sustained parallel dispatch, or overlapping acceptance groups. Do not use for one independent issue or ordinary single-task work.
 ---
 
 <!-- Authoritative source: https://github.com/Ozwasyd/issue-orchestration -->
 
 # Issue Orchestration
 
-把根代理保留为调度者，把详细规则按阶段加载。此 Skill 只定义入口、循环和状态路由，不重定义 FsusBlog 或 FsusUI 的产品协议、设计、安全、测试、文档生命周期或发布事实。
+把根代理保留为调度者，把详细规则按阶段加载。此 Skill 只定义入口、循环和状态路由，不重定义任何目标仓库的产品协议、设计、安全、测试、文档生命周期或发布事实。
 
 ## Runtime discovery canary
 
@@ -20,13 +20,13 @@ description: Use only to coordinate multiple open FsusBlog/FsusUI issues that re
 仅在输入同时给出以下内容时启动：
 
 - 两个或更多 open issues，或一个会持续产生依赖节点、返工节点或重合验收组的 issue 集合；
-- FsusBlog、FsusUI 或两仓的明确范围。
+- 一个或多个由 caller 明确提供的目标仓库范围。
 
 单一、独立且无需持续调度的普通任务不适用。即使被显式调用，也应退出本 Skill，改用仓库常规工作流。
 
 本 Skill 请求的并发度只能来自运行时实际可观察的 V2 capacity；根调度线程不计入 agent 槽位。固定槽位数字、旧 bootstrap capacity 或节点字段都没有并发授权。
 
-永久无人值守运行使用 `trusted-owner-repositories` mode：Root 必须实际观测为 `approval_policy=never`、`danger-full-access` 和 Codex V2，children 可以继承同一 effective permission profile。该 mode 不声称 machine-enforced child read-only isolation；角色边界来自 execution class、lease、receipt 与必需的 mutation postcondition。只有 `policy/runtime-trust-policy.json` 精确 allowlist 中的 `Ozwasyd/FsusBlog`、`Ozwasyd/FsusUI` 可进入，远端身份无法解析、非 allowlist repository 或运行中 origin/path identity 漂移都在派发前 fail closed。该 threat model 只适用于 operator-owned trusted repositories，不适用于 third-party、untrusted 或 multi-tenant workload。`strict-machine-isolation` 作为 disabled future mode 单独表示，不能被静默映射到 trusted mode。
+永久无人值守运行使用 `trusted-owner-repositories` mode：Root 必须实际观测为 `approval_policy=never`、`danger-full-access` 和 Codex V2，children 可以继承同一 effective permission profile。该 mode 不声称 machine-enforced child read-only isolation；角色边界来自 execution class、lease、receipt 与必需的 mutation postcondition。策略不内置任何目标仓库 allowlist；只有 caller 为本轮明确提供且远端身份与本地 checkout 一致的 operator-owned trusted repositories 可进入。远端身份无法解析、caller identity 不匹配或运行中 origin/path identity 漂移都在派发前 fail closed。该 threat model 不适用于 third-party、untrusted 或 multi-tenant workload。`strict-machine-isolation` 作为 disabled future mode 单独表示，不能被静默映射到 trusted mode。
 
 任何仓库、远端 issue、scope、DAG、状态根、lease 或 actor 操作之前，launcher/runtime integration 必须先产生 `runtime-startup-observation.v1`，再由 `runtime-startup-attestation.v1` 确定性验证 actual model、effort、V2 backend、trust mode、sandbox、approval、inheritance、capacity、package/policy digest 与 invocation/session。Root 手写 metadata、环境变量回显、prompt JSON 和历史 receipt 都不是 observation authority；缺失或不可观察字段直接终止该 parent invocation。正常 `root-scheduler:scheduling` 只允许 `terra-low`。`terra-medium` 只属于全新 parent 的 `root-scheduler:recovery-takeover`，且必须绑定 machine takeover authorization、handoff、old-root fencing 与新 authority epoch；boolean recovery flag 或 medium child 不能升级 low root。
 

@@ -55,8 +55,8 @@ const runtimeProbes = readFixture(artifactPaths.runtimeProbes)
 const frozenContract = readFixture(artifactPaths.contract)
 const writerEpochId = 'epoch-ready-frontier-1816-001'
 const repositoryWorktrees = Object.freeze({
-    'Ozwasyd/FsusBlog': root,
-    'Ozwasyd/FsusUI': root
+    'ExampleOrg/RepositoryA': root,
+    'ExampleOrg/RepositoryB': root
 })
 const repositoryBaseShas = Object.freeze(Object.fromEntries(
     Object.entries(repositoryWorktrees).map(([repository, worktree]) => [
@@ -923,7 +923,7 @@ async function validateDispatch(input, projection, recordedCandidateSet, groupPr
     })
 }
 
-function independentMembers(count, repository = 'Ozwasyd/FsusBlog') {
+function independentMembers(count, repository = 'ExampleOrg/RepositoryA') {
     return Array.from({ length: count }, (_, index) => ({
         issueId: `${repository}#${9200 + index}`,
         repository,
@@ -1102,9 +1102,9 @@ async function assertRevision4LayeredIntegrityMutation(control) {
     } else if (control.id === 'dispatch-owner-substitution') {
         setProgress(input, node.id, ['testContract'])
         node.dispatchInvestigation.authoredBy.actorId =
-            'test-owner-fsusblog-1816-other'
+            'test-owner-repositorya-1816-other'
         node.dispatchInvestigation.testOwnerId =
-            'test-owner-fsusblog-1816-other'
+            'test-owner-repositorya-1816-other'
         node.dispatchInvestigation = sealDispatchInvestigation(
             node.dispatchInvestigation
         )
@@ -1212,8 +1212,8 @@ test('frozen corrective contract covers every acceptance, probe, and mutation id
         'issue-orchestration.ready-frontier-test-contract.v2'
     )
     assert.equal(frozenContract.testOwnerId,
-        'test-owner-fsusblog-1816-corrective-18c6003eb5ad')
-    assert.equal(frozenContract.issueId, 'Ozwasyd/FsusBlog#1816')
+        'test-owner-repositorya-1816-corrective-18c6003eb5ad')
+    assert.equal(frozenContract.issueId, 'ExampleOrg/RepositoryA#1816')
     assert.equal(frozenContract.baseSha,
         '18c6003eb5ad8697f4b74ac2d42a45e74fe18756')
     for (const artifact of [
@@ -1553,7 +1553,7 @@ test('[F03] all twelve blocker reasons are stable and directly evidence-bound', 
         },
         'base-drift': async () => {
             const input = await scenario(independentMembers(1))
-            input.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] = 'f'.repeat(40)
+            input.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] = 'f'.repeat(40)
             return input
         },
         'scope-drift': async () => {
@@ -1605,7 +1605,7 @@ test('[F03] all twelve blocker reasons are stable and directly evidence-bound', 
             input.runtimeState.exclusiveLeases.push({
                 leaseId: 'exclusive-lease-1',
                 issueId: input.dag.nodes[0].id,
-                holderIssueId: 'Ozwasyd/FsusBlog#9999',
+                holderIssueId: 'ExampleOrg/RepositoryA#9999',
                 conflictKey: 'orchestration-schema'
             })
             return input
@@ -1622,7 +1622,7 @@ test('[F03] all twelve blocker reasons are stable and directly evidence-bound', 
             const input = await reasonCases[reason]()
             const projection = await compile(input)
             const issueId = reason === 'dependency-unsatisfied'
-                ? 'Ozwasyd/FsusBlog#9102'
+                ? 'ExampleOrg/RepositoryA#9102'
                 : input.dag.nodes[0].id
             const emitted = projection.notReadyReasons[issueId]
             assert.ok(emitted, `${reason} was not emitted`)
@@ -1641,7 +1641,7 @@ test('[F04] multiple blocker reasons follow the frozen canonical reason order', 
     const issueId = input.dag.nodes[0].id
     delete input.dag.nodes[0].ownerRepository
     markInvestigationIncomplete(input, input.dag.nodes[0])
-    input.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] = 'f'.repeat(40)
+    input.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] = 'f'.repeat(40)
     input.runtimeState.candidates = []
     input.runtimeState.remoteFacts.fresh = false
     const projection = await compile(input)
@@ -1668,7 +1668,7 @@ test('[F05] the validator independently rejects root-edited frontier and reasons
         'frontier-projection-mismatch'
     )
     const editedReason = clone(projection)
-    editedReason.notReadyReasons['Ozwasyd/FsusBlog#9102'][0].code =
+    editedReason.notReadyReasons['ExampleOrg/RepositoryA#9102'][0].code =
         'investigation-incomplete'
     await expectDenied(
         () => validateFrontier(input, editedReason),
@@ -1799,8 +1799,8 @@ test('[F05B] landing conflict readiness reuses the member code or UI writer with
     for (const member of [
         independentMembers(1)[0],
         {
-            issueId: 'Ozwasyd/FsusBlog#9298',
-            repository: 'Ozwasyd/FsusBlog',
+            issueId: 'ExampleOrg/RepositoryA#9298',
+            repository: 'ExampleOrg/RepositoryA',
             issueNumber: 9298,
             surface: 'ui-ux',
             dependsOn: []
@@ -1936,22 +1936,22 @@ test('[F06] an empty frontier is proven by complete blocker coverage', async () 
 
 test('[F07] valid completed tombstones unlock and reopen removes dependents', async () => {
     const dependent = {
-        issueId: 'Ozwasyd/FsusBlog#9301',
-        repository: 'Ozwasyd/FsusBlog',
+        issueId: 'ExampleOrg/RepositoryA#9301',
+        repository: 'ExampleOrg/RepositoryA',
         issueNumber: 9301,
         surface: 'code',
-        dependsOn: ['Ozwasyd/FsusBlog#9300']
+        dependsOn: ['ExampleOrg/RepositoryA#9300']
     }
     const input = await scenario([dependent])
     input.dag.nodes[0].activeDependencies = []
     input.dag.nodes[0].satisfiedDependencies = [{
-        issue: 'Ozwasyd/FsusBlog#9300',
-        repository: 'Ozwasyd/FsusBlog',
+        issue: 'ExampleOrg/RepositoryA#9300',
+        repository: 'ExampleOrg/RepositoryA',
         issueNumber: 9300,
         remoteState: 'CLOSED',
         stateReason: 'completed',
         evidenceDigest: '3'.repeat(64),
-        deliveredCommit: cases.repositories['Ozwasyd/FsusBlog'].baseSha
+        deliveredCommit: cases.repositories['ExampleOrg/RepositoryA'].baseSha
     }]
     const unlocked = await compile(input)
     assert.deepEqual(unlocked.readyFrontier, [{
@@ -1973,7 +1973,7 @@ test('[F08] remote, base, terminal, and candidate permission drift invalidate ol
     const projection = await compile(input)
     const drifts = [
         (changed) => {
-            changed.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] = 'f'.repeat(40)
+            changed.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] = 'f'.repeat(40)
         },
         (changed) => {
             changed.runtimeState.candidates[0].allowedPaths.push('tests/forbidden.test.mjs')
@@ -2045,8 +2045,8 @@ test('[S01] non-UI stage progression is deterministic through cleanup', async ()
 
 test('[S02] UI behavior green advances only to UX acceptance, then documentation', async () => {
     const member = {
-        issueId: 'Ozwasyd/FsusUI#2950',
-        repository: 'Ozwasyd/FsusUI',
+        issueId: 'ExampleOrg/RepositoryB#2950',
+        repository: 'ExampleOrg/RepositoryB',
         issueNumber: 2950,
         surface: 'ui-ux',
         dependsOn: []
@@ -2116,8 +2116,8 @@ test('[R01] node model and effort fields have no routing authority', async () =>
 
 test('[R02] UI implementation rejects ordinary code role or missing design authority', async () => {
     const member = {
-        issueId: 'Ozwasyd/FsusUI#2951',
-        repository: 'Ozwasyd/FsusUI',
+        issueId: 'ExampleOrg/RepositoryB#2951',
+        repository: 'ExampleOrg/RepositoryB',
         issueNumber: 2951,
         surface: 'ui-ux',
         dependsOn: []
@@ -2175,17 +2175,17 @@ test('[G01] group ready cannot mask a blocked member', async () => {
     const projection = await compile(input)
     const groupProposals = [{
         groupId: 'group-1',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         memberIssueIds: [
-            'Ozwasyd/FsusBlog#9101',
-            'Ozwasyd/FsusBlog#9102'
+            'ExampleOrg/RepositoryA#9101',
+            'ExampleOrg/RepositoryA#9102'
         ],
         eligible: true
     }]
     const selected = await selectDispatch(input, projection, groupProposals)
     assert.equal(
         selected.dispatchCandidates.some(
-            ({ issueId }) => issueId === 'Ozwasyd/FsusBlog#9102'
+            ({ issueId }) => issueId === 'ExampleOrg/RepositoryA#9102'
         ),
         false
     )
@@ -2215,7 +2215,7 @@ test('[G03] ineligible grouping falls back without serializing independent membe
     const projection = await compile(input)
     const groupProposals = [{
         groupId: 'bad-group',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         memberIssueIds: input.dag.nodes.map(({ id }) => id),
         eligible: false,
         denialCode: 'independent-low-conflict-members'
@@ -2426,14 +2426,14 @@ for (const control of mutationControls.filter(
                 projection.readyFrontier.shift()
             } else if (control.id === 'blocked-member-overreported') {
                 projection.readyFrontier.push({
-                    issueId: 'Ozwasyd/FsusBlog#9102',
+                    issueId: 'ExampleOrg/RepositoryA#9102',
                     stage: 'test-contract-ready'
                 })
             } else if (control.id === 'free-text-reason') {
-                projection.notReadyReasons['Ozwasyd/FsusBlog#9102'] =
+                projection.notReadyReasons['ExampleOrg/RepositoryA#9102'] =
                     '暂时不处理'
             } else if (control.id === 'reason-code-or-evidence-modified') {
-                projection.notReadyReasons['Ozwasyd/FsusBlog#9102'][0]
+                projection.notReadyReasons['ExampleOrg/RepositoryA#9102'][0]
                     .evidence.identity = 'root-authored'
             } else if (control.id === 'frontier-digest-forged') {
                 projection.frontierDigest = 'f'.repeat(64)
@@ -2457,7 +2457,7 @@ for (const control of mutationControls.filter(
             }
             const projection = await compile(input)
             if (control.id === 'base-sha-drift') {
-                input.runtimeState.repositoryBases['Ozwasyd/FsusBlog'] =
+                input.runtimeState.repositoryBases['ExampleOrg/RepositoryA'] =
                     'f'.repeat(40)
             } else if (control.id === 'candidate-permission-drift') {
                 input.runtimeState.candidates[0].allowedPaths.push(
@@ -2510,7 +2510,7 @@ for (const control of mutationControls.filter(
         const groupProposals = control.id.startsWith('group-')
             ? [{
                 groupId: 'mutant-group',
-                repository: 'Ozwasyd/FsusBlog',
+                repository: 'ExampleOrg/RepositoryA',
                 memberIssueIds: input.dag.nodes.map(({ id }) => id),
                 eligible: control.id !== 'group-serializes-independent-members'
             }]
@@ -2523,12 +2523,12 @@ for (const control of mutationControls.filter(
             recorded.noDispatchReason = null
         } else if (control.id === 'group-ready-masks-blocked-member') {
             recorded.dispatchCandidates.push({
-                issueId: 'Ozwasyd/FsusBlog#9102',
+                issueId: 'ExampleOrg/RepositoryA#9102',
                 stage: 'test-contract-ready'
             })
         } else if (control.id === 'group-green-masks-member-failure') {
             recorded.dispatchCandidates.push({
-                issueId: 'Ozwasyd/FsusBlog#9102',
+                issueId: 'ExampleOrg/RepositoryA#9102',
                 stage: 'delivery-ready'
             })
         } else if (control.id === 'group-serializes-independent-members') {

@@ -14,9 +14,9 @@ const resourceLifecyclePath = resolve(root, `${packageScripts}/resource-lifecycl
 const resourceLifecycleDigest =
     '099d5939984140770eec24521084ac956381a21bab28a2a1b6ecfe789f1febb2'
 
-const repository = 'Ozwasyd/FsusBlog'
+const repository = 'ExampleOrg/RepositoryA'
 const baseSha = '2499db9517ec4e340bb475443c6ec2984203323c'
-const epochId = 'fsusblog-master-epoch-1831'
+const epochId = 'repositorya-master-epoch-1831'
 const groupId = 'acceptance-group-1831-runtime'
 const issues = [`${repository}#1831-a`, `${repository}#1831-b`, `${repository}#1831-c`]
 const sha = (character) => character.repeat(40)
@@ -228,7 +228,7 @@ test('G01 package owns the runtime; only eligible frozen proposals group and all
     for (const invalid of [
         proposal({
             members: proposal().members.map((value, index) =>
-                index === 1 ? { ...value, repository: 'Ozwasyd/FsusUI' } : value)
+                index === 1 ? { ...value, repository: 'ExampleOrg/RepositoryB' } : value)
         }),
         proposal({
             members: proposal().members.map((value, index) =>
@@ -412,7 +412,7 @@ test('G06 source tip is immutable and drift creates a complete #1834 landing han
 
     const handoff = loaded.createLandingHandoff(frozen, {
         remoteDefaultSha: sha('9'),
-        currentEpoch: 'fsusblog-master-epoch-1834',
+        currentEpoch: 'repositorya-master-epoch-1834',
         requiredReverificationClasses: ['behavior', 'documentation']
     })
     assert.equal(handoff.schema, 'issue-orchestration.landing-handoff.v1')

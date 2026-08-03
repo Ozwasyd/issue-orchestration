@@ -1,5 +1,5 @@
 {
-  "issue": "Ozwasyd/FsusBlog#1826",
+  "issue": "ExampleOrg/RepositoryA#1826",
   "sourceOwner": "skills/issue-orchestration/scripts/telemetry.mjs",
   "testOwner": "tests/tools/issue-orchestration-telemetry.test.mjs",
   "schemas": [

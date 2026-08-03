@@ -35,10 +35,10 @@ const acceptance = readJson('event-ledger-acceptance-map.json')
 const controls = readJson('event-ledger-mutation-controls.json').controls
 const runtimeProbes = readJson('event-ledger-runtime-probes.json').probes
 const frozenContract = readJson('event-ledger-expected-initial-failures.json')
-const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'fsusblog-event-ledger-contract-'))
+const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'repositorya-event-ledger-contract-'))
 
 const runId = 'run-1817-contract'
-const nodeId = 'FsusBlog#1817'
+const nodeId = 'RepositoryA#1817'
 const baseSha = frozenContract.baseSha
 const candidateSha = '1'.repeat(40)
 const issueSnapshotFingerprint = '2'.repeat(64)
@@ -50,8 +50,8 @@ const implementationActorId = 'code-implementer-1817'
 const testOwnerActorId = frozenContract.testOwnerId
 const uxActorId = 'ux-verifier-1817'
 const writerRunId = 'run-1874-event-ledger-writer-contract'
-const writerNodeId = 'FsusBlog#1874'
-const writerRepository = 'Ozwasyd/FsusBlog'
+const writerNodeId = 'RepositoryA#1874'
+const writerRepository = 'ExampleOrg/RepositoryA'
 const writerIssue = 1874
 const writerEpochId = 'epoch-1874-event-ledger-001'
 const writerRouteDigest = digest('writer-route-1874')
@@ -395,7 +395,7 @@ async function compileWriterLedgerArtifacts({
         requiredCommands: selectedPaths.map((filePath) =>
             `node --check ${filePath}`),
         requiredEvidence: ['filesystem-git-command-evidence'],
-        sliceId: 'fsusblog-1874-event-ledger-slice-1',
+        sliceId: 'repositorya-1874-event-ledger-slice-1',
         sliceCount,
         testContractDigest: digest({
             issue: writerIssue,
@@ -785,7 +785,7 @@ async function writerFailureRetryLedger() {
         toState: 'terminal'
     })
     const changedRequirementIds = [
-        'fsusblog-1874-event-ledger-slice-1-acceptance'
+        'repositorya-1874-event-ledger-slice-1-acceptance'
     ]
     const revised = compileWriterStageTestArtifacts({
         repository: writerRepository,
@@ -803,7 +803,7 @@ async function writerFailureRetryLedger() {
             `node --check ${fixture.filePaths[0]}`
         ],
         requiredEvidence: ['filesystem-git-command-evidence'],
-        sliceId: 'fsusblog-1874-event-ledger-slice-1',
+        sliceId: 'repositorya-1874-event-ledger-slice-1',
         sliceCount: 1,
         testContractDigest: plan.testContractDigest,
         routingInputDigest: writerRouteDigest,
@@ -1219,16 +1219,16 @@ const requiredEventTypes = [
 test('contract fixtures are exact, internally linked, and bind the latest authority comment', () => {
     assert.equal(acceptance.authorityCommentId, 5148362773)
     assert.equal(frozenContract.authorityCommentId, 5148362773)
-    assert.equal(frozenContract.issueId, 'Ozwasyd/FsusBlog#1817')
+    assert.equal(frozenContract.issueId, 'ExampleOrg/RepositoryA#1817')
     assert.equal(frozenContract.baseSha, 'f99e6091165edc9dba7f2b1314568c3a07b69537')
     assert.equal(
         frozenContract.testOwnerId,
-        'test-owner-fsusblog-1817-corrective-f99e6091165e'
+        'test-owner-repositorya-1817-corrective-f99e6091165e'
     )
     const expectedImplementationFiles = [
         {
             path: 'skills/issue-orchestration/scripts/event-ledger.mjs',
-            sha256: '693624b3f5b3de45c71bfe8a3d924baaedbfe814a90da0d076cec4977bb16526',
+            sha256: '115b63be71282dbfcc28baadea9fb7171fc2ccc5200b2ac17e0ce36bdfdf34ac',
             gitMode: '100644'
         }
     ]
@@ -1784,7 +1784,7 @@ test('#1874 replay rejects terminal observations missing any compiled artifact d
 function groupLedger() {
     const ledger = emptyLedger()
     const groupId = 'group-1817'
-    const member = 'FsusBlog#1817'
+    const member = 'RepositoryA#1817'
     const events = [
         ['group.session.proposed', 'none', 'proposed', groupId, { groupId }],
         ['group.session.created', 'proposed', 'created', groupId, { groupId }],
@@ -2174,7 +2174,7 @@ const mutations = {
         await replayMutation(ledger, code)
     },
     'run-id-tampered': (code) => identityMutation('runId', 'run-other', code),
-    'node-id-tampered': (code) => identityMutation('nodeId', 'FsusBlog#9999', code),
+    'node-id-tampered': (code) => identityMutation('nodeId', 'RepositoryA#9999', code),
     'base-sha-tampered': (code) => identityMutation('baseSha', 'f'.repeat(40), code),
     'previous-event-digest-tampered': async (code) => {
         const ledger = frozenLedger()
@@ -2542,7 +2542,7 @@ async function groupMutation(eventType, fromState, toState, code) {
 
 async function groupInheritedGreenMutation(code) {
     const ledger = groupLedger()
-    const member = 'FsusBlog#1818'
+    const member = 'RepositoryA#1818'
     sealEvent(ledger, {
         eventType: 'group.member.committed',
         fromState: 'candidate-green',
@@ -2570,11 +2570,11 @@ async function groupLeaseConflictMutation(code) {
     sealEvent(ledger, {
         eventType: 'group.member.write-lease-granted',
         fromState: 'no-lease',
-        node: 'FsusBlog#1818',
+        node: 'RepositoryA#1818',
         payload: {
             groupId: 'group-1817',
             leaseId: 'lease-1817',
-            memberId: 'FsusBlog#1818'
+            memberId: 'RepositoryA#1818'
         },
         toState: 'lease-granted'
     })

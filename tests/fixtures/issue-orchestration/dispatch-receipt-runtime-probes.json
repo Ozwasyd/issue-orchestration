@@ -33,7 +33,7 @@
         {
             "id": "RP04",
             "scenario": "UI implementer and UX verifier loaded Skill IDs/digests and design authority/baseline digests come from machine load observations.",
-            "requiredSkillSets": {"FsusBlog": ["fsusblog-design-conformance", "fsusui-design-conformance"], "FsusUI": ["fsusui-design-conformance"]},
+            "requiredSkillSets": {"RepositoryA": ["repositorya-design-conformance", "repositoryb-design-conformance"], "RepositoryB": ["repositoryb-design-conformance"]},
             "resources": {"network": "none", "writes": "external-state-root-only", "cpuWeight": 1, "memoryMiB": 128, "timeoutSeconds": 15}
         },
         {
@@ -131,8 +131,8 @@
         },
         {
             "id": "RP15",
-            "scenario": "Seal an FsusBlog ui-ux-implementer request with requiredSkills and designAuthorityDigests both empty; sealing must reject before an empty runtime skill observation can verify.",
-            "command": ["node", "--test", "--test-name-pattern", "^P19 FsusBlog UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
+            "scenario": "Seal an RepositoryA ui-ux-implementer request with requiredSkills and designAuthorityDigests both empty; sealing must reject before an empty runtime skill observation can verify.",
+            "command": ["node", "--test", "--test-name-pattern", "^P19 RepositoryA UI dispatch", "tests/tools/issue-orchestration-dispatch-receipt.test.mjs"],
             "stageRole": "ui-ux-implementer",
             "requiredSkillsMutation": [],
             "designAuthorityDigestsMutation": [],

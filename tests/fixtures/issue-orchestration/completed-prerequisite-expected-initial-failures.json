@@ -33,8 +33,8 @@
   ],
   "passingControls": [
     "mutation catalog and executable controls are exact-set equal",
-    "LIVE live-fsusblog-completed",
-    "LIVE live-fsusui-completed",
+    "LIVE live-repositorya-completed",
+    "LIVE live-repositoryb-completed",
     "LIVE live-open-is-not-completed",
     "LIVE open issue is not completed"
   ]

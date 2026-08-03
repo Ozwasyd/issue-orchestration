@@ -1,12 +1,12 @@
 {
   "schema": "issue-orchestration.semantic-runtime-projection-cases.v1",
-  "issue": "Ozwasyd/FsusBlog#1833",
+  "issue": "ExampleOrg/RepositoryA#1833",
   "selector": {
     "schema": "issue-orchestration.scope-selector.v1",
-    "selectorVersion": "fsusblog-codex-control-plane.v1",
+    "selectorVersion": "repositorya-codex-control-plane.v1",
     "type": "label-query",
     "repositories": [
-      "Ozwasyd/FsusBlog"
+      "ExampleOrg/RepositoryA"
     ],
     "statePolicy": {
       "open": "include",
@@ -27,14 +27,14 @@
       "area:tooling",
       "confirmed-defect"
     ],
-    "remoteQueryIdentity": "Ozwasyd/FsusBlog:area-tooling"
+    "remoteQueryIdentity": "ExampleOrg/RepositoryA:area-tooling"
   },
   "remoteBefore": {
     "schema": "issue-orchestration.remote-mutation-snapshot.v1",
     "issues": [
       {
-        "issueId": "Ozwasyd/FsusBlog#1819",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1819",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1819,
         "state": "OPEN",
         "stateReason": null,
@@ -49,7 +49,7 @@
         "comments": [],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1817"
+            "ExampleOrg/RepositoryA#1817"
           ],
           "owner": "orchestration",
           "conflictKeys": [
@@ -60,8 +60,8 @@
         }
       },
       {
-        "issueId": "Ozwasyd/FsusBlog#1833",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1833",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1833,
         "state": "OPEN",
         "stateReason": null,
@@ -76,7 +76,7 @@
         "comments": [],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1819"
+            "ExampleOrg/RepositoryA#1819"
           ],
           "owner": "orchestration",
           "conflictKeys": [
@@ -90,10 +90,10 @@
     "runtime": {
       "completed": [],
       "active": [
-        "Ozwasyd/FsusBlog#1819"
+        "ExampleOrg/RepositoryA#1819"
       ],
       "blocked": [
-        "Ozwasyd/FsusBlog#1833"
+        "ExampleOrg/RepositoryA#1833"
       ],
       "availableSlots": 1,
       "leases": [],
@@ -107,8 +107,8 @@
     "schema": "issue-orchestration.remote-mutation-snapshot.v1",
     "issues": [
       {
-        "issueId": "Ozwasyd/FsusBlog#1819",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1819",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1819,
         "state": "CLOSED",
         "stateReason": "completed",
@@ -129,7 +129,7 @@
         ],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1817"
+            "ExampleOrg/RepositoryA#1817"
           ],
           "owner": "orchestration",
           "conflictKeys": [
@@ -140,8 +140,8 @@
         }
       },
       {
-        "issueId": "Ozwasyd/FsusBlog#1833",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1833",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1833,
         "state": "OPEN",
         "stateReason": null,
@@ -156,7 +156,7 @@
         "comments": [],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1819"
+            "ExampleOrg/RepositoryA#1819"
           ],
           "owner": "orchestration",
           "conflictKeys": [
@@ -169,7 +169,7 @@
     ],
     "runtime": {
       "completed": [
-        "Ozwasyd/FsusBlog#1819"
+        "ExampleOrg/RepositoryA#1819"
       ],
       "active": [],
       "blocked": [],
@@ -177,13 +177,13 @@
       "leases": [],
       "epochId": "epoch-1",
       "candidateCommits": {
-        "Ozwasyd/FsusBlog#1819": "1111111111111111111111111111111111111111"
+        "ExampleOrg/RepositoryA#1819": "1111111111111111111111111111111111111111"
       },
       "deliveryCommits": {
-        "Ozwasyd/FsusBlog#1819": "2222222222222222222222222222222222222222"
+        "ExampleOrg/RepositoryA#1819": "2222222222222222222222222222222222222222"
       },
       "cleanup": {
-        "Ozwasyd/FsusBlog#1819": "resources-clean"
+        "ExampleOrg/RepositoryA#1819": "resources-clean"
       }
     }
   },
@@ -191,8 +191,8 @@
     "schema": "issue-orchestration.remote-mutation-snapshot.v1",
     "issues": [
       {
-        "issueId": "Ozwasyd/FsusBlog#1819",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1819",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1819,
         "state": "OPEN",
         "stateReason": null,
@@ -207,7 +207,7 @@
         "comments": [],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1817"
+            "ExampleOrg/RepositoryA#1817"
           ],
           "owner": "orchestration",
           "conflictKeys": [
@@ -218,8 +218,8 @@
         }
       },
       {
-        "issueId": "Ozwasyd/FsusBlog#1833",
-        "repository": "Ozwasyd/FsusBlog",
+        "issueId": "ExampleOrg/RepositoryA#1833",
+        "repository": "ExampleOrg/RepositoryA",
         "number": 1833,
         "state": "OPEN",
         "stateReason": null,
@@ -240,8 +240,8 @@
         ],
         "semanticFacts": {
           "dependencies": [
-            "Ozwasyd/FsusBlog#1819",
-            "Ozwasyd/FsusBlog#1829"
+            "ExampleOrg/RepositoryA#1819",
+            "ExampleOrg/RepositoryA#1829"
           ],
           "owner": "orchestration-v2",
           "conflictKeys": [
@@ -255,10 +255,10 @@
     "runtime": {
       "completed": [],
       "active": [
-        "Ozwasyd/FsusBlog#1819"
+        "ExampleOrg/RepositoryA#1819"
       ],
       "blocked": [
-        "Ozwasyd/FsusBlog#1833"
+        "ExampleOrg/RepositoryA#1833"
       ],
       "availableSlots": 1,
       "leases": [],
@@ -271,7 +271,7 @@
   "semanticGraphInput": {
     "nodes": [
       {
-        "id": "Ozwasyd/FsusBlog#1819",
+        "id": "ExampleOrg/RepositoryA#1819",
         "owner": "orchestration",
         "dependencyKeys": [],
         "conflictKeys": [
@@ -283,10 +283,10 @@
         "contractDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       {
-        "id": "Ozwasyd/FsusBlog#1833",
+        "id": "ExampleOrg/RepositoryA#1833",
         "owner": "orchestration",
         "dependencyKeys": [
-          "Ozwasyd/FsusBlog#1819"
+          "ExampleOrg/RepositoryA#1819"
         ],
         "conflictKeys": [
           "issue-orchestration"
@@ -300,28 +300,28 @@
   },
   "expectedRemoteMutations": {
     "schema": "issue-orchestration.expected-remote-mutations.v1",
-    "runId": "fsusblog-1833-contract",
+    "runId": "repositorya-1833-contract",
     "entries": [
       {
         "type": "completion-comment",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "commentDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
       },
       {
         "type": "state-transition",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "from": "OPEN",
         "to": "CLOSED"
       },
       {
         "type": "state-reason",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "from": null,
         "to": "completed"
       },
       {
         "type": "label-change",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "added": [
           "delivery:complete"
         ],
@@ -341,13 +341,13 @@
       {
         "eventId": "delivery-1819",
         "eventType": "delivery.completed",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "commit": "2222222222222222222222222222222222222222"
       },
       {
         "eventId": "cleanup-1819",
         "eventType": "cleanup.completed",
-        "issueId": "Ozwasyd/FsusBlog#1819",
+        "issueId": "ExampleOrg/RepositoryA#1819",
         "status": "resources-clean"
       }
     ]

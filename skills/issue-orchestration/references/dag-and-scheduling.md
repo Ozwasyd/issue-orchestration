@@ -84,10 +84,8 @@ node .agents/skills/issue-orchestration/scripts/check-dag-gate.mjs \
   --state-root <state-root> \
   --dag <state-root>/dag.json \
   --issues-snapshot <state-root>/issue-snapshot.json \
-  --repository FsusBlog=<FsusBlog-root> \
-  --repository FsusUI=<FsusUI-root> \
-  --default-branch FsusBlog=master \
-  --default-branch FsusUI=main \
+  --repository <repository-id>=<repository-root> \
+  --default-branch <repository-id>=<resolved-default-branch> \
   --workspace <common-or-launch-workspace> \
   --startup-time <ISO-8601>
 ```
@@ -99,7 +97,7 @@ node .agents/skills/issue-orchestration/scripts/check-dag-gate.mjs \
 DAG 至少记录：
 
 - run id、刷新时间、V2 runtime 实际可用槽位及能力证据；
-- 两仓绝对路径、默认分支、HEAD、dirty state 与远端身份；
+- 每个 caller-supplied 目标仓的绝对路径、默认分支、HEAD、dirty state 与远端身份；
 - 每个节点的 issue URL/编号、当前标题、依赖、责任仓、验收组、状态、routing classification、writer、独立 verifier、开始时间；
 - 当前 writer stage 的 verified plan digest、有序 slice identities、compiled prompt/checkpoint/continuation/terminal receipt digests，以及 failure/breaker/retry authorization identity；
 - 状态根内运行态相对路径、已执行命令的 evidence key、产物 fingerprint、合法重跑原因；

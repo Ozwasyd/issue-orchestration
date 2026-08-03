@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.layered-investigation-test-contract.v8",
-  "issue": "Ozwasyd/FsusBlog#1822",
+  "issue": "ExampleOrg/RepositoryA#1822",
   "revision": 7,
   "phase": "test-contract",
   "status": "frozen-green-delivery-epoch-revision-7",
@@ -152,29 +152,32 @@
   "runtimeProbes": "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json",
   "mutations": "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json",
   "fileHashes": {
-    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "64d1c4f8602efb3bd5bf11097e45371d6093305db5bb0baa759ac9a0d1243480",
-    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "6415a10d526cb1cc01e03feecb775cdb223f8f6f300599b53edc61c4224b3291",
-    "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json": "63b71d7d3258f825faff6d791357d2add489501e0f85000175646f3d77003ef9",
+    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "1cc38a4c85ae8b22251517bc13847d9e0ded3b3462e231a0980e0ebf5fca4922",
+    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "ab5e05e11a1229232820168ef10f50f8191e502455ca8bc1f345fafbf38a8fa4",
+    "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json": "a853d33a06c7e162cc637ffe3dbbf046de5c32bc54bd26332ce4be8944cb50ca",
     "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json": "d7d61bb36c16cbc3266bd2e12c0d5fc79df1f646a9fcb1e25b10a47ea72674ed",
-    "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json": "aabfd34c7fb0ffe2437aed3e2b1f635e011db01eaabbc85845d09b9dff5fb404",
+    "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json": "56147e26aea3e7d5800eb5410698d368fdc3f498bea7595b83452a700d390794",
     "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json": "d4ef682b931650668f1f44ab3d02f7619d9911d69eb9aa36493f38e45ec3e583"
   },
-  "frozenTreeDigest": "34fb08a91828230549c8ae30f5ef271385ab953630873f777449672a0a5f7672",
+  "frozenTreeDigest": "006a826d244f3f4e501ff20a9be63a6d1c0042177092e3d31e3294c3181354dd",
   "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
   "baseDependencyFiles": [
     {
       "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
-      "sha256": "e855dcfa6cb7b60f345e55a3e69f9b1f5f3e2d772c579dc5447fabc341729978",
+      "sha256": "269150380a9679e40c0e6c315e186210fd58d5ec5b2434d87cb0a467a3b3c77e",
       "gitMode": "100644",
-      "ownerIssue": "Ozwasyd/FsusBlog#1818",
+      "ownerIssue": "ExampleOrg/RepositoryA#1818",
       "disposition": "base-dependency-not-candidate"
     }
   ],
+  "hashAlgorithm": "sha256-raw-file-bytes",
+  "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
+  "contractDigest": "f6bd8d7900e93803537976c29d287177dd58bdfa0f3403f9781cfc7343de5a84",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
-    "contractDigest": "a727944225997028489d61c60c6548284326f6a802883ebe714043af16f27f57",
+    "contractDigest": "f6bd8d7900e93803537976c29d287177dd58bdfa0f3403f9781cfc7343de5a84",
     "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
     "implementationFiles": [
       {
@@ -214,9 +217,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "a1f60baef7dc27bb57c4fca77e39b3b799b81ad7fe5d5179ed697b02f1f4b003"
-  },
-  "hashAlgorithm": "sha256-raw-file-bytes",
-  "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
-  "contractDigest": "a727944225997028489d61c60c6548284326f6a802883ebe714043af16f27f57"
+    "candidateDigest": "bf3ed143760fc9d9114b208da53f804f3e9ec80929633e85a67f22c053342a86"
+  }
 }

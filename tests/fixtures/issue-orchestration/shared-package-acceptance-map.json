@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.shared-package-acceptance-map.v1",
-  "issue": "Ozwasyd/FsusBlog#1823",
+  "issue": "ExampleOrg/RepositoryA#1823",
   "authority": {
     "kind": "authoritative-issue-body",
     "updatedAt": "2026-08-01T13:16:31Z"
@@ -14,7 +14,7 @@
     },
     {
       "id": "SOURCE-01",
-      "requirement": "Exactly one editable FsusBlog authoring package owns the orchestration skill, runtime, policies, graph schemas, templates, installer and seven roles; repository-local copies, retired roles, aliases and fixed-Sol policy are absent.",
+      "requirement": "Exactly one editable issue-orchestration authoring package owns the Skill, runtime, policies, graph schemas, templates, installer and seven roles; target-repository copies, retired roles, aliases and fixed-Sol policy are absent.",
       "tests": ["P02", "P03"],
       "mutations": [
         "N01-repo-local-skill-coexists",
@@ -24,7 +24,7 @@
     },
     {
       "id": "MANIFEST-01",
-      "requirement": "The package manifest binds schema/version, source commit/tree, skill/agent/template artifacts, model pool, routing, stage permissions, remote mutation policy, graph/patch/runtime schemas, projector, supported repositories, required capabilities, install targets and its own canonical digest.",
+      "requirement": "The package manifest binds schema/version, source commit/tree, skill/agent/template artifacts, model pool, routing, stage permissions, remote mutation policy, graph/patch/runtime schemas, projector, caller-supplied repository admission, an empty source-repository dependency set, required capabilities, install targets and its own canonical digest.",
       "tests": ["P02"],
       "mutations": [
         "N04-manifest-artifact-digest-drift"
@@ -67,8 +67,8 @@
     },
     {
       "id": "PRODUCT-BOUNDARY-01",
-      "requirement": "The shared package owns only orchestration semantics and references repository AGENTS/current facts at runtime; it does not copy FsusBlog/FsusUI product design, API, documentation or runtime authority.",
-      "tests": ["P10"],
+      "requirement": "The shared package owns only orchestration semantics and references each caller-supplied repository's AGENTS/current facts at runtime; it contains no fixed product identity, product allowlist, sibling-checkout dependency, or copied product design, API, documentation, or runtime authority.",
+      "tests": ["P10", "P12"],
       "mutations": [
         "N12-product-design-facts-copied"
       ]

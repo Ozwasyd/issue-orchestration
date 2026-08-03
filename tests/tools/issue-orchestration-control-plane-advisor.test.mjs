@@ -94,7 +94,7 @@ function advisorFixture(overrides = {}) {
         capacityAfter: 0
     }, 'receiptDigest')
     const affectedTargets = [{
-        identity: 'member:Ozwasyd/FsusBlog#1901',
+        identity: 'member:ExampleOrg/RepositoryA#1901',
         currentDigest: digest('member-current')
     }]
     const presumedValidEvidenceDigests = [digest('valid-evidence')]

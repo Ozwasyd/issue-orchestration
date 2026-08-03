@@ -228,12 +228,12 @@ test('[A01][M01] every selector produces one complete canonical receipt and exac
 
 test('[A02][N06] explicit scope never absorbs same-label, similar-title, or cross-repository issues', async () => {
     const receipt = await resolveFixture('explicitIssues')
-    assert.deepEqual(receipt.resolvedIssueSet, ['Ozwasyd/FsusBlog#101'])
+    assert.deepEqual(receipt.resolvedIssueSet, ['ExampleOrg/RepositoryA#101'])
     for (const excluded of [
-        'Ozwasyd/FsusBlog#102',
-        'Ozwasyd/FsusBlog#103',
-        'Ozwasyd/FsusBlog#105',
-        'Ozwasyd/FsusUI#201'
+        'ExampleOrg/RepositoryA#102',
+        'ExampleOrg/RepositoryA#103',
+        'ExampleOrg/RepositoryA#105',
+        'ExampleOrg/RepositoryB#201'
     ]) {
         assert.equal(typeof receipt.exclusionReasons[excluded], 'string', excluded)
         assert.ok(receipt.exclusionReasons[excluded].length > 0, excluded)
@@ -285,19 +285,19 @@ test('[A04][M03] only enumerated live remote facts participate in the snapshot d
     for (const [name, mutate] of mutations) {
         await t.test(name, async () => {
             const issues = clone(fixture.remoteIssues)
-            mutate(issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101'))
+            mutate(issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101'))
             const changed = await resolveFixture('explicitIssues', {
                 remoteIssues: issues,
                 previousReceipt: original
             })
             assert.notEqual(changed.remoteSnapshotDigest, original.remoteSnapshotDigest)
-            assert.deepEqual(changed.remoteChangeSet.changed, ['Ozwasyd/FsusBlog#101'])
+            assert.deepEqual(changed.remoteChangeSet.changed, ['ExampleOrg/RepositoryA#101'])
         })
     }
 
     await t.test('non-relevant comments and local-only metadata are excluded', async () => {
         const issues = clone(fixture.remoteIssues)
-        const target = issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101')
+        const target = issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101')
         target.comments[1].body += ' changed'
         target.localExecutionState = {
             testFailed: true,
@@ -316,7 +316,7 @@ test('[A04][M03] only enumerated live remote facts participate in the snapshot d
 test('[A05][N07][M04] a selector version cannot be reused for changed canonical parameters', async () => {
     const previous = await resolveFixture('explicitIssues')
     const forged = clone(fixture.selectors.explicitIssues)
-    forged.parameters.issueIds.push('Ozwasyd/FsusBlog#103')
+    forged.parameters.issueIds.push('ExampleOrg/RepositoryA#103')
 
     await expectDenied(
         () => resolveFixture('explicitIssues', {
@@ -332,8 +332,8 @@ test('[A05][N07][M04] a selector version cannot be reused for changed canonical 
         selector: forged
     })
     assert.deepEqual(versioned.resolvedIssueSet, [
-        'Ozwasyd/FsusBlog#101',
-        'Ozwasyd/FsusBlog#103'
+        'ExampleOrg/RepositoryA#101',
+        'ExampleOrg/RepositoryA#103'
     ])
     assert.notEqual(versioned.selectorDigest, previous.selectorDigest)
     assert.notEqual(versioned.remoteSnapshotDigest, previous.remoteSnapshotDigest)
@@ -342,10 +342,10 @@ test('[A05][N07][M04] a selector version cannot be reused for changed canonical 
 test('[A06][M05] dynamic selectors add matches and retain departed-node disposition/history', async () => {
     const previous = await resolveFixture('labelQuery')
     const currentIssues = clone(fixture.remoteIssues)
-    const departed = currentIssues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#105')
+    const departed = currentIssues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#105')
     departed.labels = departed.labels.filter((label) => label !== 'scope:selector')
     departed.updatedAt = '2026-07-31T12:00:00.000Z'
-    const added = currentIssues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#106')
+    const added = currentIssues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#106')
     added.labels.push('scope:selector')
     added.updatedAt = '2026-07-31T12:01:00.000Z'
 
@@ -353,14 +353,14 @@ test('[A06][M05] dynamic selectors add matches and retain departed-node disposit
         remoteIssues: currentIssues,
         previousReceipt: previous
     })
-    assert.deepEqual(current.remoteChangeSet.added, ['Ozwasyd/FsusBlog#106'])
-    assert.deepEqual(current.remoteChangeSet.removed, ['Ozwasyd/FsusBlog#105'])
+    assert.deepEqual(current.remoteChangeSet.added, ['ExampleOrg/RepositoryA#106'])
+    assert.deepEqual(current.remoteChangeSet.removed, ['ExampleOrg/RepositoryA#105'])
     assert.equal(
-        current.issueHistory['Ozwasyd/FsusBlog#105']?.disposition,
+        current.issueHistory['ExampleOrg/RepositoryA#105']?.disposition,
         'left-selector-scope'
     )
     assert.equal(
-        current.issueHistory['Ozwasyd/FsusBlog#105']?.previousRemoteSnapshotDigest,
+        current.issueHistory['ExampleOrg/RepositoryA#105']?.previousRemoteSnapshotDigest,
         previous.remoteSnapshotDigest
     )
 })
@@ -368,12 +368,12 @@ test('[A06][M05] dynamic selectors add matches and retain departed-node disposit
 test('[A07][N09][N10][M06] dependency closure follows only declared dependsOn edges', async () => {
     const receipt = await resolveFixture('dependencyClosure')
     assert.deepEqual(receipt.resolvedIssueSet, [
-        'Ozwasyd/FsusBlog#101',
-        'Ozwasyd/FsusBlog#102',
-        'Ozwasyd/FsusBlog#104'
+        'ExampleOrg/RepositoryA#101',
+        'ExampleOrg/RepositoryA#102',
+        'ExampleOrg/RepositoryA#104'
     ])
-    assert.equal(receipt.resolvedIssueSet.includes('Ozwasyd/FsusBlog#103'), false)
-    assert.equal(receipt.resolvedIssueSet.includes('Ozwasyd/FsusBlog#105'), false)
+    assert.equal(receipt.resolvedIssueSet.includes('ExampleOrg/RepositoryA#103'), false)
+    assert.equal(receipt.resolvedIssueSet.includes('ExampleOrg/RepositoryA#105'), false)
 })
 
 test('[A08][M07] initial DAG creation consumes Root and DAG route decisions', async () => {
@@ -398,7 +398,7 @@ test('[A09][N04][M08] a changed remote body requires one routed updater launch',
     const { evaluateDagUpdate } = await implementation()
     const previous = await resolveFixture('explicitIssues')
     const issues = clone(fixture.remoteIssues)
-    issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101').body += ' changed'
+    issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101').body += ' changed'
     const current = await resolveFixture('explicitIssues', {
         remoteIssues: issues,
         previousReceipt: previous
@@ -434,9 +434,9 @@ test('[A10][N01-N03][M09] execution noise is ledger-only and cannot trigger a se
     const { evaluateDagUpdate } = await implementation()
     const receipt = await resolveFixture('explicitIssues')
     const executionEvents = [
-        { type: 'test-failed', issueId: 'Ozwasyd/FsusBlog#101' },
-        { type: 'rework-requested', issueId: 'Ozwasyd/FsusBlog#101' },
-        { type: 'agent-blocker', issueId: 'Ozwasyd/FsusBlog#101' },
+        { type: 'test-failed', issueId: 'ExampleOrg/RepositoryA#101' },
+        { type: 'rework-requested', issueId: 'ExampleOrg/RepositoryA#101' },
+        { type: 'agent-blocker', issueId: 'ExampleOrg/RepositoryA#101' },
         { type: 'delivery-epoch-changed', epoch: 2 },
         { type: 'slot-changed', slot: 2 },
         { type: 'lease-changed', lease: 'write-tests-only' },
@@ -466,7 +466,7 @@ test('[A11][N05][M10] subagent discoveries remain possible-remote-contract-impac
     const report = {
         type: 'possible-remote-contract-impact',
         reporterRole: 'implementer',
-        issueId: 'Ozwasyd/FsusBlog#999',
+        issueId: 'ExampleOrg/RepositoryA#999',
         evidence: 'direct local source observation'
     }
     const result = await evaluateDagUpdate({
@@ -480,7 +480,7 @@ test('[A11][N05][M10] subagent discoveries remain possible-remote-contract-impac
     assert.deepEqual(result.executionLedgerEvents, [report])
 
     const changedIssues = clone(fixture.remoteIssues)
-    changedIssues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101').body += ' remote change'
+    changedIssues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101').body += ' remote change'
     const changedReceipt = await resolveFixture('explicitIssues', {
         remoteIssues: changedIssues,
         previousReceipt: receipt
@@ -503,7 +503,7 @@ test('[A12][N02][N05][M11] all non-root, non-Sol/max, writable, inherited, or re
     const previous = await resolveFixture('explicitIssues')
     const selector = clone(fixture.selectors.explicitIssues)
     selector.selectorVersion = 'explicit-2026-08-01.v2'
-    selector.parameters.issueIds.push('Ozwasyd/FsusBlog#103')
+    selector.parameters.issueIds.push('ExampleOrg/RepositoryA#103')
     const current = await resolveFixture('explicitIssues', {
         previousReceipt: previous,
         selector
@@ -575,7 +575,7 @@ test('[A13][N07][M12] root accepts a DAG proposal byte-for-byte and cannot overr
         (acceptance) => { acceptance.proposalDigest = 'b'.repeat(64) },
         (acceptance) => { acceptance.selectorReceiptDigest = 'c'.repeat(64) },
         (acceptance) => { acceptance.remoteSnapshotDigest = 'd'.repeat(64) },
-        (acceptance) => { acceptance.resolvedIssueSet.push('Ozwasyd/FsusBlog#103') }
+        (acceptance) => { acceptance.resolvedIssueSet.push('ExampleOrg/RepositoryA#103') }
     ]) {
         const acceptance = {
             acceptedBy: 'root-scheduler',
@@ -597,9 +597,9 @@ test('[A14][M13] acceptance-group delivery performs one real post-window refresh
     const { validateDeliveryWindow } = await implementation()
     const previous = await resolveFixture('explicitIssues')
     const issues = clone(fixture.remoteIssues)
-    issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101').state = 'CLOSED'
-    issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101').stateReason = 'COMPLETED'
-    issues.find((issue) => idOf(issue) === 'Ozwasyd/FsusBlog#101').updatedAt =
+    issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101').state = 'CLOSED'
+    issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101').stateReason = 'COMPLETED'
+    issues.find((issue) => idOf(issue) === 'ExampleOrg/RepositoryA#101').updatedAt =
         '2026-07-31T13:00:00.000Z'
     const postWindowReceipt = await resolveFixture('explicitIssues', {
         remoteIssues: issues,
@@ -610,8 +610,8 @@ test('[A14][M13] acceptance-group delivery performs one real post-window refresh
         preWindowRemoteSnapshotDigest: previous.remoteSnapshotDigest,
         postWindowReceipt,
         sideEffects: [
-            { issueId: 'Ozwasyd/FsusBlog#101', action: 'comment', status: 'completed' },
-            { issueId: 'Ozwasyd/FsusBlog#101', action: 'close', status: 'completed' }
+            { issueId: 'ExampleOrg/RepositoryA#101', action: 'comment', status: 'completed' },
+            { issueId: 'ExampleOrg/RepositoryA#101', action: 'close', status: 'completed' }
         ],
         refreshes: [
             {
@@ -636,7 +636,7 @@ test('[A15][M14] grouped delivery rejects inferred, skipped, or per-member snaps
     const previous = await resolveFixture('explicitIssues')
     const selector = clone(fixture.selectors.explicitIssues)
     selector.selectorVersion = 'explicit-2026-08-01.v2'
-    selector.parameters.issueIds.push('Ozwasyd/FsusBlog#103')
+    selector.parameters.issueIds.push('ExampleOrg/RepositoryA#103')
     const current = await resolveFixture('explicitIssues', {
         previousReceipt: previous,
         selector
@@ -646,7 +646,7 @@ test('[A15][M14] grouped delivery rejects inferred, skipped, or per-member snaps
         preWindowRemoteSnapshotDigest: previous.remoteSnapshotDigest,
         postWindowReceipt: current,
         sideEffects: [
-            { issueId: 'Ozwasyd/FsusBlog#101', action: 'close', status: 'completed' }
+            { issueId: 'ExampleOrg/RepositoryA#101', action: 'close', status: 'completed' }
         ],
         refreshes: [
             {
@@ -665,7 +665,7 @@ test('[A15][M14] grouped delivery rejects inferred, skipped, or per-member snaps
         (window) => { window.refreshes = [] },
         (window) => { window.refreshes[0].source = 'locally-inferred' },
         (window) => { window.refreshes[0].observedAfterSideEffects = false },
-        (window) => { window.memberRefreshes.push({ issueId: 'Ozwasyd/FsusBlog#101' }) },
+        (window) => { window.memberRefreshes.push({ issueId: 'ExampleOrg/RepositoryA#101' }) },
         (window) => { window.refreshes.push(clone(window.refreshes[0])) },
         (window) => { window.refreshes[0].remoteSnapshotDigest = previous.remoteSnapshotDigest }
     ]
@@ -682,12 +682,12 @@ test('[A15][M14] grouped delivery rejects inferred, skipped, or per-member snaps
         ...clone(baseWindow),
         interrupted: true,
         sideEffects: [
-            { issueId: 'Ozwasyd/FsusBlog#101', action: 'comment', status: 'completed' },
-            { issueId: 'Ozwasyd/FsusBlog#101', action: 'close', status: 'failed' }
+            { issueId: 'ExampleOrg/RepositoryA#101', action: 'comment', status: 'completed' },
+            { issueId: 'ExampleOrg/RepositoryA#101', action: 'close', status: 'failed' }
         ],
         recovery: {
             recordedCompletedSideEffects: [
-                { issueId: 'Ozwasyd/FsusBlog#101', action: 'comment' }
+                { issueId: 'ExampleOrg/RepositoryA#101', action: 'comment' }
             ],
             liveSnapshotRefreshedAfterRecovery: true
         }

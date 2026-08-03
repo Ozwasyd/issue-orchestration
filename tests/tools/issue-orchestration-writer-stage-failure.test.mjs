@@ -12,7 +12,7 @@ const runtimePath = path.join(
     'skills/issue-orchestration/scripts/writer-stage-progress.mjs'
 )
 const runtimeRelativePath = path.relative(root, runtimePath)
-const sliceId = 'fsusblog-1874-test-contract-slice-3-writer-stage-failure'
+const sliceId = 'repositorya-1874-test-contract-slice-3-writer-stage-failure'
 const sliceDigest =
     '21ca8bcb2334327226d5064452b5d7a64a73f6bd0978820e63bf6cbfaad52487'
 
@@ -50,9 +50,9 @@ async function runtime() {
 
 const identity = {
     runId: 'run-1874-writer-stage-failure-contract',
-    repository: 'Ozwasyd/FsusBlog',
+    repository: 'ExampleOrg/RepositoryA',
     issue: 1874,
-    node: 'Ozwasyd/FsusBlog#1874',
+    node: 'ExampleOrg/RepositoryA#1874',
     baseSha: git('rev-parse', 'HEAD'),
     epochId: 'epoch-1874-writer-stage-failure-001',
     worktreeIdentity: fs.realpathSync(root),
@@ -241,7 +241,7 @@ for (const mutation of [
     },
     {
         name: 'changing sliceId does not reset the breaker dynamically',
-        proposed: { sliceId: 'fsusblog-1874-identity-only-retry' }
+        proposed: { sliceId: 'repositorya-1874-identity-only-retry' }
     }
 ]) {
     test(mutation.name, async () => {

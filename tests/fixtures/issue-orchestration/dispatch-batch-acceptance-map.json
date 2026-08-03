@@ -1,6 +1,6 @@
 {
     "schema": "issue-orchestration.dispatch-batch-acceptance-map.v1",
-    "issue": "Ozwasyd/FsusBlog#1820",
+    "issue": "ExampleOrg/RepositoryA#1820",
     "authorityCommentIds": [5142306910, 5143723173],
     "acceptance": [
         {
@@ -134,7 +134,7 @@
         },
         {
             "id": "SAMPLE-01",
-            "requirement": "The live-bound FsusUI 267-279 sample preserves its explicit dependencies, investigated owner surfaces, P0/P1/P2 facts, ready stage set, writer conflict, and explainable maximal batch.",
+            "requirement": "The live-bound RepositoryB 267-279 sample preserves its explicit dependencies, investigated owner surfaces, P0/P1/P2 facts, ready stage set, writer conflict, and explainable maximal batch.",
             "tests": ["F01", "F02"],
             "mutations": []
         }

@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.semantic-runtime-projection-runtime-probes.v1",
-  "issue": "Ozwasyd/FsusBlog#1833",
+  "issue": "ExampleOrg/RepositoryA#1833",
   "probes": [
     {
       "id": "RP01",

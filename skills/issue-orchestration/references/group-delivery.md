@@ -8,15 +8,15 @@
 
 重合验收组是验证、提交、推送和关闭的单位；单独成组的 issue 使用相同流程。组内每个 writer stage 必须先通过自己的 ordered slice terminal gate；非最终 slice、partial checkpoint 或 continuation 不能让 member 进入候选或交付。组内所有 issue 在全部必要验收通过前保持 open。
 
-跨仓验收组可包含按依赖排序的 FsusUI 与 FsusBlog 交付 leg。每个 leg 在责任仓形成独立 commit 并推该仓默认分支；只有全部 leg 的远端 commit 和验收仍有效后，才关闭组内 issues。
+跨仓验收组可包含按依赖排序的多个目标仓库交付 leg。每个 leg 在责任仓形成独立 commit 并推该仓实际解析出的默认分支；只有全部 leg 的远端 commit 和验收仍有效后，才关闭组内 issues。
 
 ## 立即交付
 
 一组通过后，根代理立即：
 
 1. 复读组内 issue、验收条件、实际 diff、evidence 与未运行项；
-2. 检查两仓 `git status`，只暂存本组文件，不带入用户无关改动；
-3. 按各仓 current 变更契约生成 commit；FsusBlog 使用 `master`，FsusUI 使用 `main`，除非该仓最近的适用指令明确改变；
+2. 检查所有目标仓的 `git status`，只暂存本组文件，不带入用户无关改动；
+3. 按各仓 current 变更契约生成 commit，并使用远端实际解析出的默认分支；
 4. 由根代理直接 push 对应默认分支；
 5. 复读远端 commit 与 issue 状态，提交需要的完成评论并核验组内 issues 已关闭；
 6. 更新运行态 DAG 和 evidence。
@@ -83,8 +83,7 @@ workflow 后续恢复并在已关闭候选上暴露真实缺陷时，重新打�
 node .agents/skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs \
   --state-root <state-root> \
   --input <state-root>/delivery-evidence.json \
-  --repository <FsusBlog-root> \
-  --repository <FsusUI-root> \
+  --repository <target-repository-root> \
   --workspace <common-or-launch-workspace>
 ```
 
@@ -94,11 +93,11 @@ node .agents/skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs \
 
 可为隔离本地实现使用分支或 worktree，但只有根代理可直接 push `master`/`main`。不得创建或遗留无意义的 `codex/*` 分支、draft PR、worktree、锁或无关提交。验收组交付或放弃后，先核对远端与本地引用，再清理只属于该组的临时资源。
 
-## 两仓 alias 与 owner
+## 跨仓 alias 与 owner
 
-交付前解析实际生效的 FsusBlog→FsusUI 本地 alias，记录 FsusUI 绝对路径、HEAD 和 dirty state。两仓同步通过该 alias 验证；禁止为了同步发布 npm、NuGet 或其他包。
+交付前解析 caller 提供的每个本地 repository alias，记录其绝对路径、HEAD 和 dirty state。跨仓同步通过这些运行时 alias 验证；禁止为了同步发布 npm、NuGet 或其他包。
 
-跨仓缺陷修复责任仓。可复用组件、公开 token、组件状态、共享 motion、键盘或共享可访问性缺陷归 FsusUI；产品路由、文案、组合和 FsusBlog 语义归 FsusBlog，具体事实仍以两个设计 Skill 与 current 文档为准。不得在调用仓添加兼容兜底、私有 selector 修补、假 token、组件 fork 或降级路径来隐藏责任仓缺陷。
+跨仓缺陷必须修在由目标仓当前 API、设计、文档、代码和测试确定的责任仓。本仓不预置产品/组件 ownership 映射。不得在调用仓添加兼容兜底、私有 selector 修补、假 token、组件 fork 或降级路径来隐藏责任仓缺陷。
 
 ## Terminal 前本地交付
 

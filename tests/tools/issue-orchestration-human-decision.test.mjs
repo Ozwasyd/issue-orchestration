@@ -33,9 +33,9 @@ function assertError(operation, code) {
 }
 
 const context = Object.freeze({
-    repository: 'Ozwasyd/FsusBlog',
+    repository: 'ExampleOrg/RepositoryA',
     issue: 1835,
-    node: 'Ozwasyd/FsusBlog#1835',
+    node: 'ExampleOrg/RepositoryA#1835',
     attempt: 'attempt-1835-human-decision-1',
     acceptanceGroup: 'orchestration-governance',
     member: 'human-decision-gate',
@@ -64,7 +64,7 @@ function requestInput(overrides = {}) {
             conclusion: 'two-legal-user-visible-options'
         },
         authoritativeSources: [{
-            source: 'https://github.com/Ozwasyd/FsusBlog/issues/1835',
+            source: 'https://github.com/ExampleOrg/RepositoryA/issues/1835',
             digest: 'f'.repeat(64),
             authority: 'repository-maintainer'
         }],

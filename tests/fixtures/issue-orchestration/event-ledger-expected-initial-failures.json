@@ -1,117 +1,121 @@
 {
-    "schema": "issue-orchestration.event-ledger-corrective-test-contract.v1",
-    "phase": "test-contract",
-    "status": "frozen-red-corrective",
-    "revision": "universal-dispatch-receipt-migration-2",
-    "authorityCommentId": 5148362773,
-    "supersedesAuthorityCommentId": 5145136921,
-    "testOwnerId": "test-owner-fsusblog-1817-corrective-f99e6091165e",
-    "issueId": "Ozwasyd/FsusBlog#1817",
+  "schema": "issue-orchestration.event-ledger-corrective-test-contract.v1",
+  "phase": "test-contract",
+  "status": "frozen-red-corrective",
+  "revision": "universal-dispatch-receipt-migration-2",
+  "authorityCommentId": 5148362773,
+  "supersedesAuthorityCommentId": 5145136921,
+  "testOwnerId": "test-owner-repositorya-1817-corrective-f99e6091165e",
+  "issueId": "ExampleOrg/RepositoryA#1817",
+  "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
+  "allowedTestPaths": [
+    "tests/tools/issue-orchestration-event-ledger.test.mjs",
+    "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json",
+    "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json",
+    "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json",
+    "tests/fixtures/issue-orchestration/event-ledger-expected-initial-failures.json"
+  ],
+  "allowedImplementationPaths": [
+    "skills/issue-orchestration/scripts/event-ledger.mjs"
+  ],
+  "forbiddenScopes": [
+    "implementation",
+    "documentation",
+    "DAG or bootstrap runtime state",
+    "other tests or fixtures",
+    "commit",
+    "push"
+  ],
+  "acceptanceMap": "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json",
+  "expectedInitialFailures": "tests/fixtures/issue-orchestration/event-ledger-expected-initial-failures.json",
+  "runtimeProbes": "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json",
+  "mutationControls": "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json",
+  "hashAlgorithm": "sha256",
+  "selfHashPolicy": "fileHashes covers raw bytes for every allowedTestPath except this manifest; stage 1 testContractDigest covers canonical JSON with testContractDigest and candidateIdentity omitted; stage 2 candidateDigest covers canonical JSON of baseSha, the stage 1 testContractDigest, and path-sorted exact implementationFiles records",
+  "fileHashes": {
+    "tests/tools/issue-orchestration-event-ledger.test.mjs": "513af8f58886acbfdf52ed008d2778836d34b07adb6b820c1540ea58ae064af5",
+    "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json": "29ab6284bd92ba416bfa6c74585a4fd7ef4c2e3e85a86a2a10a84abe2559accd",
+    "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json": "4c69c0946b4369c0dc90d6164c98676d2bd61165f67af98ee54b8fa03a8a05fa",
+    "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json": "089544e96ae5623e9117c26df12c927489c0be28aa93046959d1cf315e72d608"
+  },
+  "expectedStatus": "red",
+  "preservedOriginalCaseCount": 85,
+  "addedCorrectiveControlCount": 4,
+  "expectedBaseSummary": {
+    "tests": 89,
+    "pass": 85,
+    "fail": 4,
+    "skipped": 0
+  },
+  "expectedUniversalCandidateSummary": {
+    "tests": 89,
+    "pass": 89,
+    "fail": 0,
+    "skipped": 0
+  },
+  "preMigrationUniversalCandidateEvidence": {
+    "observedAt": "2026-08-01T00:00:00+08:00",
+    "command": [
+      "node",
+      "--test",
+      "tests/tools/issue-orchestration-event-ledger.test.mjs"
+    ],
+    "tests": 85,
+    "pass": 45,
+    "fail": 40,
+    "skipped": 0,
+    "firstGateError": "verified-dispatch-receipt-required",
+    "meaning": "The universal #1818 candidate correctly reached the shared #1817 ownership conflict before the intended assertions."
+  },
+  "failureClasses": [
+    {
+      "id": "missing-verified-dispatch-prerequisite",
+      "mutationControl": "implementation-start-dispatch-missing",
+      "expectedError": "verified-dispatch-receipt-required",
+      "meaning": "The current base accepts implementation.started without any dispatch receipt."
+    },
+    {
+      "id": "nonverified-dispatch-prerequisite",
+      "mutationControl": "implementation-start-dispatch-nonverified",
+      "expectedError": "verified-dispatch-receipt-required",
+      "meaning": "The current base accepts a digest-valid dispatch receipt whose verification status is rejected."
+    },
+    {
+      "id": "discovery-actor-role-opt-out",
+      "mutationControl": "implementation-start-discovery-actor-opt-out",
+      "expectedError": "verified-dispatch-receipt-required",
+      "meaning": "The current base has no universal frozen-contract gate across discovery actorRole values."
+    },
+    {
+      "id": "obsolete-candidate-receipt-authority",
+      "mutationControl": "obsolete-verified-candidate-receipt",
+      "expectedError": "receipt-schema-stage-mismatch",
+      "meaning": "The current base still accepts issue-orchestration.verified-candidate-receipt.v1 for candidate-green."
+    }
+  ],
+  "preservedBehavior": [
+    {
+      "id": "original-event-ledger-regression-surface",
+      "evidence": "All 85 pre-corrective semantic, mutation, recovery, path, authority, group, and DAG assertions remain present with their original error codes."
+    },
+    {
+      "id": "legal-setup-only-migration",
+      "evidence": "Shared helpers add a verified dispatch prerequisite and implementer-self-test-receipt.v1 without weakening any downstream assertion."
+    }
+  ],
+  "testContractDigest": "93d91c8697cba7443cd02cc73a4ff1f5e6a8590bef3c4680f2bbd1939a3f91e2",
+  "candidateIdentity": {
+    "schema": "issue-orchestration.candidate-identity.v1",
+    "algorithm": "sha256-canonical-json-v1",
     "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
-    "allowedTestPaths": [
-        "tests/tools/issue-orchestration-event-ledger.test.mjs",
-        "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json",
-        "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json",
-        "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json",
-        "tests/fixtures/issue-orchestration/event-ledger-expected-initial-failures.json"
+    "testContractDigest": "93d91c8697cba7443cd02cc73a4ff1f5e6a8590bef3c4680f2bbd1939a3f91e2",
+    "implementationFiles": [
+      {
+        "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
+        "sha256": "115b63be71282dbfcc28baadea9fb7171fc2ccc5200b2ac17e0ce36bdfdf34ac",
+        "gitMode": "100644"
+      }
     ],
-    "allowedImplementationPaths": [
-        "skills/issue-orchestration/scripts/event-ledger.mjs"
-    ],
-    "forbiddenScopes": [
-        "implementation",
-        "documentation",
-        "DAG or bootstrap runtime state",
-        "other tests or fixtures",
-        "commit",
-        "push"
-    ],
-    "acceptanceMap": "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json",
-    "expectedInitialFailures": "tests/fixtures/issue-orchestration/event-ledger-expected-initial-failures.json",
-    "runtimeProbes": "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json",
-    "mutationControls": "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json",
-    "hashAlgorithm": "sha256",
-    "selfHashPolicy": "fileHashes covers raw bytes for every allowedTestPath except this manifest; stage 1 testContractDigest covers canonical JSON with testContractDigest and candidateIdentity omitted; stage 2 candidateDigest covers canonical JSON of baseSha, the stage 1 testContractDigest, and path-sorted exact implementationFiles records",
-    "fileHashes": {
-    "tests/tools/issue-orchestration-event-ledger.test.mjs": "38f637ec48707518cf5bafcfdcdd0449215a4103301408c25af18d5e6496d825",
-        "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json": "79599f56b3a397af9b0894dc29fdbef0fa7446ba3b8e1deca3941d618b93cd3f",
-        "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json": "4c69c0946b4369c0dc90d6164c98676d2bd61165f67af98ee54b8fa03a8a05fa",
-        "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json": "2a696c1c2b8914264e4bde1d506ed560b272b25ff2cab058870fc2c51a288bda"
-    },
-  "testContractDigest": "f3628addbd9bd9a1e3ed7bb603046cbb97cf75e9b4869409e6ace427514676df",
-    "candidateIdentity": {
-        "schema": "issue-orchestration.candidate-identity.v1",
-        "algorithm": "sha256-canonical-json-v1",
-        "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
-        "testContractDigest": "f3628addbd9bd9a1e3ed7bb603046cbb97cf75e9b4869409e6ace427514676df",
-        "implementationFiles": [
-            {
-                "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
-                "sha256": "693624b3f5b3de45c71bfe8a3d924baaedbfe814a90da0d076cec4977bb16526",
-                "gitMode": "100644"
-            }
-        ],
-        "candidateDigest": "65b69d3839e6b4d9f157b63fd665ffbbc96c817ceac53ca25a1f684d8f3c28db"
-    },
-    "expectedStatus": "red",
-    "preservedOriginalCaseCount": 85,
-    "addedCorrectiveControlCount": 4,
-    "expectedBaseSummary": {
-        "tests": 89,
-        "pass": 85,
-        "fail": 4,
-        "skipped": 0
-    },
-    "expectedUniversalCandidateSummary": {
-        "tests": 89,
-        "pass": 89,
-        "fail": 0,
-        "skipped": 0
-    },
-    "preMigrationUniversalCandidateEvidence": {
-        "observedAt": "2026-08-01T00:00:00+08:00",
-        "command": ["node", "--test", "tests/tools/issue-orchestration-event-ledger.test.mjs"],
-        "tests": 85,
-        "pass": 45,
-        "fail": 40,
-        "skipped": 0,
-        "firstGateError": "verified-dispatch-receipt-required",
-        "meaning": "The universal #1818 candidate correctly reached the shared #1817 ownership conflict before the intended assertions."
-    },
-    "failureClasses": [
-        {
-            "id": "missing-verified-dispatch-prerequisite",
-            "mutationControl": "implementation-start-dispatch-missing",
-            "expectedError": "verified-dispatch-receipt-required",
-            "meaning": "The current base accepts implementation.started without any dispatch receipt."
-        },
-        {
-            "id": "nonverified-dispatch-prerequisite",
-            "mutationControl": "implementation-start-dispatch-nonverified",
-            "expectedError": "verified-dispatch-receipt-required",
-            "meaning": "The current base accepts a digest-valid dispatch receipt whose verification status is rejected."
-        },
-        {
-            "id": "discovery-actor-role-opt-out",
-            "mutationControl": "implementation-start-discovery-actor-opt-out",
-            "expectedError": "verified-dispatch-receipt-required",
-            "meaning": "The current base has no universal frozen-contract gate across discovery actorRole values."
-        },
-        {
-            "id": "obsolete-candidate-receipt-authority",
-            "mutationControl": "obsolete-verified-candidate-receipt",
-            "expectedError": "receipt-schema-stage-mismatch",
-            "meaning": "The current base still accepts issue-orchestration.verified-candidate-receipt.v1 for candidate-green."
-        }
-    ],
-    "preservedBehavior": [
-        {
-            "id": "original-event-ledger-regression-surface",
-            "evidence": "All 85 pre-corrective semantic, mutation, recovery, path, authority, group, and DAG assertions remain present with their original error codes."
-        },
-        {
-            "id": "legal-setup-only-migration",
-            "evidence": "Shared helpers add a verified dispatch prerequisite and implementer-self-test-receipt.v1 without weakening any downstream assertion."
-        }
-    ]
+    "candidateDigest": "a51942adc697e40a30cb68c83b507e7b0551ad3e7888495c7a159ea51dbed263"
+  }
 }

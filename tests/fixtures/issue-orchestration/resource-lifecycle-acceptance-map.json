@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.resource-lifecycle-acceptance.v3",
-  "issueId": "Ozwasyd/FsusBlog#1828",
+  "issueId": "ExampleOrg/RepositoryA#1828",
   "acceptance": [
     { "id": "B02", "requirement": "current package owns real inventory, observation, and cleanup runtime", "mutations": ["legacy-owner-alias", "missing-runtime-owner"], "runtimeProbes": ["P01"] },
     { "id": "B03", "requirement": "registry binds immutable run/attempt/stage/worktree/path/contract/epoch owner fields", "mutations": ["registry-owner-omitted", "registry-epoch-omitted"], "runtimeProbes": ["P01"] },

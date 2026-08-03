@@ -116,9 +116,9 @@ function terminalPlanInput({ fixture }) {
     return {
         schema: 'issue-orchestration.stage-work-plan-input.v1',
         runId: 'run-1874-terminal-gate-contract',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874',
+        node: 'ExampleOrg/RepositoryA#1874',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         baseSha: fixture.baseSha,
@@ -170,9 +170,9 @@ function documentationReadOnlyPlanInput({ fixture }) {
     return {
         schema: 'issue-orchestration.stage-work-plan-input.v1',
         runId: 'run-1874-documentation-no-change',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874:documentation-no-change',
+        node: 'ExampleOrg/RepositoryA#1874:documentation-no-change',
         stageRole: 'documentation-writer',
         stagePhase: 'documentation',
         baseSha: fixture.baseSha,
@@ -531,7 +531,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
     )).href)
     const classification = {
         domain: 'ui-ux',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'prescribed',
         contractState: 'frozen',
@@ -742,9 +742,9 @@ test('a slice terminal receipt advances one slice and only the complete plan bec
     assert.equal(typeof writerProgress.evaluateSliceTerminalGate, 'function')
 
     const artifacts = compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: 1874,
-        node: 'Ozwasyd/FsusBlog#1874:permanent-terminal-gate',
+        node: 'ExampleOrg/RepositoryA#1874:permanent-terminal-gate',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         baseSha: fixture.baseSha,

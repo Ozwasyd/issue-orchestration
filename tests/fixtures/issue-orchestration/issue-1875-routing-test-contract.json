@@ -1,6 +1,6 @@
 {
     "schema": "issue-orchestration.test-contract.v1",
-    "issue": "Ozwasyd/FsusBlog#1875",
+    "issue": "ExampleOrg/RepositoryA#1875",
     "owner": "test-owner",
     "frozenAt": "2026-08-02T00:00:00+08:00",
     "runtime": "skills/issue-orchestration/scripts/execution-route-compiler.mjs",

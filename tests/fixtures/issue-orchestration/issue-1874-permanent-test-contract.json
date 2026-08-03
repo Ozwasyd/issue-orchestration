@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.issue-1874-permanent-test-contract.v1",
-  "issue": "Ozwasyd/FsusBlog#1874",
+  "issue": "ExampleOrg/RepositoryA#1874",
   "baseSha": "2499db9517ec4e340bb475443c6ec2984203323c",
   "canonicalRuntimeOwners": {
     "sliceAndCheckpoint": "skills/issue-orchestration/scripts/executable-slice-compiler.mjs",
@@ -110,7 +110,7 @@
   "frozenAudit": {
     "runId": "cdfdbdbe-d901-4482-bafe-c4ba92c17779",
     "testTreeAlgorithm": "sha256-of-sorted-path-tab-sha256-lines-v1",
-    "testTreeDigest": "8cc16879c64785ebbe40af198eca61318c03792ae783c3e9e2efd3def5576eb4",
+    "testTreeDigest": "3ac1f29e3da61f25425b837858e54349f572cdd2a7b22beabde8a52eb02636fc",
     "freezeReceiptDigest": "48d164c8948e28184fb0cead66eb312337cb274cf446e0f55393dab9c617b494",
     "verifiedTestContractReceiptDigest": "2d42ae42ca67795845006d2563046f19afba81365a3bd4b474c8f9b69982731e",
     "sliceTerminalReceiptDigests": {
@@ -120,7 +120,7 @@
     },
     "files": {
       "tests/tools/issue-orchestration-compiled-dispatch-prompt.test.mjs": {
-        "sha256": "d16cd8ae5bb8443e96843919208d60304143c5f45d7caf4cb9f97bf9c226145f",
+        "sha256": "d197adcc92a39e3490d71bb00d820514c8d68e59f9076bb64f5b3337342e7d2a",
         "expectedInitialRed": {
           "tests": 8,
           "pass": 0,
@@ -129,7 +129,7 @@
         }
       },
       "tests/tools/issue-orchestration-progress-checkpoint.test.mjs": {
-        "sha256": "643ddafe62617c9528c35070e2dc5676adf2363aa7a27ee3f11f541b296a28a8",
+        "sha256": "979eea904ca955c1badff129418d3aa2107cbb64c181dd8417698ae6afe32fce",
         "expectedInitialRed": {
           "tests": 8,
           "pass": 0,
@@ -138,7 +138,7 @@
         }
       },
       "tests/tools/issue-orchestration-writer-stage-failure.test.mjs": {
-        "sha256": "e21817ba08105239e22fa3408ecc89235963918ccdab3fc66900919ef19ba650",
+        "sha256": "62f3539bca8b2a5989fd135cb7b8ebea442bcb2dd0dc6e597dee4c3a5ff2eef0",
         "expectedInitialRed": {
           "tests": 14,
           "pass": 0,

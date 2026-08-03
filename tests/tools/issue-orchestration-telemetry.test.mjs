@@ -92,7 +92,7 @@ function baseFacts(overrides = {}) {
         stagePhase: 'implementation',
         timestamp: '2026-08-02T00:00:00.000Z',
         eventType: 'stage-observation',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         epochId: 'epoch-1826-1',
         baseSha: '1'.repeat(40),
         domain: 'tooling',
@@ -174,7 +174,7 @@ async function happySources() {
             authority: 'acceptance-group',
             facts: baseFacts({
                 groupId: 'group-1826',
-                memberIssueId: 'FsusBlog-1826',
+                memberIssueId: 'RepositoryA-1826',
                 memberProfile: 'luna-bounded',
                 memberStatus: 'green',
                 memberWaitDuration: 2,
@@ -192,7 +192,7 @@ async function happySources() {
                 sliceId: 'slice-1826-2',
                 sliceDigest: digest('slice-2'),
                 groupId: 'group-1826',
-                memberIssueId: 'FsusBlog-1827',
+                memberIssueId: 'RepositoryA-1827',
                 memberProfile: 'terra-bounded',
                 memberStatus: 'pending',
                 humanPendingCount: 1
@@ -343,8 +343,8 @@ test('#1826 emits and verifies all ten versioned telemetry documents', async () 
             status: Object.keys(member.statusCounts)[0]
         })),
         [
-            { issue: 'FsusBlog-1826', status: 'green' },
-            { issue: 'FsusBlog-1827', status: 'pending' }
+            { issue: 'RepositoryA-1826', status: 'green' },
+            { issue: 'RepositoryA-1827', status: 'pending' }
         ]
     )
     assert.deepEqual(bundle.runSummary.resourceStateCounts, {

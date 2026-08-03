@@ -3,22 +3,22 @@
     "observedAt": "2026-08-01T03:00:00+08:00",
     "probes": [
         {
-            "id": "RP-FSUSBLOG-BASE",
-            "repository": "Ozwasyd/FsusBlog",
+            "id": "RP-ISSUE_ORCHESTRATION-BASE",
+            "repository": "ExampleOrg/RepositoryA",
             "defaultBranch": "master",
             "headSha": "0c363486d0b7f08fc0a078aba3655d86420dceab",
             "command": "committed-fixture: historical repository SHA; no live repository access"
         },
         {
-            "id": "RP-FSUSUI-BASE",
-            "repository": "Ozwasyd/FsusUI",
+            "id": "RP-REPOSITORY_B-BASE",
+            "repository": "ExampleOrg/RepositoryB",
             "defaultBranch": "main",
             "headSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
             "command": "committed-fixture: historical repository SHA; no live repository access"
         },
         {
-            "id": "RP-FSUSUI-ISSUES",
-            "repository": "Ozwasyd/FsusUI",
+            "id": "RP-REPOSITORY_B-ISSUES",
+            "repository": "ExampleOrg/RepositoryB",
             "issueRange": [267, 279],
             "expectedState": "OPEN",
             "issueCount": 13,
@@ -27,8 +27,8 @@
             "command": "committed-fixture: historical issue-set snapshot; no live repository access"
         },
         {
-            "id": "RP-FSUSUI-OWNER-SURFACE",
-            "repository": "Ozwasyd/FsusUI",
+            "id": "RP-REPOSITORY_B-OWNER-SURFACE",
+            "repository": "ExampleOrg/RepositoryB",
             "headSha": "7f4850b8b0ce8aad9a3969baceaeff0eb5b9d164",
             "paths": [
                 "vue/packages/components/markdown-editor/src/markdown-editor.ts",
@@ -43,7 +43,7 @@
         },
         {
             "id": "RP-LONG-TASK-LEASE",
-            "repository": "Ozwasyd/FsusUI",
+            "repository": "ExampleOrg/RepositoryB",
             "issue": 268,
             "evidenceCommentId": 5138603602,
             "observedRequirement": "native IME verification remains outstanding and is modeled by resource:browser:native-ime; it does not block unrelated stage tasks",

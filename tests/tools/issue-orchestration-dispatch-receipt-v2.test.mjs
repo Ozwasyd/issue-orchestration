@@ -46,7 +46,7 @@ const controls = readJson('dispatch-receipt-v2-mutation-controls.json').controls
 const probes = readJson('dispatch-receipt-v2-runtime-probes.json').probes
 
 const baseSha = '788737a0ad22003544b2d439df995e1097de0ee2'
-const repository = 'Ozwasyd/FsusBlog'
+const repository = 'ExampleOrg/RepositoryA'
 const issueId = `${repository}#1832`
 const worktree = fs.mkdtempSync(path.join(
     os.tmpdir(),
@@ -67,7 +67,7 @@ execFileSync('git', [
     'remote',
     'set-url',
     'origin',
-    'https://github.com/Ozwasyd/FsusBlog.git'
+    'https://github.com/ExampleOrg/RepositoryA.git'
 ], { cwd: worktree })
 after(() => fs.rmSync(worktree, { force: true, recursive: true }))
 const hash = (character) => character.repeat(64)
@@ -718,7 +718,7 @@ test('P00 frozen test assets bind the live issue, dependencies and exact base', 
     assert.equal(contract.status, 'frozen-red')
     assert.equal(contract.issueId, issueId)
     assert.equal(contract.baseSha, baseSha)
-    assert.equal(contract.testOwnerId, 'test-owner-fsusblog-1832-788737a0')
+    assert.equal(contract.testOwnerId, 'test-owner-repositorya-1832-788737a0')
     assert.equal(contract.groupId, null)
     assert.equal(contract.pipeline, 'ordinary-serial')
     assert.equal(contract.ciPolicy, 'out-of-scope-no-ci')
@@ -726,9 +726,9 @@ test('P00 frozen test assets bind the live issue, dependencies and exact base', 
         contract.dependencyBindings.map(({ issue, deliveredCommit }) =>
             [issue, deliveredCommit]),
         [
-            ['Ozwasyd/FsusBlog#1817', '9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18'],
-            ['Ozwasyd/FsusBlog#1818', 'c8cb56dce27769a3cc3663cc0e39cc0a75716fed'],
-            ['Ozwasyd/FsusBlog#1819', 'aff9260d358171d7765e542e56bf18635b328583']
+            ['ExampleOrg/RepositoryA#1817', '9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18'],
+            ['ExampleOrg/RepositoryA#1818', 'c8cb56dce27769a3cc3663cc0e39cc0a75716fed'],
+            ['ExampleOrg/RepositoryA#1819', 'aff9260d358171d7765e542e56bf18635b328583']
         ]
     )
     assert.deepEqual(
@@ -817,8 +817,8 @@ test('P01C dispatch rejects stage-permissions policy drift before sealing', asyn
 test('P01B UI and landing dispatch use only the permanent writer phases and roles', async () => {
     const module = await runtime()
     const uiSkills = [
-        { id: 'fsusblog-design-conformance', digest: hash('a') },
-        { id: 'fsusui-design-conformance', digest: hash('b') }
+        { id: 'repositorya-design-conformance', digest: hash('a') },
+        { id: 'repositoryb-design-conformance', digest: hash('b') }
     ]
     const cases = [
         {
@@ -1275,8 +1275,8 @@ async function runControl(control) {
                 verificationClass: 'ux-local'
             },
             requiredSkills: [
-                { id: 'fsusblog-design-conformance', digest: hash('a') },
-                { id: 'fsusui-design-conformance', digest: hash('b') }
+                { id: 'repositorya-design-conformance', digest: hash('a') },
+                { id: 'repositoryb-design-conformance', digest: hash('b') }
             ],
             uiImpact: true
         })

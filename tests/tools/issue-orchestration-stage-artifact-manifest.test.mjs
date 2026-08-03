@@ -18,7 +18,7 @@ const canonicalUrl = new URL(
         + 'issue-orchestration/scripts/writer-stage-progress.mjs',
     import.meta.url
 )
-const repository = 'Ozwasyd/FsusBlog'
+const repository = 'ExampleOrg/RepositoryA'
 const issue = 1852
 const node = `${repository}#${issue}`
 const routeDigest = writerTestDigest({

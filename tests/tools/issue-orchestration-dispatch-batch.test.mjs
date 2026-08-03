@@ -180,7 +180,7 @@ function writerGitFixtureFor(identity, filePaths) {
 }
 
 function stageTask(number, overrides = {}) {
-    const issueId = overrides.issueId ?? `Ozwasyd/FsusBlog#${number}`
+    const issueId = overrides.issueId ?? `ExampleOrg/RepositoryA#${number}`
     const stageKind = overrides.stageKind ?? 'test-contract'
     const conflictKeys = overrides.conflictKeys ?? []
     const exclusiveResourceKeys = overrides.exclusiveResourceKeys ?? []
@@ -199,7 +199,7 @@ function stageTask(number, overrides = {}) {
     const writerArtifacts = overrides.writerArtifacts ??
         (writerBinding && writePaths.length > 0
             ? compileWriterStageTestArtifacts({
-            repository: overrides.repository ?? 'Ozwasyd/FsusBlog',
+            repository: overrides.repository ?? 'ExampleOrg/RepositoryA',
             issue: overrides.issueNumber ?? number,
             node: issueId,
             stageRole: writerBinding.stageRole,
@@ -253,7 +253,7 @@ function stageTask(number, overrides = {}) {
         taskId: overrides.taskId ?? `${issueId}@${stageKind}`,
         issueId,
         issueNumber: overrides.issueNumber ?? number,
-        repository: overrides.repository ?? 'Ozwasyd/FsusBlog',
+        repository: overrides.repository ?? 'ExampleOrg/RepositoryA',
         stageKind,
         stageRole: overrides.stageRole ?? 'test-owner',
         issueWorktreeId: writerFixture?.worktreeIdentity ??
@@ -309,7 +309,7 @@ function sameWorktreeWriterTasks(number, identity) {
         }),
         stageTask(number, {
             taskId:
-                `Ozwasyd/FsusBlog#${number}@code-implementation`,
+                `ExampleOrg/RepositoryA#${number}@code-implementation`,
             stageKind: 'code-implementation',
             stageRole: 'code-implementer',
             issueWorktreeId: identity,
@@ -324,7 +324,7 @@ function twoSliceStageTask(number, sliceIndex, {
         ? 'initial-stage-plan'
         : 'semantic-runtime-projection'
 } = {}) {
-    const issueId = `Ozwasyd/FsusBlog#${number}`
+    const issueId = `ExampleOrg/RepositoryA#${number}`
     const writePaths = [
         `tests/contracts/issue-${number}-slice-1.test.mjs`,
         `tests/contracts/issue-${number}-slice-2.test.mjs`
@@ -334,7 +334,7 @@ function twoSliceStageTask(number, sliceIndex, {
         writePaths
     )
     const artifacts = compileWriterStageTestArtifacts({
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         issue: number,
         node: issueId,
         stageRole: 'test-owner',
@@ -384,7 +384,7 @@ function twoSliceStageTask(number, sliceIndex, {
 
 function landingConflictStageTask(number, overrides = {}) {
     const issueId =
-        overrides.issueId ?? `Ozwasyd/FsusBlog#${number}`
+        overrides.issueId ?? `ExampleOrg/RepositoryA#${number}`
     const epochId = overrides.epochId ?? 'epoch-1820-1'
     const issueWorktreeId =
         overrides.issueWorktreeId ?? `worktree-${number}`
@@ -549,7 +549,7 @@ function leaseRecord({
     kind = 'resource',
     leaseId = 'lease-active-1',
     ownerId = 'test-owner-active-1',
-    stageTaskId = 'Ozwasyd/FsusUI#268@behavior-verification',
+    stageTaskId = 'ExampleOrg/RepositoryB#268@behavior-verification',
     state = 'active'
 } = {}) {
     const body = {
@@ -575,17 +575,17 @@ function groupProposal(overrides = {}) {
     const body = {
         schema: 'issue-orchestration.acceptance-group-proposal.v1',
         proposalId: 'group-proposal-1',
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         memberIssueIds: [
-            'Ozwasyd/FsusBlog#9401',
-            'Ozwasyd/FsusBlog#9402'
+            'ExampleOrg/RepositoryA#9401',
+            'ExampleOrg/RepositoryA#9402'
         ],
         memberOrder: [
-            'Ozwasyd/FsusBlog#9401',
-            'Ozwasyd/FsusBlog#9402'
+            'ExampleOrg/RepositoryA#9401',
+            'ExampleOrg/RepositoryA#9402'
         ],
         sharedPaths: ['tests/contracts/shared.test.mjs'],
-        sharedConflictKeys: ['write:FsusBlog:shared-contract-tests'],
+        sharedConflictKeys: ['write:RepositoryA:shared-contract-tests'],
         sharedBuildOrRuntimeResources: ['resource:node:test-runner'],
         estimatedColdStartSavings: {
             unit: 'seconds',
@@ -607,7 +607,7 @@ function groupProposal(overrides = {}) {
             evidenceDigest: '4'.repeat(64)
         },
         fallbackReason: 'qualification-failure-dispatches-per-issue',
-        activeMemberIssueId: 'Ozwasyd/FsusBlog#9401',
+        activeMemberIssueId: 'ExampleOrg/RepositoryA#9401',
         ...overrides
     }
     delete body.proposalDigest
@@ -817,28 +817,28 @@ test('contract fixtures cover every acceptance and mutation identity', () => {
     assert.equal(cases.selectableStageRoles.includes('dag-creator-updater'), false)
 })
 
-test('FsusUI 267-279 dependency sample is exact and owner-surface evidence is explicit', () => {
-    const sample = cases.fsusUiSample
+test('RepositoryB 267-279 dependency sample is exact and owner-surface evidence is explicit', () => {
+    const sample = cases.repositoryBSample
     assert.equal(sample.issues.length, 13)
     assert.deepEqual(
         sample.issues.map(({ issueId }) => issueId),
         Array.from(
             { length: 13 },
-            (_, index) => `Ozwasyd/FsusUI#${267 + index}`
+            (_, index) => `ExampleOrg/RepositoryB#${267 + index}`
         )
     )
     assert.deepEqual(
         sample.issues.find(({ issueId }) => issueId.endsWith('#279')).dependsOn,
         [
-            'Ozwasyd/FsusUI#268',
-            'Ozwasyd/FsusUI#270',
-            'Ozwasyd/FsusUI#275'
+            'ExampleOrg/RepositoryB#268',
+            'ExampleOrg/RepositoryB#270',
+            'ExampleOrg/RepositoryB#275'
         ]
     )
     assert.deepEqual(
         sample.issues.filter(({ dependsOn }) => dependsOn.length === 0)
             .map(({ issueId }) => issueId),
-        ['Ozwasyd/FsusUI#267', 'Ozwasyd/FsusUI#268', 'Ozwasyd/FsusUI#272']
+        ['ExampleOrg/RepositoryB#267', 'ExampleOrg/RepositoryB#268', 'ExampleOrg/RepositoryB#272']
     )
     assert.ok(sample.issues.every(({ ownerSurfaces }) => ownerSurfaces.length > 0))
 })
@@ -846,7 +846,7 @@ test('FsusUI 267-279 dependency sample is exact and owner-surface evidence is ex
 test('runtime probes and resource observation are frozen', () => {
     assert.equal(runtimeProbes.probes.length, 5)
     assert.equal(
-        runtimeProbes.probes.find(({ id }) => id === 'RP-FSUSBLOG-BASE')
+        runtimeProbes.probes.find(({ id }) => id === 'RP-ISSUE_ORCHESTRATION-BASE')
             .headSha,
         cases.baseSha
     )
@@ -1150,7 +1150,7 @@ test('[B05] twenty independent safe stage tasks exactly fill fifteen slots', asy
 })
 
 test('[B06] only N safe tasks means selected equals N without illegal fill', async () => {
-    const conflictKey = 'write:FsusBlog:orchestration-core'
+    const conflictKey = 'write:RepositoryA:orchestration-core'
     const writerA = stageTask(9320, {
         priorityClass: 'P0',
         conflictKeys: [conflictKey]
@@ -1172,7 +1172,7 @@ test('[B06] only N safe tasks means selected equals N without illegal fill', asy
 })
 
 test('[C01] writers sharing an explicit conflict key never run together', async () => {
-    const key = 'write:FsusBlog:dispatch-selector'
+    const key = 'write:RepositoryA:dispatch-selector'
     const tasks = [
         stageTask(9330, { conflictKeys: [key] }),
         stageTask(9331, { conflictKeys: [key] })
@@ -1203,7 +1203,7 @@ test('[C02] same issue worktree test and implementation writers cannot fill two 
 })
 
 test('[C03] releasing conflict requires no semantic dependency graph change', async () => {
-    const key = 'write:FsusBlog:shared-owner'
+    const key = 'write:RepositoryA:shared-owner'
     const first = stageTask(9350, { priorityClass: 'P0', conflictKeys: [key] })
     const second = stageTask(9351, { conflictKeys: [key] })
     const roundOne = await select({
@@ -1220,7 +1220,7 @@ test('[C03] releasing conflict requires no semantic dependency graph change', as
 })
 
 test('[C04] path-prefix-only conflict provenance and fake dependencies fail closed', async () => {
-    const key = 'write:FsusBlog:path-prefix-only'
+    const key = 'write:RepositoryA:path-prefix-only'
     const task = stageTask(9352, {
         conflictKeys: [key],
         conflictKeyEvidence: {
@@ -1238,8 +1238,8 @@ test('[C04] path-prefix-only conflict provenance and fake dependencies fail clos
         () => validateInput({
             tasks: [stageTask(9353), stageTask(9354)],
             semanticDependencies: [{
-                from: 'Ozwasyd/FsusBlog#9353',
-                to: 'Ozwasyd/FsusBlog#9354',
+                from: 'ExampleOrg/RepositoryA#9353',
+                to: 'ExampleOrg/RepositoryA#9354',
                 reason: 'serialize shared writer',
                 serializationOnly: true,
                 evidenceDigest: 'a'.repeat(64)
@@ -1292,7 +1292,7 @@ const bindingFactMutations = [
 
 for (const mutation of bindingFactMutations) {
     test(`[C05] #1816 binding rejects ${mutation.id}`, async () => {
-        const conflictKey = 'write:FsusBlog:frontier-bound-owner'
+        const conflictKey = 'write:RepositoryA:frontier-bound-owner'
         const resourceKey = 'resource:docker:frontier-bound'
         const tasks = [
             stageTask(9355, {
@@ -1325,7 +1325,7 @@ for (const mutation of bindingFactMutations) {
 }
 
 test('[C06] removing one shared conflict fact cannot make both writers selectable', async () => {
-    const conflictKey = 'write:FsusBlog:shared-bound-owner'
+    const conflictKey = 'write:RepositoryA:shared-bound-owner'
     const tasks = [
         stageTask(9357, {
             priorityClass: 'P0',
@@ -1388,10 +1388,10 @@ test('[L03] lease acquisition binds owner, attempt, time, recovery, keys, and di
         request: {
             leaseId: 'lease-new-1',
             kind: 'write',
-            keys: ['write:FsusBlog:dispatch-selector'],
+            keys: ['write:RepositoryA:dispatch-selector'],
             ownerId: 'test-owner-1820',
             attemptId: 'attempt-1820-1',
-            stageTaskId: 'Ozwasyd/FsusBlog#1820@test-contract',
+            stageTaskId: 'ExampleOrg/RepositoryA#1820@test-contract',
             acquiredAt: cases.computedAt,
             expiresAt: '2026-08-01T04:00:00.000Z',
             recoveryRule: 'verify-owner-terminal-then-record-recovery-evidence'
@@ -1417,7 +1417,7 @@ test('[L03] lease acquisition binds owner, attempt, time, recovery, keys, and di
 
 test('[L04] only matching attempt releases a lease', async () => {
     const { releaseDispatchLease } = await implementation()
-    const lease = leaseRecord({ kind: 'write', keys: ['write:FsusBlog:core'] })
+    const lease = leaseRecord({ kind: 'write', keys: ['write:RepositoryA:core'] })
     await expectDenied(
         () => releaseDispatchLease({
             lease,
@@ -1442,7 +1442,7 @@ test('[L05] expiry requires recovery evidence before another attempt acquires', 
     const expired = leaseRecord({
         expiresAt: '2026-08-01T02:59:00.000Z',
         kind: 'write',
-        keys: ['write:FsusBlog:core']
+        keys: ['write:RepositoryA:core']
     })
     await expectDenied(
         () => acquireDispatchLease({
@@ -1453,7 +1453,7 @@ test('[L05] expiry requires recovery evidence before another attempt acquires', 
                 keys: expired.keys,
                 ownerId: 'owner-2',
                 attemptId: 'attempt-2',
-                stageTaskId: 'Ozwasyd/FsusBlog#9999@test-contract',
+                stageTaskId: 'ExampleOrg/RepositoryA#9999@test-contract',
                 acquiredAt: cases.computedAt,
                 expiresAt: '2026-08-01T05:00:00.000Z',
                 recoveryRule: expired.recoveryRule
@@ -1479,14 +1479,14 @@ test('[L06] root-only delivery blocks only matching repository or keys', async (
         stageKind: 'delivery',
         stageRole: 'root-scheduler',
         rootOnly: true,
-        conflictKeys: ['repository:Ozwasyd/FsusBlog:delivery']
+        conflictKeys: ['repository:ExampleOrg/RepositoryA:delivery']
     })
     const blogWriter = stageTask(9381, {
-        conflictKeys: ['repository:Ozwasyd/FsusBlog:delivery']
+        conflictKeys: ['repository:ExampleOrg/RepositoryA:delivery']
     })
     const uiWriter = stageTask(3381, {
-        issueId: 'Ozwasyd/FsusUI#3381',
-        repository: 'Ozwasyd/FsusUI'
+        issueId: 'ExampleOrg/RepositoryB#3381',
+        repository: 'ExampleOrg/RepositoryB'
     })
     const batch = await select({
         tasks: [delivery, blogWriter, uiWriter],
@@ -1521,8 +1521,8 @@ test('[S01] DAG agents and unmet stages are not selectable backlog', async () =>
 
 test('[S02] ordinary code role cannot own UI paths and verifiers cannot write', async () => {
     const wrongUiRole = stageTask(3392, {
-        issueId: 'Ozwasyd/FsusUI#3392',
-        repository: 'Ozwasyd/FsusUI',
+        issueId: 'ExampleOrg/RepositoryB#3392',
+        repository: 'ExampleOrg/RepositoryB',
         stageKind: 'ui-ux-implementation',
         stageRole: 'code-implementer',
         writePaths: ['vue/packages/components/markdown-editor/src/markdown-editor.vue']
@@ -1531,7 +1531,7 @@ test('[S02] ordinary code role cannot own UI paths and verifiers cannot write', 
         stageKind: 'behavior-verification',
         stageRole: 'test-owner',
         writePaths: ['tests/forbidden-write.test.mjs'],
-        conflictKeys: ['write:FsusBlog:forbidden'],
+        conflictKeys: ['write:RepositoryA:forbidden'],
         candidateSha: 'c'.repeat(40)
     })
     await expectDenied(
@@ -1584,12 +1584,12 @@ test('[G01] complete high-conflict same-epoch group proposal is machine-valid', 
         proposal: groupProposal(),
         stageTasks: [
             stageTask(9401, {
-                issueId: 'Ozwasyd/FsusBlog#9401',
-                conflictKeys: ['write:FsusBlog:shared-contract-tests']
+                issueId: 'ExampleOrg/RepositoryA#9401',
+                conflictKeys: ['write:RepositoryA:shared-contract-tests']
             }),
             stageTask(9402, {
-                issueId: 'Ozwasyd/FsusBlog#9402',
-                conflictKeys: ['write:FsusBlog:shared-contract-tests']
+                issueId: 'ExampleOrg/RepositoryA#9402',
+                conflictKeys: ['write:RepositoryA:shared-contract-tests']
             })
         ]
     })
@@ -1614,12 +1614,12 @@ test('[G02] unrelated grouping and hidden dependency fall back per issue', async
         () => validateAcceptanceGroupProposal({
             proposal: groupProposal({
                 memberOrder: [
-                    'Ozwasyd/FsusBlog#9402',
-                    'Ozwasyd/FsusBlog#9401'
+                    'ExampleOrg/RepositoryA#9402',
+                    'ExampleOrg/RepositoryA#9401'
                 ],
                 hiddenDependency: {
-                    from: 'Ozwasyd/FsusBlog#9401',
-                    to: 'Ozwasyd/FsusBlog#9402'
+                    from: 'ExampleOrg/RepositoryA#9401',
+                    to: 'ExampleOrg/RepositoryA#9402'
                 }
             }),
             stageTasks: tasks
@@ -1642,12 +1642,12 @@ test('[G03] group session without active member cannot occupy a slot', async () 
 test('[G04] group proposal cannot starve an independent higher-priority task', async () => {
     const high = stageTask(9410, { priorityClass: 'P0' })
     const groupedA = stageTask(9401, {
-        issueId: 'Ozwasyd/FsusBlog#9401',
-        conflictKeys: ['write:FsusBlog:shared-contract-tests']
+        issueId: 'ExampleOrg/RepositoryA#9401',
+        conflictKeys: ['write:RepositoryA:shared-contract-tests']
     })
     const groupedB = stageTask(9402, {
-        issueId: 'Ozwasyd/FsusBlog#9402',
-        conflictKeys: ['write:FsusBlog:shared-contract-tests']
+        issueId: 'ExampleOrg/RepositoryA#9402',
+        conflictKeys: ['write:RepositoryA:shared-contract-tests']
     })
     const batch = await select({
         tasks: [groupedA, groupedB, high],
@@ -1747,8 +1747,8 @@ test('[G06] memberOrder is canonical and order-sensitive even when digest is unc
 
     const bogus = groupProposal({
         memberOrder: [
-            'Ozwasyd/FsusBlog#9401',
-            'Ozwasyd/FsusBlog#9999'
+            'ExampleOrg/RepositoryA#9401',
+            'ExampleOrg/RepositoryA#9999'
         ]
     })
     await expectDenied(
@@ -1760,21 +1760,21 @@ test('[G06] memberOrder is canonical and order-sensitive even when digest is unc
     )
 })
 
-test('[F01] FsusUI 267-279 sample yields its exact explainable safe batch', async () => {
-    const sample = cases.fsusUiSample
+test('[F01] RepositoryB 267-279 sample yields its exact explainable safe batch', async () => {
+    const sample = cases.repositoryBSample
     const tasks = [
         stageTask(267, {
-            issueId: 'Ozwasyd/FsusUI#267',
+            issueId: 'ExampleOrg/RepositoryB#267',
             repository: sample.repository,
             priorityClass: 'P0',
             conflictKeys: [
-                'write:FsusUI:markdown-editor-contract-tests',
-                'worktree:FsusUI:issue-267:write'
+                'write:RepositoryB:markdown-editor-contract-tests',
+                'worktree:RepositoryB:issue-267:write'
             ],
-            issueWorktreeId: 'FsusUI-267'
+            issueWorktreeId: 'RepositoryB-267'
         }),
         stageTask(268, {
-            issueId: 'Ozwasyd/FsusUI#268',
+            issueId: 'ExampleOrg/RepositoryB#268',
             repository: sample.repository,
             stageKind: 'behavior-verification',
             stageRole: 'test-owner',
@@ -1791,14 +1791,14 @@ test('[F01] FsusUI 267-279 sample yields its exact explainable safe batch', asyn
             estimatedLongTask: true
         }),
         stageTask(272, {
-            issueId: 'Ozwasyd/FsusUI#272',
+            issueId: 'ExampleOrg/RepositoryB#272',
             repository: sample.repository,
             priorityClass: 'P1',
             conflictKeys: [
-                'write:FsusUI:markdown-editor-contract-tests',
-                'worktree:FsusUI:issue-272:write'
+                'write:RepositoryB:markdown-editor-contract-tests',
+                'worktree:RepositoryB:issue-272:write'
             ],
-            issueWorktreeId: 'FsusUI-272'
+            issueWorktreeId: 'RepositoryB-272'
         })
     ]
     const batch = await select({ tasks, availableSlots: 15 })
@@ -1811,13 +1811,13 @@ test('[F01] FsusUI 267-279 sample yields its exact explainable safe batch', asyn
         sample.expectedDeferredIssueIds.toSorted()
     )
     assert.equal(
-        batch.deferReasons['Ozwasyd/FsusUI#272@test-contract'].code,
+        batch.deferReasons['ExampleOrg/RepositoryB#272@test-contract'].code,
         'write-conflict'
     )
 })
 
-test('[F02] blocked FsusUI dependents never enter the safe-selectable backlog', async () => {
-    const sample = cases.fsusUiSample
+test('[F02] blocked RepositoryB dependents never enter the safe-selectable backlog', async () => {
+    const sample = cases.repositoryBSample
     const readyIds = sample.readyStageTasks.map(({ issueId }) => issueId)
     assert.equal(
         sample.blockedIssueIds.some((issueId) => readyIds.includes(issueId)),
@@ -1905,7 +1905,7 @@ async function executeMutation(control) {
     }
 
     if (control.surface === 'binding') {
-        const conflictKey = 'write:FsusBlog:mutation-bound-owner'
+        const conflictKey = 'write:RepositoryA:mutation-bound-owner'
         const resourceKey = 'resource:docker:mutation-bound'
         const tasks = [
             stageTask(9550, {
@@ -1960,8 +1960,8 @@ async function executeMutation(control) {
             tasks[0].writePaths = []
         } else if (control.id === 'code-role-writes-ui') {
             tasks[0] = stageTask(3500, {
-                issueId: 'Ozwasyd/FsusUI#3500',
-                repository: 'Ozwasyd/FsusUI',
+                issueId: 'ExampleOrg/RepositoryB#3500',
+                repository: 'ExampleOrg/RepositoryB',
                 stageKind: 'ui-ux-implementation',
                 stageRole: 'code-implementer',
                 writePaths: ['vue/packages/components/markdown-editor/src/markdown-editor.vue']
@@ -1971,7 +1971,7 @@ async function executeMutation(control) {
                 stageKind: 'behavior-verification',
                 stageRole: 'test-owner',
                 candidateSha: 'a'.repeat(40),
-                conflictKeys: ['write:FsusBlog:forbidden']
+                conflictKeys: ['write:RepositoryA:forbidden']
             })
         } else if (control.id === 'unstable-candidate-read') {
             tasks[0] = stageTask(9500, {
@@ -1984,8 +1984,8 @@ async function executeMutation(control) {
             })
         } else if (control.id === 'docs-before-ux') {
             tasks[0] = stageTask(3501, {
-                issueId: 'Ozwasyd/FsusUI#3501',
-                repository: 'Ozwasyd/FsusUI',
+                issueId: 'ExampleOrg/RepositoryB#3501',
+                repository: 'ExampleOrg/RepositoryB',
                 stageKind: 'documentation',
                 stageRole: 'documentation-writer',
                 stagePrerequisitesSatisfied: false,
@@ -1993,7 +1993,7 @@ async function executeMutation(control) {
                 requiredReceiptDigests: ['behavior-green-without-ux']
             })
         } else if (control.id === 'conflict-key-path-prefix-only') {
-            const key = 'write:FsusBlog:path-prefix'
+            const key = 'write:RepositoryA:path-prefix'
             tasks[0].conflictKeys = [key]
             tasks[0].conflictKeyEvidence = {
                 [key]: {
@@ -2031,7 +2031,7 @@ async function executeMutation(control) {
                     keys: lease.keys,
                     ownerId: 'new-owner',
                     attemptId: 'new-attempt',
-                    stageTaskId: 'Ozwasyd/FsusBlog#9999@test-contract',
+                    stageTaskId: 'ExampleOrg/RepositoryA#9999@test-contract',
                     acquiredAt: cases.computedAt,
                     expiresAt: '2026-08-01T05:00:00.000Z',
                     recoveryRule: lease.recoveryRule
@@ -2063,8 +2063,8 @@ async function executeMutation(control) {
         } else if (control.id === 'group-hidden-dependency') {
             proposal = groupProposal({
                 hiddenDependency: {
-                    from: 'Ozwasyd/FsusBlog#9401',
-                    to: 'Ozwasyd/FsusBlog#9402'
+                    from: 'ExampleOrg/RepositoryA#9401',
+                    to: 'ExampleOrg/RepositoryA#9402'
                 }
             })
         } else if (control.id.startsWith('group-evidence-')) {
@@ -2079,8 +2079,8 @@ async function executeMutation(control) {
         } else if (control.id === 'group-member-order-bogus') {
             proposal = groupProposal({
                 memberOrder: [
-                    'Ozwasyd/FsusBlog#9401',
-                    'Ozwasyd/FsusBlog#9999'
+                    'ExampleOrg/RepositoryA#9401',
+                    'ExampleOrg/RepositoryA#9999'
                 ]
             })
         } else {
@@ -2100,7 +2100,7 @@ async function executeMutation(control) {
         || control.id === 'group-starves-ready-node') {
         availableSlots = 3
     } else if (control.id === 'conflict-writers-co-selected') {
-        const key = 'write:FsusBlog:shared'
+        const key = 'write:RepositoryA:shared'
         tasks = [
             stageTask(9600, { conflictKeys: [key] }),
             stageTask(9601, { conflictKeys: [key] })

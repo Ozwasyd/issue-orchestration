@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.semantic-runtime-projection-mutation-controls.v1",
-  "issue": "Ozwasyd/FsusBlog#1833",
+  "issue": "ExampleOrg/RepositoryA#1833",
   "controls": [
     {
       "id": "N01-completion-close-dispatches-updater",

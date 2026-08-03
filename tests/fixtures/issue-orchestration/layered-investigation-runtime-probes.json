@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.layered-investigation-runtime-probes.v2",
-  "issue": "Ozwasyd/FsusBlog#1822",
+  "issue": "ExampleOrg/RepositoryA#1822",
   "revision": 7,
   "observedAt": "2026-08-01T12:00:00+08:00",
   "baseProbe": {

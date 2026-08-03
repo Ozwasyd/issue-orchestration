@@ -1,6 +1,6 @@
 {
     "schema": "issue-orchestration.dispatch-receipt-acceptance-map.v1",
-    "issue": "Ozwasyd/FsusBlog#1818",
+    "issue": "ExampleOrg/RepositoryA#1818",
     "authorityCommentId": 5145140476,
     "revision": 6,
     "supersedesTestContractDigest": "0e64769c92755a7a1abed6ccb05f25bc5ad057362a79ba6a6f45ae2b9f402c63",
@@ -103,7 +103,7 @@
         },
         {
             "id": "UI-AUTHORITY-01",
-            "requirement": "FsusBlog UI implementation dispatch requires the frozen design Skills and nonempty matching design-authority digests; an empty self-consistent declaration is rejected during sealing.",
+            "requirement": "RepositoryA UI implementation dispatch requires the frozen design Skills and nonempty matching design-authority digests; an empty self-consistent declaration is rejected during sealing.",
             "tests": ["P19", "RP15"],
             "mutations": ["ui-required-skills-empty-bypass"]
         },

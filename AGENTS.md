@@ -1,9 +1,9 @@
 # Repository guidance
 
 This repository owns the permanent `issue-orchestration` Skill package. Keep
-product API, design, documentation, and runtime authority in FsusBlog and
-FsusUI; consume those repositories at verification time instead of copying
-their authority here.
+target-repository API, design, documentation, and runtime authority in the
+caller-supplied target repositories. Do not copy that authority here or add a
+source, installation, test, or release dependency on any target repository.
 
 Do not use the installed Skill to modify its own source. Runtime state, DAGs,
 receipts, ledgers, worktrees, and generated execution artifacts must stay

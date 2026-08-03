@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.dispatch-receipt-v2-runtime-probes.v1",
-  "issue": "Ozwasyd/FsusBlog#1832",
+  "issue": "ExampleOrg/RepositoryA#1832",
   "probes": [
     {"id": "RP01", "mutation": "N01-root-actual-sol-low", "expectedCode": "root-startup-profile-mismatch"},
     {"id": "RP02", "mutation": "N02-bounded-terra-without-reclassification", "expectedCode": "dispatch-execution-route-binding"},

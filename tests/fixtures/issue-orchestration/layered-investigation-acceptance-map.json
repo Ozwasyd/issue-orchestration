@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.layered-investigation-acceptance-map.v1",
-  "issue": "Ozwasyd/FsusBlog#1822",
+  "issue": "ExampleOrg/RepositoryA#1822",
   "acceptance": [
     {
       "id": "SCHEMA-01",

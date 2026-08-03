@@ -278,10 +278,10 @@ async function installedRuntimeModule(installRoot, name) {
 test('P01 freezes the complete issue-specific test contract', () => {
     assert.equal(contract.schema,
         'issue-orchestration.shared-package-test-contract.v1')
-    assert.equal(contract.issueId, 'Ozwasyd/FsusBlog#1823')
+    assert.equal(contract.issueId, 'ExampleOrg/RepositoryA#1823')
     assert.equal(contract.baseSha,
         'd98bed01a76fcca5dc1657e63886b8da48ce346d')
-    assert.match(contract.testOwnerId, /^test-owner-fsusblog-1823-/u)
+    assert.match(contract.testOwnerId, /^test-owner-repositorya-1823-/u)
     assert.deepEqual(contract.allowedTestPaths.toSorted(), [
         'tests/fixtures/issue-orchestration/shared-package-acceptance-map.json',
         'tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json',
@@ -316,10 +316,11 @@ test('P02 requires one complete authoring package and a self-consistent manifest
         'issue-orchestration.shared-package-manifest.v1')
     assert.match(manifest.packageVersion, /^\d+\.\d+\.\d+$/u)
     assert.match(manifest.sourceCommit, /^[a-f0-9]{40}$/u)
-    assert.deepEqual(manifest.supportedRepositories.toSorted(), [
-        'Ozwasyd/FsusBlog',
-        'Ozwasyd/FsusUI'
-    ])
+    assert.equal(
+        manifest.repositoryTargetPolicy,
+        'caller-supplied-operator-owned-remote-identity'
+    )
+    assert.deepEqual(manifest.sourceRepositoryDependencies, [])
     assert.equal(manifest.modelPoolPolicyVersion, 'stage-model-pool.v3')
     for (const field of [
         'sourceTreeDigest',
@@ -767,7 +768,7 @@ test('P11 acceptance, probes and mutation controls cover every issue gate', () =
     assert.equal(controls.length, 12)
     const testIds = new Set([
         'P01', 'P02', 'P03', 'P04', 'P05', 'P06',
-        'P07', 'P08', 'P09', 'P10', 'P11'
+        'P07', 'P08', 'P09', 'P10', 'P11', 'P12'
     ])
     const mappedTests = new Set(acceptance.acceptance
         .flatMap((entry) => entry.tests))
@@ -785,4 +786,25 @@ test('P11 acceptance, probes and mutation controls cover every issue gate', () =
         'P02', 'P03', 'P04', 'P05', 'P06',
         'P07', 'P08', 'P09', 'P10'
     ])
+})
+
+test('P12 package has no product-repository identity or sibling-checkout dependency', () => {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+    const trustPolicy = JSON.parse(fs.readFileSync(path.join(
+        packageRoot,
+        'policy/runtime-trust-policy.json'
+    ), 'utf8'))
+    assert.deepEqual(manifest.sourceRepositoryDependencies, [])
+    assert.equal(Object.hasOwn(manifest, 'supportedRepositories'), false)
+    for (const mode of Object.values(trustPolicy.modes)) {
+        assert.equal(Object.hasOwn(mode, 'repositoryAllowlist'), false)
+        assert.equal(
+            mode.repositoryAdmission,
+            'caller-supplied-operator-owned-remote-identity'
+        )
+    }
+    for (const relative of Object.keys(manifest.artifactDigests)) {
+        const source = fs.readFileSync(path.join(packageRoot, relative), 'utf8')
+        assert.doesNotMatch(source, /fsus[-_ ]?(?:blog|ui)/iu, relative)
+    }
 })

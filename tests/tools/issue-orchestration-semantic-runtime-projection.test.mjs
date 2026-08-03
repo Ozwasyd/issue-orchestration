@@ -159,7 +159,7 @@ async function baseline() {
     const loaded = await runtime()
     const semanticGraph = loaded.createSemanticGraph({
         ...clone(cases.semanticGraphInput),
-        scopeDigest: digest({ scope: 'fsusblog-control-plane' }),
+        scopeDigest: digest({ scope: 'repositorya-control-plane' }),
         semanticGraphInputDigest: digest({ semantic: cases.semanticGraphInput })
     })
     const expectedRemoteMutations = loaded.sealExpectedRemoteMutations(
@@ -229,16 +229,16 @@ function projectionDecisionInput(state, overrides = {}) {
 async function semanticPatch(state) {
     const operations = [{
         type: 'change-owner',
-        nodeId: 'Ozwasyd/FsusBlog#1833',
+        nodeId: 'ExampleOrg/RepositoryA#1833',
         from: 'orchestration',
         to: 'orchestration-v2'
     }, {
         type: 'add-edge',
-        from: 'Ozwasyd/FsusBlog#1829',
-        to: 'Ozwasyd/FsusBlog#1833'
+        from: 'ExampleOrg/RepositoryA#1829',
+        to: 'ExampleOrg/RepositoryA#1833'
     }, {
         type: 'change-acceptance-group',
-        nodeId: 'Ozwasyd/FsusBlog#1833',
+        nodeId: 'ExampleOrg/RepositoryA#1833',
         from: null,
         to: 'control-plane-cutover'
     }]
@@ -255,10 +255,10 @@ async function semanticPatch(state) {
 test('frozen #1833 contract assets bind the live issue, Sol/xhigh owner and one test tree', () => {
     assert.equal(contract.schema,
         'issue-orchestration.semantic-runtime-projection-test-contract.v1')
-    assert.equal(contract.issueId, 'Ozwasyd/FsusBlog#1833')
+    assert.equal(contract.issueId, 'ExampleOrg/RepositoryA#1833')
     assert.equal(contract.baseSha, '788737a0ad22003544b2d439df995e1097de0ee2')
     assert.equal(contract.testOwnerId,
-        'test-owner-fsusblog-1833-788737a0-sol-xhigh')
+        'test-owner-repositorya-1833-788737a0-sol-xhigh')
     assert.deepEqual(contract.actualProfile, {
         model: 'gpt-5.6-sol',
         effort: 'xhigh',
@@ -315,7 +315,7 @@ test('P01 semanticGraph/runtimeProjection schemas, validators, digests and persi
         projection: state.afterProjection
     }))
 
-    const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fsusblog-1833-state-'))
+    const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'repositorya-1833-state-'))
     try {
         const persisted = state.loaded.persistSemanticRuntimeState({
             stateRoot,
@@ -388,11 +388,11 @@ test('P03 registered delivery mutations reconcile before classification', async 
 test('P04 completion plus close leaves semantic digest stable and unlocks the successor', async () => {
     const state = await baseline()
     assert.equal(state.beforeProjection.completed.includes(
-        'Ozwasyd/FsusBlog#1819'), false)
+        'ExampleOrg/RepositoryA#1819'), false)
     assert.equal(state.afterProjection.completed.includes(
-        'Ozwasyd/FsusBlog#1819'), true)
+        'ExampleOrg/RepositoryA#1819'), true)
     assert.equal(state.afterProjection.readyFrontier.includes(
-        'Ozwasyd/FsusBlog#1833'), true)
+        'ExampleOrg/RepositoryA#1833'), true)
     assert.equal(state.deliveryClassification.semanticGraphDigestBefore,
         state.deliveryClassification.semanticGraphDigestAfter)
     const receipt = state.loaded.sealDagUpdateDecisionReceipt(
@@ -418,14 +418,14 @@ test('P05 slot, lease, epoch, ready, candidate and cleanup are projection-only',
         availableSlots: 0,
         leases: [{
             leaseId: 'lease-1833',
-            issueId: 'Ozwasyd/FsusBlog#1833'
+            issueId: 'ExampleOrg/RepositoryA#1833'
         }],
         epochId: 'epoch-1',
         candidateCommits: {
-            'Ozwasyd/FsusBlog#1819': '1111111111111111111111111111111111111111'
+            'ExampleOrg/RepositoryA#1819': '1111111111111111111111111111111111111111'
         },
         cleanup: {
-            'Ozwasyd/FsusBlog#1819': 'resources-clean'
+            'ExampleOrg/RepositoryA#1819': 'resources-clean'
         }
     }
     const afterProjection = state.loaded.projectRuntime({
@@ -504,7 +504,7 @@ test('P07 patch validator accepts only recomputable minimal updater output', asy
     })
     assert.equal(next.semanticGraphDigest, patch.resultSemanticGraphDigest)
     assert.equal(next.nodes.find(({ id }) =>
-        id === 'Ozwasyd/FsusBlog#1833').owner, 'orchestration-v2')
+        id === 'ExampleOrg/RepositoryA#1833').owner, 'orchestration-v2')
 })
 
 test('P08 full proposal validator admits only initial create and evidenced recovery', async () => {
@@ -714,8 +714,8 @@ const negativeControls = {
     'N05-projector-modifies-semantic-edge': async (state, code) => {
         const projection = clone(state.afterProjection)
         projection.semanticEdges = [{
-            from: 'Ozwasyd/FsusBlog#1833',
-            to: 'Ozwasyd/FsusBlog#1819'
+            from: 'ExampleOrg/RepositoryA#1833',
+            to: 'ExampleOrg/RepositoryA#1819'
         }]
         projection.runtimeProjectionDigest =
             unsignedDigest(projection, 'runtimeProjectionDigest')
@@ -762,7 +762,7 @@ const negativeControls = {
             baseSemanticGraph: state.semanticGraph,
             operations: [{
                 type: 'change-owner',
-                nodeId: 'Ozwasyd/FsusBlog#1833',
+                nodeId: 'ExampleOrg/RepositoryA#1833',
                 from: 'orchestration',
                 to: 'root-authored'
             }],
@@ -783,7 +783,7 @@ const negativeControls = {
             baseSemanticGraph: state.semanticGraph,
             operations: [{
                 type: 'mark-ready',
-                nodeId: 'Ozwasyd/FsusBlog#1833'
+                nodeId: 'ExampleOrg/RepositoryA#1833'
             }],
             evidenceDigests: ['9'.repeat(64)],
             authoredBy: graphAuthor()

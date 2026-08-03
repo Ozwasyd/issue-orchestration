@@ -8,9 +8,9 @@
     "profile": "gpt-5.6-terra/max",
     "writeLease": "tests-fixtures-runtime-probes-mutation-controls-acceptance-map-only"
   },
-  "issueId": "Ozwasyd/FsusBlog#1828",
+  "issueId": "ExampleOrg/RepositoryA#1828",
   "base": {
-    "repository": "Ozwasyd/FsusBlog",
+    "repository": "ExampleOrg/RepositoryA",
     "ref": "origin/master",
     "sha": "321b53f698f33ae8e3e3bfae73c82f326db60ed9"
   },
@@ -72,14 +72,14 @@
     "destructive operations outside test-created temporary roots"
   ],
   "fileHashes": {
-    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs": "257cedd615e0e20b1a6260b982025837ea305301d2c3bd2d5fa2eaf9de4bb6f8",
-    "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json": "5ef2f288e921c9b230854fdaaaa45a89d41211807cffbdabaa61c4518b73db31",
-    "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json": "8812a4a1d9eb171fa7b28fa332a7b075dc050090c5550208491561a2896f8742",
-    "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json": "b4fbd107315bcdc117475c55be58028c8106b57a7c602beb07305078f019e8b8",
-    "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json": "e3177496ff68f5f0f09db40dcd9ffb1d3faa77df5b439040f44b990496a265e0",
-    "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json": "144ae0f11cd8831ef1c5e2f8cbd933bbdc384278700156826e2fde014d79e1a5"
+    "tests/tools/issue-orchestration-resource-lifecycle.test.mjs": "101d18aa04b1517e8538ae9bdc741e82f3e5d37a10aa1569e8f1db86861a49c1",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-cases.json": "b658da5a0a83fbfbb9b2a16799fdfb27f4720310696f282bc22d24ced74960a2",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-acceptance-map.json": "8608fcb9d30ded87fd2a56d806cbc304799752b79e25d24ddfafdc8d31fdda89",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-expected-initial-failures.json": "405fcca4e5388c99d8cf16fba89a8e4b8d80b234a920fe7e967002e4d70ede81",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-runtime-probes.json": "9c05159ed06d23166646ca1ba356a87269830cc2a394d42e187844052c7e6743",
+    "tests/fixtures/issue-orchestration/resource-lifecycle-mutation-controls.json": "4678be7223795977fbe3a19dcec2f4f42e929354b0bb8daf89b9d742d19325f2"
   },
-  "frozenTreeDigest": "9dc1c358f96206f55df164209ceee12b8df26b37e517855ae688635072cd19ee",
+  "frozenTreeDigest": "097c03f3f9588897b887909bed93caedab442cdc0ab21dfe5d2e029e23f1e07e",
   "hashAlgorithm": "sha256-raw-file-bytes-and-canonical-json",
-  "contractDigest": "f63545fdb6108d378f37d0a36d00bf3c727168ad890b1f14b23192e5f00b7d29"
+  "contractDigest": "5793c9d9ae1a91d265d38668b8428e7eea55ccdc1439c40bda788cfb8545ce4d"
 }

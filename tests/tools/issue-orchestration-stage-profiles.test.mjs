@@ -93,7 +93,7 @@ async function policy() {
 function classification(overrides = {}) {
     return {
         domain: 'generic-code',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',
@@ -132,7 +132,7 @@ function assignment(overrides = {}) {
         requiredSkillDigests: [],
         capabilityDigest: hash('c'),
         classification: classification(),
-        memberIssueId: 'Ozwasyd/FsusBlog#1819',
+        memberIssueId: 'ExampleOrg/RepositoryA#1819',
         memberRoutingReceiptDigest: hash('d'),
         freshContext: false,
         forkTurns: '3',
@@ -431,11 +431,11 @@ const negativeCases = {
     }),
     'N10-group-member-inherits-route': () => ({
         previous: assignment({
-            memberIssueId: 'Ozwasyd/FsusBlog#1818',
+            memberIssueId: 'ExampleOrg/RepositoryA#1818',
             memberRoutingReceiptDigest: hash('8')
         }),
         next: assignment({
-            memberIssueId: 'Ozwasyd/FsusBlog#1819',
+            memberIssueId: 'ExampleOrg/RepositoryA#1819',
             memberRoutingReceiptDigest: hash('8')
         })
     }),

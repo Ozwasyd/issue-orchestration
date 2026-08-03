@@ -75,8 +75,8 @@ function artifacts({
     const requiredFiles = fixture.filePaths.slice(0, 1)
     const compiled = compileWriterStageTestArtifacts({
         repository: stageRole === 'ui-ux-implementer'
-            ? 'Ozwasyd/FsusBlog-ui-routing'
-            : 'Ozwasyd/FsusBlog',
+            ? 'ExampleOrg/RepositoryA-ui-routing'
+            : 'ExampleOrg/RepositoryA',
         issue: 1875,
         stageRole,
         stagePhase,
@@ -99,7 +99,7 @@ function artifacts({
 function classification(overrides = {}) {
     return {
         domain: 'orchestration-core',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',
@@ -202,7 +202,7 @@ function availabilityBinding({
 }
 
 test('C01 freezes the permanent #1875 contract and four public schemas', () => {
-    assert.equal(contract.issue, 'Ozwasyd/FsusBlog#1875')
+    assert.equal(contract.issue, 'ExampleOrg/RepositoryA#1875')
     for (const identity of contract.schemas) {
         const file = path.join(
             packageRoot,

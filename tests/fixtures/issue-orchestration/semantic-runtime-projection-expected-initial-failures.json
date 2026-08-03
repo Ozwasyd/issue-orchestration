@@ -1,6 +1,6 @@
 {
   "schema": "issue-orchestration.semantic-runtime-projection-expected-initial-failures.v1",
-  "issueId": "Ozwasyd/FsusBlog#1833",
+  "issueId": "ExampleOrg/RepositoryA#1833",
   "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
   "expectedStatus": "red",
   "baselineCommand": [
@@ -64,6 +64,6 @@
     "firstFailure": "semantic-runtime-module-missing",
     "semanticCapabilityFailures": 32,
     "observedAt": "2026-08-01T21:41:25+08:00",
-    "evidencePath": "/tmp/fsusblog-1833-frozen-red.tap"
+    "evidencePath": "/tmp/repositorya-1833-frozen-red.tap"
   }
 }

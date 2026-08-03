@@ -2,31 +2,31 @@
   "schema": "issue-orchestration.dispatch-receipt-v2-test-contract.v1",
   "phase": "test-contract",
   "status": "frozen-red",
-  "issueId": "Ozwasyd/FsusBlog#1832",
+  "issueId": "ExampleOrg/RepositoryA#1832",
   "authority": {
     "kind": "merged-issue-body",
     "updatedAt": "2026-08-01T09:04:48Z"
   },
-  "testOwnerId": "test-owner-fsusblog-1832-788737a0",
+  "testOwnerId": "test-owner-repositorya-1832-788737a0",
   "baseSha": "788737a0ad22003544b2d439df995e1097de0ee2",
   "groupId": null,
   "pipeline": "ordinary-serial",
   "ciPolicy": "out-of-scope-no-ci",
   "dependencyBindings": [
     {
-      "issue": "Ozwasyd/FsusBlog#1817",
+      "issue": "ExampleOrg/RepositoryA#1817",
       "state": "CLOSED",
       "closedAt": "2026-08-01T01:06:40Z",
       "deliveredCommit": "9c02ed22bdd578d07d6e4ca8c1c4c9bc161bbc18"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1818",
+      "issue": "ExampleOrg/RepositoryA#1818",
       "state": "CLOSED",
       "closedAt": "2026-08-01T01:42:48Z",
       "deliveredCommit": "c8cb56dce27769a3cc3663cc0e39cc0a75716fed"
     },
     {
-      "issue": "Ozwasyd/FsusBlog#1819",
+      "issue": "ExampleOrg/RepositoryA#1819",
       "state": "CLOSED",
       "closedAt": "2026-08-01T12:22:33Z",
       "deliveredCommit": "aff9260d358171d7765e542e56bf18635b328583"
@@ -97,14 +97,14 @@
   ],
   "frozenTestTree": {
     "algorithm": "sha256-raw-bytes-and-canonical-json-v1",
-    "digest": "43075108c7e1aa3e98f88c7ce29cd144a5fbb7192e85f4374d7553ac695e2f74"
+    "digest": "43393ceec3710b1eb92dd2911150de9b98e3cdbbf8f8d0b7f29fbd3476b8c107"
   },
   "fileHashes": {
-    "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs": "587357d25f44d0ad9037695d0a08bcf785d2c10d2fc8e0a4f7f8000aa0cda57c",
-    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-acceptance-map.json": "5f3560de91c1f2ce1d142856cf001a96033fdfa41408bf794b81ea8b46bc56d6",
-    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-expected-initial-failures.json": "c5452fd5dc11de526c33fe62098732e2fb5aa9800da9b4157dd84536a76ad2bd",
-    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-runtime-probes.json": "2710fdc8d5f382d56a0c047840393371b07a9ecf444981a6b04ce8145b207e39",
-    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-mutation-controls.json": "5afbaa985745c3e779ddf83ab8b4c8f552b0709d7cb1b1da0e46a4594b3fde4b"
+    "tests/tools/issue-orchestration-dispatch-receipt-v2.test.mjs": "b6fd37bfa19a8b2f7f7dd1a57326c85051a1e8c074116b4a4d8da3d984c6eb95",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-acceptance-map.json": "00909ec272af7f01bf9d24212d9f5987ec2daa0498c3410ae020419508ad9db7",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-expected-initial-failures.json": "cca03db8342d0466ba046306b3abb624f095de85812d34172405cad4b9b2eaae",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-runtime-probes.json": "0f8489a518388ff8c59be81f8fc14b7dff0cad46fc5b8e0e371364c475f33caf",
+    "tests/fixtures/issue-orchestration/dispatch-receipt-v2-mutation-controls.json": "0749e943a969d47d082389bb954bdbd697adea89676164f2918ffe2a23e92a35"
   },
   "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
   "selfHashPolicy": "fileHashes covers raw bytes of every allowedTestPaths entry except this manifest; testContractDigest covers canonical JSON with testContractDigest omitted",
@@ -114,5 +114,5 @@
     "fail": 31,
     "skipped": 0
   },
-  "testContractDigest": "cf814ba14ab0cc3b154a77fa5c768503814753cf2dfcf2222b986b43bf562e9d"
+  "testContractDigest": "bbf5454870c16cb14de74a943d2c59e51b5b90eaebde541f4e79dcf861874d76"
 }

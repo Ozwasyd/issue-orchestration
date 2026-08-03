@@ -54,11 +54,11 @@ function temporaryRepository(remoteUrl) {
 }
 
 const repositoryRoot = temporaryRepository(
-    'https://github.com/Ozwasyd/FsusBlog.git'
+    'https://github.com/ExampleOrg/RepositoryA.git'
 )
 
 function rootBinding(repositoryTargets = [{
-    repository: 'Ozwasyd/FsusBlog',
+    repository: 'ExampleOrg/RepositoryA',
     repositoryPath: repositoryRoot
 }], startup = verifiedRuntimeStartup({})) {
     return compileRuntimeTrustBinding({
@@ -88,7 +88,7 @@ test('T04-01 validates the versioned policy, binding, and permission evidence sc
         binding,
         evidenceClass: 'route',
         repositoryTargets: [{
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             repositoryPath: repositoryRoot
         }],
         startup
@@ -109,7 +109,7 @@ test('T04-01 validates the versioned policy, binding, and permission evidence sc
 
 test('T04-02 accepts an observed unattended full-access root and records honest evidence', () => {
     const targets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath: repositoryRoot
     }]
     const startup = verifiedRuntimeStartup({})
@@ -117,7 +117,7 @@ test('T04-02 accepts an observed unattended full-access root and records honest 
     assert.equal(validateRuntimeTrustBinding(binding, {
         expectedRole: 'root-scheduler',
         expectedExecutionClass: 'root-control',
-        expectedRepositories: ['Ozwasyd/FsusBlog'],
+        expectedRepositories: ['ExampleOrg/RepositoryA'],
         repositoryTargets: targets,
         startup
     }), binding)
@@ -158,7 +158,7 @@ test('T04-03 rejects read-only, unobserved, and non-V2 Codex root claims', () =>
             effectivePermissionProfile: 'danger-full-access',
             permissionProfileObserved: true,
             repositoryTargets: [{
-                repository: 'Ozwasyd/FsusBlog',
+                repository: 'ExampleOrg/RepositoryA',
                 repositoryPath: repositoryRoot
             }],
             ...overrides
@@ -170,32 +170,38 @@ test('T04-03 rejects read-only, unobserved, and non-V2 Codex root claims', () =>
     }
 })
 
-test('T04-04 rejects unknown and exact-repository allowlist misses', () => {
+test('T04-04 accepts caller-supplied repositories and rejects unresolved or mismatched identity', () => {
     const missingRemote = temporaryRepository(null)
     assert.throws(() => rootBinding([{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath: missingRemote
     }]), {
         code: 'runtime-trust-repository-identity-unresolved'
     })
 
-    const ownerOnlyMatch = temporaryRepository(
-        'https://github.com/Ozwasyd/not-allowlisted.git'
+    const callerSupplied = temporaryRepository(
+        'https://github.com/ExampleOrg/caller-supplied.git'
     )
+    const binding = rootBinding([{
+        repository: 'ExampleOrg/caller-supplied',
+        repositoryPath: callerSupplied
+    }])
+    assert.equal(binding.repositoryIdentities[0].repository,
+        'ExampleOrg/caller-supplied')
     assert.throws(() => rootBinding([{
-        repository: 'Ozwasyd/not-allowlisted',
-        repositoryPath: ownerOnlyMatch
+        repository: 'ExampleOrg/different',
+        repositoryPath: callerSupplied
     }]), {
-        code: 'runtime-trust-repository-not-allowlisted'
+        code: 'runtime-trust-repository-identity-mismatch'
     })
 })
 
 test('T04-05 detects repository remote identity drift before continuation', () => {
     const repositoryPath = temporaryRepository(
-        'https://github.com/Ozwasyd/FsusBlog.git'
+        'https://github.com/ExampleOrg/RepositoryA.git'
     )
     const targets = [{
-        repository: 'Ozwasyd/FsusBlog',
+        repository: 'ExampleOrg/RepositoryA',
         repositoryPath
     }]
     const binding = rootBinding(targets)
@@ -204,7 +210,7 @@ test('T04-05 detects repository remote identity drift before continuation', () =
         'remote',
         'set-url',
         'origin',
-        'https://github.com/Ozwasyd/FsusUI.git'
+        'https://github.com/ExampleOrg/RepositoryB.git'
     )
     assert.throws(() => validateRuntimeTrustBinding(binding, {
         repositoryTargets: targets
@@ -231,7 +237,7 @@ test('T04-06 rejects forged machine isolation and disabled future mode mapping',
         effectivePermissionProfile: 'danger-full-access',
         permissionProfileObserved: true,
         repositoryTargets: [{
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             repositoryPath: repositoryRoot
         }]
     }), {
@@ -249,7 +255,7 @@ test('T04-07 full runtime access does not expand Root semantic authority', () =>
         effectivePermissionProfile: 'danger-full-access',
         permissionProfileObserved: true,
         repositoryTargets: [{
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             repositoryPath: repositoryRoot
         }]
     }), {
@@ -264,7 +270,7 @@ test('T04-07 full runtime access does not expand Root semantic authority', () =>
         effectivePermissionProfile: 'danger-full-access',
         permissionProfileObserved: true,
         repositoryTargets: [{
-            repository: 'Ozwasyd/FsusBlog',
+            repository: 'ExampleOrg/RepositoryA',
             repositoryPath: repositoryRoot
         }]
     }), {

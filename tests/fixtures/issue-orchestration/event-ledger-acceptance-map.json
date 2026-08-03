@@ -1,6 +1,6 @@
 {
     "schema": "issue-orchestration.event-ledger-acceptance-map.v1",
-    "issue": "Ozwasyd/FsusBlog#1817",
+    "issue": "ExampleOrg/RepositoryA#1817",
     "authorityCommentId": 5148362773,
     "supersedesAuthorityCommentId": 5145136921,
     "acceptance": [

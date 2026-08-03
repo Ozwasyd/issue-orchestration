@@ -2,7 +2,7 @@
   "schema": "issue-orchestration.quiescence-observation.v1",
   "runId": "run-1829-quiescence-1",
   "targetIssueSet": [
-    "Ozwasyd/FsusBlog#1829"
+    "ExampleOrg/RepositoryA#1829"
   ],
   "verifiedAt": "2026-08-02T06:00:00.000Z",
   "verifier": {
@@ -57,7 +57,7 @@
       },
       "records": [
         {
-          "target": "Ozwasyd/FsusBlog#1829",
+          "target": "ExampleOrg/RepositoryA#1829",
           "state": "closed",
           "completionEvidenceDigest": "4444444444444444444444444444444444444444444444444444444444444444",
           "remoteSnapshotDigest": "1212121212121212121212121212121212121212121212121212121212121212"
@@ -79,7 +79,7 @@
       },
       "records": [
         {
-          "target": "Ozwasyd/FsusBlog#1829",
+          "target": "ExampleOrg/RepositoryA#1829",
           "status": "complete",
           "uiNode": false,
           "frozenTestContractDigest": "6666666666666666666666666666666666666666666666666666666666666666",
@@ -404,7 +404,7 @@
         "singleSharedArtifact": true,
         "legacyRepoLocalAuthoritiesAbsent": true,
         "legacyAliasesAbsent": true,
-        "fsusuiOrchestrationCopyAbsent": true,
+        "secondaryOrchestrationCopyAbsent": true,
         "designAuthoritiesUnique": true,
         "roleSkillReceiptVerified": true,
         "digestConsistent": true,

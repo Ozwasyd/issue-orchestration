@@ -233,7 +233,7 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
     } = await importRuntime('stage-profile-policy.mjs')
     const classification = {
         domain: 'orchestration-core',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'bounded',
         uiDecisionClass: 'none',
         contractState: 'frozen',
@@ -364,7 +364,7 @@ test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () =
     )
     const base = {
         domain: 'orchestration-core',
-        effectiveOwnerRepository: 'Ozwasyd/FsusBlog',
+        effectiveOwnerRepository: 'ExampleOrg/RepositoryA',
         engineeringRiskClass: 'frontier',
         uiDecisionClass: 'none',
         contractState: 'frozen',
