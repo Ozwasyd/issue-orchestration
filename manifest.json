@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "67be0b4a77040d985ca6b99b0941eb289ad46b8a",
-    "sourceTreeDigest": "04ecd7972788a80701f947ca2ff3754d11f97d645b0f314569a9a1ae14214b2c",
+    "sourceCommit": "90b752956862acdc02cf8d5b70da85d0674a4c7b",
+    "sourceTreeDigest": "540dd5e6298a6131a4631ce33e029199c35b6fc39526035c89918e056385ddb2",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "51d0b1a3729046e8ec0b9b1a150d1cd7da7da06c419d3be486efeb5cadbdeb9b",
     "agentDigests": {
@@ -257,7 +257,7 @@
         "skills/issue-orchestration/references/runtime-discovery-canary.md": "8dc72b595b2f987e96947fe5bd4e596718d23a9c162f10dc5688ec8126609351",
         "skills/issue-orchestration/scripts/acceptance-group-session.mjs": "1213a9869810d43f84e42214a91fda6fd713aee9d1e405a6940d150af6971609",
         "skills/issue-orchestration/scripts/behavior-revalidation.mjs": "746e2d30ae1f6bd8a7a1862729c4898ccac62caba8a6334f181f104522d4b49d",
-        "skills/issue-orchestration/scripts/check-dag-gate.mjs": "87f11dc2f5a49ec46264198f9b9a46f82a6ba2d54d1d3854b70323310af48c76",
+        "skills/issue-orchestration/scripts/check-dag-gate.mjs": "4f6b144e3be01de81db504c6c6f45479d600e1e6f90c1099d408995fbc8854ba",
         "skills/issue-orchestration/scripts/codex-runtime-canary.mjs": "7a7e3672803bd4fff02cb970bca954caad9bc8c10e5a26ee2f7e61671758f034",
         "skills/issue-orchestration/scripts/completed-prerequisite-validator.mjs": "db2304701ead59756693c11bac96ef2b2de4d983d0927d6aebff6ecafdff6874",
         "skills/issue-orchestration/scripts/control-plane-advisor.mjs": "5fa62569f5375b252fe3090d38caf681d0941c3c2ba520006dd0a577e9af2e39",
@@ -301,5 +301,5 @@
         "skills/issue-orchestration/SKILL.md": "51d0b1a3729046e8ec0b9b1a150d1cd7da7da06c419d3be486efeb5cadbdeb9b",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "3b5fae74fb63761bcd493d541aa8111a1f86d3a993d713f69a86e070d1e07129"
+    "manifestDigest": "3248d1766af6a80b3bcc7becf66e38f61f8786da3095b5a4a88f9638779b25a3"
 }

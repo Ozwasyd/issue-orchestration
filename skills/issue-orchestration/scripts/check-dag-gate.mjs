@@ -16,6 +16,12 @@ import {
     validateSemanticGraph
 } from './semantic-runtime-projection.mjs'
 import {
+    validateReadyFrontier
+} from './frontier-compiler.mjs'
+import {
+    validateInvestigationProjection
+} from './investigation-compiler.mjs'
+import {
     compileRuntimePermissionEvidence,
     validateRuntimeTrustBinding
 } from './runtime-trust-policy.mjs'
@@ -133,6 +139,50 @@ export function validateDispatchProjectionPresence(dag) {
         )
     }
     return { valid: true }
+}
+
+
+function validateLayeredReadyFrontier(request) {
+    const fields = [
+        'dispatchDag',
+        'frontierProjection',
+        'frontierRuntime',
+        'investigationProjection'
+    ]
+    const present = fields.filter((field) => request?.[field] !== undefined)
+    if (present.length === 0) return
+    if (present.length !== fields.length) {
+        fail(
+            'frontier-projection-incomplete',
+            'Layered ready-frontier inputs must be supplied as one unit.'
+        )
+    }
+    try {
+        validateInvestigationProjection({
+            selectorReceipt: request.selectorReceipt,
+            dagProposal: request.dispatchDag,
+            runtimeState: request.frontierRuntime,
+            recordedProjection: request.investigationProjection
+        })
+    } catch {
+        fail(
+            'investigation-projection-invalid',
+            'Investigation projection is not canonical for the dispatch DAG.'
+        )
+    }
+    const validation = validateReadyFrontier({
+        dag: request.dispatchDag,
+        runtimeState: request.frontierRuntime,
+        selectorReceipt: request.selectorReceipt,
+        investigationProjection: request.investigationProjection,
+        recordedProjection: request.frontierProjection
+    })
+    if (!validation.valid) {
+        fail(
+            validation.code,
+            'Ready frontier does not match independently compiled eligibility.'
+        )
+    }
 }
 
 function validateRootRuntime(request, repositories) {
