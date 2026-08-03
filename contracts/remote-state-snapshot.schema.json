@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:remote-state-snapshot:v1",
+  "title": "issue-orchestration.remote-state-snapshot.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "repository",
+    "issueId",
+    "defaultBranch",
+    "defaultBranchSha",
+    "issueStateDigest",
+    "observedAt",
+    "snapshotDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.remote-state-snapshot.v1"},
+    "producerAuthority": {"const": "trusted-remote-observer"},
+    "repository": {"type": "string", "minLength": 1},
+    "issueId": {"type": "string", "minLength": 1},
+    "defaultBranch": {"type": "string", "minLength": 1},
+    "defaultBranchSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "issueStateDigest": {"$ref": "#/$defs/digest"},
+    "observedAt": {"type": "string", "format": "date-time"},
+    "snapshotDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

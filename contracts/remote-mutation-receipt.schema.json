@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:remote-mutation-receipt:v1",
+  "title": "issue-orchestration.remote-mutation-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "actorExecutionClass",
+    "actorInvocationId",
+    "deliveryControlReceiptDigest",
+    "mutationDigest",
+    "preRemoteSnapshotDigest",
+    "postRemoteSnapshotDigest",
+    "expectedPostStateDigest",
+    "observedPostStateDigest",
+    "mutationPostconditionEvidenceClass",
+    "violationCodes",
+    "disposition",
+    "observedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.remote-mutation-receipt.v1"},
+    "producerAuthority": {"const": "machine-remote-mutation-gate"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"enum": ["verified", "rejected"]},
+    "actorExecutionClass": {
+      "enum": ["root-control", "observe-only", "leased-writer"]
+    },
+    "actorInvocationId": {"type": "string", "minLength": 1},
+    "deliveryControlReceiptDigest": {"$ref": "#/$defs/nullableDigest"},
+    "mutationDigest": {"$ref": "#/$defs/digest"},
+    "preRemoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "postRemoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "expectedPostStateDigest": {"$ref": "#/$defs/digest"},
+    "observedPostStateDigest": {"$ref": "#/$defs/digest"},
+    "mutationPostconditionEvidenceClass": {
+      "const": "root-control-remote-mutation-postcondition"
+    },
+    "violationCodes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "disposition": {
+      "enum": ["accept", "invalidate-attempt", "run-fatal"]
+    },
+    "observedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    }
+  }
+}

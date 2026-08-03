@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:remote-mutation-policy:v2",
+  "title": "issue-orchestration.remote-mutation-policy.v2",
+  "type": "object",
+  "required": [
+    "schema",
+    "version",
+    "producerAuthority",
+    "snapshotAuthority",
+    "actorRules",
+    "rootActions",
+    "authorizationTtlSeconds",
+    "oneMutationPerAuthorization",
+    "expectedMutationTypes",
+    "semanticMutationTypes",
+    "projectionOnlyMutationTypes",
+    "projectionOnlyUpdaterDispatchAllowed"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.remote-mutation-policy.v2"},
+    "version": {"const": "remote-actor-authority.v2"},
+    "producerAuthority": {"const": "machine-remote-mutation-gate"},
+    "snapshotAuthority": {"const": "trusted-remote-observer"},
+    "actorRules": {
+      "type": "object",
+      "required": ["root-control", "observe-only", "leased-writer"],
+      "properties": {
+        "root-control": {"$ref": "#/$defs/actorRule"},
+        "observe-only": {"$ref": "#/$defs/actorRule"},
+        "leased-writer": {"$ref": "#/$defs/actorRule"}
+      },
+      "additionalProperties": false
+    },
+    "rootActions": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {"type": "string", "minLength": 1},
+        "uniqueItems": true
+      }
+    },
+    "authorizationTtlSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "oneMutationPerAuthorization": {"const": true},
+    "expectedMutationTypes": {"$ref": "#/$defs/strings"},
+    "semanticMutationTypes": {"$ref": "#/$defs/strings"},
+    "projectionOnlyMutationTypes": {"$ref": "#/$defs/strings"},
+    "projectionOnlyUpdaterDispatchAllowed": {"const": false}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "actorRule": {
+      "type": "object",
+      "required": ["remoteMutationAuthority", "violationDisposition"],
+      "properties": {
+        "remoteMutationAuthority": {"type": "string", "minLength": 1},
+        "violationDisposition": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "strings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  }
+}

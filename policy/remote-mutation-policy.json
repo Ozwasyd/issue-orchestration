@@ -1,5 +1,56 @@
 {
-  "schema": "issue-orchestration.remote-mutation-policy.v1",
+  "schema": "issue-orchestration.remote-mutation-policy.v2",
+  "version": "remote-actor-authority.v2",
+  "producerAuthority": "machine-remote-mutation-gate",
+  "snapshotAuthority": "trusted-remote-observer",
+  "actorRules": {
+    "root-control": {
+      "remoteMutationAuthority": "delivery-control-receipt-only",
+      "violationDisposition": "reject-mutation"
+    },
+    "observe-only": {
+      "remoteMutationAuthority": "none",
+      "violationDisposition": "run-fatal-if-observed"
+    },
+    "leased-writer": {
+      "remoteMutationAuthority": "none",
+      "violationDisposition": "run-fatal-if-observed"
+    }
+  },
+  "rootActions": {
+    "default-branch-push": [
+      "landingReceiptDigest",
+      "terminalEvidenceDigest",
+      "expectedDefaultBranchSha"
+    ],
+    "completion-comment": [
+      "terminalEvidenceDigest",
+      "expectedIssueStateDigest",
+      "commentBodyDigest"
+    ],
+    "label-change": [
+      "terminalEvidenceDigest",
+      "expectedIssueStateDigest",
+      "labelMutationDigest"
+    ],
+    "state-reason": [
+      "terminalEvidenceDigest",
+      "expectedIssueStateDigest",
+      "stateReasonMutationDigest"
+    ],
+    "state-transition": [
+      "terminalEvidenceDigest",
+      "expectedIssueStateDigest",
+      "stateTransitionDigest"
+    ],
+    "milestone-change": [
+      "terminalEvidenceDigest",
+      "expectedIssueStateDigest",
+      "milestoneMutationDigest"
+    ]
+  },
+  "authorizationTtlSeconds": 300,
+  "oneMutationPerAuthorization": true,
   "expectedMutationTypes": [
     "completion-comment",
     "label-change",

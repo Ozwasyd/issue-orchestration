@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:delivery-control-receipt:v1",
+  "title": "issue-orchestration.delivery-control-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "runId",
+    "deliveryEpoch",
+    "rootInvocationId",
+    "rootSessionId",
+    "rootAuthorityEpoch",
+    "rootControlLeaseDigest",
+    "startupAttestationDigest",
+    "runtimeTrustBindingDigest",
+    "runtimeExecutionBindingDigest",
+    "repository",
+    "issueId",
+    "candidateSha",
+    "defaultBranchSha",
+    "terminalEvidenceDigest",
+    "acceptanceGroupDigest",
+    "mutation",
+    "mutationDigest",
+    "expectedPostStateDigest",
+    "preRemoteSnapshotDigest",
+    "issuedAt",
+    "expiresAt",
+    "consumptionKey",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.delivery-control-receipt.v1"},
+    "producerAuthority": {"const": "machine-remote-mutation-gate"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"const": "authorized"},
+    "runId": {"type": "string", "minLength": 1},
+    "deliveryEpoch": {"type": "string", "minLength": 1},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "rootSessionId": {"type": "string", "minLength": 1},
+    "rootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "rootControlLeaseDigest": {"$ref": "#/$defs/digest"},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "runtimeTrustBindingDigest": {"$ref": "#/$defs/digest"},
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+    "repository": {"type": "string", "minLength": 1},
+    "issueId": {"type": "string", "minLength": 1},
+    "candidateSha": {"$ref": "#/$defs/sha"},
+    "defaultBranchSha": {"$ref": "#/$defs/sha"},
+    "terminalEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceGroupDigest": {"$ref": "#/$defs/nullableDigest"},
+    "mutation": {
+      "type": "object",
+      "required": ["action", "evidence"],
+      "properties": {
+        "action": {"type": "string", "minLength": 1},
+        "evidence": {"type": "object"}
+      },
+      "additionalProperties": false
+    },
+    "mutationDigest": {"$ref": "#/$defs/digest"},
+    "expectedPostStateDigest": {"$ref": "#/$defs/digest"},
+    "preRemoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "issuedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "consumptionKey": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"}
+  }
+}
