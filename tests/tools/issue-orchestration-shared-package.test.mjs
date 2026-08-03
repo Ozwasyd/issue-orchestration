@@ -67,8 +67,13 @@ const writerStageSchemas = {
 const requiredPackageFiles = [
     'manifest.json',
     'policy/model-pool.json',
+    'policy/control-plane-advisor-policy.json',
     'policy/remote-mutation-policy.json',
+    'policy/root-takeover-policy.json',
     'policy/routing-policy.json',
+    'policy/runtime-execution-binding-policy.json',
+    'policy/runtime-startup-policy.json',
+    'policy/stage-mutation-guard-policy.json',
     'policy/stage-permissions.json',
     'graph/graph-patch.schema.json',
     'graph/runtime-projection.schema.json',
@@ -83,16 +88,23 @@ const requiredPackageFiles = [
 ]
 const requiredRuntimeModules = [
     'delivery-epoch.mjs',
+    'control-plane-advisor.mjs',
     'dispatch-batch-selector.mjs',
     'dispatch-receipt.mjs',
     'executable-slice-compiler.mjs',
     'event-ledger.mjs',
     'frontier-compiler.mjs',
     'human-decision.mjs',
+    'remote-mutation-authority.mjs',
     'resource-lifecycle.mjs',
+    'root-takeover-supervisor.mjs',
+    'runtime-authority-chain.mjs',
+    'runtime-execution-binding.mjs',
+    'runtime-startup-attestation.mjs',
     'scope-selector.mjs',
     'semantic-runtime-projection.mjs',
     'stage-profile-policy.mjs',
+    'stage-runtime-guard.mjs',
     'validate-state-root.mjs',
     'writer-stage-progress.mjs'
 ]
@@ -332,6 +344,13 @@ test('P02 requires one complete authoring package and a self-consistent manifest
         'routingPolicyDigest',
         'stagePermissionDigest',
         'remoteMutationPolicyDigest',
+        'runtimeTrustPolicyDigest',
+        'runtimeStartupPolicyDigest',
+        'executionRoutingPolicyDigest',
+        'runtimeExecutionBindingPolicyDigest',
+        'stageMutationGuardPolicyDigest',
+        'rootTakeoverPolicyDigest',
+        'controlPlaneAdvisorPolicyDigest',
         'graphSchemaDigest',
         'patchSchemaDigest',
         'runtimeProjectionSchemaDigest',
@@ -422,11 +441,21 @@ test('P03 removes repo-local authority and exposes exactly seven shared roles', 
         'code-implementer:landing-conflict-resolution',
         'ui-ux-implementer:landing-conflict-resolution'
     ]) {
-        assert.deepEqual(permissions.stages[key], {
-            sandbox: 'workspace-write',
-            writeScope: 'implementation-only',
-            freshContext: false
-        }, `landing-conflict-permission:${key}`)
+        assert.equal(
+            permissions.stages[key].executionClass,
+            'leased-writer',
+            `landing-conflict-execution-class:${key}`
+        )
+        assert.equal(
+            permissions.stages[key].writeScope,
+            'implementation-only',
+            `landing-conflict-write-scope:${key}`
+        )
+        assert.equal(
+            permissions.stages[key].freshContext,
+            false,
+            `landing-conflict-fresh-context:${key}`
+        )
     }
     assert.equal(JSON.stringify(permissions).includes('landing-owner'), false,
         'landing-observation-label-became-dispatch-role')
@@ -502,6 +531,17 @@ test('P04 performs a real atomic install and five-cwd discovery probe', (t) => {
             routingPolicyDigest: entry.routingPolicyDigest,
             stagePermissionDigest: entry.stagePermissionDigest,
             remoteMutationPolicyDigest: entry.remoteMutationPolicyDigest,
+            runtimeTrustPolicyDigest: entry.runtimeTrustPolicyDigest,
+            runtimeStartupPolicyDigest: entry.runtimeStartupPolicyDigest,
+            executionRoutingPolicyDigest:
+                entry.executionRoutingPolicyDigest,
+            runtimeExecutionBindingPolicyDigest:
+                entry.runtimeExecutionBindingPolicyDigest,
+            stageMutationGuardPolicyDigest:
+                entry.stageMutationGuardPolicyDigest,
+            rootTakeoverPolicyDigest: entry.rootTakeoverPolicyDigest,
+            controlPlaneAdvisorPolicyDigest:
+                entry.controlPlaneAdvisorPolicyDigest,
             graphSchemaDigest: entry.graphSchemaDigest,
             patchSchemaDigest: entry.patchSchemaDigest,
             runtimeProjectionSchemaDigest:
@@ -523,6 +563,13 @@ test('P04 performs a real atomic install and five-cwd discovery probe', (t) => {
     ]), 'standalone shared package discovery')
     for (const field of [
         'stagePermissionDigest',
+        'runtimeTrustPolicyDigest',
+        'runtimeStartupPolicyDigest',
+        'executionRoutingPolicyDigest',
+        'runtimeExecutionBindingPolicyDigest',
+        'stageMutationGuardPolicyDigest',
+        'rootTakeoverPolicyDigest',
+        'controlPlaneAdvisorPolicyDigest',
         'runtimeProjectionSchemaDigest',
         'writerStageContractDigests',
         'writerStageRuntimeDigests'

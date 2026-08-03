@@ -325,6 +325,30 @@ export function readManifest(sourceRoot) {
             manifest.artifactDigests['policy/remote-mutation-policy.json'],
         runtimeTrustPolicyDigest:
             manifest.artifactDigests['policy/runtime-trust-policy.json'],
+        runtimeStartupPolicyDigest:
+            manifest.artifactDigests[
+                'policy/runtime-startup-policy.json'
+            ],
+        executionRoutingPolicyDigest:
+            manifest.artifactDigests[
+                'policy/execution-routing-policy.json'
+            ],
+        runtimeExecutionBindingPolicyDigest:
+            manifest.artifactDigests[
+                'policy/runtime-execution-binding-policy.json'
+            ],
+        stageMutationGuardPolicyDigest:
+            manifest.artifactDigests[
+                'policy/stage-mutation-guard-policy.json'
+            ],
+        rootTakeoverPolicyDigest:
+            manifest.artifactDigests[
+                'policy/root-takeover-policy.json'
+            ],
+        controlPlaneAdvisorPolicyDigest:
+            manifest.artifactDigests[
+                'policy/control-plane-advisor-policy.json'
+            ],
         graphSchemaDigest:
             manifest.artifactDigests['graph/semantic-graph.schema.json'],
         patchSchemaDigest:

@@ -62,6 +62,17 @@ function discovery(cwd, manifest) {
         routingPolicyDigest: manifest.routingPolicyDigest,
         stagePermissionDigest: manifest.stagePermissionDigest,
         remoteMutationPolicyDigest: manifest.remoteMutationPolicyDigest,
+        runtimeTrustPolicyDigest: manifest.runtimeTrustPolicyDigest,
+        runtimeStartupPolicyDigest: manifest.runtimeStartupPolicyDigest,
+        executionRoutingPolicyDigest:
+            manifest.executionRoutingPolicyDigest,
+        runtimeExecutionBindingPolicyDigest:
+            manifest.runtimeExecutionBindingPolicyDigest,
+        stageMutationGuardPolicyDigest:
+            manifest.stageMutationGuardPolicyDigest,
+        rootTakeoverPolicyDigest: manifest.rootTakeoverPolicyDigest,
+        controlPlaneAdvisorPolicyDigest:
+            manifest.controlPlaneAdvisorPolicyDigest,
         graphSchemaDigest: manifest.graphSchemaDigest,
         patchSchemaDigest: manifest.patchSchemaDigest,
         runtimeProjectionSchemaDigest:

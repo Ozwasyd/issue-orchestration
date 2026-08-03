@@ -49,6 +49,20 @@ const manifest = {
         artifactDigests['policy/remote-mutation-policy.json'],
     runtimeTrustPolicyDigest:
         artifactDigests['policy/runtime-trust-policy.json'],
+    runtimeStartupPolicyDigest:
+        artifactDigests['policy/runtime-startup-policy.json'],
+    executionRoutingPolicyDigest:
+        artifactDigests['policy/execution-routing-policy.json'],
+    runtimeExecutionBindingPolicyDigest:
+        artifactDigests[
+            'policy/runtime-execution-binding-policy.json'
+        ],
+    stageMutationGuardPolicyDigest:
+        artifactDigests['policy/stage-mutation-guard-policy.json'],
+    rootTakeoverPolicyDigest:
+        artifactDigests['policy/root-takeover-policy.json'],
+    controlPlaneAdvisorPolicyDigest:
+        artifactDigests['policy/control-plane-advisor-policy.json'],
     graphSchemaDigest:
         artifactDigests['graph/semantic-graph.schema.json'],
     patchSchemaDigest:
@@ -73,6 +87,13 @@ const manifest = {
         'runtime-permission-observation',
         'semantic-role-isolation',
         'runtime-model-effort-observation',
+        'runtime-startup-attestation',
+        'runtime-execution-binding',
+        'stage-mutation-postcondition',
+        'root-control-remote-mutation-authority',
+        'bounded-control-plane-advisor',
+        'root-recovery-takeover',
+        'invocation-bound-downstream-authority',
         'trusted-owner-repository-allowlist',
         'stage-scoped-write-lease'
     ],
@@ -106,12 +127,17 @@ const manifest = {
         'acceptance-group',
         'delivery',
         'model-routing',
+        'mutation-postcondition',
         'receipts',
+        'remote-mutation-authority',
         'resource-lifecycle',
+        'root-recovery-takeover',
         'runtime-projection',
+        'runtime-startup',
         'scope-selector',
         'semantic-graph',
-        'stage-dispatch'
+        'stage-dispatch',
+        'control-plane-advisor'
     ],
     excludedAuthorities: [
         'product-api',
