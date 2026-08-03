@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:control-plane-advisor-request:v1",
+  "title": "issue-orchestration.control-plane-advisor-request.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "runId",
+    "rootInvocationId",
+    "rootSessionId",
+    "startupAttestationDigest",
+    "packageDigest",
+    "policySetDigest",
+    "failureDigest",
+    "unresolvedControlPlaneReceiptDigest",
+    "affectedTargets",
+    "boundedProjection",
+    "presumedValidEvidenceDigests",
+    "suspectedInvalidEvidenceDigests",
+    "selectedProfile",
+    "capabilityClass",
+    "capabilityEvidenceDigest",
+    "runtimeAvailabilityObservationDigest",
+    "slotReservationDigest",
+    "allowedRecommendationKinds",
+    "forbiddenActions",
+    "diagnosticQuestions",
+    "freshContext",
+    "executionClass",
+    "fullHistoryIncluded",
+    "unrelatedHistoryIncluded",
+    "writableStateRootPathIncluded",
+    "rootPreferredConclusionIncluded",
+    "requestDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.control-plane-advisor-request.v1"},
+    "producerAuthority": {"const": "machine-control-plane-advisor-gate"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"const": "authorized"},
+    "runId": {"type": "string", "minLength": 1},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "rootSessionId": {"type": "string", "minLength": 1},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "packageDigest": {"$ref": "#/$defs/digest"},
+    "policySetDigest": {"$ref": "#/$defs/digest"},
+    "failureDigest": {"$ref": "#/$defs/digest"},
+    "unresolvedControlPlaneReceiptDigest": {"$ref": "#/$defs/digest"},
+    "affectedTargets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["identity", "currentDigest"],
+        "properties": {
+          "identity": {"type": "string", "minLength": 1},
+          "currentDigest": {"$ref": "#/$defs/digest"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "boundedProjection": {"type": "object"},
+    "presumedValidEvidenceDigests": {"$ref": "#/$defs/digests"},
+    "suspectedInvalidEvidenceDigests": {"$ref": "#/$defs/digests"},
+    "selectedProfile": {"type": "string", "minLength": 1},
+    "capabilityClass": {"const": "frontier-control-plane-advisor"},
+    "capabilityEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "runtimeAvailabilityObservationDigest": {"$ref": "#/$defs/digest"},
+    "slotReservationDigest": {"$ref": "#/$defs/digest"},
+    "allowedRecommendationKinds": {"$ref": "#/$defs/strings"},
+    "forbiddenActions": {"$ref": "#/$defs/strings"},
+    "diagnosticQuestions": {"$ref": "#/$defs/strings"},
+    "freshContext": {"const": true},
+    "executionClass": {"const": "observe-only"},
+    "fullHistoryIncluded": {"const": false},
+    "unrelatedHistoryIncluded": {"const": false},
+    "writableStateRootPathIncluded": {"const": false},
+    "rootPreferredConclusionIncluded": {"const": false},
+    "requestDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "digests": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/digest"},
+      "uniqueItems": true
+    },
+    "strings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  }
+}

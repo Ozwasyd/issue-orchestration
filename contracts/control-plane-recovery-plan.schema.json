@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:control-plane-recovery-plan:v1",
+  "title": "issue-orchestration.control-plane-recovery-plan.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "status",
+    "requestDigest",
+    "proposalDigest",
+    "failureDigest",
+    "rootInvocationId",
+    "startupAttestationDigest",
+    "actions",
+    "requiredRevalidationGates",
+    "rootMayEditPlan",
+    "planDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.control-plane-recovery-plan.v1"},
+    "producerAuthority": {
+      "const": "deterministic-control-plane-recovery-compiler"
+    },
+    "status": {"const": "compiled"},
+    "requestDigest": {"$ref": "#/$defs/digest"},
+    "proposalDigest": {"$ref": "#/$defs/digest"},
+    "failureDigest": {"$ref": "#/$defs/digest"},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "ordinal",
+          "kind",
+          "targetIdentity",
+          "currentDigest",
+          "owningMachineOperation",
+          "preconditions",
+          "postconditions",
+          "failureDisposition",
+          "requiredRevalidationGates",
+          "dependsOnActionDigest",
+          "actionDigest"
+        ],
+        "properties": {
+          "ordinal": {"type": "integer", "minimum": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "targetIdentity": {"type": "string", "minLength": 1},
+          "currentDigest": {"$ref": "#/$defs/digest"},
+          "owningMachineOperation": {"type": "string", "minLength": 1},
+          "preconditions": {"type": "array"},
+          "postconditions": {"type": "array"},
+          "failureDisposition": {"type": "string", "minLength": 1},
+          "requiredRevalidationGates": {"type": "array"},
+          "dependsOnActionDigest": {
+            "oneOf": [
+              {"$ref": "#/$defs/digest"},
+              {"type": "null"}
+            ]
+          },
+          "actionDigest": {"$ref": "#/$defs/digest"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "requiredRevalidationGates": {"type": "array"},
+    "rootMayEditPlan": {"const": false},
+    "planDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:control-plane-advisor-policy:v1",
+  "title": "issue-orchestration.control-plane-advisor-policy.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "version",
+    "serviceActorId",
+    "productDeliveryRole",
+    "executionClass",
+    "freshContext",
+    "outputAuthority",
+    "stateAuthority",
+    "remoteAuthority",
+    "capabilityClass",
+    "selectionAuthority",
+    "strongestFirst",
+    "qualifiedProfiles",
+    "allowedFailureDomain",
+    "maxAffectedTargets",
+    "maxDiagnosticQuestions",
+    "maxActions",
+    "consultationsPerFailureDigest",
+    "allowedRecommendationKinds",
+    "actionVocabulary",
+    "forbiddenActions",
+    "mandatoryRevalidationGates",
+    "unboundedRequestFields",
+    "rootProfile",
+    "rootMayEditPlan",
+    "unaffectedWorkMayContinue"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.control-plane-advisor-policy.v1"},
+    "version": {"const": "bounded-control-plane-advisor.v1"},
+    "serviceActorId": {"const": "control-plane-advisor"},
+    "productDeliveryRole": {"const": false},
+    "executionClass": {"const": "observe-only"},
+    "freshContext": {"const": true},
+    "outputAuthority": {"const": "proposal-only"},
+    "stateAuthority": {"const": "none"},
+    "remoteAuthority": {"const": "none"},
+    "capabilityClass": {"const": "frontier-control-plane-advisor"},
+    "selectionAuthority": {"const": "machine-advisor-capability-selector"},
+    "strongestFirst": {"$ref": "#/$defs/strings"},
+    "qualifiedProfiles": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "qualificationStatus",
+          "matrixEvidenceDigest",
+          "profileEvidenceDigest"
+        ],
+        "properties": {
+          "qualificationStatus": {"const": "qualified"},
+          "matrixEvidenceDigest": {"$ref": "#/$defs/digest"},
+          "profileEvidenceDigest": {"$ref": "#/$defs/digest"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "allowedFailureDomain": {"const": "orchestration-control-plane"},
+    "maxAffectedTargets": {"type": "integer", "minimum": 1},
+    "maxDiagnosticQuestions": {"type": "integer", "minimum": 1},
+    "maxActions": {"type": "integer", "minimum": 1},
+    "consultationsPerFailureDigest": {"const": 1},
+    "allowedRecommendationKinds": {"$ref": "#/$defs/strings"},
+    "actionVocabulary": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "string", "minLength": 1}
+    },
+    "forbiddenActions": {"$ref": "#/$defs/strings"},
+    "mandatoryRevalidationGates": {"$ref": "#/$defs/strings"},
+    "unboundedRequestFields": {"$ref": "#/$defs/strings"},
+    "rootProfile": {"const": "terra-low"},
+    "rootMayEditPlan": {"const": false},
+    "unaffectedWorkMayContinue": {"const": true}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "strings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

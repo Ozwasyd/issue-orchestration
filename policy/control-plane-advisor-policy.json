@@ -1,0 +1,90 @@
+{
+  "schema": "issue-orchestration.control-plane-advisor-policy.v1",
+  "version": "bounded-control-plane-advisor.v1",
+  "serviceActorId": "control-plane-advisor",
+  "productDeliveryRole": false,
+  "executionClass": "observe-only",
+  "freshContext": true,
+  "outputAuthority": "proposal-only",
+  "stateAuthority": "none",
+  "remoteAuthority": "none",
+  "capabilityClass": "frontier-control-plane-advisor",
+  "selectionAuthority": "machine-advisor-capability-selector",
+  "strongestFirst": [
+    "sol-max",
+    "sol-xhigh",
+    "terra-max",
+    "terra-xhigh"
+  ],
+  "qualifiedProfiles": {
+    "sol-max": {
+      "qualificationStatus": "qualified",
+      "matrixEvidenceDigest": "2bf13a60d12a94f90914291eaf57870d128b38d5948ccd8a8babfff56cd37530",
+      "profileEvidenceDigest": "d505fb421b4aafa7253b218971fa37e8cb965e2e50b582f18e5edfd1cfc8fd7c"
+    }
+  },
+  "allowedFailureDomain": "orchestration-control-plane",
+  "maxAffectedTargets": 32,
+  "maxDiagnosticQuestions": 16,
+  "maxActions": 16,
+  "consultationsPerFailureDigest": 1,
+  "allowedRecommendationKinds": [
+    "bounded-recovery",
+    "human-required",
+    "recovery-takeover-required",
+    "terminalize"
+  ],
+  "actionVocabulary": {
+    "freeze-member": "machine-member-freezer",
+    "cancel-attempt": "machine-attempt-canceller",
+    "quarantine-resource": "machine-resource-quarantine",
+    "release-lease-after-cleanup": "machine-lease-registry",
+    "invalidate-receipt": "machine-receipt-invalidator",
+    "refresh-remote-snapshot": "trusted-remote-observer",
+    "rebuild-member-projection": "machine-runtime-projector",
+    "recompile-route": "deterministic-execution-capability-compiler",
+    "rebuild-continuation": "machine-continuation-compiler",
+    "resume-from-checkpoint": "machine-continuation-controller",
+    "terminalize-member": "machine-terminal-controller",
+    "terminalize-run": "machine-terminal-controller",
+    "request-human-decision": "machine-human-decision-gate",
+    "request-root-takeover": "machine-takeover-policy"
+  },
+  "forbiddenActions": [
+    "arbitrary-command",
+    "shell-command",
+    "free-form-file-edit",
+    "dag-rewrite",
+    "force-remote-mutation",
+    "ignore-receipt",
+    "bypass-breaker",
+    "bypass-acceptance",
+    "bypass-verification",
+    "bypass-landing",
+    "bypass-delivery",
+    "bypass-human-decision"
+  ],
+  "mandatoryRevalidationGates": [
+    "breaker",
+    "acceptance",
+    "independent-verification",
+    "landing",
+    "delivery",
+    "remote-mutation",
+    "mutation-postcondition"
+  ],
+  "unboundedRequestFields": [
+    "credentials",
+    "tokens",
+    "secrets",
+    "writableStateRootPath",
+    "fullConversationHistory",
+    "unrelatedIssueHistory",
+    "preferredRecoveryConclusion",
+    "fullRepositoryDump",
+    "fullDag"
+  ],
+  "rootProfile": "terra-low",
+  "rootMayEditPlan": false,
+  "unaffectedWorkMayContinue": true
+}

@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:control-plane-recovery-proposal:v1",
+  "title": "issue-orchestration.control-plane-recovery-proposal.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "status",
+    "requestDigest",
+    "failureDigest",
+    "rootInvocationId",
+    "startupAttestationDigest",
+    "policySetDigest",
+    "recommendationKind",
+    "failureClassification",
+    "classificationEvidenceDigests",
+    "rootCause",
+    "preserveEvidenceDigests",
+    "invalidateEvidence",
+    "actions",
+    "requiredRevalidationGates",
+    "abortConditions",
+    "terminalConditions",
+    "unresolvedFacts",
+    "advisorProfile",
+    "advisorRuntimeBindingDigest",
+    "mutationPostconditionReceiptDigest",
+    "proposalPayloadDigest",
+    "proposalDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.control-plane-recovery-proposal.v1"
+    },
+    "producerAuthority": {"const": "control-plane-advisor"},
+    "status": {"const": "proposal-only"},
+    "requestDigest": {"$ref": "#/$defs/digest"},
+    "failureDigest": {"$ref": "#/$defs/digest"},
+    "rootInvocationId": {"type": "string", "minLength": 1},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "policySetDigest": {"$ref": "#/$defs/digest"},
+    "recommendationKind": {"type": "string", "minLength": 1},
+    "failureClassification": {"type": "string", "minLength": 1},
+    "classificationEvidenceDigests": {"$ref": "#/$defs/digests"},
+    "rootCause": {"type": "string", "minLength": 1},
+    "preserveEvidenceDigests": {"$ref": "#/$defs/digests"},
+    "invalidateEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["digest", "reasonCode"],
+        "properties": {
+          "digest": {"$ref": "#/$defs/digest"},
+          "reasonCode": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/action"}
+    },
+    "requiredRevalidationGates": {"$ref": "#/$defs/strings"},
+    "abortConditions": {"$ref": "#/$defs/strings"},
+    "terminalConditions": {"$ref": "#/$defs/strings"},
+    "unresolvedFacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fact", "resolutionAuthority"],
+        "properties": {
+          "fact": {"type": "string", "minLength": 1},
+          "resolutionAuthority": {
+            "enum": ["machine-evidence", "human-adjudication"]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "advisorProfile": {"type": "string", "minLength": 1},
+    "advisorRuntimeBindingDigest": {"$ref": "#/$defs/digest"},
+    "mutationPostconditionReceiptDigest": {"$ref": "#/$defs/digest"},
+    "proposalPayloadDigest": {"$ref": "#/$defs/digest"},
+    "proposalDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "digests": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/digest"},
+      "uniqueItems": true
+    },
+    "strings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "kind",
+        "targetIdentity",
+        "currentDigest",
+        "preconditions",
+        "postconditions",
+        "failureDisposition",
+        "requiredRevalidationGates"
+      ],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1},
+        "targetIdentity": {"type": "string", "minLength": 1},
+        "currentDigest": {"$ref": "#/$defs/digest"},
+        "preconditions": {"$ref": "#/$defs/digests"},
+        "postconditions": {"$ref": "#/$defs/digests"},
+        "failureDisposition": {"type": "string", "minLength": 1},
+        "requiredRevalidationGates": {"$ref": "#/$defs/strings"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

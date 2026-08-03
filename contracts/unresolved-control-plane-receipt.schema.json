@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:unresolved-control-plane-receipt:v1",
+  "title": "issue-orchestration.unresolved-control-plane-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "status",
+    "runId",
+    "failureDomain",
+    "failureDigest",
+    "failureEventDigest",
+    "classifierEvidenceDigest",
+    "unresolvedReasonCode",
+    "deterministicHandlersExhausted",
+    "boundedScopeDigest",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.unresolved-control-plane-receipt.v1"
+    },
+    "producerAuthority": {"const": "machine-failure-classifier"},
+    "status": {"const": "unresolved"},
+    "runId": {"type": "string", "minLength": 1},
+    "failureDomain": {"const": "orchestration-control-plane"},
+    "failureDigest": {"$ref": "#/$defs/digest"},
+    "failureEventDigest": {"$ref": "#/$defs/digest"},
+    "classifierEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "unresolvedReasonCode": {"type": "string", "minLength": 1},
+    "deterministicHandlersExhausted": {"const": true},
+    "boundedScopeDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
