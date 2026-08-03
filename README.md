@@ -29,6 +29,45 @@ It is unsuitable for third-party, untrusted, or multi-tenant workloads. A
 future `strict-machine-isolation` mode remains explicitly representable but is
 disabled; it is never silently mapped to the trusted-owner mode.
 
+## Startup attestation
+
+Unattended orchestration is unsupported until a launcher/runtime-owned
+`runtime-startup-observation.v1` has passed the deterministic
+`runtime-startup-attestation.v1` preflight. Before that receipt is verified,
+the runtime may load package policy and collect the trusted observation only;
+it may not inspect repositories or remote issues, select scope, restore a DAG,
+write runtime state, allocate resources, or start an actor.
+
+Normal `root-scheduler:scheduling` is permanently `terra-low`. A
+`terra-medium` root is valid only in the separate
+`root-scheduler:recovery-takeover` phase for a newly launched parent
+invocation whose machine takeover authorization, bounded handoff, old-root
+fencing, and new authority epoch all validate. A recovery flag or medium
+child cannot upgrade a running low root. All later control receipts bind the
+startup attestation and invocation; runtime or policy drift blocks the next
+side effect.
+
+## Execution and mutation authority
+
+Stage semantics use `root-control`, `observe-only`, and `leased-writer`.
+Logical model selection never grants filesystem or remote authority and never
+uses sandbox names as profile capabilities. A separate runtime execution
+binding records the actual permission profile and inheritance behavior.
+
+Every accepted stage result requires a machine-owned pre/post mutation
+receipt. Observe-only actors must leave protected repository, control-plane,
+and remote state unchanged. Leased writers must remain inside the current
+lease and slice allowlist. Remote mutation is exclusive to root-control and
+requires a fresh delivery-control receipt plus verified before/after remote
+snapshots.
+
+Unknown complex control-plane failures may use one fresh, strongest-qualified
+observe-only Advisor consultation. The Advisor can emit only a bounded
+proposal; the low root may execute only the byte-identical deterministic
+recovery plan. Root takeover remains a separate external-supervisor path for
+root liveness or parent-invocation failure, with old-root fencing and a
+single root-control lease.
+
 ## Install for Codex discovery
 
 Use Codex's built-in `skill-installer` with private repository

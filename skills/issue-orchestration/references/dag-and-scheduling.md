@@ -27,7 +27,7 @@ node .agents/skills/issue-orchestration/scripts/validate-state-root.mjs \
 
 守卫会按输入遍历顺序解析相对路径和 `..`，拒绝 symlink 组件，以最近存在祖先推导不存在尾部的规范路径，并同时核验 Linux mount coordinate、device/inode identity 和实际 Git worktree。对无法证明 backing path 的 FUSE/overlay alias mount 直接拒绝。它不以字符串前缀作为充分证据；无法读取 mount 或 worktree 身份时 fail closed。第一次校验通过后，只能使用输出的 `candidate.canonical` 以 `0700` 权限创建状态根；创建后必须用同一参数复验，复验通过前不得写 DAG。
 
-根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v3` semantic-proposal route 的 fresh-context、read-only DAG updater 提议，再由机器门禁校验后纳入 v2 DAG。
+根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v3` semantic-proposal route 的 fresh-context、observe-only DAG updater 提议，经 mutation postcondition 和机器门禁校验后纳入 v2 DAG。
 
 ## Member/node 启动门禁
 
@@ -141,7 +141,7 @@ DAG 至少记录：
 
 ## Stage model pool 与重分类
 
-永久 writer routing 的唯一 authority 是 `execution-capability-routing.v2`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后从 `profile-capability-matrix.v2` 中选择满足全部硬能力且属于 stage pool 的最低充分 profile。永久池只包含 Terra 与 Sol 的 `low/medium/high/xhigh/max` 十个 profile；Luna 与 Ultra 不可发现。UI、长链和 frontier 仍必须由机器 capability evidence 决定，不能由节点字段或 Root 偏好决定。非 writer stage 继续受 `stage-model-pool.v3` 的 role pool 与 read-only policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
+永久 writer routing 的唯一 authority 是 `execution-capability-routing.v3`：verified executable slice 先编译 execution shape，再编译 capability requirement，最后从 `profile-capability-matrix.v3` 中选择满足全部硬能力且属于 stage pool 的最低充分 profile。永久池只包含 Terra 与 Sol 的 `low/medium/high/xhigh/max` 十个 profile；Luna 与 Ultra 不可发现。UI、长链和 frontier 仍必须由机器 capability evidence 决定，不能由节点字段或 Root 偏好决定。logical model capability 不含 sandbox/permission label；非 writer stage 受 `stage-model-pool.v3` role pool 与 execution-class policy 约束。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
 
 `reworkCount`、失败次数、余额、token、成本、telemetry、当前 root profile 和人工偏好不是 routing input。`writer-stage.output-missing` 不能自动升档；只有最小或实质修订后的 slice、机器 `profile-capability-mismatch`、旧 failure receipt、breaker reset/retry authorization 和可观察 requested/effective metadata 同时成立，才能重编 route。Acceptance-group 的每个 member 与 landing/reverification slice 都独立编译 route，不能继承上一 member 的 profile、candidate receipt 或 verifier context。不可用或不可观察 profile 必须 fail closed，不得静默 fallback。
 

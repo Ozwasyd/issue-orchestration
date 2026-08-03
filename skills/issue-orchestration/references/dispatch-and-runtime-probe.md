@@ -59,7 +59,7 @@ Writer stage 与永久输出合同如下：
 
 | Stage phase | Writer role | 必需输出 |
 | --- | --- | --- |
-| `test-contract-planning` | `test-owner` | fresh read-only planning receipt；不得写文件 |
+| `test-contract-planning` | `test-owner` | fresh observe-only planning receipt及 passed mutation postcondition；不得写文件 |
 | `test-contract` | `test-owner` | tests/fixtures、命令证据、checkpoint |
 | `implementation` | `code-implementer` | diff、命令证据、checkpoint |
 | `ui-implementation` | `ui-ux-implementer` | diff、render evidence、checkpoint |
@@ -69,7 +69,7 @@ Writer stage 与永久输出合同如下：
 Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v3` 或永久 routing policy。
 
 首次 test-contract writer 不允许依赖虚构历史或空白 attempt。固定冷启动顺序
-是：immutable acceptance contract → fresh read-only planning
+是：immutable acceptance contract → fresh observe-only planning
 request/receipt → 资源和 exclusive lease → frozen test contract →
 validated slice/compiled prompt → fresh writer attempt。Planning 与 writer
 必须是不同 rollout/thread；历史 bootstrap、旧 runner 或旧 checkpoint 不能替代。

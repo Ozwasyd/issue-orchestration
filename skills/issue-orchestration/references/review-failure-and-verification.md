@@ -8,7 +8,7 @@
 
 每个 executable slice 同时最多一名 writer；完整 stage 达到 `candidate-green` 后最多一名独立 behavior verifier。不得为同一 slice 并行派发第二名 writer 或增加评审层。
 
-`test-owner` 的 `behavior-verification` phase 只审查指定 issue、verified work plan、全部有序 slice terminal receipts、compiled prompt digests、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v3` 的 fresh read-only route，只报告会阻止当前验收组交付的 blocker；每条必须包含：
+`test-owner` 的 `behavior-verification` phase 只审查指定 issue、verified work plan、全部有序 slice terminal receipts、compiled prompt digests、实际 diff、测试与局部 evidence 投影，不接收状态根路径或完整 DAG，也不得读取或修改完整 DAG、ledger、槽位、锁或恢复指纹。它必须使用 `stage-model-pool.v3` 的 fresh observe-only route，并在结果被接收前通过 mutation postcondition；只报告会阻止当前验收组交付的 blocker；每条必须包含：
 
 - 准确路径或产物；
 - 可复核的事实依据；
