@@ -1,0 +1,61 @@
+{
+  "schema": "issue-orchestration.root-takeover-policy.v1",
+  "version": "root-recovery-takeover.v1",
+  "eligibilityAuthority": "machine-takeover-policy",
+  "supervisorAuthority": "deterministic-external-root-supervisor",
+  "normalRootPhase": "scheduling",
+  "normalRootProfile": "terra-low",
+  "recoveryRootPhase": "recovery-takeover",
+  "recoveryRootProfile": "terra-medium",
+  "eligibleReasonCodes": [
+    "root-heartbeat-expired",
+    "root-process-dead",
+    "root-advisor-request-contract-failure",
+    "root-recovery-plan-execution-contract-failure",
+    "root-startup-runtime-identity-drift",
+    "root-control-loop-invalid",
+    "new-parent-continuation-required"
+  ],
+  "forbiddenReasonCodes": [
+    "issue-complexity",
+    "writer-failure",
+    "verifier-failure",
+    "rework-count",
+    "slow-progress",
+    "cost-pressure",
+    "token-pressure",
+    "root-profile-preference"
+  ],
+  "advisorDispositionsPermittingTakeover": [
+    "not-applicable-root-unavailable",
+    "advisor-unavailable",
+    "validated-plan-unexecutable-by-current-root",
+    "deterministic-handler-exhausted"
+  ],
+  "fencingCoverage": [
+    "state-root-ledger-dag-lock-lease",
+    "actor-spawn-cancel",
+    "resource-worktree-lifecycle",
+    "landing-delivery-remote-mutation",
+    "continuation-terminal-signing"
+  ],
+  "requiredRevalidationGates": [
+    "startup",
+    "package-policy",
+    "state-root",
+    "repository-remote",
+    "resource-inventory",
+    "dag",
+    "continuation",
+    "delivery",
+    "quiescence"
+  ],
+  "authorizationTtlSeconds": 300,
+  "maxAttemptsPerAuthorization": 1,
+  "uniqueRootControlLeaseRequired": true,
+  "freeFormConversationAuthority": false,
+  "inSessionUpgradeAllowed": false,
+  "mediumChildAsRootAllowed": false,
+  "automaticRestartAllowed": false,
+  "mediumToLowRollbackAllowed": false
+}

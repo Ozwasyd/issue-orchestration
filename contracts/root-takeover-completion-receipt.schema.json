@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:root-takeover-completion-receipt:v1",
+  "title": "issue-orchestration.root-takeover-completion-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "runId",
+    "takeoverAuthorizationDigest",
+    "launchReceiptDigest",
+    "startupAttestationDigest",
+    "newRootInvocationId",
+    "newRootSessionId",
+    "newRootAuthorityEpoch",
+    "oldRootFencingReceiptDigest",
+    "rootControlLeaseDigest",
+    "activeRootLeaseCount",
+    "handoffDigest",
+    "revalidationReceiptDigests",
+    "activeInventoryDigest",
+    "resultingState",
+    "completedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.root-takeover-completion-receipt.v1"
+    },
+    "producerAuthority": {
+      "const": "deterministic-external-root-supervisor"
+    },
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"const": "completed"},
+    "runId": {"type": "string", "minLength": 1},
+    "takeoverAuthorizationDigest": {"$ref": "#/$defs/digest"},
+    "launchReceiptDigest": {"$ref": "#/$defs/digest"},
+    "startupAttestationDigest": {"$ref": "#/$defs/digest"},
+    "newRootInvocationId": {"type": "string", "minLength": 1},
+    "newRootSessionId": {"type": "string", "minLength": 1},
+    "newRootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "oldRootFencingReceiptDigest": {"$ref": "#/$defs/digest"},
+    "rootControlLeaseDigest": {"$ref": "#/$defs/digest"},
+    "activeRootLeaseCount": {"const": 1},
+    "handoffDigest": {"$ref": "#/$defs/digest"},
+    "revalidationReceiptDigests": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "activeInventoryDigest": {"$ref": "#/$defs/digest"},
+    "resultingState": {
+      "enum": ["valid-scheduling", "bounded-terminal"]
+    },
+    "completedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

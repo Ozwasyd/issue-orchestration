@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:root-takeover-policy:v1",
+  "title": "issue-orchestration.root-takeover-policy.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "version",
+    "eligibilityAuthority",
+    "supervisorAuthority",
+    "normalRootPhase",
+    "normalRootProfile",
+    "recoveryRootPhase",
+    "recoveryRootProfile",
+    "eligibleReasonCodes",
+    "forbiddenReasonCodes",
+    "advisorDispositionsPermittingTakeover",
+    "fencingCoverage",
+    "requiredRevalidationGates",
+    "authorizationTtlSeconds",
+    "maxAttemptsPerAuthorization",
+    "uniqueRootControlLeaseRequired",
+    "freeFormConversationAuthority",
+    "inSessionUpgradeAllowed",
+    "mediumChildAsRootAllowed",
+    "automaticRestartAllowed",
+    "mediumToLowRollbackAllowed"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.root-takeover-policy.v1"},
+    "version": {"const": "root-recovery-takeover.v1"},
+    "eligibilityAuthority": {"const": "machine-takeover-policy"},
+    "supervisorAuthority": {
+      "const": "deterministic-external-root-supervisor"
+    },
+    "normalRootPhase": {"const": "scheduling"},
+    "normalRootProfile": {"const": "terra-low"},
+    "recoveryRootPhase": {"const": "recovery-takeover"},
+    "recoveryRootProfile": {"const": "terra-medium"},
+    "eligibleReasonCodes": {"$ref": "#/$defs/strings"},
+    "forbiddenReasonCodes": {"$ref": "#/$defs/strings"},
+    "advisorDispositionsPermittingTakeover": {"$ref": "#/$defs/strings"},
+    "fencingCoverage": {"$ref": "#/$defs/strings"},
+    "requiredRevalidationGates": {"$ref": "#/$defs/strings"},
+    "authorizationTtlSeconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    },
+    "maxAttemptsPerAuthorization": {"const": 1},
+    "uniqueRootControlLeaseRequired": {"const": true},
+    "freeFormConversationAuthority": {"const": false},
+    "inSessionUpgradeAllowed": {"const": false},
+    "mediumChildAsRootAllowed": {"const": false},
+    "automaticRestartAllowed": {"const": false},
+    "mediumToLowRollbackAllowed": {"const": false}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "strings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  }
+}

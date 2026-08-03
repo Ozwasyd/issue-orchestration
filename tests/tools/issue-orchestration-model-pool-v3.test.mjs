@@ -31,8 +31,12 @@ const expectedProfiles = [
 ]
 const expectedStages = {
     'root-scheduler:scheduling': {
-        allowedProfiles: ['terra-low', 'terra-medium'],
+        allowedProfiles: ['terra-low'],
         defaultProfile: 'terra-low'
+    },
+    'root-scheduler:recovery-takeover': {
+        allowedProfiles: ['terra-medium'],
+        defaultProfile: 'terra-medium'
     },
     'dag-creator-updater:semantic-proposal': {
         allowedProfiles: [
@@ -144,14 +148,14 @@ test('V3-01 freezes the sole Terra/Sol production pool and V2 evidence', () => {
     assert.deepEqual(pool.stages, expectedStages)
 })
 
-test('V3-02 upgrades deterministic execution routing to v2', () => {
+test('V3-02 upgrades deterministic execution routing to v3', () => {
     const pool = loadJson('policy/model-pool.json')
     const routing = loadJson('policy/execution-routing-policy.json')
     assert.equal(
         routing.schema,
-        'issue-orchestration.execution-routing-policy.v2'
+        'issue-orchestration.execution-routing-policy.v3'
     )
-    assert.equal(routing.version, 'execution-capability-routing.v2')
+    assert.equal(routing.version, 'execution-capability-routing.v3')
     assert.equal(routing.modelPoolPolicyVersion, pool.version)
     assert.equal(
         routing.routingAuthority,
@@ -225,15 +229,16 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
             stagePhase: 'scheduling',
             controlPlaneRecovery: true
         }),
-        { code: 'routing-root-recovery-receipt' }
+        { code: 'routing-root-in-session-upgrade-forbidden' }
     )
     const recovery = compileStageRoute({
         ...classification,
         stageRole: 'root-scheduler',
-        stagePhase: 'scheduling',
-        controlPlaneRecovery: true,
-        recoveryClassification: 'checkpoint-continuation-recovery',
-        recoveryReceiptDigest: 'b'.repeat(64)
+        stagePhase: 'recovery-takeover',
+        newParentInvocation: true,
+        takeoverAuthorizationDigest: 'b'.repeat(64),
+        recoveryHandoffDigest: 'c'.repeat(64),
+        oldRootFencingReceiptDigest: 'd'.repeat(64)
     })
     assert.equal(recovery.selectedProfile, 'terra-medium')
     assert.equal(verifyRuntimeProfileMetadata({

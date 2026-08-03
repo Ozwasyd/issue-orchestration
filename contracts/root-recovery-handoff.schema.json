@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:root-recovery-handoff:v1",
+  "title": "issue-orchestration.root-recovery-handoff.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "runId",
+    "takeoverAuthorizationDigest",
+    "fencingReceiptDigest",
+    "oldRootInvocationId",
+    "expectedNewInvocationId",
+    "oldRootAuthorityEpoch",
+    "newRootAuthorityEpoch",
+    "stateRootDigest",
+    "ledgerDigest",
+    "dagDigest",
+    "checkpointDigest",
+    "rootCursorDigest",
+    "activeInventoryDigest",
+    "evidenceSetDigest",
+    "repositoryStateDigest",
+    "remoteSnapshotDigest",
+    "advisorRecoveryChainDigest",
+    "requiredRevalidationGates",
+    "freeFormConversationIncluded",
+    "handoffDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.root-recovery-handoff.v1"},
+    "producerAuthority": {
+      "const": "deterministic-external-root-supervisor"
+    },
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "runId": {"type": "string", "minLength": 1},
+    "takeoverAuthorizationDigest": {"$ref": "#/$defs/digest"},
+    "fencingReceiptDigest": {"$ref": "#/$defs/digest"},
+    "oldRootInvocationId": {"type": "string", "minLength": 1},
+    "expectedNewInvocationId": {"type": "string", "minLength": 1},
+    "oldRootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "newRootAuthorityEpoch": {"type": "string", "minLength": 1},
+    "stateRootDigest": {"$ref": "#/$defs/digest"},
+    "ledgerDigest": {"$ref": "#/$defs/digest"},
+    "dagDigest": {"$ref": "#/$defs/digest"},
+    "checkpointDigest": {"$ref": "#/$defs/digest"},
+    "rootCursorDigest": {"$ref": "#/$defs/digest"},
+    "activeInventoryDigest": {"$ref": "#/$defs/digest"},
+    "evidenceSetDigest": {"$ref": "#/$defs/digest"},
+    "repositoryStateDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "advisorRecoveryChainDigest": {"$ref": "#/$defs/nullableDigest"},
+    "requiredRevalidationGates": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "freeFormConversationIncluded": {"const": false},
+    "handoffDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "nullableDigest": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"type": "null"}
+      ]
+    }
+  }
+}

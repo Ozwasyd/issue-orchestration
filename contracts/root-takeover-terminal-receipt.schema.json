@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:root-takeover-terminal-receipt:v1",
+  "title": "issue-orchestration.root-takeover-terminal-receipt.v1",
+  "type": "object",
+  "required": [
+    "schema",
+    "producerAuthority",
+    "policyDigest",
+    "status",
+    "runId",
+    "takeoverAuthorizationDigest",
+    "attemptOrdinal",
+    "failureCode",
+    "failureEvidenceDigest",
+    "oldRootFencingReceiptDigest",
+    "failedNewInvocationId",
+    "newRootAuthorityGranted",
+    "automaticRestartAllowed",
+    "mediumToLowRollbackAllowed",
+    "resourcesTerminalized",
+    "terminalizedAt",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.root-takeover-terminal-receipt.v1"
+    },
+    "producerAuthority": {
+      "const": "deterministic-external-root-supervisor"
+    },
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "status": {"const": "recovery-takeover-terminal"},
+    "runId": {"type": "string", "minLength": 1},
+    "takeoverAuthorizationDigest": {"$ref": "#/$defs/digest"},
+    "attemptOrdinal": {"const": 1},
+    "failureCode": {"type": "string", "minLength": 1},
+    "failureEvidenceDigest": {"$ref": "#/$defs/digest"},
+    "oldRootFencingReceiptDigest": {"$ref": "#/$defs/digest"},
+    "failedNewInvocationId": {"type": "string", "minLength": 1},
+    "newRootAuthorityGranted": {"const": false},
+    "automaticRestartAllowed": {"const": false},
+    "mediumToLowRollbackAllowed": {"const": false},
+    "resourcesTerminalized": {"const": true},
+    "terminalizedAt": {"type": "string", "format": "date-time"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}
