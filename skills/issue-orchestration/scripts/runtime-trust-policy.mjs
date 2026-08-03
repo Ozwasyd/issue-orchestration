@@ -11,6 +11,9 @@ import {
     sameValue,
     seal
 } from './runtime-contract-lib.mjs'
+import {
+    requireRuntimeStartupBinding
+} from './runtime-startup-attestation.mjs'
 
 const POLICY_PATH = path.resolve(
     import.meta.dirname,
@@ -165,7 +168,8 @@ export function compileRuntimeTrustBinding({
     approvalPolicy,
     effectivePermissionProfile,
     permissionProfileObserved,
-    repositoryTargets
+    repositoryTargets,
+    startup
 } = {}) {
     const selected = modePolicy(mode)
     validateSemanticIdentity({ role, executionClass })
@@ -177,6 +181,16 @@ export function compileRuntimeTrustBinding({
     }
     if (runtimeId === 'codex' && multiAgentBackend !== 'v2') {
         fail('runtime-trust-codex-v2-required')
+    }
+    const startupBinding = requireRuntimeStartupBinding({ startup })
+    if (startup?.attestation?.runtimeId !== runtimeId ||
+        startup?.observation?.effectiveMultiAgentBackend !==
+            multiAgentBackend ||
+        startup?.observation?.effectivePermissionProfile !==
+            effectivePermissionProfile ||
+        startup?.observation?.effectiveApprovalPolicy !==
+            approvalPolicy) {
+        fail('runtime-trust-startup-binding-mismatch')
     }
     assertText(multiAgentBackend, 'runtime-trust-backend-unobserved')
     const targets = assertArray(
@@ -224,6 +238,12 @@ export function compileRuntimeTrustBinding({
         mutationPostconditionRequired:
             selected.mutationPostconditionRequired,
         permissionGuarantee: selected.permissionGuarantee,
+        startupAttestationDigest:
+            startupBinding.startupAttestationDigest,
+        runtimeInvocationId:
+            startupBinding.runtimeInvocationId,
+        runtimeSessionId:
+            startupBinding.runtimeSessionId,
         repositoryIdentities: identities,
         repositoryIdentitySetDigest: digest(identities)
     }, 'bindingDigest')
@@ -233,7 +253,8 @@ export function validateRuntimeTrustBinding(value, {
     expectedRole,
     expectedExecutionClass,
     expectedRepositories,
-    repositoryTargets
+    repositoryTargets,
+    startup
 } = {}) {
     const selected = modePolicy(value?.mode)
     if (value?.schema !==
@@ -271,6 +292,30 @@ export function validateRuntimeTrustBinding(value, {
         (value.runtimeId === 'codex' &&
             value.multiAgentBackend !== 'v2')) {
         fail('runtime-trust-permission-profile-invalid')
+    }
+    assertDigest(
+        value.startupAttestationDigest,
+        'runtime-trust-startup-binding-mismatch'
+    )
+    assertText(
+        value.runtimeInvocationId,
+        'runtime-trust-startup-binding-mismatch'
+    )
+    assertText(
+        value.runtimeSessionId,
+        'runtime-trust-startup-binding-mismatch'
+    )
+    if (startup !== undefined) {
+        const startupBinding =
+            requireRuntimeStartupBinding({ startup })
+        if (value.startupAttestationDigest !==
+                startupBinding.startupAttestationDigest ||
+            value.runtimeInvocationId !==
+                startupBinding.runtimeInvocationId ||
+            value.runtimeSessionId !==
+                startupBinding.runtimeSessionId) {
+            fail('runtime-trust-startup-binding-mismatch')
+        }
     }
     const identities = assertArray(
         value.repositoryIdentities,
@@ -326,16 +371,24 @@ export function validateRuntimeTrustBinding(value, {
 export function compileRuntimePermissionEvidence({
     binding,
     evidenceClass,
-    repositoryTargets
+    repositoryTargets,
+    startup
 } = {}) {
     if (!EVIDENCE_CLASSES.has(evidenceClass)) {
         fail('runtime-permission-evidence-class-invalid')
     }
-    validateRuntimeTrustBinding(binding, { repositoryTargets })
+    validateRuntimeTrustBinding(binding, {
+        repositoryTargets,
+        startup
+    })
     return seal({
         schema: 'issue-orchestration.runtime-permission-evidence.v1',
         evidenceClass,
         runtimeTrustBindingDigest: binding.bindingDigest,
+        startupAttestationDigest:
+            binding.startupAttestationDigest,
+        runtimeInvocationId:
+            binding.runtimeInvocationId,
         runtimeTrustMode: binding.mode,
         role: binding.role,
         executionClass: binding.executionClass,

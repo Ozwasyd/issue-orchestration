@@ -19,6 +19,9 @@
     "semanticRoleIsolation",
     "mutationPostconditionRequired",
     "permissionGuarantee",
+    "startupAttestationDigest",
+    "runtimeInvocationId",
+    "runtimeSessionId",
     "repositoryIdentities",
     "repositoryIdentitySetDigest",
     "bindingDigest"
@@ -87,6 +90,17 @@
         "contract-and-postcondition",
         "machine-enforced"
       ]
+    },
+    "startupAttestationDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeInvocationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runtimeSessionId": {
+      "type": "string",
+      "minLength": 1
     },
     "repositoryIdentities": {
       "type": "array",

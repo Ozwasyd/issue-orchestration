@@ -43,6 +43,9 @@ import {
     compileRuntimePermissionEvidence,
     validateRuntimeTrustBinding
 } from './runtime-trust-policy.mjs'
+import {
+    requireRuntimeStartupBinding
+} from './runtime-startup-attestation.mjs'
 
 class DagGateError extends Error {
     constructor(code, message, details = {}) {
@@ -99,12 +102,16 @@ function validateV3Route({
         contractFail('dag-gate-route-authority')
     }
     if (route?.schema !==
-            'issue-orchestration.execution-route-decision.v1' ||
-        route.policyVersion !== 'execution-capability-routing.v2' ||
+            'issue-orchestration.execution-route-decision.v2' ||
+        route.policyVersion !== 'execution-capability-routing.v3' ||
         route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
         route.modelPoolPolicyDigest !== policyDigest ||
         route.stageRole !== node.stageRole ||
         route.stagePhase !== node.stagePhase ||
+        route.executionClass !==
+            STAGE_ROUTE_DEFINITIONS[
+                `${node.stageRole}:${node.stagePhase}`
+            ]?.executionClass ||
         route.runtimeVerificationStatus !== 'verified') {
         contractFail('dag-gate-route-binding')
     }
@@ -220,73 +227,43 @@ function projectMember(node, policyDigest) {
     return projection
 }
 
-function validateRootV3(rootRuntime, policyDigest, repositories) {
-    const route = rootRuntime?.routeDecision
-    if (route?.routingAuthority !==
-            'deterministic-execution-capability-compiler') {
-        contractFail('dag-gate-route-authority')
-    }
-    if (route?.stageRole !== 'root-scheduler' ||
-        route.stagePhase !== 'scheduling' ||
-        route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
-        route.policyVersion !== 'execution-capability-routing.v2' ||
-        route.modelPoolPolicyDigest !== policyDigest ||
-        !['terra-low', 'terra-medium'].includes(
-            route.selectedProfile
-        )) {
-        contractFail('dag-gate-profile')
-    }
-    const recovery = route.selectedProfile === 'terra-medium'
-    if (recovery !== (rootRuntime.controlPlaneRecovery === true) ||
-        (recovery &&
-            (typeof rootRuntime.recoveryClassification !== 'string' ||
-                !rootRuntime.recoveryClassification ||
-                !/^[a-f0-9]{64}$/u.test(
-                    rootRuntime.recoveryReceiptDigest ?? ''
-                )))) {
-        contractFail('dag-gate-root-recovery')
-    }
+function validateRootStartup({
+    startup,
+    runtimeTrustBinding,
+    repositoryTargets,
+    policyDigest,
+    repositories
+}) {
+    let startupBinding
     try {
-        verifyRuntimeProfileMetadata({
-            selectedProfile: route.selectedProfile,
-            requestedModel:
-                rootRuntime.metadata?.requestedModel,
-            effectiveModel:
-                rootRuntime.metadata?.effectiveModel,
-            requestedEffort:
-                rootRuntime.metadata?.requestedEffort,
-            effectiveEffort:
-                rootRuntime.metadata?.effectiveEffort,
-            multiAgentBackend:
-                rootRuntime.metadata?.multiAgentBackend
-        })
+        startupBinding = requireRuntimeStartupBinding({ startup })
     } catch {
-        contractFail('dag-gate-root-runtime')
+        contractFail('dag-gate-startup-attestation')
     }
-    if (rootRuntime.metadata?.role !== 'root-scheduler' ||
-        rootRuntime.metadata?.approvalPolicy !== 'never' ||
-        rootRuntime.metadata?.effectivePermissionProfile !==
-            'danger-full-access' ||
-        rootRuntime.metadata?.permissionProfileObserved !== true) {
-        contractFail('dag-gate-root-runtime')
+    if (startup?.observation?.policyDigests?.modelPool !==
+        policyDigest) {
+        contractFail('dag-gate-startup-policy-binding')
     }
     try {
-        validateRuntimeTrustBinding(rootRuntime.runtimeTrustBinding, {
+        validateRuntimeTrustBinding(runtimeTrustBinding, {
             expectedRole: 'root-scheduler',
             expectedExecutionClass: 'root-control',
             expectedRepositories: repositories,
-            repositoryTargets: rootRuntime.repositoryTargets
+            repositoryTargets,
+            startup
         })
     } catch {
         contractFail('dag-gate-root-runtime-trust')
     }
     return {
-        rootProfile: route.selectedProfile,
+        rootProfile: startupBinding.rootProfile,
+        startupBinding,
         runtimePermissionEvidence:
             compileRuntimePermissionEvidence({
-                binding: rootRuntime.runtimeTrustBinding,
+                binding: runtimeTrustBinding,
                 evidenceClass: 'run',
-                repositoryTargets: rootRuntime.repositoryTargets
+                repositoryTargets,
+                startup
             })
     }
 }
@@ -294,6 +271,9 @@ function validateRootV3(rootRuntime, policyDigest, repositories) {
 export function validateDagStartupGateV2(value) {
     if (value?.legacyFallbackEnabled === true) {
         contractFail('dag-gate-legacy-fallback')
+    }
+    if (value?.rootRuntime !== undefined) {
+        contractFail('dag-gate-legacy-root-runtime')
     }
     if (value?.authoritySource !== 'permanent-shared-package') {
         contractFail('dag-gate-authority-source')
@@ -312,6 +292,21 @@ export function validateDagStartupGateV2(value) {
         value.selectorReceipt.remoteSnapshotDigest,
         'dag-gate-selector'
     )
+    let startupBinding
+    try {
+        startupBinding =
+            requireRuntimeStartupBinding({
+                startup: value.startup
+            })
+    } catch {
+        contractFail('dag-gate-startup-attestation')
+    }
+    if (value.selectorReceipt.startupAttestationDigest !==
+            startupBinding.startupAttestationDigest ||
+        value.selectorReceipt.runtimeInvocationId !==
+            startupBinding.runtimeInvocationId) {
+        contractFail('dag-gate-selector-startup-binding')
+    }
     if (value.dag?.schema !==
         'issue-orchestration.semantic-graph.v2') {
         contractFail('dag-gate-rebuild-required')
@@ -329,12 +324,15 @@ export function validateDagStartupGateV2(value) {
     ) ?? [])].sort()
     const {
         rootProfile,
+        startupBinding: validatedStartupBinding,
         runtimePermissionEvidence
-    } = validateRootV3(
-        value.rootRuntime,
-        value.dag.policyDigest,
+    } = validateRootStartup({
+        startup: value.startup,
+        runtimeTrustBinding: value.runtimeTrustBinding,
+        repositoryTargets: value.repositoryTargets,
+        policyDigest: value.dag.policyDigest,
         repositories
-    )
+    })
     if (!Array.isArray(value.dag.nodes) ||
         value.dag.nodes.length === 0) {
         contractFail('dag-gate-members')
@@ -377,6 +375,12 @@ export function validateDagStartupGateV2(value) {
             value.selectorReceipt.remoteSnapshotDigest,
         policyDigest: value.dag.policyDigest,
         rootProfile,
+        startupAttestationDigest:
+            validatedStartupBinding.startupAttestationDigest,
+        runtimeInvocationId:
+            validatedStartupBinding.runtimeInvocationId,
+        runtimeSessionId:
+            validatedStartupBinding.runtimeSessionId,
         runtimeTrustMode:
             runtimePermissionEvidence.runtimeTrustMode,
         runtimeTrustBindingDigest:
@@ -686,8 +690,16 @@ function validateStageReceipts(dag) {
     if (proposal.spawnedByStageRole !== 'root-scheduler') {
         fail('dag-updater-caller-role', 'Only the root scheduler may spawn a DAG updater.')
     }
-    if (!Array.isArray(proposal.directWrites) || proposal.directWrites.length !== 0 || proposal.mode !== 'read-only' || proposal.proposalOnly !== true) {
-        fail('dag-updater-direct-write', 'DAG updater must be read-only and proposal-only.')
+    if (!Array.isArray(proposal.directWrites) ||
+        proposal.directWrites.length !== 0 ||
+        proposal.executionClass !== 'observe-only' ||
+        proposal.mutationContract !== 'no-protected-mutation' ||
+        !/^[a-f0-9]{64}$/u.test(
+            proposal.mutationPostconditionReceiptDigest ?? ''
+        ) ||
+        proposal.proposalOnly !== true) {
+        fail('dag-updater-direct-write',
+            'DAG updater must be observe-only, postcondition-verified, and proposal-only.')
     }
     if (proposal.trigger !== 'remote-live-snapshot-digest-changed') {
         fail('remote-snapshot-trigger-required', 'A tombstone update requires a changed remote snapshot digest.')

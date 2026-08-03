@@ -9,8 +9,12 @@ import { pathToFileURL } from 'node:url'
 import {
     compileWriterStageTestArtifacts
 } from './issue-orchestration-writer-stage-test-helper.mjs'
+import {
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
 
 const root = resolve(import.meta.dirname, '../..')
+const runtimeStartup = verifiedRuntimeStartup({})
 const implementationPath = resolve(
     root,
     'skills/issue-orchestration/scripts/frontier-compiler.mjs'
@@ -489,7 +493,9 @@ function roleCandidate(member, stage) {
             role: 'test-owner',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            mode: 'write-tests-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'tests-only',
             allowedPaths: [
                 `tests/contracts/${member.issueNumber}.test.mjs`,
                 `tests/fixtures/contracts/${member.issueNumber}.json`
@@ -503,7 +509,9 @@ function roleCandidate(member, stage) {
                 role: 'ui-ux-implementer',
                 model: 'gpt-5.6-sol',
                 effort: 'low',
-                mode: 'write-implementation-only',
+                executionClass: 'leased-writer',
+                mutationContract: 'lease-and-slice-allowlist',
+                writeScope: 'implementation-only',
                 allowedPaths: [`src/components/frontier-${member.issueNumber}.tsx`],
                 designSkillDigest: 'a'.repeat(64),
                 designAuthorityDigests: ['b'.repeat(64)]
@@ -514,7 +522,9 @@ function roleCandidate(member, stage) {
             role: 'code-implementer',
             model: 'gpt-5.6-sol',
             effort: 'low',
-            mode: 'write-implementation-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'implementation-only',
             allowedPaths: [`.agents/runtime/frontier-${member.issueNumber}.mjs`]
         }, 'code-implementation')
     }
@@ -524,7 +534,9 @@ function roleCandidate(member, stage) {
             role: 'test-owner',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            mode: 'read-execute-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            writeScope: 'none',
             allowedPaths: []
         }
     }
@@ -534,7 +546,9 @@ function roleCandidate(member, stage) {
             role: 'ux-acceptance-verifier',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            mode: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            writeScope: 'none',
             allowedPaths: [],
             designSkillDigest: 'a'.repeat(64),
             designAuthorityDigests: ['b'.repeat(64)]
@@ -546,7 +560,9 @@ function roleCandidate(member, stage) {
             role: 'documentation-writer',
             model: 'gpt-5.6-terra',
             effort: 'medium',
-            mode: 'write-docs-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'documentation-only',
             allowedPaths: [`docs/frontier-${member.issueNumber}.md`]
         }, 'documentation')
     }
@@ -555,7 +571,9 @@ function roleCandidate(member, stage) {
         role: 'root-scheduler',
         model: 'gpt-5.6-terra',
         effort: 'low',
-        mode: 'root-only',
+        executionClass: 'root-control',
+        mutationContract: 'control-plane-and-delivery-gated',
+        writeScope: 'orchestration-control-only',
         allowedPaths: []
     }
 }
@@ -623,7 +641,9 @@ function bindLandingConflictResolution(input, member) {
         role: memberWriterRole,
         model: 'gpt-5.6-sol',
         effort: 'low',
-        mode: 'write-implementation-only',
+        executionClass: 'leased-writer',
+        mutationContract: 'lease-and-slice-allowlist',
+        writeScope: 'implementation-only',
         allowedPaths: conflictPaths,
         capabilityReceiptDigest: digest({
             issueId: member.issueId,
@@ -705,7 +725,8 @@ function sealInvestigationProjection(projection, freshness = null) {
         validator: {
             role: 'layered-investigation-validator',
             model: 'machine',
-            mode: 'read-only'
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation'
         },
         selectorReceiptDigest: sealed.selectorReceiptDigest,
         remoteSnapshotDigest: sealed.remoteSnapshotDigest,
@@ -781,7 +802,8 @@ async function scenario(
     const selectorReceipt = resolveSelector({
         selector: clone(selector),
         remoteIssues: clone(remoteIssues),
-        resolvedAt
+        resolvedAt,
+        startup: runtimeStartup
     })
     const dag = {
         schema: 'issue-orchestration.dag.v3',
@@ -1018,7 +1040,7 @@ async function assertLayerAuthorityRuntimePolicy(expectedCode) {
         role: 'dag-creator',
         model: 'gpt-5.6-luna',
         effort: 'low',
-        sandboxMode: 'workspace-write',
+        executionClass: 'leased-writer',
         freshContext: false
     }
     for (const layer of mutation.layers) {
@@ -1039,7 +1061,9 @@ async function assertLayerAuthorityRuntimePolicy(expectedCode) {
         actorId: 'different-test-owner',
         model: 'gpt-5.6-luna',
         effort: 'low',
-        mode: 'read-execute-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
+        writeScope: 'none',
         testOwnerId: 'different-test-owner'
     }
     for (const field of cases.layerAuthorityPolicy.testOwnerDriftFields) {
@@ -1254,7 +1278,8 @@ test('frozen corrective contract covers every acceptance, probe, and mutation id
         actorId: 'dag-creator-updater:frontier-fixture',
         model: 'gpt-5.6-sol',
         effort: 'max',
-        sandboxMode: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
         freshContext: true,
         proposalOnly: true
     })
@@ -1265,7 +1290,9 @@ test('frozen corrective contract covers every acceptance, probe, and mutation id
             actorId: frozenContract.testOwnerId,
             model: 'gpt-5.6-sol',
             effort: 'max',
-            mode: 'write-tests-only'
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'tests-only'
         }
     )
     assert.deepEqual(
@@ -1273,7 +1300,8 @@ test('frozen corrective contract covers every acceptance, probe, and mutation id
         {
             role: 'layered-investigation-validator',
             model: 'machine',
-            mode: 'read-only'
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation'
         }
     )
     assert.deepEqual(

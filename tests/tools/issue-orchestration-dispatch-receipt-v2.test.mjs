@@ -10,6 +10,17 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
     compileWriterStageTestArtifacts
 } from './issue-orchestration-writer-stage-test-helper.mjs'
+import {
+    runtimeStartupRecords,
+    startupTestDigest,
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    compileRuntimeTrustBinding
+} from '../../skills/issue-orchestration/scripts/runtime-trust-policy.mjs'
+import {
+    RUNTIME_EXECUTION_BINDING_POLICY_DIGEST
+} from '../../skills/issue-orchestration/scripts/runtime-execution-binding.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const fixtureRoot = path.join(root, 'tests/fixtures/issue-orchestration')
@@ -52,6 +63,12 @@ execFileSync('git', [
 execFileSync('git', ['checkout', '--quiet', '--detach', baseSha], {
     cwd: worktree
 })
+execFileSync('git', [
+    'remote',
+    'set-url',
+    'origin',
+    'https://github.com/Ozwasyd/FsusBlog.git'
+], { cwd: worktree })
 after(() => fs.rmSync(worktree, { force: true, recursive: true }))
 const hash = (character) => character.repeat(64)
 let writerRequestSequence = 0
@@ -85,6 +102,29 @@ function sealedObservation(value) {
     const observation = clone(value)
     observation.observationDigest = digest(observation)
     return observation
+}
+
+function runtimeAuthorityFixture() {
+    const startup = verifiedRuntimeStartup({
+        invocationId: 'invocation-1832-root',
+        sessionId: 'session-1832-root'
+    })
+    const repositoryTargets = [{
+        repository,
+        repositoryPath: worktree
+    }]
+    const runtimeTrustBinding = compileRuntimeTrustBinding({
+        role: 'root-scheduler',
+        executionClass: 'root-control',
+        runtimeId: 'codex',
+        multiAgentBackend: 'v2',
+        approvalPolicy: 'never',
+        effectivePermissionProfile: 'danger-full-access',
+        permissionProfileObserved: true,
+        repositoryTargets,
+        startup
+    })
+    return { startup, repositoryTargets, runtimeTrustBinding }
 }
 
 async function runtime() {
@@ -214,6 +254,7 @@ async function requestInput(overrides = {}) {
     const selected = routeInput.module.splitProfile(
         executionDecision.selectedProfile
     )
+    const authority = runtimeAuthorityFixture()
     const writerSequenceBinding = {
         schema: 'issue-orchestration.writer-slice-sequence-binding.v1',
         source: 'initial-stage-plan',
@@ -266,6 +307,19 @@ async function requestInput(overrides = {}) {
             executionRoute.stageCapabilityRequirement.capabilityDigest,
         executionRouteDecisionDigest:
             executionDecision.routeDecisionDigest,
+        executionClass: routeInput.route.executionClass,
+        mutationContract: routeInput.route.mutationContract,
+        requiredPostconditionEvidenceClass:
+            routeInput.route.requiredPostconditionEvidenceClass,
+        mutationPostconditionRequired: true,
+        runtimeExecutionBindingPolicyDigest:
+            RUNTIME_EXECUTION_BINDING_POLICY_DIGEST,
+        startupAttestationDigest:
+            authority.startup.attestation.attestationDigest,
+        runtimeInvocationId:
+            authority.startup.attestation.runtimeInvocationId,
+        runtimeTrustBindingDigest:
+            authority.runtimeTrustBinding.bindingDigest,
         routeTransitionFrom: null,
         routeTransitionReason: 'initial-classification',
         requestedByRole: 'root-scheduler',
@@ -287,7 +341,6 @@ async function requestInput(overrides = {}) {
         requestedEffort: selected.effort,
         requestedMultiAgentBackend: 'v2',
         requestedMode: 'normal',
-        requestedSandbox: routeInput.route.sandbox,
         requestedForkTurns: '3',
         requestedWorkingDirectory: worktree,
         requiredSkills: overrides.requiredSkills ?? [],
@@ -298,8 +351,9 @@ async function requestInput(overrides = {}) {
         uiImpact: false,
         allowedPathsDigest: artifacts.allowedPathsDigest,
         forbiddenPathsDigest: artifacts.forbiddenPathsDigest,
-        writePolicy: routeInput.route.writeScope,
-        readOnlyPolicy: false,
+        semanticWriteScope: routeInput.route.writeScope,
+        observeOnlyPolicy:
+            routeInput.route.executionClass === 'observe-only',
         candidateSha: baseSha,
         candidateDigest: hash('4'),
         testOwnerId: contract.testOwnerId,
@@ -374,10 +428,12 @@ async function bindExecutionRoute(input) {
     input.requestedModel = selected.model
     input.requestedEffort = selected.effort
     input.requestedMultiAgentBackend = 'v2'
+    input.executionClass = decision.executionClass
     return input
 }
 
 function dispatchEvidence(request) {
+    const authority = runtimeAuthorityFixture()
     const machineObservations = [
         sealedObservation({
             kind: 'dispatch-context.v2',
@@ -479,11 +535,43 @@ function dispatchEvidence(request) {
                 effort: request.requestedEffort,
                 multiAgentBackend: 'v2',
                 mode: request.requestedMode,
-                sandbox_policy: { type: request.requestedSandbox }
+                permission_profile: 'danger-full-access'
             }
         }
     ]
-    return { machineObservations, rolloutRecords }
+    const runtimeExecutionObservation = sealedObservation({
+        schema:
+            'issue-orchestration.runtime-execution-observation.v1',
+        producerAuthority: 'runtime-owned',
+        producer: 'codex-rollout',
+        runtimeId: 'codex',
+        runtimeVersion: 'codex-cli-2026.08',
+        actorInvocationId: 'rollout-1832-implementer',
+        actorSessionId: 'thread-1832-implementer',
+        rootInvocationId:
+            authority.startup.attestation.runtimeInvocationId,
+        requestedRole: request.stageRole,
+        effectiveRole: request.stageRole,
+        requestedPhase: request.stagePhase,
+        effectivePhase: request.stagePhase,
+        requestedProfile: request.selectedProfileId,
+        effectiveProfile: request.selectedProfileId,
+        requestedModel: request.requestedModel,
+        effectiveModel: request.requestedModel,
+        requestedEffort: request.requestedEffort,
+        effectiveEffort: request.requestedEffort,
+        effectiveMultiAgentBackend: 'v2',
+        effectivePermissionProfile: 'danger-full-access',
+        permissionInheritance: 'inherited-parent-profile',
+        permissionGuarantee: 'contract-and-postcondition',
+        observedAt: '2026-08-01T13:00:01+08:00'
+    })
+    return {
+        machineObservations,
+        rolloutRecords,
+        runtimeExecutionObservation,
+        ...authority
+    }
 }
 
 async function verifiedDispatch() {
@@ -503,62 +591,14 @@ async function verifiedDispatch() {
 }
 
 function rootStartupInput() {
-    const request = {
-        schema: 'issue-orchestration.root-startup-request.v2',
-        policyVersion: 'stage-model-pool.v3',
-        routingPolicyDigest: hash('6'),
-        runId: 'run-1832-001',
-        stageRole: 'root-scheduler',
-        stagePhase: 'scheduling',
-        stageProfileId: 'terra-low',
-        routingInputDigest: hash('7'),
-        requestedModel: 'gpt-5.6-terra',
-        requestedEffort: 'low',
-        requestedMultiAgentBackend: 'v2',
-        requestedMode: 'normal',
-        requestedWorkingDirectory: worktree,
-        repositoryFingerprint: hash('f'),
-        baseSha,
-        createdAt: '2026-08-01T12:59:59+08:00'
+    return {
+        ...runtimeStartupRecords({
+            invocationId: 'invocation-1832-root',
+            sessionId: 'session-1832-root',
+            observedAt: '2026-08-03T01:00:00.000Z'
+        }),
+        attestedAt: '2026-08-03T01:00:01.000Z'
     }
-    request.requestDigest = digest(request)
-    const rolloutRecords = [
-        {
-            timestamp: '2026-08-01T13:00:00+08:00',
-            type: 'session_meta',
-            payload: {
-                id: 'rollout-1832-root',
-                session_id: 'thread-1832-root',
-                role: 'root-scheduler',
-                model: 'gpt-5.6-terra',
-                effort: 'low',
-                multiAgentBackend: 'v2',
-                mode: 'normal'
-            }
-        },
-        {
-            timestamp: '2026-08-01T13:00:00+08:00',
-            type: 'turn_context',
-            payload: {
-                cwd: worktree,
-                role: 'root-scheduler',
-                model: 'gpt-5.6-terra',
-                effort: 'low',
-                multiAgentBackend: 'v2',
-                mode: 'normal'
-            }
-        }
-    ]
-    const machineObservations = [
-        sealedObservation({
-            kind: 'root-runtime-capability.v2',
-            source: 'runtime-capability-registry',
-            stageProfileId: 'terra-low',
-            multiAgentBackend: 'v2',
-            available: true
-        })
-    ]
-    return { request, rolloutRecords, machineObservations }
 }
 
 function selfTestExecution(request) {
@@ -651,9 +691,18 @@ async function assertThrownCode(action, expectedCode, id) {
 }
 
 function assertRejectedReason(result, expectedCode, id) {
-    const receipt = result.rootStartupReceipt ?? result.dispatchReceipt ?? result
-    assert.notEqual(receipt.verificationStatus, 'verified', id)
-    assert.ok(receipt.mismatchReasons?.includes(expectedCode), id)
+    const receipt = result.runtimeStartupAttestation ??
+        result.dispatchReceipt ?? result
+    assert.notEqual(
+        receipt.status ?? receipt.verificationStatus,
+        'verified',
+        id
+    )
+    assert.ok(
+        (receipt.reasonCodes ?? receipt.mismatchReasons)
+            ?.includes(expectedCode),
+        id
+    )
 }
 
 test('P00 frozen test assets bind the live issue, dependencies and exact base', () => {
@@ -704,7 +753,9 @@ test('P01 dispatch-request.v2 seals every route and serial identity field', asyn
         request.stagePermissionsPolicyDigest,
         module.STAGE_PERMISSIONS_POLICY_DIGEST
     )
-    assert.equal(request.writePolicy, 'implementation-only')
+    assert.equal(request.executionClass, 'leased-writer')
+    assert.equal(request.semanticWriteScope, 'implementation-only')
+    assert.equal(request.observeOnlyPolicy, false)
     assert.equal(request.planDigest, request.stageWorkPlan.planDigest)
     assert.equal(request.sliceDigest, request.executableSlice.sliceDigest)
     assert.equal(request.stageWorkPlan.contractBindingStatus, 'verified')
@@ -979,19 +1030,24 @@ test('P03 root startup proves Terra/low/V2/normal actuals', async () => {
     const verifyRootStartup = module.verifyRootStartup
     assert.equal(typeof verifyRootStartup, 'function')
     const result = await verifyRootStartup(rootStartupInput())
-    assert.deepEqual(result.rootStartupReceipt, {
-        ...result.rootStartupReceipt,
-        schema: 'issue-orchestration.root-startup-receipt.v2',
-        stageRole: 'root-scheduler',
-        actualModel: 'gpt-5.6-terra',
-        actualEffort: 'low',
-        actualMultiAgentBackend: 'v2',
-        actualMode: 'normal',
-        verificationStatus: 'verified',
-        mismatchReasons: []
+    assert.deepEqual(result.runtimeStartupAttestation, {
+        ...result.runtimeStartupAttestation,
+        schema:
+            'issue-orchestration.runtime-startup-attestation.v1',
+        rootPhase: 'scheduling',
+        effectiveModel: 'gpt-5.6-terra',
+        effectiveEffort: 'low',
+        effectiveMultiAgentBackend: 'v2',
+        status: 'verified',
+        reasonCodes: []
     })
-    assert.equal(result.rootStartupReceipt.receiptDigest,
-        digest({ ...result.rootStartupReceipt, receiptDigest: undefined }))
+    assert.equal(
+        result.runtimeStartupAttestation.attestationDigest,
+        digest({
+            ...result.runtimeStartupAttestation,
+            attestationDigest: undefined
+        })
+    )
 })
 
 test('P04 unobservable actual metadata cannot be marked verified', async () => {
@@ -1100,20 +1156,25 @@ async function runControl(control) {
     const module = await runtime()
     if (control.id === 'N01-root-actual-sol-low') {
         const input = rootStartupInput()
-        input.rolloutRecords[0].payload.model = 'gpt-5.6-sol'
-        input.rolloutRecords[1].payload.model = 'gpt-5.6-sol'
+        input.runtimeRecord.effectiveModel = 'gpt-5.6-sol'
+        input.runtimeRecord.recordDigest = startupTestDigest({
+            ...input.runtimeRecord,
+            recordDigest: undefined
+        })
         assertRejectedReason(await module.verifyRootStartup(input),
-            control.expectedCode, control.id)
+            'runtime-startup-profile-mismatch', control.id)
         return
     }
     if (control.id === 'N08-root-runtime-metadata-unobservable') {
         const input = rootStartupInput()
-        for (const record of input.rolloutRecords) {
-            delete record.payload.model
-            delete record.payload.effort
-        }
+        delete input.runtimeRecord.effectiveModel
+        delete input.runtimeRecord.effectiveEffort
+        input.runtimeRecord.recordDigest = startupTestDigest({
+            ...input.runtimeRecord,
+            recordDigest: undefined
+        })
         assertRejectedReason(await module.verifyRootStartup(input),
-            control.expectedCode, control.id)
+            'runtime-startup-profile-mismatch', control.id)
         return
     }
     if (control.id === 'N10-behavior-verifier-not-fresh') {

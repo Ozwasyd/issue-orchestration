@@ -87,12 +87,23 @@ export function compileSlicePlanValidation({
         proposal.actorRuntime?.role !== 'test-owner' ||
         proposal.actorRuntime?.phase !==
             'test-contract-planning' ||
-        proposal.actorRuntime?.sandbox !== 'read-only') {
+        proposal.actorRuntime?.executionClass !==
+            'observe-only' ||
+        proposal.actorRuntime?.mutationContract !==
+            'no-protected-mutation') {
         fail('slice-proposal-authority')
     }
     assertDigest(
         proposal.actorRuntime.routeDecisionDigest,
         'slice-proposal-route-binding'
+    )
+    assertDigest(
+        proposal.actorRuntime.runtimeExecutionBindingDigest,
+        'slice-proposal-runtime-execution-binding'
+    )
+    assertDigest(
+        proposal.actorRuntime.mutationPostconditionReceiptDigest,
+        'slice-proposal-mutation-postcondition'
     )
     assertText(proposal.objective, 'slice-proposal-objective')
     const allowedPaths = assertArray(

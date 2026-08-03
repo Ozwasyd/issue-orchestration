@@ -16,6 +16,9 @@ import {
 import {
     digest
 } from '../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
+import {
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
 
 const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -56,7 +59,7 @@ function temporaryRepository(remoteUrl) {
 function rootBinding(repositoryTargets = [{
     repository: 'Ozwasyd/FsusBlog',
     repositoryPath: fsusBlogRoot
-}]) {
+}], startup = verifiedRuntimeStartup({})) {
     return compileRuntimeTrustBinding({
         role: 'root-scheduler',
         executionClass: 'root-control',
@@ -65,7 +68,8 @@ function rootBinding(repositoryTargets = [{
         approvalPolicy: 'never',
         effectivePermissionProfile: 'danger-full-access',
         permissionProfileObserved: true,
-        repositoryTargets
+        repositoryTargets,
+        startup
     })
 }
 
@@ -77,14 +81,16 @@ function schema(name) {
 }
 
 test('T04-01 validates the versioned policy, binding, and permission evidence schemas', () => {
-    const binding = rootBinding()
+    const startup = verifiedRuntimeStartup({})
+    const binding = rootBinding(undefined, startup)
     const evidence = compileRuntimePermissionEvidence({
         binding,
         evidenceClass: 'route',
         repositoryTargets: [{
             repository: 'Ozwasyd/FsusBlog',
             repositoryPath: fsusBlogRoot
-        }]
+        }],
+        startup
     })
     assert.deepEqual(validateJsonSchema(
         RUNTIME_TRUST_POLICY,
@@ -105,18 +111,21 @@ test('T04-02 accepts an observed unattended full-access root and records honest 
         repository: 'Ozwasyd/FsusBlog',
         repositoryPath: fsusBlogRoot
     }]
-    const binding = rootBinding(targets)
+    const startup = verifiedRuntimeStartup({})
+    const binding = rootBinding(targets, startup)
     assert.equal(validateRuntimeTrustBinding(binding, {
         expectedRole: 'root-scheduler',
         expectedExecutionClass: 'root-control',
         expectedRepositories: ['Ozwasyd/FsusBlog'],
-        repositoryTargets: targets
+        repositoryTargets: targets,
+        startup
     }), binding)
     for (const evidenceClass of ['route', 'run', 'terminal']) {
         const evidence = compileRuntimePermissionEvidence({
             binding,
             evidenceClass,
-            repositoryTargets: targets
+            repositoryTargets: targets,
+            startup
         })
         assert.equal(evidence.runtimeTrustMode,
             'trusted-owner-repositories')

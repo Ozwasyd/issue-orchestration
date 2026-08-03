@@ -26,7 +26,7 @@ const REMOTE_MUTATION_POLICY = Object.freeze(JSON.parse(fs.readFileSync(
     'utf8'
 )))
 if (REMOTE_MUTATION_POLICY.schema
-        !== 'issue-orchestration.remote-mutation-policy.v1'
+        !== 'issue-orchestration.remote-mutation-policy.v2'
     || REMOTE_MUTATION_POLICY.projectionOnlyUpdaterDispatchAllowed
         !== false) {
     throw new Error('remote-mutation-policy-source-invalid')
@@ -2333,7 +2333,15 @@ function validateGraphAuthor(author) {
     requireObject(author, 'graph-patch-authority')
     if (author.actorRole !== 'dag-creator-updater'
         || typeof author.actorId !== 'string'
-        || author.sandboxMode !== 'read-only'
+        || author.executionClass !== 'observe-only'
+        || author.mutationContract !==
+            'no-protected-mutation'
+        || !/^[a-f0-9]{64}$/u.test(
+            author.runtimeExecutionBindingDigest ?? ''
+        )
+        || !/^[a-f0-9]{64}$/u.test(
+            author.mutationPostconditionReceiptDigest ?? ''
+        )
         || author.freshContext !== true
         || author.acceptedWithoutModification !== true) {
         fail('graph-patch-authority')

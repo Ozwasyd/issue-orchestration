@@ -143,7 +143,12 @@ function graphAuthor(overrides = {}) {
     return {
         actorRole: 'dag-creator-updater',
         actorId: 'dag-updater-1833',
-        sandboxMode: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
+        runtimeExecutionBindingDigest:
+            digest('dag-updater-runtime-binding'),
+        mutationPostconditionReceiptDigest:
+            digest('dag-updater-postcondition'),
         freshContext: true,
         acceptedWithoutModification: true,
         ...overrides

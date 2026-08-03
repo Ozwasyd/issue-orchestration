@@ -140,7 +140,7 @@
   "legacyFixtureMigration": {
     "ownerIssue": "Ozwasyd/FsusBlog#1816",
     "correctedLayeredTestPath": "tests/tools/issue-orchestration-ready-frontier.test.mjs",
-    "correctedLayeredTestSha256": "c9e7db362339b77482ad27b24b158434c3e4c0f063a3283b20957815e9ed16f5",
+    "correctedLayeredTestSha256": "26a41581b5b49ff715f728a512648915dcab1b3d9ff38e0f3dadd7ddfbded06e",
     "correctedFixtureUsesValidatedProjection": true,
     "historicalReasonCodeMayRemain": "investigation-incomplete",
     "runtimeLegacyPropertyReadsAllowed": false,

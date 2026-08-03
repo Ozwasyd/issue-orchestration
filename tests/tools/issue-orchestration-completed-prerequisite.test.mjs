@@ -268,7 +268,10 @@ function stageReceipts(candidateSha, remoteSnapshotDigest) {
       directWrites: [],
       effort: 'max',
       freshContext: true,
-      mode: 'read-only',
+      executionClass: 'observe-only',
+      mutationContract: 'no-protected-mutation',
+      mutationPostconditionReceiptDigest:
+        fingerprint('dag-updater-postcondition'),
       model: 'gpt-5.6-sol',
       previousRemoteSnapshotDigest: '0'.repeat(64),
       proposalOnly: true,

@@ -27,7 +27,9 @@ function validateCandidate(value, code = 'behavior-candidate') {
 function validateVerifier(value, code) {
     if (value?.role !== 'test-owner' ||
         value.phase !== 'behavior-verification' ||
-        value.sandbox !== 'read-only') {
+        value.executionClass !== 'observe-only' ||
+        value.mutationContract !==
+            'no-protected-mutation') {
         fail('behavior-verifier-authority')
     }
     if (value.freshContext !== true ||
@@ -35,6 +37,14 @@ function validateVerifier(value, code) {
         fail('behavior-verifier-fresh-context')
     }
     assertText(value.rolloutId, code)
+    assertDigest(
+        value.runtimeExecutionBindingDigest,
+        'behavior-runtime-execution-binding'
+    )
+    assertDigest(
+        value.mutationPostconditionReceiptDigest,
+        'behavior-mutation-postcondition'
+    )
     return value
 }
 
@@ -219,7 +229,12 @@ export function compileBehaviorReceiptV3({
         impactPlanDigest: impactPlan.planDigest,
         verifierRolloutId: verifier.rolloutId,
         freshContext: true,
-        sandbox: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
+        runtimeExecutionBindingDigest:
+            verifier.runtimeExecutionBindingDigest,
+        mutationPostconditionReceiptDigest:
+            verifier.mutationPostconditionReceiptDigest,
         commandEvidence: structuredClone(evidence),
         reusableEvidence: structuredClone(reusable)
     }, 'receiptDigest')

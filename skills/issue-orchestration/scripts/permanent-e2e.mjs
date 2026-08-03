@@ -622,7 +622,7 @@ function verifyEvidenceSemantics(receipts) {
                 'issue-orchestration.stage-model-pool-policy.v3'
             && pool.policyVersion === 'stage-model-pool.v3'
             && pool.routingSchema ===
-                'issue-orchestration.execution-routing-policy.v2'
+                'issue-orchestration.execution-routing-policy.v3'
             && exactRegisteredProfiles(pool)
             && pool.forbiddenProfileCount === 0
             && pool.parallelModelTableCount === 0,
@@ -1029,7 +1029,7 @@ function semanticExtras(key) {
                 'issue-orchestration.stage-model-pool-policy.v3',
             policyVersion: 'stage-model-pool.v3',
             routingSchema:
-                'issue-orchestration.execution-routing-policy.v2',
+                'issue-orchestration.execution-routing-policy.v3',
             registeredProfiles: [
                 'terra-low', 'terra-medium', 'terra-high',
                 'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',

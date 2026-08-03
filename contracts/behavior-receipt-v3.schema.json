@@ -6,7 +6,9 @@
   "required": [
     "schema", "status", "candidate", "candidateDigest",
     "blockerReceiptDigest", "impactPlanDigest", "verifierRolloutId",
-    "freshContext", "sandbox", "commandEvidence", "reusableEvidence",
+    "freshContext", "executionClass", "mutationContract",
+    "runtimeExecutionBindingDigest", "mutationPostconditionReceiptDigest",
+    "commandEvidence", "reusableEvidence",
     "receiptDigest"
   ],
   "properties": {
@@ -18,7 +20,10 @@
     "impactPlanDigest": {"$ref": "#/$defs/digest"},
     "verifierRolloutId": {"type": "string"},
     "freshContext": {"const": true},
-    "sandbox": {"const": "read-only"},
+    "executionClass": {"const": "observe-only"},
+    "mutationContract": {"const": "no-protected-mutation"},
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+    "mutationPostconditionReceiptDigest": {"$ref": "#/$defs/digest"},
     "commandEvidence": {"type": "array", "minItems": 1},
     "reusableEvidence": {"type": "array"},
     "receiptDigest": {"$ref": "#/$defs/digest"}

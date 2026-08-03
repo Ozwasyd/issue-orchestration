@@ -55,6 +55,24 @@ const WRITER_STAGE_KINDS = new Set([
     'landing-conflict-resolution',
     'documentation'
 ])
+
+function expectedExecutionClass(stageKind) {
+    if (['behavior-verification', 'ux-acceptance'].includes(stageKind)) {
+        return 'observe-only'
+    }
+    if (['delivery', 'cleanup'].includes(stageKind)) {
+        return 'root-control'
+    }
+    return 'leased-writer'
+}
+
+function expectedMutationContract(executionClass) {
+    return {
+        'observe-only': 'no-protected-mutation',
+        'leased-writer': 'lease-and-slice-allowlist',
+        'root-control': 'control-plane-and-delivery-gated'
+    }[executionClass]
+}
 const POLICY = {
     schema: 'issue-orchestration.dispatch-ranking-policy.v1',
     selectorVersion: 'critical-unlock-conflict.v1',
@@ -236,6 +254,10 @@ function validateTask(task) {
     if (!SELECTABLE_ROLES.has(task.stageRole) || !STAGE_ROLES.get(task.stageKind)?.has(task.stageRole)) {
         fail('stage-role-not-selectable', `Stage role is not selectable: ${task.stageRole}.`)
     }
+    if (Object.hasOwn(task, 'readOnly')) {
+        fail('stage-task-legacy-sandbox-authority')
+    }
+    const executionClass = expectedExecutionClass(task.stageKind)
     const match = /^(.+)#([1-9]\d*)$/u.exec(task.issueId)
     if (!match || task.repository !== match[1]
         || task.issueNumber !== Number(match[2])
@@ -249,6 +271,9 @@ function validateTask(task) {
         || !Array.isArray(task.writePaths)
         || !Array.isArray(task.conflictKeys)
         || !Array.isArray(task.exclusiveResourceKeys)
+        || task.executionClass !== executionClass
+        || task.mutationContract !==
+            expectedMutationContract(executionClass)
         || (task.candidateSha !== null && typeof task.candidateSha !== 'string')
         || !['number'].every((kind) => [
             task.criticalPathLength, task.downstreamBlockedCount,
@@ -256,10 +281,12 @@ function validateTask(task) {
         ].every((value) => typeof value === kind && Number.isFinite(value) && value >= 0))) {
         fail('stage-task-schema', `${task.taskId} has invalid stage or candidate identity.`)
     }
-    if (task.readOnly && !SHA1.test(task.candidateSha ?? '')) {
+    if (executionClass === 'observe-only' &&
+        !SHA1.test(task.candidateSha ?? '')) {
         fail('stage-task-schema', `${task.taskId} requires a frozen candidate SHA.`)
     }
-    if (!task.readOnly && task.candidateSha !== null) {
+    if (executionClass !== 'observe-only' &&
+        task.candidateSha !== null) {
         fail('stage-task-schema', `${task.taskId} has an unexpected candidate SHA.`)
     }
     if (WRITER_STAGE_KINDS.has(task.stageKind)) {
@@ -370,8 +397,10 @@ function validateTask(task) {
     if (!task.candidateFrozen) fail('candidate-not-frozen', `${task.taskId} candidate is not frozen.`)
     const writePaths = Array.isArray(task.writePaths) ? task.writePaths : []
     const conflictKeys = Array.isArray(task.conflictKeys) ? task.conflictKeys : []
-    if (task.readOnly && (writePaths.length > 0 || conflictKeys.length > 0)) {
-        fail('read-only-write-lease', `${task.taskId} is read-only but requests writes.`)
+    if (executionClass === 'observe-only' &&
+        (writePaths.length > 0 || conflictKeys.length > 0)) {
+        fail('observe-only-write-lease',
+            `${task.taskId} is observe-only but requests writes.`)
     }
     for (const key of conflictKeys) {
         const evidence = task.conflictKeyEvidence?.[key]
@@ -525,7 +554,8 @@ export function validateDispatchFrontierBinding({
         'conflictKeys', 'conflictKeyEvidence', 'exclusiveResourceKeys',
         'resourceKeyEvidence', 'validationClass', 'estimatedLongTask',
         'stageRole', 'issueWorktreeId', 'writeScopeDigest',
-        'requiredReceiptDigests', 'requiredSkillDigests', 'readOnly',
+        'requiredReceiptDigests', 'requiredSkillDigests',
+        'executionClass', 'mutationContract',
         'candidateSha', 'candidateFrozen', 'epochId'
     ]
     const writerBoundFields = [
@@ -636,7 +666,8 @@ function conflictWithSelected(task, selected) {
     for (const other of selected) {
         const shared = overlap(task.conflictKeys, other.conflictKeys)
         if (shared.length) return { code: 'write-conflict', blockers: [other.taskId], keys: shared }
-        if (!task.readOnly && !other.readOnly
+        if (task.executionClass !== 'observe-only' &&
+            other.executionClass !== 'observe-only'
             && task.issueWorktreeId === other.issueWorktreeId) {
             return { code: 'worktree-write-conflict', blockers: [other.taskId], keys: [task.issueWorktreeId] }
         }
@@ -653,7 +684,8 @@ function leaseConflict(task, leases) {
             [...(task.conflictKeys ?? []), ...(task.exclusiveResourceKeys ?? [])],
             lease.keys
         )
-        if (!task.readOnly && keys.length === 0) {
+        if (task.executionClass !== 'observe-only' &&
+            keys.length === 0) {
             const [, repositoryName = task.repository, issueNumber = task.issueNumber]
                 = /^.+\/([^/]+)#([1-9]\d*)$/u.exec(task.issueId) ?? []
             const derivedWorktreeKey =

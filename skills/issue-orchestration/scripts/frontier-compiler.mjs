@@ -116,7 +116,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
         return {
             role: 'test-owner',
             phase: 'test-contract',
-            mode: 'write-tests-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'tests-only',
             allowedPaths: node.allowedTestPaths,
             routeRequired: true,
             stageModelPoolPolicyVersion: 'stage-model-pool.v3'
@@ -130,7 +132,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
             phase: node.surface === 'ui-ux'
                 ? 'ui-implementation'
                 : 'implementation',
-            mode: 'write-implementation-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'implementation-only',
             allowedPaths: node.allowedImplementationPaths,
             designAuthorityRequired: node.surface === 'ui-ux',
             routeRequired: true,
@@ -142,7 +146,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
         return {
             role,
             phase: 'landing-conflict-resolution',
-            mode: 'write-implementation-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'implementation-only',
             allowedPaths: node.allowedImplementationPaths,
             designAuthorityRequired: role === 'ui-ux-implementer',
             routeRequired: true,
@@ -153,7 +159,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
         return {
             role: 'test-owner',
             phase: 'behavior-verification',
-            mode: 'read-execute-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            writeScope: 'none',
             allowedPaths: [],
             routeRequired: true,
             stageModelPoolPolicyVersion: 'stage-model-pool.v3'
@@ -163,7 +171,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
         return {
             role: 'ux-acceptance-verifier',
             phase: 'ux-acceptance',
-            mode: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            writeScope: 'none',
             allowedPaths: [],
             designAuthorityRequired: true,
             routeRequired: true,
@@ -174,7 +184,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
         return {
             role: 'documentation-writer',
             phase: 'documentation',
-            mode: 'write-docs-only',
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'documentation-only',
             allowedPaths: [`docs/frontier-${node.issueNumber}.md`],
             routeRequired: true,
             stageModelPoolPolicyVersion: 'stage-model-pool.v3'
@@ -183,7 +195,9 @@ function expectedCandidate(node, stage, landingConflict = null) {
     return {
         role: 'root-scheduler',
         phase: 'scheduling',
-        mode: 'root-only',
+        executionClass: 'root-control',
+        mutationContract: 'control-plane-and-delivery-gated',
+        writeScope: 'orchestration-control-only',
         allowedPaths: [],
         routeRequired: true,
         stageModelPoolPolicyVersion: 'stage-model-pool.v3'
@@ -318,7 +332,14 @@ function writerSequenceBinding({
 function candidateValid(node, candidate, stage, landingConflict = null) {
     if (!candidate) return false
     const expected = expectedCandidate(node, stage, landingConflict)
-    for (const field of ['role', 'model', 'effort', 'mode']) {
+    for (const field of [
+        'role',
+        'model',
+        'effort',
+        'executionClass',
+        'mutationContract',
+        'writeScope'
+    ]) {
         if (expected[field] !== undefined &&
             candidate[field] !== expected[field]) return false
     }
@@ -493,7 +514,8 @@ function validateSemanticActor(record) {
         && actor.actorId.length > 0
         && actor.model === 'gpt-5.6-sol'
         && actor.effort === 'max'
-        && actor.sandboxMode === 'read-only'
+        && actor.executionClass === 'observe-only'
+        && actor.mutationContract === 'no-protected-mutation'
         && actor.freshContext === true
         && actor.proposalOnly === true
 }
@@ -505,7 +527,10 @@ function validateTestOwnerActor(record) {
         && actor.actorId.length > 0
         && actor.model === 'gpt-5.6-sol'
         && actor.effort === 'max'
-        && actor.mode === 'write-tests-only'
+        && actor.executionClass === 'leased-writer'
+        && actor.mutationContract ===
+            'lease-and-slice-allowlist'
+        && actor.writeScope === 'tests-only'
         && record.testOwnerId === actor.actorId
 }
 
@@ -531,7 +556,10 @@ function validateInvestigationProjection({
     if (validation.schema !== 'issue-orchestration.investigation-validation-receipt.v1'
         || validation.validator?.role !== 'layered-investigation-validator'
         || validation.validator?.model !== 'machine'
-        || validation.validator?.mode !== 'read-only') {
+        || validation.validator?.executionClass !==
+            'observe-only'
+        || validation.validator?.mutationContract !==
+            'no-protected-mutation') {
         fail('investigation-validation-authority', 'Investigation validation authority is invalid.')
     }
     const projectionNodes = investigationProjection.nodes ?? []

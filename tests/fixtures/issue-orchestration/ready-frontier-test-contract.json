@@ -95,13 +95,13 @@
   "hashAlgorithm": "sha256",
   "selfHashPolicy": "fileHashes covers raw bytes for every allowedTestPath except this manifest; frozenTreeDigest covers the canonical fileHashes object; testContractDigest covers the canonical manifest with testContractDigest omitted",
   "fileHashes": {
-    "tests/tools/issue-orchestration-ready-frontier.test.mjs": "c9e7db362339b77482ad27b24b158434c3e4c0f063a3283b20957815e9ed16f5",
-    "tests/fixtures/issue-orchestration/ready-frontier-cases.json": "63cb43ab24db46fca2cb6591f3cbada36676fb8c9d567fef333402a1292ac1cc",
-    "tests/fixtures/issue-orchestration/ready-frontier-acceptance-map.json": "e5de609e6b9a3f3d62e0edb588f2c91f1736dd7176be13b616c2b3859a83de28",
+    "tests/tools/issue-orchestration-ready-frontier.test.mjs": "26a41581b5b49ff715f728a512648915dcab1b3d9ff38e0f3dadd7ddfbded06e",
+    "tests/fixtures/issue-orchestration/ready-frontier-cases.json": "88d4f20ed9fcbb395e768cca3a94aac0ec92ad7b0d840f5c730ff5ec3751d3fc",
+    "tests/fixtures/issue-orchestration/ready-frontier-acceptance-map.json": "6c02e4279779f455323df98b2a6064806d97e58dcd91ac5c515b92059fc51384",
     "tests/fixtures/issue-orchestration/ready-frontier-expected-initial-failures.json": "d39ac6ca5951ab4ce0acf160f95d712b63f3940d2b5e4eb6aac69d6247fb1794",
-    "tests/fixtures/issue-orchestration/ready-frontier-runtime-probes.json": "475ab27ee0618291a9161db2ca9c2e90a7be216c2979df9c06acf19d4bb3564a",
+    "tests/fixtures/issue-orchestration/ready-frontier-runtime-probes.json": "c299d8642ad1f451ed4fa571e86d15ccd928833e173802326e6673bdbc82f3c4",
     "tests/fixtures/issue-orchestration/ready-frontier-mutation-controls.json": "dd6ba0494eb1a74c4df2bf45de9e31ecd9252b5488b0c569e281784bab6626d3"
   },
-  "frozenTreeDigest": "1b2eaf9f791517838e9d3e9104f413a683acb2ac598894f0ac7d7dc230039727",
-  "testContractDigest": "7877a2eb47d66f187ff9f88790e34262c72de0c20151a74d1252b8d0649314bc"
+  "frozenTreeDigest": "fa2bf9730ea91f1b67c218dc58ddaa245b30d1a72d6e13eae1ecd10f80003a31",
+  "testContractDigest": "adaae5cfe21a468d7d15622e0d54bf2ab513c15a9edd1a21454aabea26275ecb"
 }

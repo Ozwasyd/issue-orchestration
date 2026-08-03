@@ -41,7 +41,7 @@ const sourceSchemas = {
     landing: 'issue-orchestration.landing-receipt.v1',
     'human-decision': 'issue-orchestration.human-decision-receipt.v1',
     'stage-work-plan': 'issue-orchestration.slice-terminal-receipt.v1',
-    'execution-route': 'issue-orchestration.execution-route-decision.v1'
+    'execution-route': 'issue-orchestration.execution-route-decision.v2'
 }
 
 const stateDigestFields = [

@@ -5,7 +5,12 @@ import { resolve } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 
+import {
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
+
 const root = resolve(import.meta.dirname, '../..')
+const runtimeStartup = verifiedRuntimeStartup({})
 const fixtureRoot = resolve(root, 'tests/fixtures/issue-orchestration')
 const implementationPath = resolve(
     root,
@@ -177,7 +182,8 @@ function actor(role, overrides = {}) {
             actorId: 'dag-creator-1',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            sandboxMode: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
             freshContext: true,
             proposalOnly: true
         },
@@ -186,7 +192,8 @@ function actor(role, overrides = {}) {
             actorId: 'dag-updater-1',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            sandboxMode: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
             freshContext: true,
             proposalOnly: true
         },
@@ -195,21 +202,25 @@ function actor(role, overrides = {}) {
             actorId: 'test-owner-1822',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            mode: 'write-tests-only'
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'tests-only'
         },
         'code-implementer': {
             role,
             actorId: 'code-implementer-1822',
             model: 'gpt-5.6-sol',
             effort: 'low',
-            mode: 'write-implementation-only'
+            executionClass: 'leased-writer',
+            mutationContract: 'lease-and-slice-allowlist',
+            writeScope: 'implementation-only'
         },
         'discovery-agent': {
             role,
             actorId: 'discovery-agent-1',
             model: 'gpt-5.6-sol',
             effort: 'max',
-            sandboxMode: 'read-only'
+            executionClass: 'observe-only'
         }
     }
     return { ...defaults[role], ...overrides }
@@ -452,7 +463,8 @@ async function scenario({
     const selectorReceipt = resolveSelector({
         selector,
         remoteIssues: issues,
-        resolvedAt: cases.computedAt
+        resolvedAt: cases.computedAt,
+        startup: runtimeStartup
     })
     const nodes = issues.map((issue, index) => {
         const discovery = discoveryFacts(issue, selectorReceipt)
@@ -882,7 +894,8 @@ test('[F01] canonical replay reuses unchanged members across unrelated drift', a
         },
         remoteIssues: changedIssues,
         previousReceipt: input.selectorReceipt,
-        resolvedAt: cases.laterComputedAt
+        resolvedAt: cases.laterComputedAt,
+        startup: runtimeStartup
     })
     const changed = clone(input)
     changed.selectorReceipt = changedReceipt
@@ -926,7 +939,8 @@ test('[F02] changed member comment invalidates only that member and downstream l
         },
         remoteIssues: changedIssues,
         previousReceipt: input.selectorReceipt,
-        resolvedAt: cases.laterComputedAt
+        resolvedAt: cases.laterComputedAt,
+        startup: runtimeStartup
     })
     const report = await freshness(changed, original)
     assert.deepEqual(
@@ -1119,7 +1133,7 @@ test('[R02] operational agent policies freeze authority and dispute behavior', a
     const dagPolicy = readFileSync(dagAgentPolicyPath, 'utf8')
     const ownerPolicy = readFileSync(testOwnerPolicyPath, 'utf8')
     const implementerPolicy = readFileSync(implementerPolicyPath, 'utf8')
-    assert.match(dagPolicy, /sandbox_mode\s*=\s*"read-only"/u)
+    assert.match(dagPolicy, /executionClass=observe-only/u)
     assert.match(dagPolicy, /semantic graph/iu)
     assert.match(dagPolicy, /dispatchInvestigation/iu)
     assert.match(ownerPolicy, /stage-model-pool\.v3/iu)
@@ -1474,7 +1488,8 @@ for (const control of mutationControls) {
                 },
                 remoteIssues: changedIssues,
                 previousReceipt: input.selectorReceipt,
-                resolvedAt: cases.laterComputedAt
+                resolvedAt: cases.laterComputedAt,
+                startup: runtimeStartup
             })
             const report = await freshness(input, projection)
             const reason = report.byIssue[first.id].reasons.find(

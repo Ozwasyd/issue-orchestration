@@ -7,6 +7,8 @@
     "schema",
     "evidenceClass",
     "runtimeTrustBindingDigest",
+    "startupAttestationDigest",
+    "runtimeInvocationId",
     "runtimeTrustMode",
     "role",
     "executionClass",
@@ -32,6 +34,13 @@
     },
     "runtimeTrustBindingDigest": {
       "$ref": "#/$defs/digest"
+    },
+    "startupAttestationDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeInvocationId": {
+      "type": "string",
+      "minLength": 1
     },
     "runtimeTrustMode": {
       "enum": [

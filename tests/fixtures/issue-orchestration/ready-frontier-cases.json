@@ -19,7 +19,8 @@
       "actorId": "dag-creator-updater:frontier-fixture",
       "model": "gpt-5.6-sol",
       "effort": "max",
-      "sandboxMode": "read-only",
+      "executionClass": "observe-only",
+      "mutationContract": "no-protected-mutation",
       "freshContext": true,
       "proposalOnly": true
     },
@@ -28,13 +29,16 @@
       "actorId": "test-owner-fsusblog-1816-corrective-18c6003eb5ad",
       "model": "gpt-5.6-sol",
       "effort": "max",
-      "mode": "write-tests-only"
+      "executionClass": "leased-writer",
+      "mutationContract": "lease-and-slice-allowlist",
+      "writeScope": "tests-only"
     },
     "semanticDriftFields": [
       "role",
       "model",
       "effort",
-      "sandboxMode",
+      "executionClass",
+      "mutationContract",
       "freshContext"
     ],
     "testOwnerDriftFields": [
@@ -42,7 +46,9 @@
       "actorId",
       "model",
       "effort",
-      "mode",
+      "executionClass",
+      "mutationContract",
+      "writeScope",
       "testOwnerId"
     ]
   },
@@ -66,7 +72,8 @@
     "validationActor": {
       "role": "layered-investigation-validator",
       "model": "machine",
-      "mode": "read-only"
+      "executionClass": "observe-only",
+      "mutationContract": "no-protected-mutation"
     }
   },
   "reasonOrder": [

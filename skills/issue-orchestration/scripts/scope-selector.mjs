@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto'
 // Shared issue-orchestration package runtime.
 
+import {
+    authorizeRuntimeStartupActivity
+} from './runtime-startup-attestation.mjs'
+
 const RECEIPT_SCHEMA = 'issue-orchestration.selector-receipt.v1'
 
 function canonical(value) {
@@ -95,7 +99,17 @@ function selectedIds(selector, issuesById) {
     }
 }
 
-export function resolveSelector({ selector, remoteIssues, previousReceipt = null, resolvedAt }) {
+export function resolveSelector({
+    selector,
+    remoteIssues,
+    previousReceipt = null,
+    resolvedAt,
+    startup
+}) {
+    const startupAuthorization = authorizeRuntimeStartupActivity({
+        activity: 'scope-selection',
+        startup
+    })
     if (selector?.schema !== 'issue-orchestration.scope-selector.v1') {
         throw Object.assign(new Error('invalid selector schema'), {
             code: 'invalid-selector-schema'
@@ -114,6 +128,18 @@ export function resolveSelector({ selector, remoteIssues, previousReceipt = null
         throw Object.assign(
             new Error('selector version cannot be reused for changed parameters'),
             { code: 'selector-version-parameters-mismatch' }
+        )
+    }
+    if (previousReceipt &&
+        (previousReceipt.startupAttestationDigest !==
+                startupAuthorization.startupAttestationDigest ||
+            previousReceipt.runtimeInvocationId !==
+                startupAuthorization.runtimeInvocationId)) {
+        throw Object.assign(
+            new Error(
+                'selector receipt belongs to another runtime invocation'
+            ),
+            { code: 'selector-startup-binding-drift' }
         )
     }
 
@@ -162,6 +188,12 @@ export function resolveSelector({ selector, remoteIssues, previousReceipt = null
 
     const receipt = {
         schema: RECEIPT_SCHEMA,
+        startupAttestationDigest:
+            startupAuthorization.startupAttestationDigest,
+        runtimeInvocationId:
+            startupAuthorization.runtimeInvocationId,
+        runtimeSessionId:
+            startupAuthorization.runtimeSessionId,
         selectorVersion: selector.selectorVersion,
         type: selector.type,
         parametersDigest,
@@ -190,8 +222,8 @@ function denied(code, reason, base) {
 
 function verifiedRoute(value, stageRole, stagePhase) {
     return value?.schema ===
-            'issue-orchestration.execution-route-decision.v1' &&
-        value.policyVersion === 'execution-capability-routing.v2' &&
+            'issue-orchestration.execution-route-decision.v2' &&
+        value.policyVersion === 'execution-capability-routing.v3' &&
         value.modelPoolPolicyVersion === 'stage-model-pool.v3' &&
         value.routingAuthority ===
             'deterministic-execution-capability-compiler' &&
@@ -220,7 +252,10 @@ function authorizeLaunch(request, expectedAction, base) {
             'dag-creator-updater',
             'semantic-proposal'
         ), 'agent route decision mismatch'],
-        [request?.agent?.sandboxMode === 'read-only', 'agent sandbox mismatch'],
+        [
+            request?.agent?.executionClass === 'observe-only',
+            'agent execution class mismatch'
+        ],
         [request?.agent?.freshContext === true, 'fresh context required'],
         [request?.agent?.resident === false, 'resident agent forbidden']
     ]

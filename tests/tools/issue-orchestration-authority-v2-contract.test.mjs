@@ -8,6 +8,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
     compileRuntimeTrustBinding
 } from '../../skills/issue-orchestration/scripts/runtime-trust-policy.mjs'
+import {
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
 
 const root = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -39,6 +42,9 @@ const digest = (value) => createHash('sha256')
     .digest('hex')
 const HASH = /^[a-f0-9]{64}$/u
 const clone = structuredClone
+const runtimeStartup = verifiedRuntimeStartup({})
+const modelPoolPolicyDigest =
+    runtimeStartup.observation.policyDigests.modelPool
 const importRuntime = (issue) => import(pathToFileURL(path.join(
     packageRoot,
     contract.issues[String(issue)].runtimeOwner
@@ -98,7 +104,7 @@ function runtimeMetadata(profile = 'terra-low') {
     }
 }
 
-function rootRuntimeTrust() {
+function rootRuntimeTrust(startup = runtimeStartup) {
     const repositoryTargets = [{
         repository: 'Ozwasyd/FsusBlog',
         repositoryPath: fsusBlogRoot
@@ -113,7 +119,8 @@ function rootRuntimeTrust() {
             approvalPolicy: 'never',
             effectivePermissionProfile: 'danger-full-access',
             permissionProfileObserved: true,
-            repositoryTargets
+            repositoryTargets,
+            startup
         })
     }
 }
@@ -126,11 +133,22 @@ function route({
     authority = 'deterministic-execution-capability-compiler'
 } = {}) {
     const [family, effort] = profile.split('-')
+    const executionClass = role === 'root-scheduler'
+        ? 'root-control'
+        : [
+                'dag-creator-updater',
+                'ui-system-adjudicator',
+                'ux-acceptance-verifier'
+            ].includes(role) ||
+            role === 'test-owner' &&
+                phase !== 'test-contract'
+            ? 'observe-only'
+            : 'leased-writer'
     const value = {
-        schema: 'issue-orchestration.execution-route-decision.v1',
-        policyVersion: 'execution-capability-routing.v2',
+        schema: 'issue-orchestration.execution-route-decision.v2',
+        policyVersion: 'execution-capability-routing.v3',
         modelPoolPolicyVersion: 'stage-model-pool.v3',
-        modelPoolPolicyDigest: digest('pool-v3'),
+        modelPoolPolicyDigest,
         routingAuthority: authority,
         stageRole: role,
         stagePhase: phase,
@@ -139,6 +157,15 @@ function route({
         requestedModel: `gpt-5.6-${family}`,
         requestedEffort: effort,
         multiAgentBackend: 'v2',
+        executionClass,
+        mutationContract: {
+            'root-control': 'control-plane-and-delivery-gated',
+            'observe-only': 'no-protected-mutation',
+            'leased-writer': 'lease-and-slice-allowlist'
+        }[executionClass],
+        runtimeExecutionBindingDigest:
+            digest('runtime-execution-binding'),
+        runtimeExecutionBindingStatus: 'verified',
         runtimeVerificationStatus: 'verified'
     }
     value.routeDecisionDigest = digest(value)
@@ -197,26 +224,19 @@ function gateFixture() {
         selectorReceipt: {
             schema: 'issue-orchestration.scope-selector-receipt.v1',
             remoteSnapshotDigest: digest('remote'),
-            receiptDigest: digest('selector')
+            receiptDigest: digest('selector'),
+            startupAttestationDigest:
+                runtimeStartup.attestation.attestationDigest,
+            runtimeInvocationId:
+                runtimeStartup.attestation.runtimeInvocationId
         },
         dag: {
             schema: 'issue-orchestration.semantic-graph.v2',
-            policyDigest: digest('pool-v3'),
+            policyDigest: modelPoolPolicyDigest,
             nodes: members
         },
-        rootRuntime: {
-            routeDecision: route({
-                role: 'root-scheduler',
-                phase: 'scheduling',
-                profile: 'terra-low',
-                sliceDigest: digest('root-control-slice')
-            }),
-            metadata: runtimeMetadata('terra-low'),
-            ...rootRuntimeTrust(),
-            controlPlaneRecovery: false,
-            recoveryClassification: null,
-            recoveryReceiptDigest: null
-        },
+        startup: runtimeStartup,
+        ...rootRuntimeTrust(),
         legacyFallbackEnabled: false,
         authoritySource: 'permanent-shared-package'
     }
@@ -270,9 +290,11 @@ test('A77-02 rejects all frozen startup-gate mutation classes', async () => {
             v.dag.nodes[0].routeDecision.selectedProfile = 'sol-ultra'
         }, 'dag-gate-profile'],
         ['medium-root-without-recovery', (v) => {
-            v.rootRuntime.routeDecision.selectedProfile = 'terra-medium'
-            v.rootRuntime.metadata = runtimeMetadata('terra-medium')
-        }, 'dag-gate-root-recovery'],
+            v.rootRuntime = {
+                controlPlaneRecovery: true,
+                metadata: runtimeMetadata('terra-medium')
+            }
+        }, 'dag-gate-legacy-root-runtime'],
         ['temporary-scheduler-authority', (v) => {
             v.dag.nodes[0].routeDecision.routingAuthority =
                 'temporary-scheduler'
@@ -505,10 +527,15 @@ function planningReceipt() {
         actorRole: 'test-owner',
         phase: 'test-contract-planning',
         rootAuthored: false,
-        sandbox: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
         freshContext: true,
         attemptId: 'planning-attempt-1',
         acceptanceContractDigest: acceptanceContract().contractDigest,
+        runtimeExecutionBindingDigest:
+            digest('runtime-execution-binding'),
+        mutationPostconditionReceiptDigest:
+            digest('planning-postcondition'),
         ownerRepository: 'Ozwasyd/FsusBlog',
         testPaths: ['tests/tools/issue-1879.test.mjs'],
         commands: ['node --test tests/tools/issue-1879.test.mjs'],
@@ -546,7 +573,7 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
         attemptId: 'planning-attempt-1'
     })
     assert.equal(request.phase, 'test-contract-planning')
-    assert.equal(request.sandbox, 'read-only')
+    assert.equal(request.executionClass, 'observe-only')
     const plan = verifyTestContractPlanReceipt({
         receipt: planningReceipt(),
         request
@@ -571,7 +598,7 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
     })
     assert.equal(dispatch.status, 'dispatch-authorized')
     assert.notEqual(dispatch.planningAttemptId, dispatch.writerAttemptId)
-    assert.equal(dispatch.sandbox, 'workspace-write')
+    assert.equal(dispatch.executionClass, 'leased-writer')
 })
 
 test('A79-02 rejects fabricated history, Root authority and cold-start loops', async () => {
@@ -596,7 +623,9 @@ test('A79-02 rejects fabricated history, Root authority and cold-start loops', a
         request: {
             acceptanceContractDigest:
                 acceptanceContract().contractDigest,
-            attemptId: 'planning-attempt-1'
+            attemptId: 'planning-attempt-1',
+            runtimeExecutionBindingDigest:
+                digest('runtime-execution-binding')
         }
     }), { code: 'test-planning-authority' })
     assert.throws(() => compileTestContractWriterDispatch({
@@ -673,8 +702,13 @@ function sliceProposal() {
         actorRuntime: {
             role: 'test-owner',
             phase: 'test-contract-planning',
-            sandbox: 'read-only',
-            routeDecisionDigest: digest('planning-route')
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            routeDecisionDigest: digest('planning-route'),
+            runtimeExecutionBindingDigest:
+                digest('planning-runtime-binding'),
+            mutationPostconditionReceiptDigest:
+                digest('planning-postcondition')
         }
     }
     value.proposalDigest = digest(value)
@@ -775,15 +809,8 @@ test('A81-01 limits terra-low Root to recomputable mechanical actions', async ()
     validateDispatchInvestigationProjection(projection)
     const receipt = compileRootControlAction({
         projection,
-        rootRuntime: {
-            routeDecision: route({
-                role: 'root-scheduler',
-                phase: 'scheduling',
-                profile: 'terra-low'
-            }),
-            metadata: runtimeMetadata('terra-low'),
-            ...rootRuntimeTrust()
-        },
+        startup: runtimeStartup,
+        ...rootRuntimeTrust(),
         requestedAction: {
             action: 'dispatch-ready-slice',
             sliceId: 'slice-a',
@@ -816,17 +843,14 @@ test('A81-02 rejects Root-authored semantics, expanded context and profile leaka
         )
     }
     const projection = dispatchProjection()
+    const takeoverStartup = verifiedRuntimeStartup({
+        profile: 'terra-medium',
+        invocationId: 'invocation-test-takeover'
+    })
     assert.throws(() => compileRootControlAction({
         projection,
-        rootRuntime: {
-            routeDecision: route({
-                role: 'root-scheduler',
-                phase: 'scheduling',
-                profile: 'terra-high'
-            }),
-            metadata: runtimeMetadata('terra-high'),
-            ...rootRuntimeTrust()
-        },
+        startup: takeoverStartup,
+        ...rootRuntimeTrust(takeoverStartup),
         requestedAction: projection.nextActions[0]
     }), { code: 'root-control-profile' })
 
@@ -836,15 +860,8 @@ test('A81-02 rejects Root-authored semantics, expanded context and profile leaka
     directProductEdit.projectionDigest = digest(directProductEdit)
     assert.throws(() => compileRootControlAction({
         projection: directProductEdit,
-        rootRuntime: {
-            routeDecision: route({
-                role: 'root-scheduler',
-                phase: 'scheduling',
-                profile: 'terra-low'
-            }),
-            metadata: runtimeMetadata('terra-low'),
-            ...rootRuntimeTrust()
-        },
+        startup: runtimeStartup,
+        ...rootRuntimeTrust(),
         requestedAction: directProductEdit.nextActions[0]
     }), { code: 'root-control-action' })
 })

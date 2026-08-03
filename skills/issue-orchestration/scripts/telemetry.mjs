@@ -185,12 +185,12 @@ const ENUMS = new Map([
     ['workShape', new Set([
         'atomic-edit', 'bounded-multifile', 'iterative-debug',
         'runtime-probe-heavy', 'context-heavy', 'high-tool-depth',
-        'long-horizon-cross-module', 'read-only-adjudication'
+        'long-horizon-cross-module', 'observe-only-adjudication'
     ])],
     ['dominantWorkShape', new Set([
         'atomic-edit', 'bounded-multifile', 'iterative-debug',
         'runtime-probe-heavy', 'context-heavy', 'high-tool-depth',
-        'long-horizon-cross-module', 'read-only-adjudication'
+        'long-horizon-cross-module', 'observe-only-adjudication'
     ])],
     ['outputMissingCause', new Set([
         'slice-not-executable', 'compiled-prompt-incomplete',

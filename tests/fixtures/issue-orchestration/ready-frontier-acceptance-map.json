@@ -137,7 +137,7 @@
     },
     {
       "id": "TRUST-01",
-      "requirement": "Discovery and classification authoredBy facts exactly bind role=dag-creator-updater, model=gpt-5.6-sol, effort=max, sandboxMode=read-only, freshContext=true authority; dispatch investigation exactly binds the frozen Sol/max write-tests-only test owner and testOwnerId.",
+      "requirement": "Discovery and classification authoredBy facts exactly bind role=dag-creator-updater, model=gpt-5.6-sol, effort=max, executionClass=observe-only, freshContext=true authority; dispatch investigation exactly binds the frozen Sol/max write-tests-only test owner and testOwnerId.",
       "tests": ["L01", "TRUST-01"],
       "mutations": ["root-authored-discovery-facts", "root-authored-classification-facts", "root-authored-dispatch-investigation", "layer-authority-runtime-policy-drift"]
     },

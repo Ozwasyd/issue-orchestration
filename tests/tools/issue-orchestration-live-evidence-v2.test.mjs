@@ -666,7 +666,7 @@ function childReceipt(key, mode = 'live') {
             'issue-orchestration.stage-model-pool-policy.v3'
         common.policyVersion = 'stage-model-pool.v3'
         common.routingSchema =
-            'issue-orchestration.execution-routing-policy.v2'
+            'issue-orchestration.execution-routing-policy.v3'
         common.registeredProfiles = [
             'terra-low',
             'terra-medium',

@@ -7,12 +7,12 @@ import {
     seal
 } from './runtime-contract-lib.mjs'
 import {
-    verifyRuntimeProfileMetadata
-} from './stage-profile-policy.mjs'
-import {
     compileRuntimePermissionEvidence,
     validateRuntimeTrustBinding
 } from './runtime-trust-policy.mjs'
+import {
+    requireRuntimeStartupBinding
+} from './runtime-startup-attestation.mjs'
 
 const PROJECTION_FIELDS = new Set([
     'schema',
@@ -88,79 +88,62 @@ export function validateDispatchInvestigationProjection(value) {
     return value
 }
 
-function validateRootRuntime(value) {
-    const route = value?.routeDecision
-    if (route?.schema !==
-            'issue-orchestration.execution-route-decision.v1' ||
-        route.policyVersion !== 'execution-capability-routing.v2' ||
-        route.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
-        route.routingAuthority !==
-            'deterministic-execution-capability-compiler' ||
-        route.stageRole !== 'root-scheduler' ||
-        route.stagePhase !== 'scheduling' ||
-        !['terra-low', 'terra-medium'].includes(
-            route.selectedProfile
-        )) {
+function validateRootRuntime({
+    startup,
+    runtimeTrustBinding,
+    repositoryTargets
+}) {
+    let startupBinding
+    try {
+        startupBinding = requireRuntimeStartupBinding({ startup })
+    } catch {
+        fail('root-control-startup-attestation')
+    }
+    if (startupBinding.rootPhase !== 'scheduling' ||
+        startupBinding.rootProfile !== 'terra-low') {
         fail('root-control-profile')
     }
-    if (route.selectedProfile === 'terra-medium' &&
-        (typeof value.recoveryClassification !== 'string' ||
-            !value.recoveryClassification ||
-            !/^[a-f0-9]{64}$/u.test(
-                value.recoveryReceiptDigest ?? ''
-            ))) {
-        fail('root-control-recovery')
-    }
     try {
-        verifyRuntimeProfileMetadata({
-            selectedProfile: route.selectedProfile,
-            requestedModel: value.metadata?.requestedModel,
-            effectiveModel: value.metadata?.effectiveModel,
-            requestedEffort: value.metadata?.requestedEffort,
-            effectiveEffort: value.metadata?.effectiveEffort,
-            multiAgentBackend: value.metadata?.multiAgentBackend
-        })
-    } catch {
-        fail('root-control-runtime-metadata')
-    }
-    if (value.metadata?.role !== 'root-scheduler' ||
-        value.metadata?.approvalPolicy !== 'never' ||
-        value.metadata?.effectivePermissionProfile !==
-            'danger-full-access' ||
-        value.metadata?.permissionProfileObserved !== true) {
-        fail('root-control-runtime-metadata')
-    }
-    try {
-        validateRuntimeTrustBinding(value.runtimeTrustBinding, {
+        validateRuntimeTrustBinding(runtimeTrustBinding, {
             expectedRole: 'root-scheduler',
             expectedExecutionClass: 'root-control',
-            repositoryTargets: value.repositoryTargets
+            repositoryTargets,
+            startup
         })
     } catch {
         fail('root-control-runtime-trust')
     }
     const runtimePermissionEvidence =
         compileRuntimePermissionEvidence({
-            binding: value.runtimeTrustBinding,
+            binding: runtimeTrustBinding,
             evidenceClass: 'run',
-            repositoryTargets: value.repositoryTargets
+            repositoryTargets,
+            startup
         })
     return {
-        rootProfile: route.selectedProfile,
+        rootProfile: startupBinding.rootProfile,
+        startupBinding,
         runtimePermissionEvidence
     }
 }
 
 export function compileRootControlAction({
     projection,
-    rootRuntime,
+    startup,
+    runtimeTrustBinding,
+    repositoryTargets,
     requestedAction
 }) {
     validateDispatchInvestigationProjection(projection)
     const {
         rootProfile,
+        startupBinding,
         runtimePermissionEvidence
-    } = validateRootRuntime(rootRuntime)
+    } = validateRootRuntime({
+        startup,
+        runtimeTrustBinding,
+        repositoryTargets
+    })
     if (!sameValue(requestedAction, projection.nextActions[0])) {
         fail('root-control-action-not-recomputable')
     }
@@ -181,6 +164,14 @@ export function compileRootControlAction({
             'issue-orchestration.root-control-action-receipt.v1',
         status: 'authorized',
         rootProfile,
+        startupAttestationDigest:
+            startupBinding.startupAttestationDigest,
+        runtimeInvocationId:
+            startupBinding.runtimeInvocationId,
+        runtimeSessionId:
+            startupBinding.runtimeSessionId,
+        rootAuthorityEpoch:
+            startupBinding.rootAuthorityEpoch,
         runtimeTrustMode:
             runtimePermissionEvidence.runtimeTrustMode,
         runtimeTrustBindingDigest:

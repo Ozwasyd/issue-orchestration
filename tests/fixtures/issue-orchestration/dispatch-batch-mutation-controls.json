@@ -17,7 +17,7 @@
         {"id": "unmet-stage-selected", "surface": "input", "expectedCode": "stage-prerequisite-unsatisfied"},
         {"id": "dag-agent-selected", "surface": "input", "expectedCode": "stage-role-not-selectable"},
         {"id": "code-role-writes-ui", "surface": "input", "expectedCode": "stage-role-write-scope"},
-        {"id": "verifier-takes-write-lease", "surface": "input", "expectedCode": "read-only-write-lease"},
+        {"id": "verifier-takes-write-lease", "surface": "input", "expectedCode": "observe-only-write-lease"},
         {"id": "unstable-candidate-read", "surface": "input", "expectedCode": "candidate-not-frozen"},
         {"id": "lease-attempt-release-mismatch", "surface": "lease", "expectedCode": "lease-attempt-mismatch"},
         {"id": "expired-lease-stolen-without-recovery", "surface": "lease", "expectedCode": "lease-recovery-required"},

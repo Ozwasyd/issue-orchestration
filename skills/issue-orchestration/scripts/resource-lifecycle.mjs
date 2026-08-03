@@ -891,7 +891,8 @@ function applyCandidateGreen(next, event) {
     next.writeLease.state = 'revoked'
     next.readLease = {
         role: 'independent-verifier',
-        mode: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
         candidateSha: event.candidateSha
     }
     next.phase = 'independent-verifying'

@@ -4,19 +4,22 @@
   "title": "issue-orchestration.test-contract-planning-request.v1",
   "type": "object",
   "required": [
-    "schema", "phase", "sandbox", "freshContext", "attemptId",
+    "schema", "phase", "executionClass", "mutationContract",
+    "freshContext", "attemptId",
     "nodeDiscoveredReceiptDigest", "acceptanceContractDigest",
-    "routeDecisionDigest", "requestDigest"
+    "routeDecisionDigest", "runtimeExecutionBindingDigest", "requestDigest"
   ],
   "properties": {
     "schema": {"const": "issue-orchestration.test-contract-planning-request.v1"},
     "phase": {"const": "test-contract-planning"},
-    "sandbox": {"const": "read-only"},
+    "executionClass": {"const": "observe-only"},
+    "mutationContract": {"const": "no-protected-mutation"},
     "freshContext": {"const": true},
     "attemptId": {"type": "string", "minLength": 1},
     "nodeDiscoveredReceiptDigest": {"$ref": "#/$defs/digest"},
     "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
     "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
     "requestDigest": {"$ref": "#/$defs/digest"}
   },
   "additionalProperties": true,

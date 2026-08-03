@@ -58,7 +58,8 @@ function semanticActorValid(record) {
     return ['dag-creator', 'dag-updater'].includes(actor?.role)
         && actor.model === 'gpt-5.6-sol'
         && actor.effort === 'max'
-        && actor.sandboxMode === 'read-only'
+        && actor.executionClass === 'observe-only'
+        && actor.mutationContract === 'no-protected-mutation'
         && actor.freshContext === true
         && actor.proposalOnly === true
 }
@@ -310,7 +311,10 @@ export function authorizeInvestigationTransition({ transition, actor }) {
             fail('test-contract-disputed', 'Only the test owner can freeze dispatch evidence.')
         }
         if (actor.model !== 'gpt-5.6-sol' || actor.effort !== 'max'
-            || actor.mode !== 'write-tests-only') {
+            || actor.executionClass !== 'leased-writer'
+            || actor.mutationContract !==
+                'lease-and-slice-allowlist'
+            || actor.writeScope !== 'tests-only') {
             fail('test-owner-runtime-identity', 'Test owner must run as Sol/max.')
         }
         return { valid: true }
@@ -324,7 +328,9 @@ export function authorizeInvestigationTransition({ transition, actor }) {
             fail('investigation-transition-authority', 'Semantic transition is unauthorized.')
         }
         if (actor.model !== 'gpt-5.6-sol' || actor.effort !== 'max'
-            || actor.sandboxMode !== 'read-only'
+            || actor.executionClass !== 'observe-only'
+            || actor.mutationContract !==
+                'no-protected-mutation'
             || actor.freshContext !== true || actor.proposalOnly !== true) {
             fail('investigation-layer-authority', 'Semantic actor identity is invalid.')
         }

@@ -234,8 +234,21 @@ function stageTask(number, overrides = {}) {
         issueWorktreeId: requestedWorktreeIdentity,
         writerGitFixture: requestedWriterFixture,
         writerArtifacts: requestedWriterArtifacts,
+        executionClass: requestedExecutionClass,
+        mutationContract: requestedMutationContract,
         ...publicOverrides
     } = overrides
+    const executionClass = requestedExecutionClass ??
+        (['behavior-verification', 'ux-acceptance'].includes(stageKind)
+            ? 'observe-only'
+            : ['delivery', 'cleanup'].includes(stageKind)
+                ? 'root-control'
+                : 'leased-writer')
+    const mutationContract = requestedMutationContract ?? {
+        'observe-only': 'no-protected-mutation',
+        'leased-writer': 'lease-and-slice-allowlist',
+        'root-control': 'control-plane-and-delivery-gated'
+    }[executionClass]
     const task = {
         taskId: overrides.taskId ?? `${issueId}@${stageKind}`,
         issueId,
@@ -249,7 +262,8 @@ function stageTask(number, overrides = {}) {
         writePaths,
         requiredReceiptDigests: overrides.requiredReceiptDigests ?? [],
         requiredSkillDigests: overrides.requiredSkillDigests ?? [],
-        readOnly: overrides.readOnly ?? false,
+        executionClass,
+        mutationContract,
         candidateSha: overrides.candidateSha ?? null,
         candidateFrozen: overrides.candidateFrozen ?? true,
         epochId: overrides.epochId ?? 'epoch-1820-1',
@@ -496,7 +510,8 @@ function frontierBindingFixture(tasks) {
                 writeScopeDigest: task.writeScopeDigest,
                 requiredReceiptDigests: clone(task.requiredReceiptDigests),
                 requiredSkillDigests: clone(task.requiredSkillDigests),
-                readOnly: task.readOnly,
+                executionClass: task.executionClass,
+                mutationContract: task.mutationContract,
                 candidateSha: task.candidateSha,
                 candidateFrozen: task.candidateFrozen,
                 epochId: task.epochId,
@@ -1046,8 +1061,9 @@ test('[P06] landing permissions exist only for the bound code and UI writers', (
     )
     for (const [, permission] of landingEntries) {
         assert.deepEqual(permission, {
-            sandbox: 'workspace-write',
+            executionClass: 'leased-writer',
             writeScope: 'implementation-only',
+            outputAuthority: 'landing-candidate',
             freshContext: false
         })
     }
@@ -1286,7 +1302,6 @@ for (const mutation of bindingFactMutations) {
             stageTask(9356, {
                 stageKind: 'behavior-verification',
                 stageRole: 'test-owner',
-                readOnly: true,
                 writePaths: [],
                 writeScopeDigest: digest([]),
                 candidateSha: 'e'.repeat(40),
@@ -1486,7 +1501,6 @@ test('[S01] DAG agents and unmet stages are not selectable backlog', async () =>
     const dagAgent = stageTask(9390, {
         stageKind: 'dag-update',
         stageRole: 'dag-creator-updater',
-        readOnly: true,
         writePaths: []
     })
     const unmet = stageTask(9391, {
@@ -1516,7 +1530,6 @@ test('[S02] ordinary code role cannot own UI paths and verifiers cannot write', 
     const verifierWriter = stageTask(9393, {
         stageKind: 'behavior-verification',
         stageRole: 'test-owner',
-        readOnly: true,
         writePaths: ['tests/forbidden-write.test.mjs'],
         conflictKeys: ['write:FsusBlog:forbidden'],
         candidateSha: 'c'.repeat(40)
@@ -1527,16 +1540,15 @@ test('[S02] ordinary code role cannot own UI paths and verifiers cannot write', 
     )
     await expectDenied(
         () => validateInput({ tasks: [verifierWriter] }),
-        'read-only-write-lease'
+        'observe-only-write-lease'
     )
 })
 
-test('[S03] read-only verifier runs beside writer only for a frozen candidate', async () => {
+test('[S03] observe-only verifier runs beside writer only for a frozen candidate', async () => {
     const writer = stageTask(9394)
     const verifier = stageTask(9395, {
         stageKind: 'behavior-verification',
         stageRole: 'test-owner',
-        readOnly: true,
         writePaths: [],
         writeScopeDigest: digest([]),
         candidateSha: 'd'.repeat(40),
@@ -1769,7 +1781,6 @@ test('[F01] FsusUI 267-279 sample yields its exact explainable safe batch', asyn
             priorityClass: 'P0',
             criticalPathLength: 4,
             downstreamBlockedCount: 10,
-            readOnly: true,
             writePaths: [],
             writeScopeDigest: digest([]),
             candidateSha: sample.baseSha,
@@ -1904,7 +1915,6 @@ async function executeMutation(control) {
             stageTask(9551, {
                 stageKind: 'behavior-verification',
                 stageRole: 'test-owner',
-                readOnly: true,
                 writePaths: [],
                 writeScopeDigest: digest([]),
                 candidateSha: 'e'.repeat(40),
@@ -1947,7 +1957,6 @@ async function executeMutation(control) {
         } else if (control.id === 'dag-agent-selected') {
             tasks[0].stageKind = 'dag-update'
             tasks[0].stageRole = 'dag-creator-updater'
-            tasks[0].readOnly = true
             tasks[0].writePaths = []
         } else if (control.id === 'code-role-writes-ui') {
             tasks[0] = stageTask(3500, {
@@ -1961,7 +1970,6 @@ async function executeMutation(control) {
             tasks[0] = stageTask(9500, {
                 stageKind: 'behavior-verification',
                 stageRole: 'test-owner',
-                readOnly: true,
                 candidateSha: 'a'.repeat(40),
                 conflictKeys: ['write:FsusBlog:forbidden']
             })
@@ -1969,7 +1977,6 @@ async function executeMutation(control) {
             tasks[0] = stageTask(9500, {
                 stageKind: 'behavior-verification',
                 stageRole: 'test-owner',
-                readOnly: true,
                 writePaths: [],
                 writeScopeDigest: digest([]),
                 candidateSha: 'a'.repeat(40),

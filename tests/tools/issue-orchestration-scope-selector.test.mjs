@@ -4,6 +4,10 @@ import { resolve } from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
 
+import {
+    verifiedRuntimeStartup
+} from './issue-orchestration-runtime-startup-test-helper.mjs'
+
 const root = resolve(import.meta.dirname, '../..')
 const fixturePath = resolve(
     root,
@@ -20,6 +24,7 @@ const requiredExports = [
     'validateDagProposalAcceptance',
     'validateDeliveryWindow'
 ]
+const runtimeStartup = verifiedRuntimeStartup({})
 
 let implementationPromise
 
@@ -63,7 +68,8 @@ async function resolveFixture(
         selector: clone(selector),
         remoteIssues: clone(remoteIssues),
         previousReceipt: previousReceipt ? clone(previousReceipt) : null,
-        resolvedAt
+        resolvedAt,
+        startup: runtimeStartup
     })
 }
 
@@ -73,6 +79,14 @@ function assertDigest(value, label) {
 
 function assertReceiptShape(receipt, selector, previousReceipt = null) {
     assert.equal(receipt.schema, 'issue-orchestration.selector-receipt.v1')
+    assert.equal(
+        receipt.startupAttestationDigest,
+        runtimeStartup.attestation.attestationDigest
+    )
+    assert.equal(
+        receipt.runtimeInvocationId,
+        runtimeStartup.attestation.runtimeInvocationId
+    )
     assert.equal(receipt.selectorVersion, selector.selectorVersion)
     assert.equal(receipt.type, selector.type)
     assert.equal(receipt.remoteQueryIdentity, selector.remoteQueryIdentity)
@@ -124,13 +138,19 @@ async function expectDenied(operation, messagePattern = /denied|invalid|required
 }
 
 function launchRequest(role) {
-    const routeDecision = (stageRole, stagePhase, selectedProfile) => ({
-        schema: 'issue-orchestration.execution-route-decision.v1',
-        policyVersion: 'execution-capability-routing.v2',
+    const routeDecision = (
+        stageRole,
+        stagePhase,
+        selectedProfile,
+        executionClass
+    ) => ({
+        schema: 'issue-orchestration.execution-route-decision.v2',
+        policyVersion: 'execution-capability-routing.v3',
         modelPoolPolicyVersion: 'stage-model-pool.v3',
         routingAuthority: 'deterministic-execution-capability-compiler',
         stageRole,
         stagePhase,
+        executionClass,
         selectedProfile,
         runtimeVerificationStatus: 'verified',
         routeDecisionDigest: 'a'.repeat(64)
@@ -142,7 +162,8 @@ function launchRequest(role) {
             routeDecision: routeDecision(
                 'root-scheduler',
                 'scheduling',
-                'terra-low'
+                'terra-low',
+                'root-control'
             )
         },
         agent: {
@@ -151,9 +172,10 @@ function launchRequest(role) {
             routeDecision: routeDecision(
                 'dag-creator-updater',
                 'semantic-proposal',
-                'terra-high'
+                'terra-high',
+                'observe-only'
             ),
-            sandboxMode: 'read-only',
+            executionClass: 'observe-only',
             freshContext: true,
             resident: false
         }
@@ -500,7 +522,9 @@ test('[A12][N02][N05][M11] all non-root, non-Sol/max, writable, inherited, or re
         ['wrong agent route', (request) => {
             request.agent.routeDecision.stagePhase = 'implementation'
         }],
-        ['writable sandbox', (request) => { request.agent.sandboxMode = 'workspace-write' }],
+        ['writer execution class', (request) => {
+            request.agent.executionClass = 'leased-writer'
+        }],
         ['inherited context', (request) => { request.agent.freshContext = false }],
         ['resident updater', (request) => { request.agent.resident = true }]
     ]

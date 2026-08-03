@@ -196,7 +196,12 @@ function blockerFixture() {
             rolloutId: 'verifier-a',
             freshContext: true,
             inheritedThreadId: null,
-            sandbox: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            runtimeExecutionBindingDigest:
+                digest('verifier-a-runtime-binding'),
+            mutationPostconditionReceiptDigest:
+                digest('verifier-a-postcondition'),
             role: 'test-owner',
             phase: 'behavior-verification'
         }
@@ -238,7 +243,12 @@ test('R83-01 recompiles impact and fresh behavior authority for candidate B', as
             rolloutId: 'verifier-b',
             freshContext: true,
             inheritedThreadId: null,
-            sandbox: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            runtimeExecutionBindingDigest:
+                digest('verifier-b-runtime-binding'),
+            mutationPostconditionReceiptDigest:
+                digest('verifier-b-postcondition'),
             role: 'test-owner',
             phase: 'behavior-verification'
         },
@@ -286,7 +296,12 @@ test('R83-02 rejects stale candidates, Root authority and unsafe delta evidence'
             rolloutId: 'verifier-b',
             freshContext: true,
             inheritedThreadId: null,
-            sandbox: 'read-only',
+            executionClass: 'observe-only',
+            mutationContract: 'no-protected-mutation',
+            runtimeExecutionBindingDigest:
+                digest('verifier-b-runtime-binding'),
+            mutationPostconditionReceiptDigest:
+                digest('verifier-b-postcondition'),
             role: 'test-owner',
             phase: 'behavior-verification'
         },

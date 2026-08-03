@@ -100,19 +100,19 @@
   "hashAlgorithm": "sha256-raw-bytes-and-canonical-json-v1",
   "selfHashPolicy": "fileHashes covers raw bytes of every allowedTestPath except this manifest; frozenTreeDigest covers canonical fileHashes; testContractDigest covers canonical manifest with testContractDigest omitted",
   "fileHashes": {
-    "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs": "b3536181a0441722a98d38773c12a1c2d10a000c0b1e4c9e420764f60d487b9b",
+    "tests/tools/issue-orchestration-semantic-runtime-projection.test.mjs": "c7e4555289dbcec07387e57d22dde867842009f22fd19f421c00e2a89ef56882",
     "tests/fixtures/issue-orchestration/semantic-runtime-projection-cases.json": "39ac4822f09242277accb57e99655006a9b0c73995cdaf7b68fa05bdbd4a80e0",
     "tests/fixtures/issue-orchestration/semantic-runtime-projection-acceptance-map.json": "d9a8e63ba58212adabffa196d46f76eef1d95bacf6eb3c0c1ec89895ecfafece",
     "tests/fixtures/issue-orchestration/semantic-runtime-projection-expected-initial-failures.json": "cf192235e94527d52a190ac63e708689264bc99bc8ba3cf0918ab81af04db226",
     "tests/fixtures/issue-orchestration/semantic-runtime-projection-runtime-probes.json": "8faa4c7c7fefddd95861d2acc586f6bed3025d04a603242ef25f659d32161457",
     "tests/fixtures/issue-orchestration/semantic-runtime-projection-mutation-controls.json": "a1c9de193b4f2b87767fa088086953010d99c837418a0a7d5e34a56ae5c86de5"
   },
-  "frozenTreeDigest": "3b620d4b84f461820a51caa55f036b35dfd9189dc688267b1bf232aba6ed9ddf",
+  "frozenTreeDigest": "40a35a64983be31f70968f8180b63a7008fd0af7e02e43d32e4e4a2695116e94",
   "expectedBaseSummary": {
     "tests": 33,
     "pass": 1,
     "fail": 32,
     "skipped": 0
   },
-  "testContractDigest": "33448d24e9b7f100956d12c04a4b4b016f37883041f83af9b7a15e25a109ff21"
+  "testContractDigest": "d9f0b04e0c0770536143faa598ff7f0e4b533a9133fa6b904ebeb1173609da14"
 }

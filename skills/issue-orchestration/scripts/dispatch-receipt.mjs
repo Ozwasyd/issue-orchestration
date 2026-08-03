@@ -22,6 +22,14 @@ import {
 } from './executable-slice-compiler.mjs'
 import { evaluateSliceTerminalGate } from './writer-stage-progress.mjs'
 import { verifyCleanupReceipt } from './resource-lifecycle.mjs'
+import {
+    attestRuntimeStartup,
+    compileRuntimeStartupObservation
+} from './runtime-startup-attestation.mjs'
+import {
+    RUNTIME_EXECUTION_BINDING_POLICY_DIGEST,
+    compileRuntimeExecutionBinding
+} from './runtime-execution-binding.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const SHA = /^[a-f0-9]{40}$/u
@@ -43,11 +51,17 @@ const V2_REQUEST_FIELDS = [
     'issueSnapshotFingerprint', 'repositoryFingerprint', 'scopeIdentityDigest',
     'dependencyIdentityDigest', 'repository', 'baseSha', 'epochId',
     'requestedModel', 'requestedEffort', 'requestedMultiAgentBackend',
-    'requestedMode', 'requestedSandbox',
+    'requestedMode', 'executionClass',
+    'runtimeExecutionBindingPolicyDigest',
+    'startupAttestationDigest', 'runtimeInvocationId',
+    'runtimeTrustBindingDigest',
+    'mutationContract', 'requiredPostconditionEvidenceClass',
+    'mutationPostconditionRequired',
     'requestedForkTurns', 'requestedWorkingDirectory', 'requiredSkills',
     'requiredSkillIds', 'requiredSkillDigests', 'designAuthorityDigests',
-    'uiImpact', 'allowedPathsDigest', 'forbiddenPathsDigest', 'writePolicy',
-    'readOnlyPolicy', 'candidateSha', 'candidateDigest', 'testOwnerId',
+    'uiImpact', 'allowedPathsDigest', 'forbiddenPathsDigest',
+    'semanticWriteScope', 'observeOnlyPolicy',
+    'candidateSha', 'candidateDigest', 'testOwnerId',
     'testContractDigest', 'behaviorReceiptDigest', 'uxAcceptanceReceiptDigest',
     'documentationReceiptDigest', 'groupId', 'groupSessionDigest',
     'memberIssueId', 'memberStage', 'activeWriteLeaseId',
@@ -152,7 +166,7 @@ function loadStagePermissionsPolicy() {
     const expectedStageKeys = Object.keys(STAGE_ROUTE_DEFINITIONS).sort()
     const actualStageKeys = Object.keys(policy?.stages ?? {}).sort()
     if (policy?.schema !==
-        'issue-orchestration.stage-permissions.v1' ||
+        'issue-orchestration.stage-permissions.v2' ||
         JSON.stringify(actualStageKeys) !==
             JSON.stringify(expectedStageKeys)) {
         throw new Error('stage-permissions-policy-source-invalid')
@@ -164,19 +178,25 @@ function loadStagePermissionsPolicy() {
             Array.isArray(permission) ||
             JSON.stringify(Object.keys(permission).sort()) !==
                 JSON.stringify([
+                    'executionClass',
                     'freshContext',
-                    'sandbox',
+                    'outputAuthority',
                     'writeScope'
                 ]) ||
-            !['read-only', 'workspace-write'].includes(
-                permission.sandbox
-            ) ||
+            !['root-control', 'observe-only', 'leased-writer']
+                .includes(permission.executionClass) ||
             !['none', 'tests-only', 'implementation-only',
-                'documentation-only'].includes(
+                'documentation-only',
+                'orchestration-control-only'].includes(
                 permission.writeScope
             ) ||
+            typeof permission.outputAuthority !== 'string' ||
+            !permission.outputAuthority ||
             typeof permission.freshContext !== 'boolean' ||
-            permission.sandbox !== route.sandbox ||
+            permission.executionClass !==
+                route.executionClass ||
+            permission.outputAuthority !==
+                route.outputAuthority ||
             permission.writeScope !== route.writeScope ||
             permission.freshContext !== route.freshContext) {
             throw new Error('stage-permissions-policy-source-invalid')
@@ -284,6 +304,9 @@ function assertV2Hashes(input) {
     for (const field of [
         'routingPolicyDigest', 'stagePermissionsPolicyDigest',
         'executionRoutingPolicyDigest',
+        'runtimeExecutionBindingPolicyDigest',
+        'startupAttestationDigest',
+        'runtimeTrustBindingDigest',
         'allowedProfilesDigest', 'routingInputDigest',
         'executionShapeClassificationDigest',
         'stageCapabilityRequirementDigest',
@@ -497,6 +520,17 @@ function assertV2GroupBinding(input) {
 
 function validateV2DispatchRequest(input) {
     if (containsSecret(input)) fail('dispatch-secret-material')
+    for (const field of [
+        'requestedSandbox',
+        'requiredSandbox',
+        'supportedSandboxes',
+        'writePolicy',
+        'readOnlyPolicy'
+    ]) {
+        if (Object.hasOwn(input ?? {}, field)) {
+            fail('dispatch-legacy-sandbox-authority')
+        }
+    }
     for (const field of V2_REQUEST_FIELDS) {
         if (!Object.hasOwn(input, field)) {
             fail(field === 'groupId'
@@ -522,6 +556,10 @@ function validateV2DispatchRequest(input) {
     if (input.stagePermissionsPolicyDigest !==
         STAGE_PERMISSIONS_POLICY_DIGEST) {
         fail('dispatch-stage-permissions-policy-replay')
+    }
+    if (input.runtimeExecutionBindingPolicyDigest !==
+        RUNTIME_EXECUTION_BINDING_POLICY_DIGEST) {
+        fail('dispatch-runtime-execution-policy-replay')
     }
     if (input.routingOverride !== undefined ||
         input.selectedByRole !== undefined ||
@@ -553,10 +591,29 @@ function validateV2DispatchRequest(input) {
         input.requestedEffort === selected.effort &&
         input.requestedMultiAgentBackend === 'v2' &&
         input.executionRouteDecision.multiAgentBackend === 'v2' &&
-        input.requestedSandbox === route.sandbox &&
-        input.writePolicy === stagePermission.writeScope &&
-        input.readOnlyPolicy ===
-            (stagePermission.sandbox === 'read-only')
+        input.executionClass === route.executionClass &&
+        input.executionClass === stagePermission.executionClass &&
+        input.mutationContract === route.mutationContract &&
+        input.mutationContract ===
+            STAGE_ROUTE_DEFINITIONS[
+                `${input.stageRole}:${input.stagePhase}`
+            ].mutationContract &&
+        input.requiredPostconditionEvidenceClass ===
+            route.requiredPostconditionEvidenceClass &&
+        input.mutationPostconditionRequired === true &&
+        input.semanticWriteScope === stagePermission.writeScope &&
+        input.observeOnlyPolicy ===
+            (stagePermission.executionClass === 'observe-only') &&
+        input.executionRouteDecision.executionClass ===
+            stagePermission.executionClass &&
+        input.executionRouteDecision.runtimeExecutionBindingDigest ===
+            null &&
+        input.executionRouteDecision
+            .runtimeExecutionBindingStatus === 'pending-observation' &&
+        HASH.test(input.startupAttestationDigest ?? '') &&
+        typeof input.runtimeInvocationId === 'string' &&
+        input.runtimeInvocationId.length > 0 &&
+        HASH.test(input.runtimeTrustBindingDigest ?? '')
     if (!routeFieldsMatch) fail('dispatch-routing-selection-mismatch')
     assertV2SkillBinding(input)
     if (input.requestDigest !== undefined &&
@@ -611,7 +668,9 @@ function observeRuntimeV2(request, rolloutRecords, machineObservations) {
             session?.multi_agent_backend,
         effectiveRole: spawn.agent_role,
         effectiveMode: context.mode,
-        effectiveSandbox: context.sandbox_policy?.type,
+        effectivePermissionProfile:
+            context.permission_profile ??
+            context.sandbox_policy?.type,
         effectiveForkTurns: spawn.fork_turns,
         effectiveWorkingDirectory: context.cwd,
         effectiveProfileId: capability?.effectiveProfileId,
@@ -652,7 +711,10 @@ function compareRuntimeV2(request, observed, priorReceipts) {
         ],
         ['effectiveRole', 'runtime-role-unobservable'],
         ['effectiveMode', 'runtime-mode-unobservable'],
-        ['effectiveSandbox', 'runtime-sandbox-unobservable'],
+        [
+            'effectivePermissionProfile',
+            'runtime-permission-profile-unobservable'
+        ],
         ['effectiveForkTurns', 'runtime-fork-unobservable'],
         ['effectiveWorkingDirectory', 'runtime-working-directory-unobservable']
     ]
@@ -669,7 +731,6 @@ function compareRuntimeV2(request, observed, priorReceipts) {
         ],
         [observed.effectiveRole, request.stageRole, 'runtime-role-mismatch'],
         [observed.effectiveMode, request.requestedMode, 'runtime-mode-mismatch'],
-        [observed.effectiveSandbox, request.requestedSandbox, 'runtime-sandbox-role-policy'],
         [observed.effectiveForkTurns, request.requestedForkTurns, 'runtime-fork-mismatch'],
         [observed.effectiveWorkingDirectory, request.requestedWorkingDirectory,
             'runtime-working-directory-mismatch']
@@ -683,8 +744,6 @@ function compareRuntimeV2(request, observed, priorReceipts) {
         new Set(observed.contexts.map(({ mode }) => mode)).size > 1) {
         reasons.push('runtime-context-drift')
     }
-    if (new Set(observed.contexts.map(({ sandbox_policy: policy }) =>
-        JSON.stringify(policy))).size > 1) reasons.push('runtime-sandbox-drift')
     if (!observed.skill) reasons.push('runtime-skill-load-unobservable')
     const bindings = [
         [observed.dispatch?.requestId, request.requestId, 'runtime-request-id-mismatch'],
@@ -813,24 +872,12 @@ function compareRuntimeV2(request, observed, priorReceipts) {
         for (const [actual, expected, reason] of groupedPairs) {
             if (actual !== expected) reasons.push(reason)
         }
-        if (request.readOnlyPolicy !== true &&
+        if (request.observeOnlyPolicy !== true &&
             (typeof request.activeWriteLeaseId !== 'string' ||
                 !request.activeWriteLeaseId ||
                 (lease.activeLeaseOwners ?? []).filter((item) =>
                     item.leaseId === request.activeWriteLeaseId).length !== 1)) {
             reasons.push('runtime-write-lease-conflict')
-        }
-    }
-    if (request.stageRole === 'test-owner' &&
-        request.stagePhase === 'test-contract' &&
-        observed.contexts[0]?.sandbox_policy?.type === 'workspace-write') {
-        const expectedRoots = [
-            `${request.requestedWorkingDirectory}/tests/tools`,
-            `${request.requestedWorkingDirectory}/tests/fixtures/issue-orchestration`
-        ]
-        if (JSON.stringify(observed.contexts[0].sandbox_policy.writable_roots) !==
-            JSON.stringify(expectedRoots)) {
-            reasons.push('runtime-test-owner-write-boundary')
         }
     }
     if (['test-owner:behavior-verification',
@@ -854,7 +901,12 @@ function compareRuntimeV2(request, observed, priorReceipts) {
     return unique(reasons)
 }
 
-function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
+function sealDispatchReceiptV2(
+    request,
+    runtimeObservation,
+    reasons,
+    runtimeExecutionBinding = null
+) {
     const capabilityReasons = reasons.filter((reason) =>
         reason.endsWith('-unobservable') ||
         reason === 'runtime-provenance-request-copy' ||
@@ -883,6 +935,28 @@ function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
             request.stageCapabilityRequirementDigest,
         executionRouteDecisionDigest:
             request.executionRouteDecisionDigest,
+        runtimeExecutionBindingDigest:
+            runtimeExecutionBinding?.bindingDigest ?? null,
+        runtimeRouteDigest: runtimeExecutionBinding
+            ? digest({
+                logicalRouteDecisionDigest:
+                    request.executionRouteDecisionDigest,
+                runtimeExecutionBindingDigest:
+                    runtimeExecutionBinding.bindingDigest
+            })
+            : null,
+        executionClass: request.executionClass,
+        mutationContract: request.mutationContract,
+        requiredPostconditionEvidenceClass:
+            request.requiredPostconditionEvidenceClass,
+        mutationPostconditionRequired:
+            request.mutationPostconditionRequired,
+        startupAttestationDigest:
+            request.startupAttestationDigest,
+        runtimeInvocationId:
+            request.runtimeInvocationId,
+        runtimeTrustBindingDigest:
+            request.runtimeTrustBindingDigest,
         selectedProfileId: request.selectedProfileId,
         selectedProfileReason: request.selectedProfileReason,
         baseSha: request.baseSha,
@@ -908,7 +982,8 @@ function sealDispatchReceiptV2(request, runtimeObservation, reasons) {
             runtimeObservation.effectiveMultiAgentBackend,
         actualRole: runtimeObservation.effectiveRole,
         actualMode: runtimeObservation.effectiveMode,
-        actualSandbox: runtimeObservation.effectiveSandbox,
+        actualPermissionProfile:
+            runtimeObservation.effectivePermissionProfile,
         actualForkTurns: runtimeObservation.effectiveForkTurns,
         actualWorkingDirectory: runtimeObservation.effectiveWorkingDirectory,
         actualSkillIds: (runtimeObservation.loadedSkills ?? []).map(({ id }) => id),
@@ -928,9 +1003,11 @@ async function verifyRuntimeDispatchV2(input) {
     if (containsSecret(input.extraMetadata) || containsSecret(input.machineObservations)) {
         return {
             runtimeObservation: null,
-            dispatchReceipt: sealDispatchReceiptV2(input.request, {}, [
-                'dispatch-secret-material'
-            ])
+            dispatchReceipt: sealDispatchReceiptV2(
+                input.request,
+                {},
+                ['dispatch-secret-material']
+            )
         }
     }
     let requestReasons = []
@@ -949,128 +1026,95 @@ async function verifyRuntimeDispatchV2(input) {
         runtimeObservation,
         input.priorReceipts ?? []
     ))
+    let runtimeExecutionBinding = null
+    try {
+        const stagePermission =
+            STAGE_PERMISSIONS_POLICY.stages[
+                `${input.request.stageRole}:` +
+                input.request.stagePhase
+            ]
+        runtimeExecutionBinding =
+            compileRuntimeExecutionBinding({
+                stageRole: input.request.stageRole,
+                stagePhase: input.request.stagePhase,
+                runtimeObservation:
+                    input.runtimeExecutionObservation,
+                startup: input.startup,
+                runtimeTrustBinding:
+                    input.runtimeTrustBinding,
+                repositoryTargets:
+                    input.repositoryTargets,
+                writeLeaseDigest:
+                    stagePermission?.executionClass ===
+                        'leased-writer'
+                        ? input.request.stageWorkPlan
+                            ?.resourceLeaseReceiptDigest ??
+                            input.request.activeWriteLeaseId
+                        : null
+            })
+        if (runtimeExecutionBinding.bindingDigest !==
+                input.runtimeExecutionBindingDigest &&
+            input.runtimeExecutionBindingDigest !== undefined) {
+            reasons.push(
+                'runtime-execution-binding-claimed-digest-mismatch'
+            )
+        }
+        if (runtimeExecutionBinding.actorInvocationId !==
+                runtimeObservation.rolloutId ||
+            runtimeExecutionBinding.actorSessionId !==
+                runtimeObservation.threadId ||
+            runtimeExecutionBinding.startupAttestationDigest !==
+                input.request.startupAttestationDigest ||
+            runtimeExecutionBinding.runtimeTrustBindingDigest !==
+                input.request.runtimeTrustBindingDigest) {
+            reasons.push('runtime-execution-binding-dispatch-mismatch')
+        }
+    } catch (error) {
+        reasons.push(
+            error?.code ??
+            'runtime-execution-binding-invalid'
+        )
+    }
     if (input.claimedRuntimeMetadataDigest &&
         input.claimedRuntimeMetadataDigest !== digest(runtimeObservation)) {
         reasons.push('runtime-metadata-digest')
     }
     return {
         runtimeObservation,
+        runtimeExecutionBinding,
         dispatchReceipt: sealDispatchReceiptV2(
             input.request,
             runtimeObservation,
-            unique(reasons)
+            unique(reasons),
+            runtimeExecutionBinding
         )
     }
 }
 
-function observeRootStartup(rolloutRecords, machineObservations) {
-    const session = rolloutRecords.find((item) => item?.type === 'session_meta')?.payload
-    const context = rolloutRecords.find((item) => item?.type === 'turn_context')?.payload ?? {}
-    const capability = observationByKind(machineObservations, 'root-runtime-capability.v2')
-    return {
-        schema: 'issue-orchestration.root-runtime-observation.v2',
-        threadId: session?.session_id,
-        rolloutId: session?.id,
-        actualRole: context.role ?? session?.role,
-        actualModel: context.model ?? session?.model,
-        actualEffort: context.effort ?? session?.effort,
-        actualMultiAgentBackend:
-            context.multiAgentBackend ??
-            context.multi_agent_backend ??
-            session?.multiAgentBackend ??
-            session?.multi_agent_backend,
-        actualMode: context.mode ?? session?.mode,
-        actualWorkingDirectory: context.cwd,
-        session,
-        context,
-        capability,
-        capabilityTrusted: trustedV2Observation(capability)
-    }
-}
-
 export async function verifyRootStartup(input) {
-    const request = input?.request ?? {}
-    const observation = observeRootStartup(
-        input?.rolloutRecords ?? [],
-        input?.machineObservations ?? []
-    )
-    const reasons = []
-    const requestValid = request.schema === 'issue-orchestration.root-startup-request.v2' &&
-        request.policyVersion === 'stage-model-pool.v3' &&
-        request.stageRole === 'root-scheduler' &&
-        request.stagePhase === 'scheduling' &&
-        request.stageProfileId === 'terra-low' &&
-        request.requestedModel === 'gpt-5.6-terra' &&
-        request.requestedEffort === 'low' && request.requestedMode === 'normal' &&
-        request.requestedMultiAgentBackend === 'v2' &&
-        request.requestDigest === unsignedDigest(request, 'requestDigest')
-    if (!requestValid) reasons.push('root-startup-request-invalid')
-    const rootMetadata = [observation.session ?? {}, observation.context ?? {}]
-    const rootActuals = [
-        ['role', 'root-scheduler'],
-        ['model', 'gpt-5.6-terra'],
-        ['effort', 'low'],
-        ['multiAgentBackend', 'v2'],
-        ['mode', 'normal']
-    ]
-    if (!observation.actualModel || !observation.actualEffort ||
-        !observation.actualMultiAgentBackend ||
-        !observation.actualRole || !observation.actualMode ||
-        !observation.threadId || !observation.rolloutId ||
-        !observation.actualWorkingDirectory || !observation.capabilityTrusted) {
-        reasons.push('root-startup-capability-unverified')
+    let observation = null
+    const preflightReasonCodes = []
+    try {
+        observation = compileRuntimeStartupObservation({
+            launcherRecord: input?.launcherRecord,
+            runtimeRecord: input?.runtimeRecord,
+            capacityRecord: input?.capacityRecord
+        })
+    } catch (error) {
+        preflightReasonCodes.push(
+            error?.code ?? 'runtime-startup-observation-invalid'
+        )
     }
-    for (const [field, expected] of rootActuals) {
-        if (rootMetadata.some((metadata) => !metadata[field])) {
-            reasons.push('root-startup-capability-unverified')
-        } else if (rootMetadata.some((metadata) => metadata[field] !== expected)) {
-            reasons.push('root-startup-profile-mismatch')
-        }
+    const attestation = attestRuntimeStartup({
+        observation,
+        takeoverContext: input?.takeoverContext ?? null,
+        attestedAt: input?.attestedAt,
+        preflightReasonCodes
+    })
+    return {
+        runtimeStartupObservation: observation,
+        runtimeStartupAttestation: attestation
     }
-    if (observation.actualModel && observation.actualModel !== 'gpt-5.6-terra' ||
-        observation.actualEffort && observation.actualEffort !== 'low' ||
-        observation.actualMultiAgentBackend &&
-            observation.actualMultiAgentBackend !== 'v2' ||
-        observation.actualRole && observation.actualRole !== 'root-scheduler' ||
-        observation.actualMode && observation.actualMode !== 'normal' ||
-        observation.actualWorkingDirectory &&
-            observation.actualWorkingDirectory !== request.requestedWorkingDirectory ||
-        observation.capability && (observation.capability.available !== true ||
-            observation.capability.stageProfileId !== 'terra-low' ||
-            observation.capability.multiAgentBackend !== 'v2')) {
-        reasons.push('root-startup-profile-mismatch')
-    }
-    const receipt = {
-        schema: 'issue-orchestration.root-startup-receipt.v2',
-        requestDigest: request.requestDigest,
-        runId: request.runId,
-        stageRole: request.stageRole,
-        stagePhase: request.stagePhase,
-        stageProfileId: request.stageProfileId,
-        policyVersion: request.policyVersion,
-        routingPolicyDigest: request.routingPolicyDigest,
-        routingInputDigest: request.routingInputDigest,
-        baseSha: request.baseSha,
-        repositoryFingerprint: request.repositoryFingerprint,
-        threadId: observation.threadId,
-        rolloutId: observation.rolloutId,
-        actualRole: observation.actualRole,
-        actualModel: observation.actualModel,
-        actualEffort: observation.actualEffort,
-        actualMultiAgentBackend:
-            observation.actualMultiAgentBackend,
-        actualMode: observation.actualMode,
-        actualWorkingDirectory: observation.actualWorkingDirectory,
-        runtimeMetadataDigest: digest(observation),
-        verificationStatus: reasons.length === 0
-            ? 'verified'
-            : reasons.every((reason) => reason === 'root-startup-capability-unverified')
-                ? 'capability-unverified'
-                : 'rejected',
-        mismatchReasons: unique(reasons)
-    }
-    receipt.receiptDigest = digest(receipt)
-    return { rootRuntimeObservation: observation, rootStartupReceipt: receipt }
 }
 
 function hasValidReceiptDigest(receipt) {

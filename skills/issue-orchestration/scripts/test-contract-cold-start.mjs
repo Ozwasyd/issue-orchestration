@@ -19,17 +19,31 @@ function validateAcceptanceContract(value) {
 
 function validateRoute(value, phase) {
     if (value?.schema !==
-            'issue-orchestration.execution-route-decision.v1' ||
-        value.policyVersion !== 'execution-capability-routing.v2' ||
+            'issue-orchestration.execution-route-decision.v2' ||
+        value.policyVersion !== 'execution-capability-routing.v3' ||
         value.modelPoolPolicyVersion !== 'stage-model-pool.v3' ||
         value.routingAuthority !==
             'deterministic-execution-capability-compiler' ||
         value.stageRole !== 'test-owner' ||
         value.stagePhase !== phase ||
+        value.executionClass !== (
+            phase === 'test-contract-planning'
+                ? 'observe-only'
+                : 'leased-writer'
+        ) ||
+        value.mutationContract !== (
+            phase === 'test-contract-planning'
+                ? 'no-protected-mutation'
+                : 'lease-and-slice-allowlist'
+        ) ||
         value.runtimeVerificationStatus !== 'verified') {
         fail('test-planning-route')
     }
     assertDigest(value.routeDecisionDigest, 'test-planning-route')
+    assertDigest(
+        value.runtimeExecutionBindingDigest,
+        'test-planning-runtime-execution-binding'
+    )
     return value
 }
 
@@ -59,7 +73,8 @@ export function compileTestContractPlanningRequest({
         schema:
             'issue-orchestration.test-contract-planning-request.v1',
         phase: 'test-contract-planning',
-        sandbox: 'read-only',
+        executionClass: 'observe-only',
+        mutationContract: 'no-protected-mutation',
         freshContext: true,
         attemptId,
         repository: acceptance.repository,
@@ -68,6 +83,8 @@ export function compileTestContractPlanningRequest({
             nodeDiscoveredReceipt.receiptDigest,
         acceptanceContractDigest: acceptance.contractDigest,
         routeDecisionDigest: route.routeDecisionDigest,
+        runtimeExecutionBindingDigest:
+            route.runtimeExecutionBindingDigest,
         allowedInputs: [
             'immutable-acceptance-contract',
             'repository-facts',
@@ -89,18 +106,26 @@ export function verifyTestContractPlanReceipt({
         receipt.actorRole !== 'test-owner' ||
         receipt.phase !== 'test-contract-planning' ||
         receipt.rootAuthored !== false ||
-        receipt.sandbox !== 'read-only' ||
+        receipt.executionClass !== 'observe-only' ||
+        receipt.mutationContract !==
+            'no-protected-mutation' ||
         receipt.freshContext !== true) {
         fail('test-planning-authority')
     }
     if (receipt.attemptId !== request?.attemptId ||
         receipt.acceptanceContractDigest !==
-            request.acceptanceContractDigest) {
+            request.acceptanceContractDigest ||
+        receipt.runtimeExecutionBindingDigest !==
+            request.runtimeExecutionBindingDigest) {
         fail('test-planning-request-binding')
     }
+    assertDigest(
+        receipt.mutationPostconditionReceiptDigest,
+        'test-planning-mutation-postcondition'
+    )
     if (!Array.isArray(receipt.filesystemWrites) ||
         receipt.filesystemWrites.length !== 0) {
-        fail('test-planning-read-only')
+        fail('test-planning-protected-mutation')
     }
     for (const field of [
         'testPaths',
@@ -175,13 +200,16 @@ export function compileTestContractWriterDispatch(input) {
             'issue-orchestration.test-contract-writer-dispatch.v1',
         status: 'dispatch-authorized',
         phase: 'test-contract',
-        sandbox: 'workspace-write',
+        executionClass: 'leased-writer',
+        mutationContract: 'lease-and-slice-allowlist',
         writeScope: 'tests-only',
         planningAttemptId: planning.attemptId,
         writerAttemptId: input.writerAttemptId,
         acceptanceContractDigest: acceptance.contractDigest,
         planningReceiptDigest: planning.receiptDigest,
         routeDecisionDigest: route.routeDecisionDigest,
+        runtimeExecutionBindingDigest:
+            route.runtimeExecutionBindingDigest,
         resourceReceiptDigest:
             input.resourceReceipt.receiptDigest,
         leaseId: input.resourceReceipt.leaseId,

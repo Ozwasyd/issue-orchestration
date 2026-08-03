@@ -41,11 +41,23 @@
     },
     "authoredBy": {
       "type": "object",
-      "required": ["actorRole", "actorId", "sandboxMode", "freshContext", "acceptedWithoutModification"],
+      "required": [
+        "actorRole",
+        "actorId",
+        "executionClass",
+        "mutationContract",
+        "runtimeExecutionBindingDigest",
+        "mutationPostconditionReceiptDigest",
+        "freshContext",
+        "acceptedWithoutModification"
+      ],
       "properties": {
         "actorRole": {"const": "dag-creator-updater"},
         "actorId": {"type": "string", "minLength": 1},
-        "sandboxMode": {"const": "read-only"},
+        "executionClass": {"const": "observe-only"},
+        "mutationContract": {"const": "no-protected-mutation"},
+        "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+        "mutationPostconditionReceiptDigest": {"$ref": "#/$defs/digest"},
         "freshContext": {"const": true},
         "acceptedWithoutModification": {"const": true}
       }
