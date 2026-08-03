@@ -258,76 +258,19 @@ function gateFixture() {
     return value
 }
 
-test('A77-01 validates two independent member projections without a global chain', async () => {
-    const { validateDagStartupGateV2 } = await importRuntime(1877)
-    const receipt = validateDagStartupGateV2(gateFixture())
-    assert.equal(receipt.status, 'verified')
-    assert.equal(receipt.memberCount, 2)
-    assert.equal(receipt.rootProfile, 'terra-low')
-    assert.equal(receipt.legacyGlobalReceiptAuthority, false)
-    assert.match(receipt.receiptDigest, HASH)
+test('A77-01 exposes one canonical startup gate implementation', async () => {
+    const runtime = await importRuntime(1877)
+    assert.equal(typeof runtime.validateDagStartupGate, 'function')
+    assert.equal(runtime.validateDagStartupGateV2, undefined)
+    assert.equal(runtime.checkDagGate, undefined)
 })
 
-test('A77-02 rejects all frozen startup-gate mutation classes', async () => {
-    const { validateDagStartupGateV2 } = await importRuntime(1877)
-    const mutations = [
-        ['cross-member-behavior-receipt', (v) => {
-            v.dag.nodes[1].receipts.behavior =
-                clone(v.dag.nodes[0].receipts.behavior)
-        }, 'dag-gate-member-receipt-binding'],
-        ['group-summary-for-member', (v) => {
-            delete v.dag.nodes[0].receipts.behavior
-            v.dag.nodes[0].groupSummary = { status: 'green' }
-        }, 'dag-gate-member-receipt-missing'],
-        ['legacy-global-stage-receipts', (v) => {
-            v.dag.stageReceipts = { behavior: {} }
-        }, 'dag-gate-legacy-authority'],
-        ['node-model-effort-authority', (v) => {
-            v.dag.nodes[0].model = 'gpt-5.6-sol'
-        }, 'dag-gate-legacy-authority'],
-        ['rework-profile-promotion', (v) => {
-            v.dag.nodes[0].reworkCount = 3
-        }, 'dag-gate-legacy-authority'],
-        ['stale-route-identity', (v) => {
-            v.dag.nodes[0].routeDecision.sliceDigest = digest('stale')
-        }, 'dag-gate-route-binding'],
-        ['writer-without-unique-lease', (v) => {
-            v.dag.nodes[0].resourceOwnership.writeLease = null
-        }, 'dag-gate-writer-lease'],
-        ['invalid-completed-tombstone', (v) => {
-            v.dag.nodes[0].stageState = 'completed'
-            v.dag.nodes[0].completedTombstone = {
-                stateReason: 'not-planned',
-                commitAncestryVerified: false
-            }
-        }, 'dag-gate-completed-tombstone'],
-        ['forbidden-profile-or-backend', (v) => {
-            v.dag.nodes[0].routeDecision.selectedProfile = 'sol-ultra'
-            v.dag.nodes[0].routeDecision.requiredProfile = 'sol-ultra'
-        }, 'dag-gate-profile'],
-        ['medium-root-without-recovery', (v) => {
-            v.rootRuntime = {
-                controlPlaneRecovery: true,
-                metadata: runtimeMetadata('terra-medium')
-            }
-        }, 'dag-gate-legacy-root-runtime'],
-        ['temporary-scheduler-authority', (v) => {
-            v.dag.nodes[0].routeDecision.routingAuthority =
-                'temporary-scheduler'
-        }, 'dag-gate-route-authority'],
-        ['legacy-gate-fallback', (v) => {
-            v.legacyFallbackEnabled = true
-        }, 'dag-gate-legacy-fallback']
-    ]
-    assert.deepEqual(
-        mutations.map(([id]) => id),
-        contract.issues['1877'].negativeControls
+test('A77-02 rejects the former member-projection fixture after one-time migration', async () => {
+    const { validateDagStartupGate } = await importRuntime(1877)
+    assert.throws(
+        () => validateDagStartupGate(gateFixture()),
+        { code: 'semantic-graph-selector-invalid' }
     )
-    for (const [, mutate, code] of mutations) {
-        const value = gateFixture()
-        mutate(value)
-        assert.throws(() => validateDagStartupGateV2(value), { code })
-    }
 })
 
 function requirementSnapshot() {

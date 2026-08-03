@@ -157,10 +157,32 @@ function graphAuthor(overrides = {}) {
 
 async function baseline() {
     const loaded = await runtime()
+    const selectorReceiptDigest = digest('semantic-runtime-selector')
+    const remoteSnapshotDigest = digest('semantic-runtime-remote')
+    const repositoryBindingDigest = digest('semantic-runtime-repository')
     const semanticGraph = loaded.createSemanticGraph({
-        ...clone(cases.semanticGraphInput),
+        selectorReceiptDigest,
+        remoteSnapshotDigest,
         scopeDigest: digest({ scope: 'repositorya-control-plane' }),
-        semanticGraphInputDigest: digest({ semantic: cases.semanticGraphInput })
+        semanticGraphInputDigest: digest({ semantic: cases.semanticGraphInput }),
+        policyDigest: digest('semantic-runtime-policy'),
+        repositories: [{
+            repository: 'ExampleOrg/RepositoryA',
+            baseSha: 'a'.repeat(40),
+            bindingDigest: repositoryBindingDigest
+        }],
+        nodes: clone(cases.semanticGraphInput.nodes).map((node) => ({
+            ...node,
+            memberId: node.id,
+            repository: node.id.split('#')[0],
+            issueNumber: Number(node.id.split('#')[1]),
+            lifecycleState: 'discovered',
+            selectorReceiptDigest,
+            remoteSnapshotDigest,
+            repositoryBindingDigest,
+            semanticFactsDigest: digest(node),
+            receipts: {}
+        }))
     })
     const expectedRemoteMutations = loaded.sealExpectedRemoteMutations(
         clone(cases.expectedRemoteMutations)
@@ -300,7 +322,7 @@ test('frozen #1833 contract assets bind the live issue, Sol/xhigh owner and one 
 
 test('P01 semanticGraph/runtimeProjection schemas, validators, digests and persistence are separate', async () => {
     const state = await baseline()
-    assert.equal(state.semanticGraph.schema, 'issue-orchestration.semantic-graph.v1')
+    assert.equal(state.semanticGraph.schema, 'issue-orchestration.semantic-graph.v2')
     assert.equal(state.afterProjection.schema,
         'issue-orchestration.runtime-projection.v1')
     assertSha(state.semanticGraph.semanticGraphDigest, 'semanticGraphDigest')

@@ -38,7 +38,7 @@ const SEMANTIC_MUTATION_TYPES = new Set(
     REMOTE_MUTATION_POLICY.semanticMutationTypes
 )
 
-const SEMANTIC_GRAPH_SCHEMA = 'issue-orchestration.semantic-graph.v1'
+const SEMANTIC_GRAPH_SCHEMA = 'issue-orchestration.semantic-graph.v2'
 const RUNTIME_PROJECTION_SCHEMA = 'issue-orchestration.runtime-projection.v1'
 const EXPECTED_MUTATIONS_SCHEMA =
     'issue-orchestration.expected-remote-mutations.v1'
@@ -52,7 +52,7 @@ const PROJECTOR_DIGEST = digest({
     inputs: [
         'immutable-runtime-ledger.v1-non-writer-historical',
         'ledger.v2-canonical-active-writer-replay',
-        'semantic-graph.v1',
+        'semantic-graph.v2',
         'runtime-facts.v1'
     ],
     outputs: [
@@ -203,100 +203,200 @@ function uniqueSorted(values = []) {
     return [...new Set(values)].sort()
 }
 
+function normalizeRepository(repository) {
+    requireObject(repository, 'semantic-graph-repository-invalid')
+    requireString(
+        repository.repository,
+        'semantic-graph-repository-identity-invalid'
+    )
+    if (!GIT_SHA.test(repository.baseSha ?? '')) {
+        fail('semantic-graph-repository-base-invalid')
+    }
+    requireSha(
+        repository.bindingDigest,
+        'semantic-graph-repository-binding-invalid'
+    )
+    return {
+        repository: repository.repository,
+        baseSha: repository.baseSha,
+        bindingDigest: repository.bindingDigest
+    }
+}
+
 function normalizeNode(node) {
     requireObject(node, 'semantic-graph-node-invalid')
-    requireString(node.id, 'semantic-graph-node-id-invalid')
+    const id = node.id ?? node.memberId
+    const memberId = node.memberId ?? node.id
+    requireString(id, 'semantic-graph-node-id-invalid')
+    requireString(memberId, 'semantic-graph-node-member-id-invalid')
+    if (id !== memberId) fail('semantic-graph-node-identity-mismatch')
+    requireString(node.repository, 'semantic-graph-node-repository-invalid')
+    if (!Number.isInteger(node.issueNumber) || node.issueNumber <= 0) {
+        fail('semantic-graph-node-issue-number-invalid')
+    }
     requireString(node.owner, 'semantic-graph-node-owner-invalid')
     requireString(node.riskClass, 'semantic-graph-node-risk-class-invalid')
     requireString(node.uiClass, 'semantic-graph-node-ui-class-invalid')
-    requireSha(node.contractDigest, 'semantic-graph-node-contract-digest-invalid')
     if (node.acceptanceGroup !== null
         && typeof node.acceptanceGroup !== 'string') {
         fail('semantic-graph-node-acceptance-group-invalid')
     }
+    requireString(
+        node.lifecycleState,
+        'semantic-graph-node-lifecycle-state-invalid'
+    )
+    for (const [field, code] of [
+        ['selectorReceiptDigest', 'semantic-graph-node-selector-invalid'],
+        ['remoteSnapshotDigest', 'semantic-graph-node-remote-invalid'],
+        ['repositoryBindingDigest', 'semantic-graph-node-repository-binding-invalid'],
+        ['semanticFactsDigest', 'semantic-graph-node-facts-invalid']
+    ]) requireSha(node[field], code)
+    requireObject(node.receipts, 'semantic-graph-node-receipts-invalid')
     return {
-        id: node.id,
+        id,
+        memberId,
+        repository: node.repository,
+        issueNumber: node.issueNumber,
         owner: node.owner,
         dependencyKeys: uniqueSorted(node.dependencyKeys),
         conflictKeys: uniqueSorted(node.conflictKeys),
         riskClass: node.riskClass,
         uiClass: node.uiClass,
         acceptanceGroup: node.acceptanceGroup ?? null,
-        contractDigest: node.contractDigest
+        lifecycleState: node.lifecycleState,
+        selectorReceiptDigest: node.selectorReceiptDigest,
+        remoteSnapshotDigest: node.remoteSnapshotDigest,
+        repositoryBindingDigest: node.repositoryBindingDigest,
+        semanticFactsDigest: node.semanticFactsDigest,
+        contractDigest: node.contractDigest ?? null,
+        receipts: orderedCanonical(node.receipts)
     }
 }
 
-function semanticGraphUnsigned({ scopeDigest, semanticGraphInputDigest, nodes }) {
+function semanticGraphUnsigned({
+    selectorReceiptDigest,
+    remoteSnapshotDigest,
+    scopeDigest,
+    semanticGraphInputDigest,
+    policyDigest,
+    repositories,
+    nodes
+}) {
     return {
         schema: SEMANTIC_GRAPH_SCHEMA,
+        selectorReceiptDigest,
+        remoteSnapshotDigest,
         scopeDigest,
         semanticGraphInputDigest,
+        policyDigest,
+        repositories: repositories.map(normalizeRepository).sort(
+            (left, right) => left.repository.localeCompare(right.repository)
+        ),
         nodes: nodes.map(normalizeNode).sort((left, right) =>
             left.id.localeCompare(right.id)
         )
     }
 }
 
-function validateSemanticGraph(graph) {
+export function validateSemanticGraph(graph) {
     requireObject(graph, 'semantic-graph-invalid')
     if (graph.schema !== SEMANTIC_GRAPH_SCHEMA) {
-        fail('semantic-graph-schema-invalid')
+        fail(
+            'semantic-graph-canonical-migration-required',
+            'Only issue-orchestration.semantic-graph.v2 is writable.'
+        )
     }
     for (const field of [
-        'active',
-        'availableSlots',
-        'blocked',
-        'candidateCommits',
-        'cleanup',
-        'completed',
-        'deliveryCommits',
-        'epochId',
-        'leases',
-        'readyFrontier',
-        'runtimeProjectionDigest'
+        'active', 'availableSlots', 'blocked', 'candidateCommits',
+        'cleanup', 'completed', 'deliveryCommits', 'epochId', 'leases',
+        'readyFrontier', 'runtimeProjectionDigest', 'testContractDigest',
+        'stageReceipts'
     ]) {
         if (Object.hasOwn(graph, field)) {
             fail('semantic-graph-runtime-field-forbidden')
         }
     }
-    requireSha(graph.scopeDigest, 'semantic-graph-scope-digest-invalid')
-    requireSha(
-        graph.semanticGraphInputDigest,
-        'semantic-graph-input-digest-invalid'
-    )
-    requireSha(graph.semanticGraphDigest, 'semantic-graph-digest-invalid')
-    if (!Array.isArray(graph.nodes)) fail('semantic-graph-nodes-invalid')
+    for (const [field, code] of [
+        ['selectorReceiptDigest', 'semantic-graph-selector-invalid'],
+        ['remoteSnapshotDigest', 'semantic-graph-remote-invalid'],
+        ['scopeDigest', 'semantic-graph-scope-digest-invalid'],
+        ['semanticGraphInputDigest', 'semantic-graph-input-digest-invalid'],
+        ['policyDigest', 'semantic-graph-policy-digest-invalid'],
+        ['semanticGraphDigest', 'semantic-graph-digest-invalid']
+    ]) requireSha(graph[field], code)
+    if (!Array.isArray(graph.repositories) || graph.repositories.length === 0) {
+        fail('semantic-graph-repositories-invalid')
+    }
+    if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) {
+        fail('semantic-graph-nodes-invalid')
+    }
     const unsigned = semanticGraphUnsigned(graph)
     const ids = unsigned.nodes.map(({ id }) => id)
     if (new Set(ids).size !== ids.length) fail('semantic-graph-node-duplicate')
+    const repositoryNames = new Set(
+        unsigned.repositories.map(({ repository }) => repository)
+    )
+    for (const node of unsigned.nodes) {
+        if (!repositoryNames.has(node.repository)) {
+            fail('semantic-graph-node-repository-unbound')
+        }
+        const repository = unsigned.repositories.find(
+            (entry) => entry.repository === node.repository
+        )
+        if (node.repositoryBindingDigest !== repository.bindingDigest) {
+            fail('semantic-graph-node-repository-binding-stale')
+        }
+        if (node.selectorReceiptDigest !== graph.selectorReceiptDigest) {
+            fail('semantic-graph-node-selector-stale')
+        }
+        if (node.remoteSnapshotDigest !== graph.remoteSnapshotDigest) {
+            fail('semantic-graph-node-remote-stale')
+        }
+    }
     if (digest(unsigned) !== graph.semanticGraphDigest) {
         fail('semantic-graph-digest-mismatch')
     }
-    if (!sameValue(unsigned.nodes, graph.nodes)) {
+    const comparable = clone(graph)
+    delete comparable.semanticGraphDigest
+    if (!sameOrderedValue(unsigned, comparable)) {
         fail('semantic-graph-not-canonical')
     }
     return graph
 }
 
 export function createSemanticGraph({
-    nodes,
+    selectorReceiptDigest,
+    remoteSnapshotDigest,
     scopeDigest,
-    semanticGraphInputDigest
+    semanticGraphInputDigest,
+    policyDigest,
+    repositories,
+    nodes
 }) {
-    requireSha(scopeDigest, 'semantic-graph-scope-digest-invalid')
-    requireSha(
-        semanticGraphInputDigest,
-        'semantic-graph-input-digest-invalid'
-    )
-    if (!Array.isArray(nodes)) fail('semantic-graph-nodes-invalid')
+    for (const [value, code] of [
+        [selectorReceiptDigest, 'semantic-graph-selector-invalid'],
+        [remoteSnapshotDigest, 'semantic-graph-remote-invalid'],
+        [scopeDigest, 'semantic-graph-scope-digest-invalid'],
+        [semanticGraphInputDigest, 'semantic-graph-input-digest-invalid'],
+        [policyDigest, 'semantic-graph-policy-digest-invalid']
+    ]) requireSha(value, code)
+    if (!Array.isArray(repositories) || repositories.length === 0) {
+        fail('semantic-graph-repositories-invalid')
+    }
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+        fail('semantic-graph-nodes-invalid')
+    }
     const graph = semanticGraphUnsigned({
-        nodes,
+        selectorReceiptDigest,
+        remoteSnapshotDigest,
         scopeDigest,
-        semanticGraphInputDigest
+        semanticGraphInputDigest,
+        policyDigest,
+        repositories,
+        nodes
     })
-    const ids = graph.nodes.map(({ id }) => id)
-    if (new Set(ids).size !== ids.length) fail('semantic-graph-node-duplicate')
     graph.semanticGraphDigest = digest(graph)
+    validateSemanticGraph(graph)
     return graph
 }
 
@@ -2350,8 +2450,12 @@ function validateGraphAuthor(author) {
 
 function mutableGraph(graph) {
     return {
+        selectorReceiptDigest: graph.selectorReceiptDigest,
+        remoteSnapshotDigest: graph.remoteSnapshotDigest,
         scopeDigest: graph.scopeDigest,
         semanticGraphInputDigest: graph.semanticGraphInputDigest,
+        policyDigest: graph.policyDigest,
+        repositories: graph.repositories.map((repository) => clone(repository)),
         nodes: graph.nodes.map((node) => clone(node))
     }
 }
@@ -2382,7 +2486,34 @@ function applyPatchOperations(baseSemanticGraph, operations) {
                 if (mutable.nodes.some(({ id }) => id === operation.node.id)) {
                     fail('graph-patch-node-exists')
                 }
-                mutable.nodes.push(normalizeNode(operation.node))
+                const repository = operation.node.repository ??
+                    operation.node.id?.split('#')[0]
+                const repositoryBinding = mutable.repositories.find(
+                    (entry) => entry.repository === repository
+                )
+                mutable.nodes.push(normalizeNode({
+                    ...operation.node,
+                    memberId: operation.node.memberId ?? operation.node.id,
+                    repository,
+                    issueNumber: operation.node.issueNumber ?? Number(
+                        operation.node.id?.match(/#(\d+)/u)?.[1]
+                    ),
+                    lifecycleState:
+                        operation.node.lifecycleState ?? 'discovered',
+                    selectorReceiptDigest:
+                        operation.node.selectorReceiptDigest ??
+                        mutable.selectorReceiptDigest,
+                    remoteSnapshotDigest:
+                        operation.node.remoteSnapshotDigest ??
+                        mutable.remoteSnapshotDigest,
+                    repositoryBindingDigest:
+                        operation.node.repositoryBindingDigest ??
+                        repositoryBinding?.bindingDigest,
+                    semanticFactsDigest:
+                        operation.node.semanticFactsDigest ??
+                        digest(operation.node),
+                    receipts: operation.node.receipts ?? {}
+                }))
                 break
             case 'remove-node': {
                 const index = mutable.nodes.findIndex(
