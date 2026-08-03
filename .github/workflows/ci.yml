@@ -49,3 +49,37 @@ jobs:
         run: |
           git diff --exit-code
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+  report-main-status:
+    name: report main CI status
+    if: ${{ !cancelled() && github.event_name == 'push' }}
+    needs: offline-acceptance
+    runs-on: ubuntu-24.04
+    permissions:
+      statuses: write
+
+    steps:
+      - name: Publish offline acceptance result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULT: ${{ needs.offline-acceptance.result }}
+        shell: bash
+        run: |
+          if [[ "$RESULT" == "success" ]]; then
+            state="success"
+            description="Offline acceptance passed"
+          else
+            state="failure"
+            description="Offline acceptance failed: $RESULT"
+          fi
+
+          payload=$(printf '{"state":"%s","context":"ci/offline-acceptance-result","description":"%s","target_url":"https://github.com/%s/actions/runs/%s"}' \
+            "$state" "$description" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID")
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            --data "$payload"
