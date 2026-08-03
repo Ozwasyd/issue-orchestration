@@ -1,7 +1,9 @@
 name = "documentation_writer"
 description = "Writes scoped current documentation after behavior and UX prerequisites pass."
 developer_instructions = """
-Require a verified stage-model-pool.v3 documentation route, behavior-green and,
+Require a verified stage-model-pool.v3 documentation route with
+executionClass=leased-writer, a current stage write lease and a passed
+mutation postcondition, behavior-green and,
 for UI work, UX-accepted receipts. Consume only a verified
 issue-orchestration.stage-work-plan.v1, its verified
 issue-orchestration.executable-slice.v1, and the deterministic
@@ -13,7 +15,7 @@ the mutually exclusive firstWritablePath/explicitReadOnlyOutput boundary, and
 execute the slice firstRequiredAction before any other stage work. At every safe
 checkpoint, return machine-observed file, Git, and command evidence in an
 issue-orchestration.stage-progress-checkpoint.v1. A verified no-change slice
-must return its explicit read-only evidence instead of fabricating a diff.
+must return its explicit no-change evidence instead of fabricating a diff.
 Treat the checkpoint as unverified until an independent machine authority
 returns an
 issue-orchestration.writer-stage-checkpoint-verification-receipt.v1 with

@@ -25,12 +25,18 @@ const REQUIRED_CLASSIFICATION_FIELDS = [
 const REQUIRED_PROFILE_FIELDS = [
     'stageProfilePolicyVersion', 'stageRole', 'stagePhase', 'allowedProfiles',
     'defaultProfile', 'routingAuthority', 'routingInputDigest',
-    'selectedProfile', 'selectedProfileReason', 'sandbox', 'writeScope',
+    'selectedProfile', 'selectedProfileReason', 'executionClass',
+    'stateAuthority', 'outputAuthority', 'remoteAuthority',
+    'leaseRequirement', 'mutationContract',
+    'requiredPostconditionEvidenceClass', 'mutationPostconditionRequired',
+    'writeScope',
     'requiredSkillDigests', 'capabilityDigest'
 ]
 const EXPECTED_POOLS = {
     'root-scheduler:scheduling':
-        [['terra-low', 'terra-medium'], 'terra-low'],
+        [['terra-low'], 'terra-low'],
+    'root-scheduler:recovery-takeover':
+        [['terra-medium'], 'terra-medium'],
     'dag-creator-updater:semantic-proposal':
         [['terra-high', 'terra-xhigh', 'terra-max', 'sol-xhigh', 'sol-max'],
             'terra-high'],
@@ -111,7 +117,15 @@ function assignment(overrides = {}) {
         routingInputDigest: hash('b'),
         selectedProfile: 'terra-medium',
         selectedProfileReason: 'engineering-risk-bounded',
-        sandbox: 'workspace-write',
+        executionClass: 'leased-writer',
+        stateAuthority: 'none',
+        outputAuthority: 'implementation-candidate',
+        remoteAuthority: 'none',
+        leaseRequirement: 'stage-write-lease',
+        mutationContract: 'lease-and-slice-allowlist',
+        requiredPostconditionEvidenceClass:
+            'leased-writer-mutation-postcondition',
+        mutationPostconditionRequired: true,
         writeScope: 'implementation-only',
         requiredSkillDigests: [],
         capabilityDigest: hash('c'),
@@ -170,11 +184,15 @@ function legacyDiscoveries() {
 }
 
 test('contract assets are frozen against the merged issue body', () => {
-    assert.equal(contract.schema, 'issue-orchestration.stage-profile-test-contract.v2')
+    assert.equal(contract.schema, 'issue-orchestration.stage-profile-test-contract.v3')
     assert.equal(contract.baseSha, 'd01f7269fb9819446f106806d96ea12269d0797b')
     assert.deepEqual(contract.authority, {
-        kind: 'merged-issue-body',
-        updatedAt: '2026-08-01T09:01:42Z'
+        kind: 'superseding-package-issues',
+        issueIds: [
+            'Ozwasyd/issue-orchestration#5',
+            'Ozwasyd/issue-orchestration#11'
+        ],
+        updatedAt: '2026-08-03T06:23:26Z'
     })
     assert.deepEqual(
         acceptance.acceptance.flatMap(({ mutations }) => mutations).sort(),
@@ -246,6 +264,12 @@ test('P04-P09 deterministic compiler maps every role and classification', async 
     const compile = requireFunction(await policy(), 'compileStageRoute')
     const cases = [
         ['root-scheduler', 'scheduling', {}, 'terra-low'],
+        ['root-scheduler', 'recovery-takeover', {
+            newParentInvocation: true,
+            takeoverAuthorizationDigest: hash('4'),
+            recoveryHandoffDigest: hash('5'),
+            oldRootFencingReceiptDigest: hash('6')
+        }, 'terra-medium'],
         ['dag-creator-updater', 'semantic-proposal', {}, 'terra-high'],
         ['dag-creator-updater', 'semantic-proposal',
             { contractState: 'authority-conflict' }, 'terra-xhigh'],
@@ -331,9 +355,9 @@ test('P13 legacy fixed-profile shared authority is absent', () => {
 const negativeCases = {
     'N01-root-sol-rejected': () => assignment({
         stageRole: 'root-scheduler', stagePhase: 'scheduling',
-        allowedProfiles: ['terra-low', 'terra-medium'],
+        allowedProfiles: ['terra-low'],
         defaultProfile: 'terra-low',
-        selectedProfile: 'sol-low', sandbox: 'read-only', writeScope: 'none'
+        selectedProfile: 'sol-low', writeScope: 'none'
     }),
     'N02-bounded-terra-without-evidence': () => assignment({
         selectedProfile: 'terra-max'
@@ -369,7 +393,7 @@ const negativeCases = {
             'terra-high', 'terra-xhigh', 'terra-max', 'sol-high', 'sol-xhigh'
         ],
         defaultProfile: 'terra-high', selectedProfile: 'terra-high',
-        sandbox: 'read-only', writeScope: 'none',
+        writeScope: 'none',
         freshContext: false, forkTurns: 'all',
         inheritedThreadId: 'implementer-thread'
     }),

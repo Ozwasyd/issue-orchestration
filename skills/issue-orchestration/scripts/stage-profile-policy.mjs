@@ -18,9 +18,47 @@ if (MODEL_POOL.schema
         !== 'issue-orchestration.stage-model-pool-policy.v3'
     || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v3'
     || STAGE_PERMISSIONS.schema
-        !== 'issue-orchestration.stage-permissions.v1'
+        !== 'issue-orchestration.stage-permissions.v2'
     || MODEL_POOL.version !== ROUTING_POLICY.version) {
     throw new Error('routing-policy-source-invalid')
+}
+
+const EXPECTED_EXECUTION_CLASSES = Object.freeze({
+    'root-control': {
+        stateAuthority: 'mechanical-control-plane-only',
+        remoteAuthority: 'policy-gated-root-only',
+        leaseRequirement: 'root-control-lease',
+        mutationContract: 'control-plane-and-delivery-gated',
+        requiredPostconditionEvidenceClass:
+            'root-control-mutation-postcondition',
+        mutationPostconditionRequired: true
+    },
+    'observe-only': {
+        stateAuthority: 'none',
+        remoteAuthority: 'none',
+        leaseRequirement: 'forbidden',
+        mutationContract: 'no-protected-mutation',
+        requiredPostconditionEvidenceClass:
+            'observe-only-mutation-postcondition',
+        mutationPostconditionRequired: true
+    },
+    'leased-writer': {
+        stateAuthority: 'none',
+        remoteAuthority: 'none',
+        leaseRequirement: 'stage-write-lease',
+        mutationContract: 'lease-and-slice-allowlist',
+        requiredPostconditionEvidenceClass:
+            'leased-writer-mutation-postcondition',
+        mutationPostconditionRequired: true
+    }
+})
+
+if (STAGE_PERMISSIONS.version !== 'stage-execution-classes.v2' ||
+    !sameValues(
+        STAGE_PERMISSIONS.executionClasses,
+        EXPECTED_EXECUTION_CLASSES
+    )) {
+    throw new Error('stage-execution-class-policy-invalid')
 }
 
 export const ROUTING_POLICY_VERSION = MODEL_POOL.version
@@ -44,7 +82,14 @@ export const REQUIRED_STAGE_PROFILE_FIELDS = Object.freeze([
     'routingInputDigest',
     'selectedProfile',
     'selectedProfileReason',
-    'sandbox',
+    'executionClass',
+    'stateAuthority',
+    'outputAuthority',
+    'remoteAuthority',
+    'leaseRequirement',
+    'mutationContract',
+    'requiredPostconditionEvidenceClass',
+    'mutationPostconditionRequired',
     'writeScope',
     'requiredSkillDigests',
     'capabilityDigest'
@@ -53,7 +98,12 @@ export const REQUIRED_STAGE_PROFILE_FIELDS = Object.freeze([
 const STAGES = Object.freeze(Object.fromEntries(
     Object.entries(MODEL_POOL.stages).map(([key, modelStage]) => {
         const permission = STAGE_PERMISSIONS.stages[key]
-        if (!permission) throw new Error(`stage-permission-missing:${key}`)
+        const executionClass = STAGE_PERMISSIONS.executionClasses[
+            permission?.executionClass
+        ]
+        if (!permission || !executionClass) {
+            throw new Error(`stage-permission-missing:${key}`)
+        }
         for (const profile of modelStage.allowedProfiles) {
             if (!MODEL_POOL.profiles[profile]) {
                 throw new Error(`stage-profile-missing:${profile}`)
@@ -62,7 +112,18 @@ const STAGES = Object.freeze(Object.fromEntries(
         return [key, Object.freeze({
             allowedProfiles: Object.freeze([...modelStage.allowedProfiles]),
             defaultProfile: modelStage.defaultProfile,
-            sandbox: permission.sandbox,
+            executionClass: permission.executionClass,
+            stateAuthority: executionClass.stateAuthority,
+            outputAuthority: permission.outputAuthority,
+            remoteAuthority: executionClass.remoteAuthority,
+            leaseRequirement:
+                executionClass.leaseRequirement,
+            mutationContract:
+                executionClass.mutationContract,
+            requiredPostconditionEvidenceClass:
+                executionClass.requiredPostconditionEvidenceClass,
+            mutationPostconditionRequired:
+                executionClass.mutationPostconditionRequired,
             writeScope: permission.writeScope,
             freshContext: permission.freshContext
         })]
@@ -175,6 +236,12 @@ function assertNoLegacyAuthority(value) {
     if (value?.node?.model || value?.node?.effort
         || value?.implementationProfile || value?.reviewProfile) {
         fail('routing-legacy-authority')
+    }
+    if (Object.hasOwn(value ?? {}, 'sandbox') ||
+        Object.hasOwn(value ?? {}, 'sandboxMode') ||
+        Object.hasOwn(value ?? {}, 'requiredSandbox') ||
+        Object.hasOwn(value ?? {}, 'supportedSandboxes')) {
+        fail('routing-legacy-sandbox-authority')
     }
 }
 
@@ -309,19 +376,30 @@ function selectDocumentationProfile(input) {
 
 function selectProfile(input, key) {
     if (key === 'root-scheduler:scheduling') {
-        if (input.controlPlaneRecovery === true) {
-            if (typeof input.recoveryClassification !== 'string' ||
-                !input.recoveryClassification ||
-                !HASH.test(input.recoveryReceiptDigest ?? '')) {
-                fail('routing-root-recovery-receipt')
-            }
-            return ['terra-medium', 'root-control-plane-recovery']
-        }
-        if (input.recoveryClassification ||
-            input.recoveryReceiptDigest) {
-            fail('routing-root-recovery-receipt')
+        if (input.controlPlaneRecovery === true ||
+            input.recoveryClassification ||
+            input.recoveryReceiptDigest ||
+            input.takeoverAuthorizationDigest ||
+            input.recoveryHandoffDigest ||
+            input.oldRootFencingReceiptDigest ||
+            input.newParentInvocation !== undefined) {
+            fail('routing-root-in-session-upgrade-forbidden')
         }
         return ['terra-low', 'root-mechanical-control']
+    }
+    if (key === 'root-scheduler:recovery-takeover') {
+        if (input.controlPlaneRecovery === true ||
+            input.newParentInvocation !== true ||
+            !HASH.test(
+                input.takeoverAuthorizationDigest ?? ''
+            ) ||
+            !HASH.test(input.recoveryHandoffDigest ?? '') ||
+            !HASH.test(
+                input.oldRootFencingReceiptDigest ?? ''
+            )) {
+            fail('routing-root-takeover-authority-required')
+        }
+        return ['terra-medium', 'root-recovery-takeover']
     }
     if (key === 'dag-creator-updater:semantic-proposal') {
         return selectDagProfile(input)
@@ -369,6 +447,14 @@ export function compileStageRoutingIdentity(input) {
         controlPlaneRecovery: input.controlPlaneRecovery === true,
         recoveryClassification: input.recoveryClassification ?? null,
         recoveryReceiptDigest: input.recoveryReceiptDigest ?? null,
+        takeoverAuthorizationDigest:
+            input.takeoverAuthorizationDigest ?? null,
+        recoveryHandoffDigest:
+            input.recoveryHandoffDigest ?? null,
+        oldRootFencingReceiptDigest:
+            input.oldRootFencingReceiptDigest ?? null,
+        newParentInvocation:
+            input.newParentInvocation ?? null,
         documentationClass: input.documentationClass ?? null
     }
     const requiredSkillDigests = Array.isArray(input.requiredSkillDigests)
@@ -388,7 +474,16 @@ export function compileStageRoutingIdentity(input) {
         defaultProfile: definition.defaultProfile,
         routingAuthority: STAGE_MODEL_POOL_POLICY.routingAuthority,
         routingInputDigest: digest(routingInput),
-        sandbox: definition.sandbox,
+        executionClass: definition.executionClass,
+        stateAuthority: definition.stateAuthority,
+        outputAuthority: definition.outputAuthority,
+        remoteAuthority: definition.remoteAuthority,
+        leaseRequirement: definition.leaseRequirement,
+        mutationContract: definition.mutationContract,
+        requiredPostconditionEvidenceClass:
+            definition.requiredPostconditionEvidenceClass,
+        mutationPostconditionRequired:
+            definition.mutationPostconditionRequired,
         writeScope: definition.writeScope,
         requiredSkillDigests,
         capabilityDigest
@@ -490,8 +585,17 @@ export function validateStageAssignment(value) {
         || value.selectedProfileReason !== expected.selectedProfileReason) {
         fail('routing-selected-profile')
     }
-    if (value.sandbox !== expected.sandbox
-        || value.writeScope !== expected.writeScope) {
+    if (value.executionClass !== expected.executionClass ||
+        value.stateAuthority !== expected.stateAuthority ||
+        value.outputAuthority !== expected.outputAuthority ||
+        value.remoteAuthority !== expected.remoteAuthority ||
+        value.leaseRequirement !== expected.leaseRequirement ||
+        value.mutationContract !== expected.mutationContract ||
+        value.requiredPostconditionEvidenceClass !==
+            expected.requiredPostconditionEvidenceClass ||
+        value.mutationPostconditionRequired !==
+            expected.mutationPostconditionRequired ||
+        value.writeScope !== expected.writeScope) {
         fail('routing-permission')
     }
     assertHash(value.routingInputDigest, 'routing-input-digest')

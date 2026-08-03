@@ -72,7 +72,7 @@
                 "context-heavy",
                 "high-tool-depth",
                 "long-horizon-cross-module",
-                "read-only-adjudication"
+                "observe-only-adjudication"
             ]
         },
         "secondaryShapes": {

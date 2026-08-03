@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:stage-permissions:v2",
+  "title": "issue-orchestration.stage-permissions.v2",
+  "type": "object",
+  "required": ["schema", "version", "executionClasses", "stages"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.stage-permissions.v2"},
+    "version": {"const": "stage-execution-classes.v2"},
+    "executionClasses": {
+      "type": "object",
+      "required": ["root-control", "observe-only", "leased-writer"],
+      "properties": {
+        "root-control": {"$ref": "#/$defs/executionClass"},
+        "observe-only": {"$ref": "#/$defs/executionClass"},
+        "leased-writer": {"$ref": "#/$defs/executionClass"}
+      },
+      "additionalProperties": false
+    },
+    "stages": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/stage"}
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "executionClass": {
+      "type": "object",
+      "required": [
+        "stateAuthority",
+        "remoteAuthority",
+        "leaseRequirement",
+        "mutationContract",
+        "requiredPostconditionEvidenceClass",
+        "mutationPostconditionRequired"
+      ],
+      "properties": {
+        "stateAuthority": {"type": "string", "minLength": 1},
+        "remoteAuthority": {"type": "string", "minLength": 1},
+        "leaseRequirement": {"type": "string", "minLength": 1},
+        "mutationContract": {
+          "enum": [
+            "control-plane-and-delivery-gated",
+            "no-protected-mutation",
+            "lease-and-slice-allowlist"
+          ]
+        },
+        "requiredPostconditionEvidenceClass": {
+          "enum": [
+            "root-control-mutation-postcondition",
+            "observe-only-mutation-postcondition",
+            "leased-writer-mutation-postcondition"
+          ]
+        },
+        "mutationPostconditionRequired": {"const": true}
+      },
+      "additionalProperties": false
+    },
+    "stage": {
+      "type": "object",
+      "required": [
+        "executionClass",
+        "writeScope",
+        "outputAuthority",
+        "freshContext"
+      ],
+      "properties": {
+        "executionClass": {
+          "enum": ["root-control", "observe-only", "leased-writer"]
+        },
+        "writeScope": {
+          "enum": [
+            "none",
+            "tests-only",
+            "implementation-only",
+            "documentation-only",
+            "orchestration-control-only"
+          ]
+        },
+        "outputAuthority": {"type": "string", "minLength": 1},
+        "freshContext": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    }
+  }
+}
