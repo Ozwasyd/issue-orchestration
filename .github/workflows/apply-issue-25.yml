@@ -1,0 +1,204 @@
+name: Apply issue 25 multi-repository lifecycle E2E
+
+on:
+  push:
+    branches:
+      - agent/issue-24-lifecycle-compiler
+
+permissions:
+  contents: write
+  statuses: write
+
+env:
+  BOOTSTRAP_SHA: ${{ github.sha }}
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Report pending verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state pending \
+            --arg context issue-25/bootstrap \
+            --arg description 'Running multi-repository lifecycle E2E' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
+
+      - name: Bind lifecycle compiler to production selector receipts
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          path = Path('skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs')
+          text = path.read_text()
+          import_marker = "import { digest } from './runtime-contract-lib.mjs'\n"
+          import_replacement = import_marker + "import { verifySelectorReceipt } from './scope-selector.mjs'\n"
+          if "verifySelectorReceipt } from './scope-selector.mjs'" not in text:
+              if import_marker not in text:
+                  raise SystemExit('digest import marker missing')
+              text = text.replace(import_marker, import_replacement, 1)
+
+          old_validation = """    if (selector.schema !== 'issue-orchestration.scope-selector-receipt.v1' ||
+        selector.status !== 'verified') {
+        fail('lifecycle-selector-invalid')
+    }
+"""
+          new_validation = """    const legacySelector = selector.schema ===
+        'issue-orchestration.scope-selector-receipt.v1' &&
+        selector.status === 'verified'
+    const productionSelector = selector.schema ===
+        'issue-orchestration.selector-receipt.v1'
+    if (!legacySelector && !productionSelector) {
+        fail('lifecycle-selector-invalid')
+    }
+    if (productionSelector) {
+        try {
+            verifySelectorReceipt(selector)
+        } catch (error) {
+            fail('lifecycle-selector-invalid', {
+                cause: error?.code ?? error?.message
+            })
+        }
+    }
+"""
+          if old_validation in text:
+              text = text.replace(old_validation, new_validation, 1)
+          elif new_validation not in text:
+              raise SystemExit('selector validation marker missing')
+
+          export_marker = 'export function compileLifecycleActionSet(input = {}) {'
+          adapter = """export function compileLifecycleRemoteSnapshotReceipt(selectorReceipt) {
+    let selector
+    if (selectorReceipt?.schema ===
+            'issue-orchestration.selector-receipt.v1') {
+        try {
+            selector = verifySelectorReceipt(selectorReceipt)
+        } catch (error) {
+            fail('lifecycle-selector-invalid', {
+                cause: error?.code ?? error?.message
+            })
+        }
+    } else if (selectorReceipt?.schema ===
+            'issue-orchestration.scope-selector-receipt.v1' &&
+        selectorReceipt.status === 'verified') {
+        selector = selectorReceipt
+    } else {
+        fail('lifecycle-selector-invalid')
+    }
+    requireDigest(
+        selector.receiptDigest,
+        'lifecycle-selector-digest-invalid'
+    )
+    requireDigest(
+        selector.remoteSnapshotDigest,
+        'lifecycle-selector-remote-invalid'
+    )
+    return Object.freeze({
+        schema: 'issue-orchestration.remote-snapshot-receipt.v1',
+        status: 'verified',
+        selectorReceiptDigest: selector.receiptDigest,
+        receiptDigest: selector.remoteSnapshotDigest
+    })
+}
+
+"""
+          if 'export function compileLifecycleRemoteSnapshotReceipt' not in text:
+              if export_marker not in text:
+                  raise SystemExit('compiler export marker missing')
+              text = text.replace(export_marker, adapter + export_marker, 1)
+          path.write_text(text)
+          PY
+
+          rm -f .github/workflows/apply-issue-25.yml
+          git config user.name 'issue-orchestration automation'
+          git config user.email 'issue-orchestration@example.invalid'
+          git add -A
+          test ! -e .github/workflows/apply-issue-25.yml
+          git diff --cached --check
+          git commit -m 'feat: add real multi-repository lifecycle E2E'
+          code_sha="$(git rev-parse HEAD)"
+
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="${code_sha}" node scripts/build-manifest.mjs
+          git add manifest.json
+          git diff --cached --check
+          git commit -m 'chore: rebuild package manifest for lifecycle E2E'
+
+      - name: Run targeted and complete offline suites
+        run: |
+          set -euo pipefail
+          npm ci --prefix tools/test-matrix/schema-validator
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+          git diff --exit-code
+          test -z "$(git status --porcelain)"
+
+      - name: Push verified result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:agent/issue-24-lifecycle-compiler
+
+      - name: Report successful verification
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state success \
+            --arg context issue-25/bootstrap \
+            --arg description 'Multi-repository lifecycle E2E passed' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
+
+      - name: Report failed verification
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state failure \
+            --arg context issue-25/bootstrap \
+            --arg description 'Multi-repository lifecycle E2E failed' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
