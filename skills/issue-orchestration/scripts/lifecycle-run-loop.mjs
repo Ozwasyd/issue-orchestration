@@ -1,7 +1,9 @@
-import fs from 'node:fs'
 import path from 'node:path'
 
-import { digest } from './runtime-contract-lib.mjs'
+import {
+    digest,
+    sameValue
+} from './runtime-contract-lib.mjs'
 import {
     createSemanticGraph,
     validateSemanticGraph
@@ -12,14 +14,29 @@ import {
     validateLifecycleActionSet
 } from './lifecycle-transition-compiler.mjs'
 import { verifySelectorReceipt } from './scope-selector.mjs'
+import {
+    appendControlEventAtomicSync,
+    appendNodeEventAtomicSync,
+    canonicalNodeStateLocation,
+    canonicalRunStateLocation,
+    compileControlEvent,
+    createControlLedger,
+    persistAggregateRunState,
+    readCanonicalControlLedger,
+    readCanonicalNodeLedger,
+    recoverAggregateRunState,
+    replayControlLedger,
+    stateDigest
+} from './multi-node-state.mjs'
+import {
+    replayEventLedgerSync,
+    sealNodeLedgerHeader
+} from './event-ledger.mjs'
 
-const LEDGER_SCHEMA = 'issue-orchestration.lifecycle-run-ledger.v1'
+const HANDLE_SCHEMA = 'issue-orchestration.lifecycle-run-handle.v1'
+const GENESIS_SCHEMA = 'issue-orchestration.lifecycle-run-genesis.v1'
 const ACTOR_RESULT_SCHEMA =
     'issue-orchestration.lifecycle-actor-result.v1'
-const NODE_EVENT_SCHEMA =
-    'issue-orchestration.lifecycle-node-event.v1'
-const CONTROL_EVENT_SCHEMA =
-    'issue-orchestration.lifecycle-control-event.v1'
 const GENESIS = '0'.repeat(64)
 const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
@@ -57,6 +74,31 @@ const ALLOWED_OUTCOMES = Object.freeze({
     'terminalize-node': ['completed']
 })
 
+const EVENT_TYPE_BY_ACTION = Object.freeze({
+    'request-semantic-proposal':
+        'lifecycle.semantic-proposal-recorded',
+    'compile-acceptance-contract':
+        'lifecycle.acceptance-contract-recorded',
+    'request-test-contract-planning':
+        'lifecycle.test-contract-planning-recorded',
+    'dispatch-test-contract-writer':
+        'lifecycle.test-contract-writer-recorded',
+    'dispatch-behavior-verifier':
+        'lifecycle.behavior-recorded',
+    'request-ui-adjudication':
+        'lifecycle.ui-adjudication-recorded',
+    'dispatch-ux-acceptance-verifier':
+        'lifecycle.ux-acceptance-recorded',
+    'dispatch-documentation-writer':
+        'lifecycle.documentation-recorded',
+    'deliver-acceptance-group':
+        'lifecycle.delivery-recorded',
+    'cleanup-node-resources':
+        'lifecycle.cleanup-recorded',
+    'terminalize-node':
+        'lifecycle.terminal-recorded'
+})
+
 export class LifecycleRunLoopError extends Error {
     constructor(code, message = code, details = {}) {
         super(message)
@@ -72,10 +114,6 @@ function fail(code, details = {}) {
 
 function clone(value) {
     return structuredClone(value)
-}
-
-function sameValue(left, right) {
-    return JSON.stringify(left) === JSON.stringify(right)
 }
 
 function unsignedDigest(value, field) {
@@ -106,179 +144,218 @@ function requireSha(value, code) {
     return value
 }
 
-function atomicWrite(file, content) {
-    fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 })
-    const temporary = `${file}.${process.pid}.tmp`
-    fs.writeFileSync(temporary, content, { mode: 0o600 })
-    fs.renameSync(temporary, file)
+function repositoryMap(graph) {
+    return new Map(graph.repositories.map((repository) => [
+        repository.repository,
+        repository
+    ]))
 }
 
-function ledgerLocation(stateRoot, runId) {
-    requireText(stateRoot, 'lifecycle-run-state-root-required')
-    requireText(runId, 'lifecycle-run-id-required')
-    return path.resolve(
-        stateRoot,
-        'runs',
-        digest({ runId }),
-        'lifecycle-run-ledger.json'
-    )
-}
-
-function sealMachineReceipt({
-    kind,
-    node,
-    action,
-    eventSequence,
-    decision = {}
-}) {
-    const receipt = {
-        schema:
-            'issue-orchestration.lifecycle-machine-receipt.v1',
-        receiptKind: kind,
-        status: 'verified',
-        producerAuthority:
-            'deterministic-lifecycle-run-loop',
-        rootAuthored: false,
-        runId: action.bindings.runId,
-        nodeId: node.id,
-        repository: node.repository,
-        issueNumber: node.issueNumber,
-        nodeEpoch: node.chainVersion,
-        actionDigest: action.actionDigest,
-        eventSequence,
-        decisionDigest: digest(decision)
+function validateGenesis(genesis) {
+    requireObject(genesis, 'lifecycle-run-genesis-invalid')
+    if (genesis.schema !== GENESIS_SCHEMA) {
+        fail('lifecycle-run-genesis-schema')
     }
-    receipt.receiptDigest = digest(receipt)
-    return receipt
-}
-
-function sealedArtifact(schema, digestField, value) {
-    const artifact = {
-        schema,
-        producerAuthority:
-            'deterministic-lifecycle-run-loop',
-        rootAuthored: false,
-        ...value
-    }
-    artifact[digestField] = digest(artifact)
-    return artifact
-}
-
-function validateHeader(header) {
-    requireObject(header, 'lifecycle-run-header-invalid')
-    if (header.schema !==
-            'issue-orchestration.lifecycle-run-header.v1') {
-        fail('lifecycle-run-header-schema')
-    }
-    requireText(header.runId, 'lifecycle-run-id-required')
-    requireText(header.createdAt, 'lifecycle-run-created-at-required')
-    if (!Number.isInteger(header.slotCapacity) ||
-        header.slotCapacity < 1) {
+    requireText(genesis.runId, 'lifecycle-run-id-required')
+    requireText(genesis.createdAt, 'lifecycle-run-created-at-required')
+    if (!Number.isInteger(genesis.slotCapacity) ||
+        genesis.slotCapacity < 1) {
         fail('lifecycle-run-slot-capacity-invalid')
     }
     try {
-        verifySelectorReceipt(header.selectorReceipt)
-        validateSemanticGraph(header.semanticGraph)
+        verifySelectorReceipt(genesis.selectorReceipt)
+        validateSemanticGraph(genesis.semanticGraph)
     } catch (error) {
-        fail('lifecycle-run-header-authority-invalid', {
+        fail('lifecycle-run-genesis-authority-invalid', {
             cause: error?.code ?? error?.message
         })
     }
-    const expectedRemote =
-        compileLifecycleRemoteSnapshotReceipt(
-            header.selectorReceipt
-        )
-    if (!sameValue(expectedRemote, header.remoteSnapshotReceipt)) {
-        fail('lifecycle-run-header-remote-invalid')
+    const expectedRemote = compileLifecycleRemoteSnapshotReceipt(
+        genesis.selectorReceipt
+    )
+    if (!sameValue(expectedRemote, genesis.remoteSnapshotReceipt)) {
+        fail('lifecycle-run-genesis-remote-invalid')
     }
-    if (header.semanticGraph.selectorReceiptDigest !==
-            header.selectorReceipt.receiptDigest ||
-        header.semanticGraph.remoteSnapshotDigest !==
-            header.remoteSnapshotReceipt.receiptDigest) {
-        fail('lifecycle-run-header-graph-stale')
+    if (genesis.semanticGraph.selectorReceiptDigest !==
+            genesis.selectorReceipt.receiptDigest ||
+        genesis.semanticGraph.remoteSnapshotDigest !==
+            genesis.remoteSnapshotReceipt.receiptDigest) {
+        fail('lifecycle-run-genesis-graph-stale')
     }
-    if (header.installedPolicy?.schema !==
+    if (genesis.installedPolicy?.schema !==
             'issue-orchestration.installed-route-policy.v1' ||
-        header.installedPolicy.status !== 'verified' ||
-        header.installedPolicy.policyDigest !==
-            header.semanticGraph.policyDigest) {
+        genesis.installedPolicy.status !== 'verified' ||
+        genesis.installedPolicy.policyDigest !==
+            genesis.semanticGraph.policyDigest) {
         fail('lifecycle-run-policy-invalid')
     }
-    if (header.runtimeCapabilityBinding?.schema !==
+    if (genesis.runtimeCapabilityBinding?.schema !==
             'issue-orchestration.runtime-capability-binding.v1' ||
-        header.runtimeCapabilityBinding.status !== 'verified') {
+        genesis.runtimeCapabilityBinding.status !== 'verified') {
         fail('lifecycle-run-capability-invalid')
     }
     requireDigest(
-        header.runtimeCapabilityBinding.bindingDigest,
+        genesis.runtimeCapabilityBinding.bindingDigest,
         'lifecycle-run-capability-invalid'
     )
-    requireDigest(header.headerDigest, 'lifecycle-run-header-digest')
-    if (unsignedDigest(header, 'headerDigest') !==
-            header.headerDigest) {
-        fail('lifecycle-run-header-digest-mismatch')
-    }
-    return header
-}
-
-function sealLedger(ledger) {
-    const next = clone(ledger)
-    delete next.ledgerDigest
-    next.ledgerDigest = digest(next)
-    return Object.freeze(next)
-}
-
-function validateLedgerEnvelope(ledger) {
-    requireObject(ledger, 'lifecycle-run-ledger-invalid')
-    if (ledger.schema !== LEDGER_SCHEMA) {
-        fail('lifecycle-run-ledger-schema')
-    }
-    validateHeader(ledger.header)
-    requireObject(
-        ledger.nodeLedgers,
-        'lifecycle-run-node-ledgers-invalid'
+    requireDigest(
+        genesis.genesisDigest,
+        'lifecycle-run-genesis-digest-invalid'
     )
-    if (!Array.isArray(ledger.controlEvents)) {
-        fail('lifecycle-run-control-events-invalid')
+    if (unsignedDigest(genesis, 'genesisDigest') !==
+            genesis.genesisDigest) {
+        fail('lifecycle-run-genesis-digest-mismatch')
     }
-    requireDigest(ledger.ledgerDigest, 'lifecycle-run-ledger-digest')
-    if (unsignedDigest(ledger, 'ledgerDigest') !==
-            ledger.ledgerDigest) {
-        fail('lifecycle-run-ledger-digest-mismatch')
-    }
-    return ledger
+    return genesis
 }
 
-function initialNode(graphNode) {
-    if (graphNode.lifecycleState !== 'none' ||
-        Object.keys(graphNode.receipts).length !== 0) {
-        fail('lifecycle-run-future-history-forbidden', {
-            nodeId: graphNode.id
-        })
+function resolveAuthority(value) {
+    const authority = value?.ledger ?? value
+    requireObject(authority, 'lifecycle-run-handle-required')
+    if (authority.schema !== HANDLE_SCHEMA) {
+        if (authority.stateRoot && authority.runId) {
+            return {
+                stateRoot: path.resolve(authority.stateRoot),
+                runId: authority.runId
+            }
+        }
+        fail('lifecycle-run-handle-invalid')
+    }
+    requireText(authority.stateRoot, 'lifecycle-run-state-root-required')
+    requireText(authority.runId, 'lifecycle-run-id-required')
+    requireDigest(authority.handleDigest, 'lifecycle-run-handle-digest')
+    if (unsignedDigest(authority, 'handleDigest') !==
+            authority.handleDigest) {
+        fail('lifecycle-run-handle-digest-mismatch')
     }
     return {
-        id: graphNode.id,
+        stateRoot: path.resolve(authority.stateRoot),
+        runId: authority.runId
+    }
+}
+
+function genesisFromControlLedger(controlLedger) {
+    const event = controlLedger.events.find(
+        ({ eventType, payload }) =>
+            eventType === 'scope.refreshed' && payload?.runGenesis
+    )
+    if (!event) fail('lifecycle-run-genesis-unavailable')
+    const genesis = validateGenesis(event.payload.runGenesis)
+    if (genesis.runId !== controlLedger.header.runId) {
+        fail('lifecycle-run-genesis-run-id-mismatch')
+    }
+    return genesis
+}
+
+function currentSelectorFromControlLedger(controlLedger, genesis) {
+    const event = [...controlLedger.events].reverse().find(
+        ({ eventType, payload }) =>
+            eventType === 'scope.refreshed' && payload?.selectorReceipt
+    )
+    const selector = verifySelectorReceipt(
+        event?.payload?.selectorReceipt ?? genesis.selectorReceipt
+    )
+    return selector
+}
+
+function currentRemoteFromControlLedger(controlLedger, selector) {
+    const event = [...controlLedger.events].reverse().find(
+        ({ eventType, payload }) =>
+            eventType === 'remote-snapshot.refreshed' &&
+            payload?.remoteSnapshotReceipt
+    )
+    const expected = compileLifecycleRemoteSnapshotReceipt(selector)
+    if (event && !sameValue(
+        event.payload.remoteSnapshotReceipt,
+        expected
+    )) {
+        fail('lifecycle-run-remote-snapshot-invalid')
+    }
+    return expected
+}
+
+function makeHandle({ stateRoot, runId, recovered = null }) {
+    const location = canonicalRunStateLocation({ stateRoot, runId })
+    const state = recovered ?? recoverAggregateRunState({
+        stateRoot: location.stateRoot,
+        runId
+    })
+    const handle = {
+        schema: HANDLE_SCHEMA,
+        status: 'canonical',
+        stateRoot: location.stateRoot,
+        runId,
+        runKey: location.runKey,
+        controlLedgerHeadDigest:
+            state.controlProjection.lastEventDigest,
+        nodeIndexDigest: state.nodeIndex.nodeIndexDigest,
+        aggregateProjectionDigest:
+            state.projection.aggregateProjectionDigest
+    }
+    handle.handleDigest = digest(handle)
+    return Object.freeze(handle)
+}
+
+function pushControlEvent(ledger, eventType, payload, createdAt) {
+    ledger.events.push(compileControlEvent({
+        ledger,
+        eventType,
+        payload,
+        createdAt
+    }))
+}
+
+function nodeRegistration({
+    graphNode,
+    nodeEpoch,
+    repository,
+    selectorReceipt
+}) {
+    const remoteMemberDigest = selectorReceipt.remoteFactDigests[
+        graphNode.id
+    ]
+    requireDigest(
+        remoteMemberDigest,
+        'lifecycle-run-node-remote-member-missing'
+    )
+    return {
+        nodeId: graphNode.id,
         memberId: graphNode.memberId,
         repository: graphNode.repository,
         issueNumber: graphNode.issueNumber,
-        owner: graphNode.owner,
+        selectorReceiptDigest: selectorReceipt.receiptDigest,
+        remoteMemberDigest,
+        nodeEpoch,
+        baseSha: repository.baseSha,
+        repositoryBindingDigest: repository.bindingDigest,
+        issueSnapshotFingerprint: remoteMemberDigest,
+        repositoryFingerprint: repository.bindingDigest,
         dependencyKeys: [...graphNode.dependencyKeys],
-        conflictKeys: [...graphNode.conflictKeys],
-        riskClass: graphNode.riskClass,
-        uiClass: graphNode.uiClass,
         acceptanceGroup: graphNode.acceptanceGroup,
-        semanticFactsDigest: graphNode.semanticFactsDigest,
-        lifecycleState: 'none',
-        receipts: {},
-        chainVersion: 1,
-        implementationAttempts: 0,
-        pendingDeliveryEffect: null,
-        deliveryCommit: null,
-        closedAtSequence: null
+        graphNode: clone(graphNode)
+    }
+}
+
+function nodeLedgerForRegistration({
+    registration,
+    runId,
+    stateRoot,
+    createdAt,
+    events = []
+}) {
+    return {
+        header: sealNodeLedgerHeader({
+            runId,
+            ...registration,
+            stateRootCanonical: path.resolve(stateRoot),
+            createdAt
+        }),
+        events
     }
 }
 
 export function createLifecycleRunLedger({
+    stateRoot,
     runId,
     createdAt,
     selectorReceipt,
@@ -287,56 +364,75 @@ export function createLifecycleRunLedger({
     runtimeCapabilityBinding,
     slotCapacity
 } = {}) {
+    requireText(stateRoot, 'lifecycle-run-state-root-required')
     verifySelectorReceipt(selectorReceipt)
     validateSemanticGraph(semanticGraph)
     const remoteSnapshotReceipt =
         compileLifecycleRemoteSnapshotReceipt(selectorReceipt)
-    const header = {
-        schema: 'issue-orchestration.lifecycle-run-header.v1',
+    const genesis = {
+        schema: GENESIS_SCHEMA,
         runId,
         createdAt,
         selectorReceipt: clone(selectorReceipt),
         remoteSnapshotReceipt,
         semanticGraph: clone(semanticGraph),
         installedPolicy: clone(installedPolicy),
-        runtimeCapabilityBinding:
-            clone(runtimeCapabilityBinding),
+        runtimeCapabilityBinding: clone(runtimeCapabilityBinding),
         slotCapacity
     }
-    header.headerDigest = digest(header)
-    validateHeader(header)
-    const nodeLedgers = Object.fromEntries(
-        semanticGraph.nodes.map((node) => [
-            node.id,
-            {
-                schema:
-                    'issue-orchestration.lifecycle-node-ledger.v1',
-                nodeId: node.id,
-                events: [],
-                headDigest: GENESIS
-            }
-        ])
-    )
-    return sealLedger({
-        schema: LEDGER_SCHEMA,
-        header,
-        nodeLedgers,
-        controlEvents: []
-    })
-}
+    genesis.genesisDigest = digest(genesis)
+    validateGenesis(genesis)
 
-function verifyEventEnvelope(event, expectedSchema, previousDigest) {
-    requireObject(event, 'lifecycle-run-event-invalid')
-    if (event.schema !== expectedSchema ||
-        !Number.isInteger(event.globalSequence) ||
-        event.globalSequence < 1 ||
-        !Number.isInteger(event.sequence) ||
-        event.sequence < 1 ||
-        event.previousEventDigest !== previousDigest ||
-        event.eventDigest !==
-            unsignedDigest(event, 'eventDigest')) {
-        fail('lifecycle-run-event-invalid')
+    const controlLedger = createControlLedger({ runId, createdAt })
+    pushControlEvent(controlLedger, 'scope.refreshed', {
+        selectorReceiptDigest: selectorReceipt.receiptDigest,
+        selectorReceipt: clone(selectorReceipt),
+        runGenesis: genesis
+    }, createdAt)
+    pushControlEvent(controlLedger, 'remote-snapshot.refreshed', {
+        remoteSnapshotDigest: remoteSnapshotReceipt.receiptDigest,
+        remoteSnapshotReceipt
+    }, createdAt)
+
+    const repositories = repositoryMap(semanticGraph)
+    const nodeLedgers = []
+    for (const graphNode of semanticGraph.nodes) {
+        const repository = repositories.get(graphNode.repository)
+        if (!repository) {
+            fail('lifecycle-run-node-repository-missing', {
+                nodeId: graphNode.id
+            })
+        }
+        const registration = nodeRegistration({
+            graphNode,
+            nodeEpoch: 1,
+            repository,
+            selectorReceipt
+        })
+        pushControlEvent(
+            controlLedger,
+            'node.registered',
+            registration,
+            createdAt
+        )
+        nodeLedgers.push(nodeLedgerForRegistration({
+            registration,
+            runId,
+            stateRoot,
+            createdAt
+        }))
     }
+    pushControlEvent(controlLedger, 'slots.updated', {
+        capacity: slotCapacity,
+        activeNodeIds: []
+    }, createdAt)
+
+    const recovered = persistAggregateRunState({
+        stateRoot,
+        controlLedger,
+        nodeLedgers
+    })
+    return makeHandle({ stateRoot, runId, recovered })
 }
 
 function validateActorResult(result, action, node) {
@@ -404,6 +500,46 @@ export function compileLifecycleActorResult({
     return Object.freeze(result)
 }
 
+function sealMachineReceipt({
+    kind,
+    node,
+    action,
+    eventSequence,
+    decision = {}
+}) {
+    const receipt = {
+        schema:
+            'issue-orchestration.lifecycle-machine-receipt.v1',
+        receiptKind: kind,
+        status: 'verified',
+        producerAuthority:
+            'deterministic-lifecycle-run-loop',
+        rootAuthored: false,
+        runId: action.bindings.runId,
+        nodeId: node.id,
+        repository: node.repository,
+        issueNumber: node.issueNumber,
+        nodeEpoch: node.chainVersion,
+        actionDigest: action.actionDigest,
+        eventSequence,
+        decisionDigest: digest(decision)
+    }
+    receipt.receiptDigest = digest(receipt)
+    return receipt
+}
+
+function sealedArtifact(schema, digestField, value) {
+    const artifact = {
+        schema,
+        producerAuthority:
+            'deterministic-lifecycle-run-loop',
+        rootAuthored: false,
+        ...value
+    }
+    artifact[digestField] = digest(artifact)
+    return artifact
+}
+
 function compileNodeEffect(node, action, result, eventSequence) {
     const next = clone(node)
     const receipts = {}
@@ -417,8 +553,7 @@ function compileNodeEffect(node, action, result, eventSequence) {
         })
     switch (action.type) {
         case 'request-semantic-proposal':
-            receipts.semanticProposal =
-                machine('semantic-proposal')
+            receipts.semanticProposal = machine('semantic-proposal')
             next.lifecycleState = 'discovered'
             break
         case 'compile-acceptance-contract':
@@ -439,8 +574,7 @@ function compileNodeEffect(node, action, result, eventSequence) {
             }
             receipts.planningAttempt =
                 machine('test-contract-planning-attempt')
-            receipts.testContractPlan =
-                machine('test-contract-plan')
+            receipts.testContractPlan = machine('test-contract-plan')
             receipts.workPlan = sealedArtifact(
                 'issue-orchestration.stage-work-plan.v1',
                 'workPlanDigest',
@@ -458,8 +592,7 @@ function compileNodeEffect(node, action, result, eventSequence) {
             )
             receipts.resourceAcquisition =
                 machine('writer-resource-acquisition')
-            receipts.routeBinding =
-                machine('stage-route-binding')
+            receipts.routeBinding = machine('stage-route-binding')
             next.lifecycleState = 'test-contracting'
             break
         }
@@ -471,48 +604,39 @@ function compileNodeEffect(node, action, result, eventSequence) {
         case 'dispatch-implementation-writer':
             next.implementationAttempts += 1
             if (result.outcome === 'recoverable-failure') {
-                receipts.writerFailure =
-                    machine('writer-stage-failure')
+                receipts.writerFailure = machine('writer-stage-failure')
                 receipts.retryAuthorization =
                     machine('writer-stage-retry-authorization')
-                next.lifecycleState =
-                    'implementing-self-testing'
+                next.lifecycleState = 'implementing-self-testing'
             } else {
                 receipts.implementationTerminal =
                     machine('implementation-terminal')
-                receipts.candidate =
-                    machine('candidate')
+                receipts.candidate = machine('candidate')
                 next.lifecycleState = 'candidate-green'
             }
             break
         case 'dispatch-behavior-verifier':
-            receipts.behavior =
-                machine('behavior-verification')
+            receipts.behavior = machine('behavior-verification')
             next.lifecycleState = 'behavior-green'
             break
         case 'request-ui-adjudication':
-            receipts.uiAdjudication =
-                machine('ui-adjudication')
+            receipts.uiAdjudication = machine('ui-adjudication')
             next.lifecycleState = 'behavior-green'
             break
         case 'dispatch-ux-acceptance-verifier':
-            receipts.uxAcceptance =
-                machine('ux-acceptance')
+            receipts.uxAcceptance = machine('ux-acceptance')
             next.lifecycleState = 'ux-accepted'
             break
         case 'dispatch-documentation-writer':
-            receipts.documentation =
-                machine('documentation-terminal')
+            receipts.documentation = machine('documentation-terminal')
             next.lifecycleState = 'documentation-green'
             break
         case 'deliver-acceptance-group':
             if (result.outcome !== 'completed') {
                 fail('lifecycle-delivery-result-incomplete')
             }
-            receipts.deliveryAttempt =
-                machine('delivery-attempt')
-            receipts.delivery =
-                machine('delivery-completion')
+            receipts.deliveryAttempt = machine('delivery-attempt')
+            receipts.delivery = machine('delivery-completion')
             next.deliveryCommit =
                 result.decision.commits?.[next.id] ?? null
             next.lifecycleState = 'cleaning'
@@ -541,530 +665,394 @@ function compileNodeEffect(node, action, result, eventSequence) {
     return { node: next, receipts }
 }
 
-function nodeEvent({
-    ledger,
-    nodeId,
-    actionSet,
-    action,
-    actorResult,
-    effect,
-    globalSequence,
-    createdAt
-}) {
-    const nodeLedger = ledger.nodeLedgers[nodeId]
-    const event = {
-        schema: NODE_EVENT_SCHEMA,
-        sequence: nodeLedger.events.length + 1,
-        globalSequence,
-        nodeId,
-        actionSetDigest: actionSet.actionSetDigest,
-        action: clone(action),
-        actorResult: clone(actorResult),
-        fromState: effect.fromState,
-        toState: effect.node.lifecycleState,
-        machineReceipts: clone(effect.receipts),
-        createdAt,
-        previousEventDigest: nodeLedger.headDigest
-    }
-    event.eventDigest = digest(event)
-    return event
-}
-
-function controlEvent({
-    ledger,
-    eventType,
-    payload,
-    globalSequence,
-    createdAt
-}) {
-    const event = {
-        schema: CONTROL_EVENT_SCHEMA,
-        sequence: ledger.controlEvents.length + 1,
-        globalSequence,
-        eventType,
-        payload: clone(payload),
-        payloadDigest: digest(payload),
-        createdAt,
-        previousEventDigest:
-            ledger.controlEvents.at(-1)?.eventDigest ?? GENESIS
-    }
-    event.eventDigest = digest(event)
-    return event
-}
-
-function eventList(ledger) {
-    return [
-        ...ledger.controlEvents,
-        ...Object.values(ledger.nodeLedgers)
-            .flatMap(({ events }) => events)
-    ].sort((left, right) =>
-        left.globalSequence - right.globalSequence
+function currentControlFacts(authority) {
+    const controlLedger = readCanonicalControlLedger(authority)
+    const controlProjection = replayControlLedger(controlLedger)
+    const genesis = genesisFromControlLedger(controlLedger)
+    const selectorReceipt = currentSelectorFromControlLedger(
+        controlLedger,
+        genesis
     )
-}
-
-function clearAllRuntimeReceipts(node) {
-    node.receipts = {}
-    node.lifecycleState = 'none'
-    node.chainVersion += 1
-    node.implementationAttempts = 0
-    node.pendingDeliveryEffect = null
-    node.deliveryCommit = null
-    node.closedAtSequence = null
-}
-
-function clearPlanningReceipts(node) {
-    const preserved = Object.fromEntries(
-        Object.entries(node.receipts).filter(([key]) =>
-            [
-                'semanticProposal',
-                'requirementInventory',
-                'acceptanceContract',
-                'documentationRequired'
-            ].includes(key)
-        )
+    const remoteSnapshotReceipt = currentRemoteFromControlLedger(
+        controlLedger,
+        selectorReceipt
     )
-    node.receipts = preserved
-    node.lifecycleState = 'acceptance-frozen'
-    node.chainVersion += 1
-    node.implementationAttempts = 0
-    node.pendingDeliveryEffect = null
-    node.deliveryCommit = null
+    if (controlProjection.selectorReceiptDigest !==
+            selectorReceipt.receiptDigest ||
+        controlProjection.remoteSnapshotDigest !==
+            remoteSnapshotReceipt.receiptDigest) {
+        fail('lifecycle-run-control-facts-stale')
+    }
+    return {
+        controlLedger,
+        controlProjection,
+        genesis,
+        selectorReceipt,
+        remoteSnapshotReceipt
+    }
 }
 
-function applyControlEvent(state, event) {
-    if (event.eventType === 'scope.refreshed') {
-        const selector =
-            verifySelectorReceipt(event.payload.selectorReceipt)
-        const remote =
-            compileLifecycleRemoteSnapshotReceipt(selector)
-        if (!sameValue(remote, event.payload.remoteSnapshotReceipt)) {
-            fail('lifecycle-scope-refresh-remote-invalid')
-        }
-        state.selectorReceipt = clone(selector)
-        state.remoteSnapshotReceipt = clone(remote)
-        for (const nodeId of event.payload.changedNodeIds) {
-            const node = state.nodes[nodeId]
-            if (!node) fail('lifecycle-scope-refresh-node-missing')
-            clearAllRuntimeReceipts(node)
-        }
-        return
-    }
-    if (event.eventType === 'repository.base-changed') {
-        const repository = state.repositories[
-            event.payload.repository
-        ]
-        if (!repository) {
-            fail('lifecycle-base-change-repository-missing')
-        }
-        requireSha(
-            event.payload.baseSha,
-            'lifecycle-base-change-sha-invalid'
-        )
-        repository.baseSha = event.payload.baseSha
-        repository.bindingDigest = digest({
+function currentSemanticGraph({
+    controlProjection,
+    genesis,
+    recovered,
+    selectorReceipt,
+    remoteSnapshotReceipt
+}) {
+    const templateById = new Map(
+        genesis.semanticGraph.nodes.map((node) => [node.id, node])
+    )
+    const repositories = Object.values(
+        controlProjection.repositoryBases
+    ).sort((left, right) =>
+        left.repository.localeCompare(right.repository))
+        .map((repository) => ({
             repository: repository.repository,
             baseSha: repository.baseSha,
-            priorBindingDigest: repository.bindingDigest
+            bindingDigest: repository.repositoryBindingDigest
+        }))
+    const repositoryBindings = new Map(repositories.map(
+        (repository) => [repository.repository, repository.bindingDigest]
+    ))
+    const nodes = Object.entries(controlProjection.nodes)
+        .filter(([, registration]) =>
+            registration.status === 'active')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([nodeId, registration]) => {
+            const base = registration.graphNode ?? templateById.get(nodeId)
+            if (!base) {
+                fail('lifecycle-run-node-template-missing', { nodeId })
+            }
+            const aggregateNode = recovered.projection.nodes[nodeId]
+            const nodeProjection =
+                recovered.nodeProjections[nodeId]?.nodes?.[nodeId]
+            return {
+                ...clone(base),
+                id: nodeId,
+                memberId: nodeId,
+                repository: registration.repository,
+                issueNumber: registration.issueNumber,
+                dependencyKeys: [...registration.dependencyKeys],
+                acceptanceGroup: registration.acceptanceGroup,
+                lifecycleState:
+                    aggregateNode?.lifecycleState ?? 'quarantined',
+                selectorReceiptDigest: selectorReceipt.receiptDigest,
+                remoteSnapshotDigest:
+                    remoteSnapshotReceipt.receiptDigest,
+                repositoryBindingDigest:
+                    repositoryBindings.get(registration.repository),
+                semanticFactsDigest: digest({
+                    original: base.semanticFactsDigest,
+                    remoteMemberDigest:
+                        registration.remoteMemberDigest,
+                    nodeEpoch: registration.nodeEpoch
+                }),
+                receipts: clone(
+                    nodeProjection?.lifecycleReceipts ?? {}
+                )
+            }
         })
-        for (const node of Object.values(state.nodes)) {
-            if (node.repository === repository.repository &&
-                !['closed', 'terminal'].includes(
-                    node.lifecycleState
-                )) {
-                clearPlanningReceipts(node)
-            }
-        }
-        return
-    }
-    if (event.eventType === 'delivery.remote-effect-applied') {
-        const { groupId, effectId } = event.payload
-        if (state.pendingDeliveryEffects[groupId] &&
-            state.pendingDeliveryEffects[groupId].effectId !==
-                effectId) {
-            fail('lifecycle-delivery-effect-conflict')
-        }
-        state.pendingDeliveryEffects[groupId] =
-            clone(event.payload)
-        return
-    }
-    if (event.eventType === 'delivery.completed') {
-        const { groupId, effectId } = event.payload
-        const pending = state.pendingDeliveryEffects[groupId]
-        if (!pending || pending.effectId !== effectId) {
-            fail('lifecycle-delivery-effect-unobserved')
-        }
-        if (state.deliveryEffects[groupId]) {
-            fail('lifecycle-delivery-effect-duplicate')
-        }
-        state.deliveryEffects[groupId] = clone(event.payload)
-        delete state.pendingDeliveryEffects[groupId]
-        return
-    }
-    if (event.eventType === 'cleanup.finalized') {
-        const { nodeId } = event.payload
-        if (state.cleanupFinalizations[nodeId]) {
-            fail('lifecycle-cleanup-finalization-duplicate')
-        }
-        state.cleanupFinalizations[nodeId] =
-            clone(event.payload)
-        return
-    }
-    fail('lifecycle-control-event-unsupported')
-}
-
-function applyNodeEvent(state, event) {
-    const node = state.nodes[event.nodeId]
-    if (!node) fail('lifecycle-node-event-node-missing')
-    validateActorResult(
-        event.actorResult,
-        event.action,
-        node
-    )
-    const expected = compileNodeEffect(
-        node,
-        event.action,
-        event.actorResult,
-        event.globalSequence
-    )
-    if (event.fromState !== node.lifecycleState ||
-        event.toState !== expected.node.lifecycleState ||
-        !sameValue(
-            event.machineReceipts,
-            expected.receipts
-        )) {
-        fail('lifecycle-node-event-transition-invalid')
-    }
-    state.nodes[event.nodeId] = expected.node
-}
-
-export function replayLifecycleRunLedger(ledger) {
-    validateLedgerEnvelope(ledger)
-    const header = ledger.header
-    const state = {
-        runId: header.runId,
-        selectorReceipt: clone(header.selectorReceipt),
-        remoteSnapshotReceipt:
-            clone(header.remoteSnapshotReceipt),
-        repositories: Object.fromEntries(
-            header.semanticGraph.repositories.map((repository) => [
-                repository.repository,
-                clone(repository)
-            ])
-        ),
-        nodes: Object.fromEntries(
-            header.semanticGraph.nodes.map((node) => [
-                node.id,
-                initialNode(node)
-            ])
-        ),
-        pendingDeliveryEffects: {},
-        deliveryEffects: {},
-        cleanupFinalizations: {},
-        lastGlobalSequence: 0
-    }
-    let expectedGlobal = 1
-    const nodeHeads = Object.fromEntries(
-        Object.keys(ledger.nodeLedgers).map((nodeId) => [
-            nodeId, GENESIS
-        ])
-    )
-    let controlHead = GENESIS
-    const nodeSequences = Object.fromEntries(
-        Object.keys(ledger.nodeLedgers).map((nodeId) => [
-            nodeId, 0
-        ])
-    )
-    let controlSequence = 0
-    for (const event of eventList(ledger)) {
-        if (event.globalSequence !== expectedGlobal) {
-            fail('lifecycle-run-global-sequence')
-        }
-        if (event.schema === NODE_EVENT_SCHEMA) {
-            const expectedNodeSequence =
-                nodeSequences[event.nodeId] + 1
-            verifyEventEnvelope(
-                event,
-                NODE_EVENT_SCHEMA,
-                nodeHeads[event.nodeId]
-            )
-            if (event.sequence !== expectedNodeSequence) {
-                fail('lifecycle-node-event-sequence')
-            }
-            applyNodeEvent(state, event)
-            nodeSequences[event.nodeId] = event.sequence
-            nodeHeads[event.nodeId] = event.eventDigest
-        } else if (event.schema === CONTROL_EVENT_SCHEMA) {
-            verifyEventEnvelope(
-                event,
-                CONTROL_EVENT_SCHEMA,
-                controlHead
-            )
-            if (event.sequence !== controlSequence + 1 ||
-                event.payloadDigest !== digest(event.payload)) {
-                fail('lifecycle-control-event-sequence')
-            }
-            applyControlEvent(state, event)
-            controlSequence = event.sequence
-            controlHead = event.eventDigest
-        } else {
-            fail('lifecycle-run-event-schema')
-        }
-        state.lastGlobalSequence = event.globalSequence
-        expectedGlobal += 1
-    }
-    for (const [nodeId, nodeLedger] of Object.entries(
-        ledger.nodeLedgers
-    )) {
-        if (nodeLedger.headDigest !== nodeHeads[nodeId] ||
-            nodeLedger.events.length !== nodeSequences[nodeId]) {
-            fail('lifecycle-node-ledger-head-mismatch')
-        }
-    }
-    return Object.freeze(state)
-}
-
-function currentSemanticGraph(ledger, state) {
-    const template = ledger.header.semanticGraph
-    const repositories = Object.values(state.repositories)
-    const repositoryByName = new Map(
-        repositories.map((repository) => [
-            repository.repository,
-            repository
-        ])
-    )
-    const nodes = template.nodes.map((base) => {
-        const runtime = state.nodes[base.id]
-        const repository = repositoryByName.get(
-            base.repository
-        )
-        return {
-            ...base,
-            lifecycleState: runtime.lifecycleState,
-            selectorReceiptDigest:
-                state.selectorReceipt.receiptDigest,
-            remoteSnapshotDigest:
-                state.remoteSnapshotReceipt.receiptDigest,
-            repositoryBindingDigest:
-                repository.bindingDigest,
-            semanticFactsDigest: digest({
-                original: base.semanticFactsDigest,
-                remoteMemberDigest:
-                    state.selectorReceipt
-                        .remoteFactDigests[base.id],
-                chainVersion: runtime.chainVersion
-            }),
-            receipts: clone(runtime.receipts)
-        }
-    })
     return createSemanticGraph({
-        selectorReceiptDigest:
-            state.selectorReceipt.receiptDigest,
-        remoteSnapshotDigest:
-            state.remoteSnapshotReceipt.receiptDigest,
-        scopeDigest: template.scopeDigest,
+        selectorReceiptDigest: selectorReceipt.receiptDigest,
+        remoteSnapshotDigest: remoteSnapshotReceipt.receiptDigest,
+        scopeDigest: genesis.semanticGraph.scopeDigest,
         semanticGraphInputDigest: digest({
-            original: template.semanticGraphInputDigest,
-            selectorReceiptDigest:
-                state.selectorReceipt.receiptDigest,
-            remoteSnapshotDigest:
-                state.remoteSnapshotReceipt.receiptDigest,
-            repositories: repositories.map((repository) => ({
-                repository: repository.repository,
-                baseSha: repository.baseSha,
-                bindingDigest: repository.bindingDigest
-            })),
-            chainVersions: Object.fromEntries(
-                Object.values(state.nodes).map((node) => [
-                    node.id, node.chainVersion
-                ])
-            )
+            genesisDigest: genesis.genesisDigest,
+            selectorReceiptDigest: selectorReceipt.receiptDigest,
+            remoteSnapshotDigest: remoteSnapshotReceipt.receiptDigest,
+            repositoryBases: repositories,
+            nodeEpochs: Object.fromEntries(nodes.map((node) => [
+                node.id,
+                controlProjection.nodes[node.id].nodeEpoch
+            ]))
         }),
-        policyDigest: template.policyDigest,
+        policyDigest: genesis.semanticGraph.policyDigest,
         repositories,
         nodes
     })
 }
 
-function currentAggregateProjection(ledger, state) {
-    const graph = currentSemanticGraph(ledger, state)
+function currentCompatibilityState({
+    controlProjection,
+    recovered,
+    selectorReceipt,
+    remoteSnapshotReceipt,
+    semanticGraph
+}) {
     const graphById = new Map(
-        graph.nodes.map((node) => [node.id, node])
+        semanticGraph.nodes.map((node) => [node.id, node])
     )
-    const acceptanceGroups = {}
-    for (const node of graph.nodes) {
-        if (!node.acceptanceGroup) continue
-        acceptanceGroups[node.acceptanceGroup] ??= []
-        acceptanceGroups[node.acceptanceGroup].push(node.id)
-    }
-    for (const members of Object.values(acceptanceGroups)) {
-        members.sort()
-    }
-    const nodes = Object.fromEntries(
-        Object.values(state.nodes).map((node) => {
-            const blockedBy = node.dependencyKeys.filter(
-                (dependency) =>
-                    state.nodes[dependency]?.lifecycleState !==
-                    'closed'
-            )
-            const nodeLedger = ledger.nodeLedgers[node.id]
-            const repository =
-                state.repositories[node.repository]
-            const projection = {
-                nodeId: node.id,
-                memberId: node.id,
-                repository: node.repository,
-                issueNumber: node.issueNumber,
-                selectorReceiptDigest:
-                    state.selectorReceipt.receiptDigest,
-                remoteMemberDigest:
-                    state.selectorReceipt.remoteFactDigests[
-                        node.id
-                    ],
-                nodeEpoch: node.chainVersion,
-                baseSha: repository.baseSha,
-                dependencyKeys: [...node.dependencyKeys],
-                acceptanceGroup: node.acceptanceGroup,
-                status: node.lifecycleState === 'closed'
-                    ? 'closed'
-                    : 'active',
-                ledgerHeadDigest: nodeLedger.headDigest,
-                nodeProjectionDigest: digest({
-                    node,
-                    graphNode: graphById.get(node.id),
-                    blockedBy,
-                    ledgerHeadDigest: nodeLedger.headDigest
-                }),
-                lifecycleState: node.lifecycleState,
-                activeAttemptId: null,
-                candidateGreen: [
-                    'candidate-green',
-                    'behavior-green',
-                    'ux-accepted',
-                    'documentation-green',
-                    'delivery-ready',
-                    'cleaning',
-                    'closed'
-                ].includes(node.lifecycleState),
-                deliveryComplete: [
-                    'cleaning', 'closed'
-                ].includes(node.lifecycleState),
-                dispatchable: blockedBy.length === 0,
-                blockedBy,
-                quarantine: null
-            }
-            return [node.id, projection]
-        })
-    )
-    const projection = {
-        schema:
-            'issue-orchestration.aggregate-runtime-projection.v1',
-        runId: state.runId,
-        controlProjectionDigest: digest({
-            controlEvents: ledger.controlEvents,
-            deliveryEffects: state.deliveryEffects,
-            cleanupFinalizations:
-                state.cleanupFinalizations
-        }),
-        nodeIndexDigest: digest(
-            Object.fromEntries(
-                Object.entries(ledger.nodeLedgers).map(
-                    ([nodeId, nodeLedger]) => [
-                        nodeId, nodeLedger.headDigest
-                    ]
-                )
-            )
-        ),
-        nodes,
-        acceptanceGroups,
-        slots: {
-            capacity: ledger.header.slotCapacity,
-            active: []
-        },
-        deliveryFreezes: {},
-        deliveryEffects: clone(state.deliveryEffects),
-        cleanupFinalizations:
-            clone(state.cleanupFinalizations),
-        terminal: null
-    }
-    projection.aggregateProjectionDigest = digest(projection)
-    return { graph, projection }
-}
-
-export function projectLifecycleRun(ledger) {
-    const state = replayLifecycleRunLedger(ledger)
-    const { graph, projection } =
-        currentAggregateProjection(ledger, state)
+    const nodes = Object.fromEntries(Object.entries(
+        controlProjection.nodes
+    ).map(([nodeId, registration]) => {
+        const nodeProjection =
+            recovered.nodeProjections[nodeId]?.nodes?.[nodeId]
+        const graphNode = graphById.get(nodeId) ?? registration.graphNode
+        return [nodeId, {
+            id: nodeId,
+            memberId: nodeId,
+            repository: registration.repository,
+            issueNumber: registration.issueNumber,
+            owner: graphNode?.owner ?? null,
+            dependencyKeys: [...registration.dependencyKeys],
+            conflictKeys: [...(graphNode?.conflictKeys ?? [])],
+            riskClass: graphNode?.riskClass ?? null,
+            uiClass: graphNode?.uiClass ?? 'non-ui',
+            acceptanceGroup: registration.acceptanceGroup,
+            semanticFactsDigest: graphNode?.semanticFactsDigest ?? null,
+            lifecycleState:
+                recovered.projection.nodes[nodeId]?.lifecycleState ??
+                'quarantined',
+            receipts: clone(nodeProjection?.lifecycleReceipts ?? {}),
+            chainVersion: registration.nodeEpoch,
+            implementationAttempts:
+                nodeProjection?.implementationAttempts ?? 0,
+            pendingDeliveryEffect:
+                controlProjection.pendingDeliveryEffects[
+                    registration.acceptanceGroup ?? `node:${nodeId}`
+                ] ?? null,
+            deliveryCommit: nodeProjection?.deliveryCommit ?? null,
+            closedAtSequence:
+                nodeProjection?.closedAtSequence ?? null
+        }]
+    }))
     return Object.freeze({
-        state,
-        semanticGraph: graph,
-        aggregateProjection: projection
+        runId: controlProjection.runId,
+        selectorReceipt: clone(selectorReceipt),
+        remoteSnapshotReceipt: clone(remoteSnapshotReceipt),
+        repositories: Object.fromEntries(Object.values(
+            controlProjection.repositoryBases
+        ).map((repository) => [
+            repository.repository,
+            {
+                repository: repository.repository,
+                baseSha: repository.baseSha,
+                bindingDigest: repository.repositoryBindingDigest
+            }
+        ])),
+        nodes,
+        pendingDeliveryEffects:
+            clone(controlProjection.pendingDeliveryEffects),
+        deliveryEffects: clone(controlProjection.deliveryEffects),
+        cleanupFinalizations:
+            clone(controlProjection.cleanupFinalizations),
+        lastControlSequence: controlProjection.lastSequence
     })
 }
 
-function lifecycleCompilerInput(
-    ledger,
-    observedSelectorReceipt = null
-) {
-    const projected = projectLifecycleRun(ledger)
+export function replayLifecycleRunLedger(value) {
+    const authority = resolveAuthority(value)
+    const facts = currentControlFacts(authority)
+    const recovered = recoverAggregateRunState(authority)
+    const semanticGraph = currentSemanticGraph({
+        ...facts,
+        recovered
+    })
+    return currentCompatibilityState({
+        ...facts,
+        recovered,
+        semanticGraph
+    })
+}
+
+export function projectLifecycleRun(value) {
+    const authority = resolveAuthority(value)
+    const facts = currentControlFacts(authority)
+    const recovered = recoverAggregateRunState(authority)
+    const semanticGraph = currentSemanticGraph({
+        ...facts,
+        recovered
+    })
+    const state = currentCompatibilityState({
+        ...facts,
+        recovered,
+        semanticGraph
+    })
+    return Object.freeze({
+        state,
+        semanticGraph,
+        aggregateProjection: recovered.projection,
+        nodeIndex: recovered.nodeIndex
+    })
+}
+
+function lifecycleCompilerInput(value, observedSelectorReceipt = null) {
+    const authority = resolveAuthority(value)
+    const facts = currentControlFacts(authority)
+    const recovered = recoverAggregateRunState(authority)
+    const semanticGraph = currentSemanticGraph({
+        ...facts,
+        recovered
+    })
     const selector = observedSelectorReceipt
         ? verifySelectorReceipt(observedSelectorReceipt)
-        : projected.state.selectorReceipt
-    const remote =
-        compileLifecycleRemoteSnapshotReceipt(selector)
+        : facts.selectorReceipt
+    const remote = compileLifecycleRemoteSnapshotReceipt(selector)
     return {
         schema:
             'issue-orchestration.lifecycle-compiler-input.v1',
         selectorReceipt: selector,
         remoteSnapshotReceipt: remote,
-        semanticGraph: projected.semanticGraph,
-        aggregateProjection:
-            projected.aggregateProjection,
-        installedPolicy: clone(
-            ledger.header.installedPolicy
-        ),
-        runtimeCapabilityBinding: clone(
-            ledger.header.runtimeCapabilityBinding
-        )
+        semanticGraph,
+        aggregateProjection: recovered.projection,
+        installedPolicy: clone(facts.genesis.installedPolicy),
+        runtimeCapabilityBinding:
+            clone(facts.genesis.runtimeCapabilityBinding)
     }
 }
 
 export function compileLifecycleRunActionSet(
-    ledger,
+    value,
     { observedSelectorReceipt = null } = {}
 ) {
-    validateLedgerEnvelope(ledger)
     const actionSet = compileLifecycleActionSet(
-        lifecycleCompilerInput(
-            ledger,
-            observedSelectorReceipt
-        )
+        lifecycleCompilerInput(value, observedSelectorReceipt)
     )
     validateLifecycleActionSet(actionSet)
     return actionSet
 }
 
-function nextGlobalSequence(ledger) {
-    return eventList(ledger).length + 1
-}
-
-function appendNodeEvent(ledger, nodeId, event) {
-    ledger.nodeLedgers[nodeId].events.push(event)
-    ledger.nodeLedgers[nodeId].headDigest =
-        event.eventDigest
-    ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
-}
-
-function appendControlEvent(ledger, event) {
-    ledger.controlEvents.push(event)
-    ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
-}
-
-function exactCurrentActionSet(ledger, actionSet) {
-    const current = compileLifecycleRunActionSet(ledger)
+function exactCurrentActionSet(value, actionSet) {
+    const current = compileLifecycleRunActionSet(value)
     if (!sameValue(current, actionSet)) {
         fail('lifecycle-action-set-stale')
     }
     return current
+}
+
+function eventTypeForResult(action, result) {
+    if (action.type === 'dispatch-implementation-writer') {
+        return result.outcome === 'recoverable-failure'
+            ? 'lifecycle.implementation-retry-recorded'
+            : 'lifecycle.implementation-candidate-recorded'
+    }
+    return EVENT_TYPE_BY_ACTION[action.type] ?? null
+}
+
+function receiptEvidence(receipts) {
+    return Object.values(receipts).flatMap((receipt) => {
+        if (!receipt || typeof receipt !== 'object') return []
+        for (const field of [
+            'receiptDigest', 'workPlanDigest', 'planDigest',
+            'sliceDigest', 'promptDigest', 'routeDecisionDigest'
+        ]) {
+            if (HASH.test(receipt[field] ?? '')) {
+                return [`receipt://${receipt[field]}`]
+            }
+        }
+        return []
+    })
+}
+
+function compileCanonicalNodeEvent({
+    authority,
+    actionSet,
+    action,
+    result,
+    node,
+    createdAt
+}) {
+    const controlFacts = currentControlFacts(authority)
+    const registration = controlFacts.controlProjection.nodes[node.id]
+    const ledger = readCanonicalNodeLedger({
+        ...authority,
+        nodeId: node.id,
+        nodeEpoch: registration.nodeEpoch
+    })
+    const eventSequence = ledger.events.length + 1
+    const effect = compileNodeEffect(
+        node,
+        action,
+        result,
+        eventSequence
+    )
+    const eventType = eventTypeForResult(action, result)
+    if (!eventType) {
+        fail('lifecycle-run-action-unsupported', {
+            actionType: action.type
+        })
+    }
+    const projected = projectLifecycleRun(authority)
+    const payload = {
+        schema: 'issue-orchestration.lifecycle-canonical-effect.v1',
+        actionSetDigest: actionSet.actionSetDigest,
+        action: clone(action),
+        actorResult: clone(result),
+        machineReceipts: clone(effect.receipts),
+        machineReceiptsDigest: digest(effect.receipts),
+        implementationAttempts:
+            effect.node.implementationAttempts,
+        deliveryCommit: effect.node.deliveryCommit,
+        closedAtSequence: effect.node.closedAtSequence
+    }
+    const event = {
+        schema: 'issue-orchestration.event.v2',
+        eventId: `lifecycle:${digest({
+            runId: authority.runId,
+            nodeId: node.id,
+            actionDigest: action.actionDigest,
+            actorResultDigest: result.resultDigest,
+            sequence: eventSequence
+        })}`,
+        sequence: eventSequence,
+        runId: authority.runId,
+        nodeId: node.id,
+        eventType,
+        fromState: node.lifecycleState,
+        toState: effect.node.lifecycleState,
+        attemptId: result.decision.attemptId ?? null,
+        actorRole: result.actorRole,
+        sourceDagDigest: projected.semanticGraph.semanticGraphDigest,
+        issueSnapshotFingerprint:
+            registration.issueSnapshotFingerprint,
+        repositoryFingerprint:
+            registration.repositoryFingerprint,
+        baseSha: registration.baseSha,
+        payload,
+        payloadDigest: stateDigest(payload),
+        evidenceRefs: receiptEvidence(effect.receipts),
+        createdAt,
+        previousEventDigest:
+            ledger.events.at(-1)?.eventDigest ?? GENESIS
+    }
+    event.eventDigest = stateDigest(event)
+    replayEventLedgerSync({
+        header: ledger.header,
+        events: [...ledger.events, event]
+    })
+    return { event, effect }
+}
+
+function appendCanonicalNodeResult(arguments_) {
+    const compiled = compileCanonicalNodeEvent(arguments_)
+    appendNodeEventAtomicSync({
+        ...arguments_.authority,
+        nodeId: arguments_.node.id,
+        event: compiled.event,
+        writerRole: 'root-scheduler'
+    })
+    return compiled.effect
+}
+
+function appendCanonicalControlEvent({
+    authority,
+    eventType,
+    payload,
+    createdAt
+}) {
+    const controlLedger = readCanonicalControlLedger(authority)
+    const event = compileControlEvent({
+        ledger: controlLedger,
+        eventType,
+        payload,
+        createdAt
+    })
+    appendControlEventAtomicSync({
+        ...authority,
+        event,
+        writerRole: 'root-scheduler'
+    })
+    return event
 }
 
 export function recordLifecycleActionResults({
@@ -1073,144 +1061,125 @@ export function recordLifecycleActionResults({
     actorResults,
     createdAt
 } = {}) {
-    validateLedgerEnvelope(ledger)
-    exactCurrentActionSet(ledger, actionSet)
+    const authority = resolveAuthority(ledger)
+    exactCurrentActionSet(authority, actionSet)
     if (!Array.isArray(actorResults) ||
         actorResults.length !== actionSet.actions.length ||
         actionSet.actions.some(({ type }) => type === 'idle' ||
             type === 'refresh-scope')) {
         fail('lifecycle-action-results-incomplete')
     }
-    const next = clone(ledger)
-    const before = replayLifecycleRunLedger(next)
-    const byDigest = new Map(
-        actorResults.map((result) => [
-            result.actionDigest, result
-        ])
-    )
+    const byDigest = new Map(actorResults.map((result) => [
+        result.actionDigest,
+        result
+    ]))
     if (byDigest.size !== actorResults.length) {
         fail('lifecycle-action-result-duplicate')
     }
+
     for (const action of actionSet.actions) {
         const result = byDigest.get(action.actionDigest)
-        const node = action.nodeId
-            ? before.nodes[action.nodeId]
-            : null
-        validateActorResult(result, action, node)
-        let globalSequence = nextGlobalSequence(next)
         if (action.type === 'deliver-acceptance-group') {
-            const groupId = action.acceptanceGroup
-            requireText(groupId, 'lifecycle-delivery-group-invalid')
-            const effectId =
-                requireText(
-                    result.decision.effectId,
-                    'lifecycle-delivery-effect-id-invalid'
-                )
-            const existing =
-                before.pendingDeliveryEffects[groupId]
+            validateActorResult(result, action, null)
+            const state = replayLifecycleRunLedger(authority)
+            const groupId = requireText(
+                action.acceptanceGroup,
+                'lifecycle-delivery-group-invalid'
+            )
+            const effectId = requireText(
+                result.decision.effectId,
+                'lifecycle-delivery-effect-id-invalid'
+            )
+            const pending = state.pendingDeliveryEffects[groupId]
             if (result.outcome === 'remote-effect-applied') {
-                if (existing && existing.effectId !== effectId) {
+                if (pending && pending.effectId !== effectId) {
                     fail('lifecycle-delivery-effect-conflict')
                 }
-                appendControlEvent(next, controlEvent({
-                    ledger: next,
-                    eventType:
-                        'delivery.remote-effect-applied',
-                    payload: {
-                        groupId,
-                        effectId,
-                        commits:
-                            clone(result.decision.commits ?? {})
-                    },
-                    globalSequence,
-                    createdAt
-                }))
+                if (!pending) {
+                    appendCanonicalControlEvent({
+                        authority,
+                        eventType: 'delivery.effect-recorded',
+                        payload: {
+                            groupId,
+                            effectId,
+                            status: 'remote-effect-applied',
+                            commits: clone(result.decision.commits ?? {})
+                        },
+                        createdAt
+                    })
+                }
                 continue
             }
-            if (!existing || existing.effectId !== effectId) {
+            if (!pending || pending.effectId !== effectId) {
                 fail('lifecycle-delivery-effect-unobserved')
             }
-            const members =
-                action.bindings.memberBindings.map(
-                    ({ nodeId }) => nodeId
-                )
-            for (const nodeId of members) {
-                const runtimeNode =
-                    replayLifecycleRunLedger(next).nodes[nodeId]
-                const effect = compileNodeEffect(
-                    runtimeNode,
-                    action,
-                    result,
-                    globalSequence
-                )
-                const event = nodeEvent({
-                    ledger: next,
-                    nodeId,
+            for (const { nodeId } of action.bindings.memberBindings) {
+                const current = replayLifecycleRunLedger(authority)
+                const node = current.nodes[nodeId]
+                appendCanonicalNodeResult({
+                    authority,
                     actionSet,
                     action,
-                    actorResult: result,
-                    effect: {
-                        ...effect,
-                        fromState: runtimeNode.lifecycleState
-                    },
-                    globalSequence,
+                    result,
+                    node,
                     createdAt
                 })
-                appendNodeEvent(next, nodeId, event)
-                globalSequence += 1
             }
-            appendControlEvent(next, controlEvent({
-                ledger: next,
-                eventType: 'delivery.completed',
+            appendCanonicalControlEvent({
+                authority,
+                eventType: 'delivery.effect-completed',
                 payload: {
                     groupId,
                     effectId,
-                    commits:
-                        clone(result.decision.commits ?? {})
+                    commits: clone(result.decision.commits ?? {})
                 },
-                globalSequence,
                 createdAt
-            }))
+            })
             continue
         }
-        const currentNode =
-            replayLifecycleRunLedger(next).nodes[action.nodeId]
-        const effect = compileNodeEffect(
-            currentNode,
-            action,
-            result,
-            globalSequence
-        )
-        const event = nodeEvent({
-            ledger: next,
-            nodeId: action.nodeId,
+
+        const current = replayLifecycleRunLedger(authority)
+        const node = current.nodes[action.nodeId]
+        validateActorResult(result, action, node)
+        const effect = appendCanonicalNodeResult({
+            authority,
             actionSet,
             action,
-            actorResult: result,
-            effect: {
-                ...effect,
-                fromState: currentNode.lifecycleState
-            },
-            globalSequence,
+            result,
+            node,
             createdAt
         })
-        appendNodeEvent(next, action.nodeId, event)
         if (action.type === 'cleanup-node-resources') {
-            appendControlEvent(next, controlEvent({
-                ledger: next,
+            appendCanonicalControlEvent({
+                authority,
                 eventType: 'cleanup.finalized',
                 payload: {
+                    cleanupId: action.nodeId,
                     nodeId: action.nodeId,
                     cleanupReceiptDigest:
-                        effect.receipts.cleanup
-                            .receiptDigest
+                        effect.receipts.cleanup.receiptDigest
                 },
-                globalSequence: globalSequence + 1,
                 createdAt
-            }))
+            })
         }
     }
-    return sealLedger(next)
+    return makeHandle(authority)
+}
+
+function currentNodeLedgers(authority, controlProjection) {
+    return Object.entries(controlProjection.nodes)
+        .filter(([, registration]) => registration.status === 'active')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([nodeId, registration]) => readCanonicalNodeLedger({
+            ...authority,
+            nodeId,
+            nodeEpoch: registration.nodeEpoch
+        }))
+}
+
+function appendControlInMemory(ledger, eventType, payload, createdAt) {
+    pushControlEvent(ledger, eventType, payload, createdAt)
+    return ledger.events.at(-1)
 }
 
 export function recordLifecycleScopeRefresh({
@@ -1219,8 +1188,8 @@ export function recordLifecycleScopeRefresh({
     selectorReceipt,
     createdAt
 } = {}) {
-    validateLedgerEnvelope(ledger)
-    const current = compileLifecycleRunActionSet(ledger, {
+    const authority = resolveAuthority(ledger)
+    const current = compileLifecycleRunActionSet(authority, {
         observedSelectorReceipt: selectorReceipt
     })
     if (!sameValue(current, actionSet) ||
@@ -1228,31 +1197,139 @@ export function recordLifecycleScopeRefresh({
         actionSet.actions[0].type !== 'refresh-scope') {
         fail('lifecycle-scope-refresh-action-required')
     }
-    const state = replayLifecycleRunLedger(ledger)
+    const facts = currentControlFacts(authority)
     const selector = verifySelectorReceipt(selectorReceipt)
     const changedNodeIds = selector.resolvedIssueSet.filter(
         (nodeId) =>
-            state.selectorReceipt.remoteFactDigests[nodeId] !==
+            facts.selectorReceipt.remoteFactDigests[nodeId] !==
             selector.remoteFactDigests[nodeId]
     )
     if (changedNodeIds.length === 0) {
         fail('lifecycle-scope-refresh-without-change')
     }
-    const remote =
-        compileLifecycleRemoteSnapshotReceipt(selector)
-    const next = clone(ledger)
-    appendControlEvent(next, controlEvent({
-        ledger: next,
-        eventType: 'scope.refreshed',
-        payload: {
-            selectorReceipt: selector,
-            remoteSnapshotReceipt: remote,
-            changedNodeIds
-        },
-        globalSequence: nextGlobalSequence(next),
-        createdAt
-    }))
-    return sealLedger(next)
+    const added = selector.resolvedIssueSet.filter(
+        (nodeId) => !facts.controlProjection.nodes[nodeId]
+    )
+    if (added.length > 0) {
+        fail('lifecycle-scope-refresh-new-node-unsupported', {
+            nodeIds: added
+        })
+    }
+    const remote = compileLifecycleRemoteSnapshotReceipt(selector)
+    const controlLedger = clone(facts.controlLedger)
+    appendControlInMemory(controlLedger, 'scope.refreshed', {
+        selectorReceiptDigest: selector.receiptDigest,
+        selectorReceipt: selector,
+        changedNodeIds
+    }, createdAt)
+    appendControlInMemory(controlLedger, 'remote-snapshot.refreshed', {
+        remoteSnapshotDigest: remote.receiptDigest,
+        remoteSnapshotReceipt: remote
+    }, createdAt)
+
+    const changed = new Set(changedNodeIds)
+    const nodeLedgers = []
+    const graph = projectLifecycleRun(authority).semanticGraph
+    const graphById = new Map(graph.nodes.map((node) => [node.id, node]))
+    for (const [nodeId, registration] of Object.entries(
+        facts.controlProjection.nodes
+    ).sort(([left], [right]) => left.localeCompare(right))) {
+        if (!changed.has(nodeId)) {
+            nodeLedgers.push(readCanonicalNodeLedger({
+                ...authority,
+                nodeId,
+                nodeEpoch: registration.nodeEpoch
+            }))
+            continue
+        }
+        const repository = facts.controlProjection.repositoryBases[
+            registration.repository
+        ]
+        const rebound = nodeRegistration({
+            graphNode: graphById.get(nodeId),
+            nodeEpoch: registration.nodeEpoch + 1,
+            repository: {
+                repository: repository.repository,
+                baseSha: repository.baseSha,
+                bindingDigest: repository.repositoryBindingDigest
+            },
+            selectorReceipt: selector
+        })
+        appendControlInMemory(
+            controlLedger,
+            'node.rebound',
+            rebound,
+            createdAt
+        )
+        nodeLedgers.push(nodeLedgerForRegistration({
+            registration: rebound,
+            runId: authority.runId,
+            stateRoot: authority.stateRoot,
+            createdAt
+        }))
+    }
+    const recovered = persistAggregateRunState({
+        stateRoot: authority.stateRoot,
+        controlLedger,
+        nodeLedgers
+    })
+    return makeHandle({ ...authority, recovered })
+}
+
+function baseCarryForwardEvent({
+    authority,
+    createdAt,
+    graphDigest,
+    priorRegistration,
+    priorLedger,
+    rebound,
+    receipts
+}) {
+    const carried = Object.fromEntries(Object.entries(receipts).filter(
+        ([key]) => [
+            'semanticProposal',
+            'requirementInventory',
+            'acceptanceContract',
+            'documentationRequired'
+        ].includes(key)
+    ))
+    const payload = {
+        schema: 'issue-orchestration.lifecycle-carry-forward.v1',
+        priorNodeEpoch: priorRegistration.nodeEpoch,
+        priorLedgerHeadDigest:
+            priorLedger.events.at(-1)?.eventDigest ?? GENESIS,
+        receipts: clone(carried),
+        receiptsDigest: digest(carried)
+    }
+    const event = {
+        schema: 'issue-orchestration.event.v2',
+        eventId: `lifecycle:${digest({
+            runId: authority.runId,
+            nodeId: rebound.nodeId,
+            nodeEpoch: rebound.nodeEpoch,
+            priorLedgerHeadDigest: payload.priorLedgerHeadDigest
+        })}`,
+        sequence: 1,
+        runId: authority.runId,
+        nodeId: rebound.nodeId,
+        eventType: 'lifecycle.base-rebound',
+        fromState: 'none',
+        toState: 'acceptance-frozen',
+        attemptId: null,
+        actorRole: 'root-scheduler',
+        sourceDagDigest: graphDigest,
+        issueSnapshotFingerprint:
+            rebound.issueSnapshotFingerprint,
+        repositoryFingerprint: rebound.repositoryFingerprint,
+        baseSha: rebound.baseSha,
+        payload,
+        payloadDigest: stateDigest(payload),
+        evidenceRefs: receiptEvidence(carried),
+        createdAt,
+        previousEventDigest: GENESIS
+    }
+    event.eventDigest = stateDigest(event)
+    return event
 }
 
 export function recordLifecycleBaseChange({
@@ -1261,15 +1338,16 @@ export function recordLifecycleBaseChange({
     baseSha,
     createdAt
 } = {}) {
-    validateLedgerEnvelope(ledger)
+    const authority = resolveAuthority(ledger)
     requireText(repository, 'lifecycle-base-change-repository')
     requireSha(baseSha, 'lifecycle-base-change-sha-invalid')
-    const state = replayLifecycleRunLedger(ledger)
-    const current = state.repositories[repository]
+    const projected = projectLifecycleRun(authority)
+    const facts = currentControlFacts(authority)
+    const current = facts.controlProjection.repositoryBases[repository]
     if (!current || current.baseSha === baseSha) {
         fail('lifecycle-base-change-invalid')
     }
-    const eligible = Object.values(state.nodes).some((node) =>
+    const eligible = Object.values(projected.state.nodes).some((node) =>
         node.repository === repository &&
         [
             'acceptance-frozen',
@@ -1278,50 +1356,124 @@ export function recordLifecycleBaseChange({
         ].includes(node.lifecycleState)
     )
     if (!eligible) fail('lifecycle-base-change-not-rebindable')
-    const next = clone(ledger)
-    appendControlEvent(next, controlEvent({
-        ledger: next,
-        eventType: 'repository.base-changed',
-        payload: { repository, baseSha },
-        globalSequence: nextGlobalSequence(next),
-        createdAt
-    }))
-    return sealLedger(next)
+
+    const repositoryBindingDigest = digest({
+        repository,
+        baseSha,
+        priorBindingDigest: current.repositoryBindingDigest
+    })
+    const controlLedger = clone(facts.controlLedger)
+    appendControlInMemory(controlLedger, 'repository.base-changed', {
+        repository,
+        baseSha,
+        repositoryBindingDigest
+    }, createdAt)
+
+    const graphById = new Map(projected.semanticGraph.nodes.map((node) => [
+        node.id,
+        node
+    ]))
+    const nodeLedgers = []
+    for (const [nodeId, registration] of Object.entries(
+        facts.controlProjection.nodes
+    ).sort(([left], [right]) => left.localeCompare(right))) {
+        if (registration.repository !== repository ||
+            ['closed', 'terminal'].includes(
+                projected.state.nodes[nodeId].lifecycleState
+            )) {
+            nodeLedgers.push(readCanonicalNodeLedger({
+                ...authority,
+                nodeId,
+                nodeEpoch: registration.nodeEpoch
+            }))
+            continue
+        }
+        const priorLedger = readCanonicalNodeLedger({
+            ...authority,
+            nodeId,
+            nodeEpoch: registration.nodeEpoch
+        })
+        const rebound = nodeRegistration({
+            graphNode: graphById.get(nodeId),
+            nodeEpoch: registration.nodeEpoch + 1,
+            repository: {
+                repository,
+                baseSha,
+                bindingDigest: repositoryBindingDigest
+            },
+            selectorReceipt: facts.selectorReceipt
+        })
+        appendControlInMemory(
+            controlLedger,
+            'node.rebound',
+            rebound,
+            createdAt
+        )
+        const event = baseCarryForwardEvent({
+            authority,
+            createdAt,
+            graphDigest: projected.semanticGraph.semanticGraphDigest,
+            priorRegistration: registration,
+            priorLedger,
+            rebound,
+            receipts: projected.state.nodes[nodeId].receipts
+        })
+        const nextLedger = nodeLedgerForRegistration({
+            registration: rebound,
+            runId: authority.runId,
+            stateRoot: authority.stateRoot,
+            createdAt,
+            events: [event]
+        })
+        replayEventLedgerSync(nextLedger)
+        nodeLedgers.push(nextLedger)
+    }
+    const recovered = persistAggregateRunState({
+        stateRoot: authority.stateRoot,
+        controlLedger,
+        nodeLedgers
+    })
+    return makeHandle({ ...authority, recovered })
 }
 
 export function persistLifecycleRunLedger({
     stateRoot,
     ledger
 } = {}) {
-    validateLedgerEnvelope(ledger)
-    const file = ledgerLocation(
-        stateRoot,
-        ledger.header.runId
-    )
-    atomicWrite(
-        file,
-        `${JSON.stringify(ledger, null, 2)}\n`
-    )
-    return Object.freeze({
-        stateRoot: path.resolve(stateRoot),
-        runId: ledger.header.runId,
-        ledgerPath: file,
-        ledgerDigest: ledger.ledgerDigest
-    })
+    const authority = resolveAuthority(ledger)
+    if (stateRoot && path.resolve(stateRoot) !== authority.stateRoot) {
+        fail('lifecycle-run-state-root-mismatch')
+    }
+    return makeHandle(authority)
 }
 
 export function readLifecycleRunLedger({
     stateRoot,
     runId
 } = {}) {
-    const file = ledgerLocation(stateRoot, runId)
-    let ledger
-    try {
-        ledger = JSON.parse(fs.readFileSync(file, 'utf8'))
-    } catch {
-        fail('lifecycle-run-ledger-unavailable')
+    const authority = {
+        stateRoot: path.resolve(
+            requireText(stateRoot, 'lifecycle-run-state-root-required')
+        ),
+        runId: requireText(runId, 'lifecycle-run-id-required')
     }
-    validateLedgerEnvelope(ledger)
-    replayLifecycleRunLedger(ledger)
-    return Object.freeze(ledger)
+    return makeHandle(authority)
+}
+
+export function lifecycleCanonicalLocations(value) {
+    const authority = resolveAuthority(value)
+    const facts = currentControlFacts(authority)
+    return Object.freeze({
+        run: canonicalRunStateLocation(authority),
+        nodes: Object.fromEntries(Object.entries(
+            facts.controlProjection.nodes
+        ).map(([nodeId, registration]) => [
+            nodeId,
+            canonicalNodeStateLocation({
+                ...authority,
+                nodeId,
+                nodeEpoch: registration.nodeEpoch
+            })
+        ]))
+    })
 }

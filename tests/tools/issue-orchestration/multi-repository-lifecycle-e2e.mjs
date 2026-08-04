@@ -664,6 +664,7 @@ export function runMultiRepositoryLifecycleAcceptance({
         policyDigest
     })
     let ledger = createLifecycleRunLedger({
+        stateRoot,
         runId: RUN_ID,
         createdAt: CREATED_AT,
         selectorReceipt,

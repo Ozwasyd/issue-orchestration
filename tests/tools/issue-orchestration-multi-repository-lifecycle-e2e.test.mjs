@@ -72,6 +72,31 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
                 repository.deliveredCommits.length
             )
         }
+        const stateFiles = fs.readdirSync(
+            path.resolve(scenarioRoot, 'state'),
+            { recursive: true, withFileTypes: true }
+        ).filter((entry) => entry.isFile())
+            .map((entry) => entry.name)
+        assert.ok(stateFiles.includes('control-ledger.jsonl'))
+        assert.ok(stateFiles.includes('node-index.json'))
+        assert.ok(stateFiles.includes('aggregate-runtime-projection.json'))
+        assert.ok(stateFiles.includes('event-ledger.jsonl'))
+        assert.ok(stateFiles.includes('projection.json'))
+        assert.doesNotMatch(
+            stateFiles.join('\n'),
+            /lifecycle-run-ledger\.json/u
+        )
+        assert.deepEqual(
+            [...new Set(stateFiles)].sort(),
+            [
+                'aggregate-runtime-projection.json',
+                'control-ledger.jsonl',
+                'control-projection.json',
+                'event-ledger.jsonl',
+                'node-index.json',
+                'projection.json'
+            ]
+        )
     } finally {
         fs.rmSync(scenarioRoot, { recursive: true, force: true })
     }
