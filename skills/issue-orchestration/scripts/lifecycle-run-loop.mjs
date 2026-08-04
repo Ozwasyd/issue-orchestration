@@ -1051,10 +1051,12 @@ function appendNodeEvent(ledger, nodeId, event) {
     ledger.nodeLedgers[nodeId].events.push(event)
     ledger.nodeLedgers[nodeId].headDigest =
         event.eventDigest
+    ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
 }
 
 function appendControlEvent(ledger, event) {
     ledger.controlEvents.push(event)
+    ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
 }
 
 function exactCurrentActionSet(ledger, actionSet) {

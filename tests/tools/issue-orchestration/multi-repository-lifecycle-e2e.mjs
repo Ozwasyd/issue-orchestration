@@ -913,6 +913,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                                 repoKey, repository.pushCount
                             ]
                         )
+                    )
                 }
             ])
         )
