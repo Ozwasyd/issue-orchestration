@@ -38,7 +38,7 @@ jobs:
             echo "Issue 37 transport already finalized."
             exit 0
           fi
-          cat .agent-patches/issue37/part-* > /tmp/issue37.patch.gz.b64
+          cat .agent-patches/issue37/part-[0-9]* > /tmp/issue37.patch.gz.b64
           base64 --decode /tmp/issue37.patch.gz.b64 > /tmp/issue37.patch.gz
           echo "48dbfd218020ecc556fda87d08fc3496fe3103efe0947b7966133736d260b7bd  /tmp/issue37.patch.gz" | sha256sum --check -
           gzip --decompress --stdout /tmp/issue37.patch.gz > /tmp/issue37.patch
