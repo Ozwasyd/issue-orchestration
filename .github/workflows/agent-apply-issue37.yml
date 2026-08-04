@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - agent/issue-37-prewriter-executor
-    paths:
-      - .agent-patches/issue37/ready
 
 permissions:
   contents: write
@@ -29,10 +27,10 @@ jobs:
         run: |
           set -euo pipefail
           test -f .agent-patches/issue37/ready
-          cat .agent-patches/issue37/small-[0-9][0-9] > /tmp/issue37.patch.gz.b64
-          echo "0fbac9c99eb0046ebde2126c2a6a4f9aab4fa55a1cf4f2c4ea2b883faba63e3d  /tmp/issue37.patch.gz.b64" | sha256sum --check -
+          cat .agent-patches/issue37/part-[0-9][0-9] > /tmp/issue37.patch.gz.b64
+          echo "755b29cb93288de4b42a1781b6c97cb1f46036bfd7f7b7e32eb5e963194ad002  /tmp/issue37.patch.gz.b64" | sha256sum --check -
           base64 --decode /tmp/issue37.patch.gz.b64 > /tmp/issue37.patch.gz
-          echo "48dbfd218020ecc556fda87d08fc3496fe3103efe0947b7966133736d260b7bd  /tmp/issue37.patch.gz" | sha256sum --check -
+          echo "bfad250aeff628a1693e6c3baa674362423651b396e1ad4e612a060b9de6524f  /tmp/issue37.patch.gz" | sha256sum --check -
           gzip --decompress --stdout /tmp/issue37.patch.gz > /tmp/issue37.patch
           echo "0a5b7a45a1e16b41c0aed3338cfd0fa83d111b67f997e5fc1d9eb9935cfb1d2e  /tmp/issue37.patch" | sha256sum --check -
           git apply --check --whitespace=error-all /tmp/issue37.patch
