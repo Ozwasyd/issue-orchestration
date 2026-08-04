@@ -164,7 +164,7 @@
   "baseDependencyFiles": [
     {
       "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
-      "sha256": "cc4f13ca20ac7b7242e5019535134c82324912756152b566570de22f0e5ff8e1",
+      "sha256": "5d0bf9e8a853f2febca23ee7ca94414e0b2b476db903b17078c05add66934243",
       "gitMode": "100644",
       "ownerIssue": "ExampleOrg/RepositoryA#1818",
       "disposition": "base-dependency-not-candidate"
@@ -172,12 +172,12 @@
   ],
   "hashAlgorithm": "sha256-raw-file-bytes",
   "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
-  "contractDigest": "97abd2740712331af65ddc01934bf8241b2a9f80f06ae05bdd32b745520c6d51",
+  "contractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
-    "contractDigest": "97abd2740712331af65ddc01934bf8241b2a9f80f06ae05bdd32b745520c6d51",
+    "contractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
     "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
     "implementationFiles": [
       {
@@ -217,6 +217,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "190b8dc4412e8ad6c290cd30259b6894e886303526466e0ff8dd3d95bb17259f"
+    "candidateDigest": "3ecb08c2f431b86e80ef279600f4792501e6b0192a979078dd2a0719f4d10fc9"
   }
 }
