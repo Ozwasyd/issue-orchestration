@@ -1,0 +1,65 @@
+name: Finalize issue 47 authority fix
+
+on:
+  push:
+    branches:
+      - agent/issue-47-startup-trust-genesis
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-issue-47
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: agent/issue-47-startup-trust-genesis
+      - name: Remove downstream profile authority and rebuild manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          genesis = Path('skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs')
+          source = genesis.read_text()
+          source = source.replace(
+              "    if (binding.rootPhase === 'scheduling' &&\n        binding.rootProfile === 'terra-low' &&\n        startup?.takeoverContext == null) {\n",
+              "    if (binding.rootPhase === 'scheduling' &&\n        startup?.takeoverContext == null) {\n"
+          )
+          source = source.replace(
+              "    if (binding.rootPhase === 'recovery-takeover' &&\n        binding.rootProfile === 'terra-medium' &&\n        startup?.takeoverContext) {\n",
+              "    if (binding.rootPhase === 'recovery-takeover' &&\n        startup?.takeoverContext) {\n"
+          )
+          genesis.write_text(source)
+
+          multi = Path('skills/issue-orchestration/scripts/multi-node-state.mjs')
+          source = multi.read_text().replace(
+              "                    nextBinding.rootPhase !== 'recovery-takeover' ||\n                    nextBinding.rootProfile !== 'terra-medium' ||\n",
+              "                    nextBinding.rootPhase !== 'recovery-takeover' ||\n"
+          )
+          multi.write_text(source)
+          PY
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-route-authority.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-genesis-authority.test.mjs \
+            tests/tools/issue-orchestration-multi-node-state.test.mjs
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs \
+            skills/issue-orchestration/scripts/multi-node-state.mjs
+          git commit -m "Consume startup policy without downstream profile authority"
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$SOURCE_COMMIT" node scripts/build-manifest.mjs
+          git rm .github/workflows/agent-fix-issue47.yml
+          git add manifest.json
+          git commit -m "Rebuild issue 47 manifest"
+          git push origin HEAD:agent/issue-47-startup-trust-genesis
