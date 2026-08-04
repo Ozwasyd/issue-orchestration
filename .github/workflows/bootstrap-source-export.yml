@@ -20,12 +20,12 @@ jobs:
 
       - name: Pack complete checkout
         shell: bash
-        run: tar --exclude='./source-checkout.tar.gz' -czf source-checkout.tar.gz .
+        run: tar -czf /tmp/source-checkout.tar.gz .
 
       - name: Upload source checkout
         uses: actions/upload-artifact@v4
         with:
           name: source-checkout
-          path: source-checkout.tar.gz
+          path: /tmp/source-checkout.tar.gz
           if-no-files-found: error
           retention-days: 1
