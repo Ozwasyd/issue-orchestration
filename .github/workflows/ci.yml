@@ -102,6 +102,36 @@ jobs:
           })
           """
           test_path.write_text(source[:start] + replacement)
+
+          runtime_path = Path('skills/issue-orchestration/scripts/lifecycle-run-loop.mjs')
+          runtime = runtime_path.read_text()
+          old_node = """function appendNodeEvent(ledger, nodeId, event) {
+              ledger.nodeLedgers[nodeId].events.push(event)
+              ledger.nodeLedgers[nodeId].headDigest =
+                  event.eventDigest
+          }
+          """
+          new_node = """function appendNodeEvent(ledger, nodeId, event) {
+              ledger.nodeLedgers[nodeId].events.push(event)
+              ledger.nodeLedgers[nodeId].headDigest =
+                  event.eventDigest
+              ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
+          }
+          """
+          old_control = """function appendControlEvent(ledger, event) {
+              ledger.controlEvents.push(event)
+          }
+          """
+          new_control = """function appendControlEvent(ledger, event) {
+              ledger.controlEvents.push(event)
+              ledger.ledgerDigest = unsignedDigest(ledger, 'ledgerDigest')
+          }
+          """
+          if old_node not in runtime or old_control not in runtime:
+              raise SystemExit('missing lifecycle append helpers')
+          runtime = runtime.replace(old_node, new_node, 1)
+          runtime = runtime.replace(old_control, new_control, 1)
+          runtime_path.write_text(runtime)
           PY
 
           git checkout origin/main -- .github/workflows/ci.yml
@@ -116,7 +146,7 @@ jobs:
           git config user.email 'issue-orchestration@example.invalid'
           git add -A
           git diff --cached --check
-          git commit -m 'fix: enforce production authority in multi-repository E2E'
+          git commit -m 'fix: reseal lifecycle ledger after each append'
           code_sha="$(git rev-parse HEAD)"
 
           ISSUE_ORCHESTRATION_SOURCE_COMMIT="${code_sha}" node scripts/build-manifest.mjs
