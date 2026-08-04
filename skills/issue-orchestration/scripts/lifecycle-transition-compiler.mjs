@@ -169,22 +169,12 @@ function validateInputs(input) {
         input.runtimeCapabilityBinding,
         'lifecycle-capability-invalid'
     )
-    const legacySelector = selector.schema ===
-        'issue-orchestration.scope-selector-receipt.v1' &&
-        selector.status === 'verified'
-    const productionSelector = selector.schema ===
-        'issue-orchestration.selector-receipt.v1'
-    if (!legacySelector && !productionSelector) {
-        fail('lifecycle-selector-invalid')
-    }
-    if (productionSelector) {
-        try {
-            verifySelectorReceipt(selector)
-        } catch (error) {
-            fail('lifecycle-selector-invalid', {
-                cause: error?.code ?? error?.message
-            })
-        }
+    try {
+        verifySelectorReceipt(selector)
+    } catch (error) {
+        fail('lifecycle-selector-invalid', {
+            cause: error?.code ?? error?.message
+        })
     }
     requireDigest(selector.receiptDigest, 'lifecycle-selector-digest-invalid')
     requireDigest(
@@ -407,21 +397,12 @@ function makeGroupAction({
 
 export function compileLifecycleRemoteSnapshotReceipt(selectorReceipt) {
     let selector
-    if (selectorReceipt?.schema ===
-            'issue-orchestration.selector-receipt.v1') {
-        try {
-            selector = verifySelectorReceipt(selectorReceipt)
-        } catch (error) {
-            fail('lifecycle-selector-invalid', {
-                cause: error?.code ?? error?.message
-            })
-        }
-    } else if (selectorReceipt?.schema ===
-            'issue-orchestration.scope-selector-receipt.v1' &&
-        selectorReceipt.status === 'verified') {
-        selector = selectorReceipt
-    } else {
-        fail('lifecycle-selector-invalid')
+    try {
+        selector = verifySelectorReceipt(selectorReceipt)
+    } catch (error) {
+        fail('lifecycle-selector-invalid', {
+            cause: error?.code ?? error?.message
+        })
     }
     requireDigest(
         selector.receiptDigest,

@@ -9,7 +9,8 @@ import {
     createSemanticGraph
 } from '../../../skills/issue-orchestration/scripts/semantic-runtime-projection.mjs'
 import {
-    compileLifecycleActionSet as compileProductionLifecycleActionSet,
+    compileLifecycleActionSet,
+    compileLifecycleRemoteSnapshotReceipt,
     validateLifecycleActionSet
 } from '../../../skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs'
 import {
@@ -35,29 +36,6 @@ export class MultiRepositoryLifecycleE2EError extends Error {
 
 function fail(code, details = {}) {
     throw new MultiRepositoryLifecycleE2EError(code, code, details)
-}
-
-function compileLifecycleRemoteSnapshotReceipt(selectorReceipt) {
-    const selector = verifySelectorReceipt(selectorReceipt)
-    return Object.freeze({
-        schema: 'issue-orchestration.remote-snapshot-receipt.v1',
-        status: 'verified',
-        selectorReceiptDigest: selector.receiptDigest,
-        receiptDigest: selector.remoteSnapshotDigest
-    })
-}
-
-function compileLifecycleActionSet(input) {
-    const selector = verifySelectorReceipt(input.selectorReceipt)
-    return compileProductionLifecycleActionSet({
-        ...input,
-        selectorReceipt: {
-            schema: 'issue-orchestration.scope-selector-receipt.v1',
-            status: 'verified',
-            receiptDigest: selector.receiptDigest,
-            remoteSnapshotDigest: selector.remoteSnapshotDigest
-        }
-    })
 }
 
 function selectorCanonical(value) {

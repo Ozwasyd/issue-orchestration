@@ -23,6 +23,33 @@ const baseSha = 'a'.repeat(40)
 const policyDigest = sha('policy')
 const selectorDigest = sha('selector')
 const remoteDigest = sha('remote')
+const canonicalSelectorReceipt = (() => {
+    const receipt = {
+        schema: 'issue-orchestration.selector-receipt.v1',
+        startupAttestationDigest: sha('startup-attestation'),
+        runtimeInvocationId: 'lifecycle-test-invocation',
+        runtimeSessionId: 'lifecycle-test-session',
+        selectorVersion: 'lifecycle-test-selector-v1',
+        type: 'explicit-issues',
+        parametersDigest: sha('selector-parameters'),
+        selectorDigest,
+        resolvedIssueSet: [],
+        exclusionReasons: {},
+        remoteQueryIdentity: 'lifecycle-test:explicit-issues',
+        previousRemoteSnapshotDigest: null,
+        remoteSnapshotDigest: remoteDigest,
+        remoteFactDigests: {},
+        remoteChangeSet: {
+            added: [], changed: [], closed: [], removed: [], reopened: []
+        },
+        issueHistory: {},
+        issueStates: {},
+        resolvedAt: '2026-08-04T00:00:00.000Z'
+    }
+    receipt.receiptDigest = digest(receipt)
+    return Object.freeze(receipt)
+})()
+const selectorReceiptDigest = canonicalSelectorReceipt.receiptDigest
 const graphInputDigest = sha('graph-input')
 const scopeDigest = sha('scope')
 const repository = 'ExampleOrg/RepositoryA'
@@ -58,7 +85,7 @@ function graphNode({
         uiClass,
         acceptanceGroup,
         lifecycleState: state,
-        selectorReceiptDigest: selectorDigest,
+        selectorReceiptDigest,
         remoteSnapshotDigest: remoteDigest,
         repositoryBindingDigest,
         semanticFactsDigest: sha(`facts:${id}`),
@@ -68,7 +95,7 @@ function graphNode({
 
 function semanticGraph(nodes) {
     return createSemanticGraph({
-        selectorReceiptDigest: selectorDigest,
+        selectorReceiptDigest,
         remoteSnapshotDigest: remoteDigest,
         scopeDigest,
         semanticGraphInputDigest: graphInputDigest,
@@ -88,7 +115,7 @@ function aggregateNode(node, overrides = {}) {
         memberId: node.memberId,
         repository: node.repository,
         issueNumber: node.issueNumber,
-        selectorReceiptDigest: selectorDigest,
+        selectorReceiptDigest,
         remoteMemberDigest: sha(`remote-member:${node.memberId}`),
         nodeEpoch: 1,
         baseSha,
@@ -139,15 +166,11 @@ function input(nodes, options = {}) {
     const graph = semanticGraph(nodes)
     return {
         schema: 'issue-orchestration.lifecycle-compiler-input.v1',
-        selectorReceipt: {
-            schema: 'issue-orchestration.scope-selector-receipt.v1',
-            status: 'verified',
-            receiptDigest: selectorDigest,
-            remoteSnapshotDigest: remoteDigest
-        },
+        selectorReceipt: structuredClone(canonicalSelectorReceipt),
         remoteSnapshotReceipt: {
             schema: 'issue-orchestration.remote-snapshot-receipt.v1',
             status: 'verified',
+            selectorReceiptDigest,
             receiptDigest: remoteDigest
         },
         semanticGraph: graph,

@@ -78,12 +78,17 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
 })
 
 test('issue 25 harness uses production APIs and contains no fixture authority', () => {
-    assert.match(runtimeSource, /compileProductionLifecycleActionSet/u)
+    assert.match(runtimeSource, /compileLifecycleActionSet/u)
+    assert.match(runtimeSource, /compileLifecycleRemoteSnapshotReceipt/u)
     assert.match(runtimeSource, /createSemanticGraph/u)
     assert.match(runtimeSource, /verifySelectorReceipt/u)
     assert.doesNotMatch(
         runtimeSource,
         /tests\/fixtures|test-helper|fixture-only-constructor/iu
+    )
+    assert.doesNotMatch(
+        runtimeSource,
+        /scope-selector-receipt\.v1|compileProductionLifecycleActionSet/u
     )
     assert.doesNotMatch(
         runtimeSource,
