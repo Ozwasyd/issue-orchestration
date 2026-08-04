@@ -221,3 +221,38 @@ export function assertLifecycleTransition(fromState, toState) {
     }
     return { valid: true, fromState, toState }
 }
+
+
+// Canonical next-action mapping shared by startup validation and the pure
+// lifecycle action compiler. Projection-only aliases are explicit rather than
+// hidden in downstream if-chains.
+export const LIFECYCLE_ACTION_RULES = Object.freeze({
+    none: 'request-semantic-proposal',
+    discovered: 'compile-acceptance-contract',
+    'acceptance-frozen': 'request-test-contract-planning',
+    'test-contract-planning': 'request-test-contract-planning',
+    'test-contracting': 'dispatch-test-contract-writer',
+    'test-contract-frozen': 'dispatch-implementation-writer',
+    implementing: 'dispatch-implementation-writer',
+    'implementing-self-testing': 'dispatch-implementation-writer',
+    'candidate-green': 'dispatch-behavior-verifier',
+    'independent-verifying': 'dispatch-behavior-verifier',
+    'behavior-green': 'request-ui-adjudication',
+    'ui-adjudicating': 'request-ui-adjudication',
+    'ux-acceptance': 'dispatch-ux-acceptance-verifier',
+    'ux-accepted': 'dispatch-documentation-writer',
+    documenting: 'dispatch-documentation-writer',
+    'documentation-green': 'deliver-acceptance-group',
+    'delivery-ready': 'deliver-acceptance-group',
+    delivering: 'deliver-acceptance-group',
+    cleaning: 'cleanup-node-resources',
+    closed: null,
+    terminal: 'terminalize-node',
+    quarantined: 'terminalize-node'
+})
+
+export function lifecycleActionRule(state) {
+    return Object.hasOwn(LIFECYCLE_ACTION_RULES, state)
+        ? LIFECYCLE_ACTION_RULES[state]
+        : null
+}

@@ -84,6 +84,7 @@ const manifest = {
         'per-node-event-ledger',
         'verified-aggregate-runtime-projection',
         'deterministic-test-contract-cold-start',
+        'deterministic-lifecycle-transition-compiler',
         'fresh-context-routing',
         'git-worktree-discovery',
         'runtime-permission-observation',
@@ -141,7 +142,8 @@ const manifest = {
         'semantic-graph',
         'stage-dispatch',
         'control-plane-advisor',
-        'test-contract-cold-start'
+        'test-contract-cold-start',
+        'lifecycle-action-compilation'
     ],
     excludedAuthorities: [
         'product-api',

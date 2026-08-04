@@ -744,6 +744,7 @@ test('P10 package carries orchestration facts, not product design facts', () => 
         'acceptance-group',
         'control-plane-advisor',
         'delivery',
+        'lifecycle-action-compilation',
         'model-routing',
         'mutation-postcondition',
         'receipts',

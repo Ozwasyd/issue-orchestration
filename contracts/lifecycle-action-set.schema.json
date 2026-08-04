@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "issue-orchestration.lifecycle-action-set.schema.json",
+  "title": "Issue orchestration lifecycle action set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runId",
+    "selectorReceiptDigest",
+    "remoteSnapshotDigest",
+    "semanticGraphDigest",
+    "aggregateProjectionDigest",
+    "policyDigest",
+    "runtimeCapabilityBindingDigest",
+    "availableSlots",
+    "quiescent",
+    "actions",
+    "actionSetDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.lifecycle-action-set.v1"},
+    "runId": {"type": "string", "minLength": 1},
+    "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+    "aggregateProjectionDigest": {"$ref": "#/$defs/digest"},
+    "policyDigest": {"$ref": "#/$defs/digest"},
+    "runtimeCapabilityBindingDigest": {"$ref": "#/$defs/digest"},
+    "availableSlots": {"type": "integer", "minimum": 0},
+    "quiescent": {"type": "boolean"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/action"}
+    },
+    "actionSetDigest": {"$ref": "#/$defs/digest"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"quiescent": {"const": true}}},
+      "then": {
+        "properties": {
+          "actions": {
+            "maxItems": 1,
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/action"},
+                {"properties": {"type": {"const": "idle"}}}
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "sha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "actionType": {
+      "enum": [
+        "refresh-scope",
+        "request-semantic-proposal",
+        "compile-acceptance-contract",
+        "request-test-contract-planning",
+        "dispatch-test-contract-writer",
+        "dispatch-implementation-writer",
+        "dispatch-behavior-verifier",
+        "request-ui-adjudication",
+        "dispatch-ux-acceptance-verifier",
+        "dispatch-documentation-writer",
+        "deliver-acceptance-group",
+        "cleanup-node-resources",
+        "terminalize-node",
+        "idle"
+      ]
+    },
+    "receiptDigests": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "nodeBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "nodeId",
+        "memberId",
+        "repository",
+        "issueNumber",
+        "baseSha",
+        "nodeEpoch",
+        "selectorReceiptDigest",
+        "remoteSnapshotDigest",
+        "semanticGraphDigest",
+        "aggregateProjectionDigest",
+        "nodeProjectionDigest",
+        "priorLedgerHeadDigest",
+        "policyDigest",
+        "runtimeCapabilityBindingDigest",
+        "receiptDigests"
+      ],
+      "properties": {
+        "runId": {"type": "string", "minLength": 1},
+        "nodeId": {"type": "string", "minLength": 1},
+        "memberId": {"type": "string", "minLength": 1},
+        "repository": {"type": "string", "minLength": 1},
+        "issueNumber": {"type": "integer", "minimum": 1},
+        "baseSha": {"$ref": "#/$defs/sha"},
+        "nodeEpoch": {"type": "integer", "minimum": 1},
+        "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+        "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+        "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+        "aggregateProjectionDigest": {"$ref": "#/$defs/digest"},
+        "nodeProjectionDigest": {"$ref": "#/$defs/digest"},
+        "priorLedgerHeadDigest": {"$ref": "#/$defs/digest"},
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "runtimeCapabilityBindingDigest": {"$ref": "#/$defs/digest"},
+        "receiptDigests": {"$ref": "#/$defs/receiptDigests"}
+      }
+    },
+    "refreshBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "observedSelectorReceiptDigest",
+        "observedRemoteSnapshotDigest",
+        "semanticGraphSelectorReceiptDigest",
+        "semanticGraphRemoteSnapshotDigest",
+        "aggregateProjectionDigest",
+        "policyDigest",
+        "runtimeCapabilityBindingDigest"
+      ],
+      "properties": {
+        "runId": {"type": "string", "minLength": 1},
+        "observedSelectorReceiptDigest": {"$ref": "#/$defs/digest"},
+        "observedRemoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+        "semanticGraphSelectorReceiptDigest": {"$ref": "#/$defs/digest"},
+        "semanticGraphRemoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+        "aggregateProjectionDigest": {"$ref": "#/$defs/digest"},
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "runtimeCapabilityBindingDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "idleBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "semanticGraphDigest",
+        "aggregateProjectionDigest",
+        "policyDigest",
+        "runtimeCapabilityBindingDigest"
+      ],
+      "properties": {
+        "runId": {"type": "string", "minLength": 1},
+        "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+        "aggregateProjectionDigest": {"$ref": "#/$defs/digest"},
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "runtimeCapabilityBindingDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "groupBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runId",
+        "selectorReceiptDigest",
+        "remoteSnapshotDigest",
+        "semanticGraphDigest",
+        "aggregateProjectionDigest",
+        "policyDigest",
+        "runtimeCapabilityBindingDigest",
+        "memberBindings"
+      ],
+      "properties": {
+        "runId": {"type": "string", "minLength": 1},
+        "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+        "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+        "semanticGraphDigest": {"$ref": "#/$defs/digest"},
+        "aggregateProjectionDigest": {"$ref": "#/$defs/digest"},
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "runtimeCapabilityBindingDigest": {"$ref": "#/$defs/digest"},
+        "memberBindings": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/nodeBindings"}
+        }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "type",
+        "nodeId",
+        "acceptanceGroup",
+        "lifecycleState",
+        "recoveryMode",
+        "bindings",
+        "actionDigest"
+      ],
+      "properties": {
+        "schema": {"const": "issue-orchestration.lifecycle-action.v1"},
+        "type": {"$ref": "#/$defs/actionType"},
+        "nodeId": {"type": ["string", "null"]},
+        "acceptanceGroup": {"type": ["string", "null"]},
+        "lifecycleState": {"type": "string", "minLength": 1},
+        "recoveryMode": {"enum": ["none", "authorized-continuation"]},
+        "bindings": {"type": "object"},
+        "actionDigest": {"$ref": "#/$defs/digest"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "refresh-scope"}}},
+          "then": {
+            "properties": {
+              "nodeId": {"const": null},
+              "acceptanceGroup": {"const": null},
+              "lifecycleState": {"const": "stale-scope"},
+              "recoveryMode": {"const": "none"},
+              "bindings": {"$ref": "#/$defs/refreshBindings"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"type": {"const": "idle"}}},
+          "then": {
+            "properties": {
+              "nodeId": {"const": null},
+              "acceptanceGroup": {"const": null},
+              "lifecycleState": {"const": "quiescent"},
+              "recoveryMode": {"const": "none"},
+              "bindings": {"$ref": "#/$defs/idleBindings"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"type": {"const": "deliver-acceptance-group"}}
+          },
+          "then": {
+            "properties": {
+              "nodeId": {"const": null},
+              "acceptanceGroup": {"type": "string", "minLength": 1},
+              "lifecycleState": {"const": "group-ready"},
+              "recoveryMode": {"const": "none"},
+              "bindings": {"$ref": "#/$defs/groupBindings"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "not": {
+                  "enum": [
+                    "refresh-scope",
+                    "idle",
+                    "deliver-acceptance-group"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "nodeId": {"type": "string", "minLength": 1},
+              "bindings": {"$ref": "#/$defs/nodeBindings"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

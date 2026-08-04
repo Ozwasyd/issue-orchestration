@@ -189,7 +189,7 @@
       {
         "path": "skills/issue-orchestration/scripts/frontier-compiler.mjs",
         "presence": "present",
-        "sha256": "e20e63784ab9dd170f2d9bacb29dcb1d8920a9b4bac306f1afefd20faa065bd3",
+        "sha256": "ddeb77546ec2f854754e0bb6dc6c8c2e62457806486eb0dca9a5cd59b73244d0",
         "gitMode": "100644"
       },
       {
@@ -217,6 +217,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "c122f3ef8b198c9df2c390d05196327fb5bd89673e6fb3f7a33b115ed65f0df2"
+    "candidateDigest": "190b8dc4412e8ad6c290cd30259b6894e886303526466e0ff8dd3d95bb17259f"
   }
 }
