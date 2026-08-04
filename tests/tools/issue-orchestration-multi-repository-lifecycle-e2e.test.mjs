@@ -9,16 +9,16 @@ import {
 } from '../../tools/test-matrix/schema-validator/validate.mjs'
 import {
     runMultiRepositoryLifecycleAcceptance
-} from '../../skills/issue-orchestration/scripts/multi-repository-lifecycle-e2e.mjs'
+} from './issue-orchestration/multi-repository-lifecycle-e2e.mjs'
 
 const root = path.resolve(import.meta.dirname, '../..')
 const schema = JSON.parse(fs.readFileSync(path.resolve(
     root,
-    'contracts/multi-repository-lifecycle-e2e-receipt.schema.json'
+    'tests/fixtures/issue-orchestration/multi-repository-lifecycle-e2e-receipt.schema.json'
 ), 'utf8'))
 const runtimeSource = fs.readFileSync(path.resolve(
     root,
-    'skills/issue-orchestration/scripts/multi-repository-lifecycle-e2e.mjs'
+    'tests/tools/issue-orchestration/multi-repository-lifecycle-e2e.mjs'
 ), 'utf8')
 
 test('multi-repository lifecycle E2E advances four raw issues to canonical quiescence', {
@@ -78,18 +78,9 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
 })
 
 test('issue 25 harness uses production APIs and contains no fixture authority', () => {
-    assert.match(
-        runtimeSource,
-        /compileLifecycleActionSet/u
-    )
-    assert.match(
-        runtimeSource,
-        /createSemanticGraph/u
-    )
-    assert.match(
-        runtimeSource,
-        /verifySelectorReceipt/u
-    )
+    assert.match(runtimeSource, /compileProductionLifecycleActionSet/u)
+    assert.match(runtimeSource, /createSemanticGraph/u)
+    assert.match(runtimeSource, /verifySelectorReceipt/u)
     assert.doesNotMatch(
         runtimeSource,
         /tests\/fixtures|test-helper|fixture-only-constructor/iu
