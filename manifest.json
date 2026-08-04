@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "685c376c6148b8afc3ff88aa6c8a950fe0bbb86f",
-    "sourceTreeDigest": "27c13256b91373df49b69655e7d4b6e3bb8e9d9112f9dd2f7897d475e6c99e1f",
+    "sourceCommit": "8b8b97eb19f914ef4aa45578e13d02f20b5cf6cc",
+    "sourceTreeDigest": "f9f2c225ad219234d7026f2ebb05509d64fafbf695ce6a199846096f5362f73f",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
     "agentDigests": {
@@ -313,7 +313,7 @@
         "skills/issue-orchestration/scripts/runtime-execution-binding.mjs": "c32580e603ef2e3ee9906df6f612824b38032ae1ee277afebf16b4571312ef05",
         "skills/issue-orchestration/scripts/runtime-startup-attestation.mjs": "d5e32cd464da1803b312f841a295ef6948299bd508478f5092e51b48bbd0895b",
         "skills/issue-orchestration/scripts/runtime-trust-policy.mjs": "80133ad8699fe7627c25d11d80b5f1b8bcaa3d0d1d3c90a0ddbf07e4e10ce32e",
-        "skills/issue-orchestration/scripts/scope-selector.mjs": "c126e1105166f9301380d32be2f49032771f35a8eaed6875f2a027f6339f29f5",
+        "skills/issue-orchestration/scripts/scope-selector.mjs": "bf17a7addef55f9e78a2177e75450a2b934f487da5f8304e7d30456660cf9fa9",
         "skills/issue-orchestration/scripts/semantic-runtime-projection.mjs": "bac36081d4f24b3d64893cd70f7e1eea8dda013a00c11e332f51c58b9c11cbf6",
         "skills/issue-orchestration/scripts/slice-plan-validator.mjs": "a2ed1d45a16506d2312af0e457dbb0d0ed907c249d21ea362f48d2a3244c10b2",
         "skills/issue-orchestration/scripts/stage-profile-policy.mjs": "055b38f9d021e58a22003b2adeeeeaed0d84ed39542a78bf032297b89bb35a66",
@@ -327,5 +327,5 @@
         "skills/issue-orchestration/SKILL.md": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "eb028af6b20a74031e143f36d71d1535b4d1facc807a756652ae444f3764034d"
+    "manifestDigest": "42ac72f3156bbf224436d26f075853d8915b076587dae4d9c3bca9b5ea3d102a"
 }
