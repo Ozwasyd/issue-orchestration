@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import { digest } from '../../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
@@ -8,8 +9,10 @@ import {
     createSemanticGraph
 } from '../../../skills/issue-orchestration/scripts/semantic-runtime-projection.mjs'
 import {
-    resolveSelector
-} from '../../../skills/issue-orchestration/scripts/scope-selector.mjs'
+    compileLifecycleRunGenesisAuthority,
+    repositoryAuthorityFor,
+    resolveLifecycleSelector
+} from '../../../skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs'
 import {
     attestRuntimeStartup,
     compileRuntimeStartupObservation,
@@ -194,17 +197,18 @@ function initRepository(scenarioRoot, key) {
     runGit(['add', 'README.md'], work)
     runGit(['commit', '-m', `initialize ${key}`], work)
     runGit(['push', '-u', 'origin', 'main'], work)
+    const repository = `Fixture/${key}`
+    const remoteUrl = `https://github.com/${repository}.git`
+    runGit(['config', `url.${bare}.insteadOf`, remoteUrl], work)
+    runGit(['remote', 'set-url', 'origin', remoteUrl], work)
     return {
         key,
-        repository: `Fixture/${key}`,
+        repository,
         bare,
         work,
+        remoteUrl,
         baseSha: runGit(['rev-parse', 'HEAD'], work),
-        bindingDigest: digest({
-            repository: `Fixture/${key}`,
-            bare: path.basename(bare),
-            baseSha: runGit(['rev-parse', 'HEAD'], work)
-        }),
+        bindingDigest: null,
         pushCount: 1,
         deliveredCommits: []
     }
@@ -265,9 +269,11 @@ function resolveCurrentSelector({
     issues,
     version,
     startup,
+    lifecycleAuthority,
     previousReceipt = null
 }) {
-    return resolveSelector({
+    return resolveLifecycleSelector({
+        lifecycleAuthority,
         selector: selectorDefinition(issues, version),
         remoteIssues: Object.values(issues),
         previousReceipt,
@@ -611,20 +617,23 @@ function injectExternalBaseChange({
     return repository.baseSha
 }
 
-function persist(stateRoot, ledger) {
-    persistLifecycleRunLedger({ stateRoot, ledger })
+function persist(stateRoot, ledger, startup) {
+    persistLifecycleRunLedger({ stateRoot, ledger, startup })
     return readLifecycleRunLedger({
         stateRoot,
-        runId: RUN_ID
+        runId: RUN_ID,
+        startup
     })
 }
 
 export function runMultiRepositoryLifecycleAcceptance({
     scenarioRoot
 } = {}) {
-    const stateRoot = path.resolve(scenarioRoot, 'state')
+    const stateRoot = fs.mkdtempSync(path.join(
+        os.tmpdir(),
+        'issue-orchestration-state-'
+    ))
     const resourceRoot = path.resolve(scenarioRoot, 'resources')
-    fs.mkdirSync(stateRoot, { recursive: true })
     fs.mkdirSync(resourceRoot, { recursive: true })
     const initialStateRootArtifactCount =
         fs.readdirSync(stateRoot).length
@@ -654,11 +663,36 @@ export function runMultiRepositoryLifecycleAcceptance({
         ])
     )
     const startup = runtimeStartup()
+    const lifecycleAuthority = compileLifecycleRunGenesisAuthority({
+        runId: RUN_ID,
+        startup,
+        stateRoot,
+        repositoryTargets: Object.values(repositories).map(
+            ({ repository, work }) => ({
+                repository,
+                repositoryPath: work,
+                defaultBranch: 'main'
+            })
+        ),
+        workspaces: [scenarioRoot],
+        worktrees: [],
+        slotCapacity: 2,
+        createdAt: CREATED_AT
+    })
+    for (const repository of Object.values(repositories)) {
+        const binding = repositoryAuthorityFor(
+            lifecycleAuthority,
+            repository.repository
+        )
+        repository.baseSha = binding.observedDefaultBranchHead
+        repository.bindingDigest = binding.bindingDigest
+    }
     let selectorVersion = 1
     let selectorReceipt = resolveCurrentSelector({
         issues,
         version: selectorVersion,
-        startup
+        startup,
+        lifecycleAuthority
     })
     const policyDigest = digest('issue-25-installed-policy')
     const semanticGraph = initialSemanticGraph({
@@ -678,18 +712,11 @@ export function runMultiRepositoryLifecycleAcceptance({
             status: 'verified',
             policyDigest
         },
-        runtimeCapabilityBinding: {
-            schema:
-                'issue-orchestration.runtime-capability-binding.v1',
-            status: 'verified',
-            bindingDigest: digest({
-                maxConcurrentThreadsPerSession: 2,
-                multiAgentV2: true
-            })
-        },
+        lifecycleAuthority,
+        startup,
         slotCapacity: 2
     })
-    ledger = persist(stateRoot, ledger)
+    ledger = persist(stateRoot, ledger, startup)
 
     const actionSetDigests = []
     let actionCount = 0
@@ -709,8 +736,8 @@ export function runMultiRepositoryLifecycleAcceptance({
 
     while (loopCount < 200) {
         loopCount += 1
-        const projected = projectLifecycleRun(ledger)
-        let actionSet = compileLifecycleRunActionSet(ledger)
+        const projected = projectLifecycleRun(ledger, { startup })
+        let actionSet = compileLifecycleRunActionSet(ledger, { startup })
         actionSetDigests.push(actionSet.actionSetDigest)
         maximumConcurrentActions = Math.max(
             maximumConcurrentActions,
@@ -767,11 +794,13 @@ export function runMultiRepositoryLifecycleAcceptance({
                 issues,
                 version: selectorVersion,
                 startup,
+                lifecycleAuthority,
                 previousReceipt: selectorReceipt
             })
             const refreshActionSet =
                 compileLifecycleRunActionSet(ledger, {
-                    observedSelectorReceipt: refreshedSelector
+                    observedSelectorReceipt: refreshedSelector,
+                    startup
                 })
             if (refreshActionSet.actions.length !== 1 ||
                 refreshActionSet.actions[0].type !==
@@ -783,11 +812,12 @@ export function runMultiRepositoryLifecycleAcceptance({
                 actionSet: refreshActionSet,
                 selectorReceipt: refreshedSelector,
                 createdAt:
-                    '2026-08-04T00:20:01.000Z'
+                    '2026-08-04T00:20:01.000Z',
+                startup
             })
             selectorReceipt = refreshedSelector
-            ledger = persist(stateRoot, ledger)
-            const after = projectLifecycleRun(ledger)
+            ledger = persist(stateRoot, ledger, startup)
+            const after = projectLifecycleRun(ledger, { startup })
             const unaffectedAfter = Object.fromEntries(
                 Object.entries(after.state.nodes)
                     .filter(([nodeId]) => nodeId !== commentTarget)
@@ -823,7 +853,8 @@ export function runMultiRepositoryLifecycleAcceptance({
                 repository: repositories.RepoA.repository,
                 baseSha: newBase,
                 createdAt:
-                    '2026-08-04T00:30:00.000Z'
+                    '2026-08-04T00:30:00.000Z',
+                startup
             })
             try {
                 const staleResults = actionSet.actions.map(
@@ -843,7 +874,8 @@ export function runMultiRepositoryLifecycleAcceptance({
                     actionSet,
                     stageResults: staleResults,
                     createdAt:
-                        '2026-08-04T00:30:01.000Z'
+                        '2026-08-04T00:30:01.000Z',
+                    startup
                 })
                 fail('multi-repository-e2e-stale-dispatch-accepted')
             } catch (error) {
@@ -851,7 +883,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                     throw error
                 }
             }
-            ledger = persist(stateRoot, ledger)
+            ledger = persist(stateRoot, ledger, startup)
             baseRebindingVerified = true
             baseInjected = true
             continue
@@ -860,19 +892,20 @@ export function runMultiRepositoryLifecycleAcceptance({
         if (!serializeReloadReplayVerified &&
             actionCount >= 10) {
             const beforeAction =
-                compileLifecycleRunActionSet(ledger)
+                compileLifecycleRunActionSet(ledger, { startup })
             const beforeProjection =
-                projectLifecycleRun(ledger)
+                projectLifecycleRun(ledger, { startup })
                     .aggregateProjection
                     .aggregateProjectionDigest
             ledger = readLifecycleRunLedger({
                 stateRoot,
-                runId: RUN_ID
+                runId: RUN_ID,
+                startup
             })
             const afterAction =
-                compileLifecycleRunActionSet(ledger)
+                compileLifecycleRunActionSet(ledger, { startup })
             const afterProjection =
-                projectLifecycleRun(ledger)
+                projectLifecycleRun(ledger, { startup })
                     .aggregateProjection
                     .aggregateProjectionDigest
             serializeReloadReplayVerified =
@@ -881,7 +914,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                 beforeProjection === afterProjection
         }
 
-        const state = projectLifecycleRun(ledger).state
+        const state = projectLifecycleRun(ledger, { startup }).state
         const stageResults = actionSet.actions.map(
             (action) => resultForAction({
                 action,
@@ -927,10 +960,11 @@ export function runMultiRepositoryLifecycleAcceptance({
             actionSet,
             stageResults,
             createdAt:
-                `2026-08-04T01:${String(loopCount).padStart(2, '0')}:00.000Z`
+                `2026-08-04T01:${String(loopCount).padStart(2, '0')}:00.000Z`,
+            startup
         })
         actionCount += actionSet.actions.length
-        ledger = persist(stateRoot, ledger)
+        ledger = persist(stateRoot, ledger, startup)
         for (const [groupId, before] of
             Object.entries(remoteEffectsBefore)) {
             const after = deliveryEffects[groupId]
@@ -953,8 +987,8 @@ export function runMultiRepositoryLifecycleAcceptance({
         }
     }
 
-    const finalActionSet = compileLifecycleRunActionSet(ledger)
-    const final = projectLifecycleRun(ledger)
+    const finalActionSet = compileLifecycleRunActionSet(ledger, { startup })
+    const final = projectLifecycleRun(ledger, { startup })
     if (!finalActionSet.quiescent ||
         !dependencySelectedAfterClosure ||
         Object.values(final.state.nodes).some(
@@ -1002,6 +1036,9 @@ export function runMultiRepositoryLifecycleAcceptance({
         schema: RECEIPT_SCHEMA,
         status: 'verified',
         runId: RUN_ID,
+        stateRoot,
+        lifecycleAuthorityBindingDigest:
+            final.state.lifecycleAuthorityBinding.bindingDigest,
         initialStateRootArtifactCount,
         repositoryEvidence,
         issueEvidence: Object.values(issues).map(

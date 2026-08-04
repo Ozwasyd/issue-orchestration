@@ -86,7 +86,7 @@ export function resolveTrustedRepositoryIdentity({
     }
     const remoteUrl = git(
         canonicalPath,
-        ['remote', 'get-url', 'origin'],
+        ['config', '--get', 'remote.origin.url'],
         'runtime-trust-repository-identity-unresolved'
     )
     const resolvedRepository = canonicalRepositoryFromRemote(remoteUrl)

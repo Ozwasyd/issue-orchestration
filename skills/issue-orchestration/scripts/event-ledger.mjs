@@ -26,6 +26,9 @@ import {
 import {
     validateLifecycleStageResult
 } from './lifecycle-stage-admission.mjs'
+import {
+    validateLifecycleAuthorityBinding
+} from './lifecycle-genesis-authority.mjs'
 
 const GENESIS = '0'.repeat(64)
 const EVENT_FIELDS = [
@@ -350,6 +353,21 @@ function validateLifecycleIntegrationEvent(event, node) {
         admission.toState !== event.toState ||
         stageResult.actorRole !== event.actorRole ||
         stageResult.attemptId !== event.attemptId ||
+        !event.lifecycleAuthorityBinding ||
+        event.lifecycleAuthorityBinding.bindingDigest !==
+            action.bindings.lifecycleAuthorityBindingDigest ||
+        event.lifecycleAuthorityBinding.startupAttestationDigest !==
+            action.bindings.startupAttestationDigest ||
+        event.lifecycleAuthorityBinding.runtimeInvocationId !==
+            action.bindings.runtimeInvocationId ||
+        event.lifecycleAuthorityBinding.runtimeSessionId !==
+            action.bindings.runtimeSessionId ||
+        event.lifecycleAuthorityBinding.rootAuthorityEpoch !==
+            action.bindings.rootAuthorityEpoch ||
+        event.lifecycleAuthorityBinding.runtimeTrustBindingDigest !==
+            action.bindings.runtimeTrustBindingDigest ||
+        event.lifecycleAuthorityBinding.repositoryBindingSetDigest !==
+            action.bindings.repositoryBindingSetDigest ||
         payload.implementationAttempts !==
             expectedImplementationAttempts ||
         payload.deliveryCommit !== expectedDeliveryCommit ||
@@ -2367,6 +2385,15 @@ function validateNodeLedgerHeader(header) {
         !/^[a-f0-9]{40}$/u.test(header.baseSha)) {
         fail('node-ledger-header-invalid')
     }
+    if (header.lifecycleAuthorityBinding !== null &&
+        header.lifecycleAuthorityBinding !== undefined) {
+        validateLifecycleAuthorityBinding(
+            header.lifecycleAuthorityBinding
+        )
+        if (header.lifecycleAuthorityBinding.runId !== header.runId) {
+            fail('node-ledger-authority-run-id-invalid')
+        }
+    }
     if (typeof header.headerDigest !== 'string') {
         fail('node-ledger-header-digest-invalid')
     }
@@ -2394,6 +2421,8 @@ export function sealNodeLedgerHeader(input = {}) {
         baseSha: input.baseSha,
         issueSnapshotFingerprint: input.issueSnapshotFingerprint,
         repositoryFingerprint: input.repositoryFingerprint,
+        lifecycleAuthorityBinding:
+            input.lifecycleAuthorityBinding ?? null,
         createdAt: input.createdAt
     }
     const header = { ...unsigned, headerDigest: digest(unsigned) }
@@ -2456,6 +2485,20 @@ function replayLedger(
         if (context.eventsById.has(event.eventId)) fail('event-id-duplicate')
         if (event.runId !== ledger.header.runId) fail('event-run-id')
         if (event.baseSha !== ledger.header.baseSha) fail('event-base-sha')
+        if (mode === 'active-node-v1' &&
+            ledger.header.lifecycleAuthorityBinding) {
+            validateLifecycleAuthorityBinding(
+                event.lifecycleAuthorityBinding
+            )
+            if (event.lifecycleAuthorityBinding.runId !==
+                    ledger.header.runId ||
+                (event.eventType === 'lifecycle.base-rebound' &&
+                    event.lifecycleAuthorityBinding.bindingDigest !==
+                        ledger.header.lifecycleAuthorityBinding
+                            .bindingDigest)) {
+                fail('event-authority-binding-invalid')
+            }
+        }
         if (mode === 'active-node-v1') {
             if (event.eventType.startsWith('group.')) {
                 fail('node-ledger-run-level-event')

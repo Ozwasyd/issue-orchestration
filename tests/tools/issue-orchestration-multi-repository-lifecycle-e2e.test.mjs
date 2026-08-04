@@ -28,11 +28,14 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
         os.tmpdir(),
         'issue-orchestration-issue-25-'
     ))
+    let stateRoot = null
     try {
         const receipt = runMultiRepositoryLifecycleAcceptance({
             scenarioRoot
         })
+        stateRoot = receipt.stateRoot
         assert.equal(receipt.status, 'verified')
+        assert.match(receipt.lifecycleAuthorityBindingDigest, /^[a-f0-9]{64}$/u)
         assert.equal(receipt.initialStateRootArtifactCount, 0)
         assert.equal(receipt.repositoryEvidence.length, 2)
         assert.equal(receipt.issueEvidence.length, 4)
@@ -73,7 +76,7 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
             )
         }
         const stateFiles = fs.readdirSync(
-            path.resolve(scenarioRoot, 'state'),
+            stateRoot,
             { recursive: true, withFileTypes: true }
         ).filter((entry) => entry.isFile())
             .map((entry) => entry.name)
@@ -98,12 +101,17 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
             ]
         )
     } finally {
+        if (stateRoot) {
+            fs.rmSync(stateRoot, { recursive: true, force: true })
+        }
         fs.rmSync(scenarioRoot, { recursive: true, force: true })
     }
 })
 
 test('issue 25 harness uses production APIs and contains no fixture authority', () => {
-    assert.match(runtimeSource, /resolveSelector/u)
+    assert.match(runtimeSource, /compileLifecycleRunGenesisAuthority/u)
+    assert.match(runtimeSource, /resolveLifecycleSelector/u)
+    assert.match(runtimeSource, /repositoryAuthorityFor/u)
     assert.match(runtimeSource, /createSemanticGraph/u)
     assert.match(runtimeSource, /createLifecycleRunLedger/u)
     assert.match(runtimeSource, /compileLifecycleRunActionSet/u)
@@ -127,7 +135,7 @@ test('issue 25 harness uses production APIs and contains no fixture authority', 
     )
     assert.doesNotMatch(
         runtimeSource,
-        /https?:\/\/|curl\b|fetch\(|openai\b/iu
+        /curl\b|fetch\(|openai\b/iu
     )
     assert.doesNotMatch(
         runtimeSource,

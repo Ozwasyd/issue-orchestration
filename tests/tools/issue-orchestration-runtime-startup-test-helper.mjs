@@ -120,15 +120,17 @@ export function runtimeStartupRecords({
 }
 
 export function takeoverContext({
+    runId = 'run-test-takeover',
     oldInvocationId = 'invocation-test-old-root',
+    oldRootSessionId = 'session-test-old-root',
+    oldRootAuthorityEpoch = 'root-authority-epoch-1',
+    oldRootStartupAttestationDigest =
+        startupTestDigest('old-startup'),
     newInvocationId = 'invocation-test-001',
     rootAuthorityEpoch = 'root-authority-epoch-2',
     expiresAt = '2026-08-03T01:10:00.000Z'
 } = {}) {
     const authority = currentRuntimeStartupAuthority()
-    const runId = 'run-test-takeover'
-    const oldRootSessionId = 'session-test-old-root'
-    const oldRootAuthorityEpoch = 'root-authority-epoch-1'
     const oldRootControlLeaseDigest =
         startupTestDigest('old-root-control-lease')
     const activeActorInventoryDigest =
@@ -180,8 +182,7 @@ export function takeoverContext({
         oldRootSessionId,
         oldRootAuthorityEpoch,
         oldRootControlLeaseDigest,
-        oldRootStartupAttestationDigest:
-            startupTestDigest('old-startup'),
+        oldRootStartupAttestationDigest,
         expectedNewRootPhase: 'recovery-takeover',
         expectedNewRootProfile: 'terra-medium',
         expectedNewInvocationClass: 'parent-invocation',
