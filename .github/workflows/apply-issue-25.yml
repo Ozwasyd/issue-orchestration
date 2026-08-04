@@ -1,9 +1,9 @@
 name: Apply issue 25 multi-repository lifecycle E2E
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/issue-24-lifecycle-compiler
+      - main
 
 permissions:
   contents: write
@@ -14,12 +14,14 @@ env:
 
 jobs:
   apply-and-verify:
+    if: github.event.pull_request.head.ref == 'agent/issue-24-lifecycle-compiler'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - name: Checkout branch
         uses: actions/checkout@v6
         with:
+          ref: agent/issue-24-lifecycle-compiler
           fetch-depth: 0
           persist-credentials: false
 
@@ -133,11 +135,12 @@ jobs:
           path.write_text(text)
           PY
 
-          rm -f .github/workflows/apply-issue-25.yml
+          rm -f .github/workflows/apply-issue-25.yml .github/issue-25-trigger
           git config user.name 'issue-orchestration automation'
           git config user.email 'issue-orchestration@example.invalid'
           git add -A
           test ! -e .github/workflows/apply-issue-25.yml
+          test ! -e .github/issue-25-trigger
           git diff --cached --check
           git commit -m 'feat: add real multi-repository lifecycle E2E'
           code_sha="$(git rev-parse HEAD)"
