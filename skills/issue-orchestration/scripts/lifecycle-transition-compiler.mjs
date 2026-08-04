@@ -13,6 +13,10 @@ import {
 import {
     selectWorkConservingCandidates
 } from './frontier-compiler.mjs'
+import {
+    repositoryAuthorityFor,
+    validateLifecycleAuthorityBinding
+} from './lifecycle-genesis-authority.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 
@@ -38,7 +42,8 @@ export const LIFECYCLE_ACTION_TYPES = Object.freeze([
 
 const ACTION_SET_INPUT_FIELDS = new Set([
     'schema', 'selectorReceipt', 'remoteSnapshotReceipt', 'semanticGraph',
-    'aggregateProjection', 'installedPolicy', 'runtimeCapabilityBinding'
+    'aggregateProjection', 'installedPolicy', 'runtimeCapabilityBinding',
+    'lifecycleAuthority'
 ])
 
 const FORBIDDEN_CALLER_FIELDS = [
@@ -170,6 +175,10 @@ function validateInputs(input) {
         input.runtimeCapabilityBinding,
         'lifecycle-capability-invalid'
     )
+    const authority = requireObject(
+        input.lifecycleAuthority,
+        'lifecycle-authority-invalid'
+    )
     try {
         verifySelectorReceipt(selector)
     } catch (error) {
@@ -217,7 +226,71 @@ function validateInputs(input) {
         capability.bindingDigest,
         'lifecycle-capability-digest-invalid'
     )
-    return { selector, remote, aggregate, policy, capability }
+    if (authority.schema !==
+            'issue-orchestration.lifecycle-run-authority.v1' ||
+        authority.status !== 'verified' ||
+        authority.producerAuthority !==
+            'machine-lifecycle-genesis-authority' ||
+        authority.authorityDigest !==
+            unsignedDigest(authority, 'authorityDigest')) {
+        fail('lifecycle-authority-invalid')
+    }
+    try {
+        validateLifecycleAuthorityBinding(authority.binding)
+    } catch (error) {
+        fail('lifecycle-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    if (authority.runId !== aggregate.runId ||
+        authority.binding.runId !== aggregate.runId ||
+        aggregate.lifecycleAuthorityBinding?.bindingDigest !==
+            authority.binding.bindingDigest ||
+        authority.runtimeCapabilityBinding.bindingDigest !==
+            capability.bindingDigest ||
+        authority.binding.runtimeCapabilityBindingDigest !==
+            capability.bindingDigest ||
+        selector.lifecycleAuthorityBindingDigest !==
+            authority.binding.bindingDigest ||
+        selector.startupAttestationDigest !==
+            authority.binding.startupAttestationDigest ||
+        selector.runtimeInvocationId !==
+            authority.binding.runtimeInvocationId ||
+        selector.runtimeSessionId !==
+            authority.binding.runtimeSessionId ||
+        selector.rootAuthorityEpoch !==
+            authority.binding.rootAuthorityEpoch ||
+        selector.runtimeTrustBindingDigest !==
+            authority.binding.runtimeTrustBindingDigest ||
+        selector.repositoryBindingSetDigest !==
+            authority.binding.repositoryBindingSetDigest) {
+        fail('lifecycle-authority-binding-stale')
+    }
+    for (const repository of input.semanticGraph.repositories) {
+        let repositoryAuthority
+        try {
+            repositoryAuthority = repositoryAuthorityFor(
+                authority,
+                repository.repository
+            )
+        } catch (error) {
+            fail('lifecycle-authority-repository-invalid', {
+                cause: error?.code ?? error?.message
+            })
+        }
+        if (repository.bindingDigest !==
+                repositoryAuthority.bindingDigest) {
+            fail('lifecycle-authority-repository-binding-stale')
+        }
+    }
+    return {
+        selector,
+        remote,
+        aggregate,
+        policy,
+        capability,
+        authority
+    }
 }
 
 function stateAction(node, graphNode) {
@@ -268,6 +341,7 @@ function stateAction(node, graphNode) {
 function actionBindings({
     actionType,
     aggregate,
+    authority,
     capability,
     graph,
     graphNode,
@@ -293,6 +367,27 @@ function actionBindings({
         priorLedgerHeadDigest: node.ledgerHeadDigest,
         policyDigest: policy.policyDigest,
         runtimeCapabilityBindingDigest: capability.bindingDigest,
+        lifecycleAuthorityBindingDigest:
+            authority.binding.bindingDigest,
+        startupAttestationDigest:
+            authority.binding.startupAttestationDigest,
+        runtimeInvocationId:
+            authority.binding.runtimeInvocationId,
+        runtimeSessionId:
+            authority.binding.runtimeSessionId,
+        rootAuthorityEpoch:
+            authority.binding.rootAuthorityEpoch,
+        runtimeTrustBindingDigest:
+            authority.binding.runtimeTrustBindingDigest,
+        repositoryIdentitySetDigest:
+            authority.binding.repositoryIdentitySetDigest,
+        repositoryBindingSetDigest:
+            authority.binding.repositoryBindingSetDigest,
+        repositoryBindingDigest:
+            graphNode.repositoryBindingDigest,
+        packageDigest: authority.binding.packageDigest,
+        manifestDigest: authority.binding.manifestDigest,
+        policySetDigest: authority.binding.policySetDigest,
         receiptDigests: digests
     }
     for (const [field, code] of [
@@ -304,7 +399,16 @@ function actionBindings({
         ['nodeProjectionDigest', 'lifecycle-node-projection-binding-missing'],
         ['priorLedgerHeadDigest', 'lifecycle-ledger-head-binding-missing'],
         ['policyDigest', 'lifecycle-policy-binding-missing'],
-        ['runtimeCapabilityBindingDigest', 'lifecycle-capability-binding-missing']
+        ['runtimeCapabilityBindingDigest', 'lifecycle-capability-binding-missing'],
+        ['lifecycleAuthorityBindingDigest', 'lifecycle-authority-binding-missing'],
+        ['startupAttestationDigest', 'lifecycle-startup-binding-missing'],
+        ['runtimeTrustBindingDigest', 'lifecycle-trust-binding-missing'],
+        ['repositoryIdentitySetDigest', 'lifecycle-repository-identity-binding-missing'],
+        ['repositoryBindingSetDigest', 'lifecycle-repository-set-binding-missing'],
+        ['repositoryBindingDigest', 'lifecycle-repository-binding-missing'],
+        ['packageDigest', 'lifecycle-package-binding-missing'],
+        ['manifestDigest', 'lifecycle-manifest-binding-missing'],
+        ['policySetDigest', 'lifecycle-policy-set-binding-missing']
     ]) {
         const value = bindings[field]
         const valid = field === 'baseSha'
@@ -315,6 +419,19 @@ function actionBindings({
     if (!Number.isInteger(bindings.issueNumber) ||
         !Number.isInteger(bindings.nodeEpoch) || bindings.nodeEpoch < 1) {
         fail('lifecycle-node-identity-invalid', { nodeId: bindings.nodeId })
+    }
+    for (const field of [
+        'runtimeInvocationId',
+        'runtimeSessionId',
+        'rootAuthorityEpoch'
+    ]) {
+        if (typeof bindings[field] !== 'string' ||
+            bindings[field].length === 0) {
+            fail('lifecycle-authority-binding-missing', {
+                nodeId: bindings.nodeId,
+                field
+            })
+        }
     }
     return bindings
 }
@@ -354,6 +471,7 @@ function groupReady(groupId, members, aggregate, graphById) {
 
 function makeGroupAction({
     aggregate,
+    authority,
     capability,
     graph,
     graphById,
@@ -367,6 +485,7 @@ function makeGroupAction({
         return actionBindings({
             actionType: 'deliver-acceptance-group',
             aggregate,
+            authority,
             capability,
             graph,
             graphNode,
@@ -389,6 +508,25 @@ function makeGroupAction({
             aggregateProjectionDigest: aggregate.aggregateProjectionDigest,
             policyDigest: policy.policyDigest,
             runtimeCapabilityBindingDigest: capability.bindingDigest,
+            lifecycleAuthorityBindingDigest:
+                authority.binding.bindingDigest,
+            startupAttestationDigest:
+                authority.binding.startupAttestationDigest,
+            runtimeInvocationId:
+                authority.binding.runtimeInvocationId,
+            runtimeSessionId:
+                authority.binding.runtimeSessionId,
+            rootAuthorityEpoch:
+                authority.binding.rootAuthorityEpoch,
+            runtimeTrustBindingDigest:
+                authority.binding.runtimeTrustBindingDigest,
+            repositoryIdentitySetDigest:
+                authority.binding.repositoryIdentitySetDigest,
+            repositoryBindingSetDigest:
+                authority.binding.repositoryBindingSetDigest,
+            packageDigest: authority.binding.packageDigest,
+            manifestDigest: authority.binding.manifestDigest,
+            policySetDigest: authority.binding.policySetDigest,
             memberBindings: nodes
         }
     }
@@ -422,8 +560,9 @@ export function compileLifecycleRemoteSnapshotReceipt(selectorReceipt) {
 }
 
 export function compileLifecycleActionSet(input = {}) {
-    const { selector, remote, aggregate, policy, capability } =
-        validateInputs(input)
+    const {
+        selector, remote, aggregate, policy, capability, authority
+    } = validateInputs(input)
     const graph = input.semanticGraph
     if (selector.receiptDigest !== graph.selectorReceiptDigest ||
         remote.receiptDigest !== graph.remoteSnapshotDigest ||
@@ -446,12 +585,32 @@ export function compileLifecycleActionSet(input = {}) {
                 aggregateProjectionDigest:
                     aggregate.aggregateProjectionDigest,
                 policyDigest: policy.policyDigest,
-                runtimeCapabilityBindingDigest: capability.bindingDigest
+                runtimeCapabilityBindingDigest: capability.bindingDigest,
+                lifecycleAuthorityBindingDigest:
+                    authority.binding.bindingDigest,
+                startupAttestationDigest:
+                    authority.binding.startupAttestationDigest,
+                runtimeInvocationId:
+                    authority.binding.runtimeInvocationId,
+                runtimeSessionId:
+                    authority.binding.runtimeSessionId,
+                rootAuthorityEpoch:
+                    authority.binding.rootAuthorityEpoch,
+                runtimeTrustBindingDigest:
+                    authority.binding.runtimeTrustBindingDigest,
+                repositoryIdentitySetDigest:
+                    authority.binding.repositoryIdentitySetDigest,
+                repositoryBindingSetDigest:
+                    authority.binding.repositoryBindingSetDigest,
+                packageDigest: authority.binding.packageDigest,
+                manifestDigest: authority.binding.manifestDigest,
+                policySetDigest: authority.binding.policySetDigest
             }
         }
         action.actionDigest = digest(action)
         return sealActionSet({
             aggregate,
+            authority,
             capability,
             graph,
             policy,
@@ -491,7 +650,7 @@ export function compileLifecycleActionSet(input = {}) {
             const members = aggregate.acceptanceGroups?.[groupId] ?? [nodeId]
             if (!groupReady(groupId, members, aggregate, graphById)) continue
             groupActions.push(makeGroupAction({
-                aggregate, capability, graph, graphById,
+                aggregate, authority, capability, graph, graphById,
                 groupId, members, policy
             }))
             deliveredGroups.add(groupId)
@@ -500,6 +659,7 @@ export function compileLifecycleActionSet(input = {}) {
         const action = makeAction({
             actionType,
             aggregate,
+            authority,
             capability,
             graph,
             graphNode,
@@ -554,7 +714,26 @@ export function compileLifecycleActionSet(input = {}) {
                 aggregateProjectionDigest:
                     aggregate.aggregateProjectionDigest,
                 policyDigest: policy.policyDigest,
-                runtimeCapabilityBindingDigest: capability.bindingDigest
+                runtimeCapabilityBindingDigest: capability.bindingDigest,
+                lifecycleAuthorityBindingDigest:
+                    authority.binding.bindingDigest,
+                startupAttestationDigest:
+                    authority.binding.startupAttestationDigest,
+                runtimeInvocationId:
+                    authority.binding.runtimeInvocationId,
+                runtimeSessionId:
+                    authority.binding.runtimeSessionId,
+                rootAuthorityEpoch:
+                    authority.binding.rootAuthorityEpoch,
+                runtimeTrustBindingDigest:
+                    authority.binding.runtimeTrustBindingDigest,
+                repositoryIdentitySetDigest:
+                    authority.binding.repositoryIdentitySetDigest,
+                repositoryBindingSetDigest:
+                    authority.binding.repositoryBindingSetDigest,
+                packageDigest: authority.binding.packageDigest,
+                manifestDigest: authority.binding.manifestDigest,
+                policySetDigest: authority.binding.policySetDigest
             }
         }
         idle.actionDigest = digest(idle)
@@ -562,6 +741,7 @@ export function compileLifecycleActionSet(input = {}) {
     }
     return sealActionSet({
         aggregate,
+        authority,
         capability,
         graph,
         policy,
@@ -572,6 +752,7 @@ export function compileLifecycleActionSet(input = {}) {
 
 function sealActionSet({
     aggregate,
+    authority,
     capability,
     graph,
     policy,
@@ -587,6 +768,25 @@ function sealActionSet({
         aggregateProjectionDigest: aggregate.aggregateProjectionDigest,
         policyDigest: policy.policyDigest,
         runtimeCapabilityBindingDigest: capability.bindingDigest,
+        lifecycleAuthorityBindingDigest:
+            authority.binding.bindingDigest,
+        startupAttestationDigest:
+            authority.binding.startupAttestationDigest,
+        runtimeInvocationId:
+            authority.binding.runtimeInvocationId,
+        runtimeSessionId:
+            authority.binding.runtimeSessionId,
+        rootAuthorityEpoch:
+            authority.binding.rootAuthorityEpoch,
+        runtimeTrustBindingDigest:
+            authority.binding.runtimeTrustBindingDigest,
+        repositoryIdentitySetDigest:
+            authority.binding.repositoryIdentitySetDigest,
+        repositoryBindingSetDigest:
+            authority.binding.repositoryBindingSetDigest,
+        packageDigest: authority.binding.packageDigest,
+        manifestDigest: authority.binding.manifestDigest,
+        policySetDigest: authority.binding.policySetDigest,
         availableSlots,
         quiescent: actions.length === 1 && actions[0].type === 'idle',
         actions
@@ -603,6 +803,29 @@ function requireString(value, code) {
 function validateTopBinding(bindings, actionSet, field, code) {
     requireDigest(bindings[field], code)
     if (bindings[field] !== actionSet[field]) fail(code)
+}
+
+function validateAuthorityActionBindings(bindings, actionSet) {
+    for (const [field, code] of [
+        ['lifecycleAuthorityBindingDigest', 'lifecycle-action-authority-binding-invalid'],
+        ['startupAttestationDigest', 'lifecycle-action-startup-binding-invalid'],
+        ['runtimeTrustBindingDigest', 'lifecycle-action-trust-binding-invalid'],
+        ['repositoryIdentitySetDigest', 'lifecycle-action-repository-identity-invalid'],
+        ['repositoryBindingSetDigest', 'lifecycle-action-repository-set-invalid'],
+        ['packageDigest', 'lifecycle-action-package-binding-invalid'],
+        ['manifestDigest', 'lifecycle-action-manifest-binding-invalid'],
+        ['policySetDigest', 'lifecycle-action-policy-set-binding-invalid']
+    ]) validateTopBinding(bindings, actionSet, field, code)
+    for (const field of [
+        'runtimeInvocationId',
+        'runtimeSessionId',
+        'rootAuthorityEpoch'
+    ]) {
+        requireString(bindings[field], 'lifecycle-action-authority-identity-invalid')
+        if (bindings[field] !== actionSet[field]) {
+            fail('lifecycle-action-authority-identity-invalid')
+        }
+    }
 }
 
 function validateNodeActionBindings(action, actionSet, bindings) {
@@ -627,6 +850,11 @@ function validateNodeActionBindings(action, actionSet, bindings) {
         ['policyDigest', 'lifecycle-action-policy-binding-invalid'],
         ['runtimeCapabilityBindingDigest', 'lifecycle-action-capability-binding-invalid']
     ]) validateTopBinding(bindings, actionSet, field, code)
+    validateAuthorityActionBindings(bindings, actionSet)
+    requireDigest(
+        bindings.repositoryBindingDigest,
+        'lifecycle-action-repository-binding-invalid'
+    )
     requireDigest(
         bindings.nodeProjectionDigest,
         'lifecycle-action-node-projection-invalid'
@@ -668,6 +896,7 @@ function validateActionBindings(action, actionSet) {
             ['policyDigest', 'lifecycle-action-policy-binding-invalid'],
             ['runtimeCapabilityBindingDigest', 'lifecycle-action-capability-binding-invalid']
         ]) validateTopBinding(bindings, actionSet, field, code)
+        validateAuthorityActionBindings(bindings, actionSet)
         return
     }
     if (action.type === 'idle') {
@@ -684,6 +913,7 @@ function validateActionBindings(action, actionSet) {
             ['policyDigest', 'lifecycle-action-policy-binding-invalid'],
             ['runtimeCapabilityBindingDigest', 'lifecycle-action-capability-binding-invalid']
         ]) validateTopBinding(bindings, actionSet, field, code)
+        validateAuthorityActionBindings(bindings, actionSet)
         return
     }
     if (action.type === 'deliver-acceptance-group') {
@@ -704,6 +934,7 @@ function validateActionBindings(action, actionSet) {
             ['policyDigest', 'lifecycle-action-policy-binding-invalid'],
             ['runtimeCapabilityBindingDigest', 'lifecycle-action-capability-binding-invalid']
         ]) validateTopBinding(bindings, actionSet, field, code)
+        validateAuthorityActionBindings(bindings, actionSet)
         if (!Array.isArray(bindings.memberBindings) ||
             bindings.memberBindings.length === 0) {
             fail('lifecycle-group-members-invalid')
@@ -752,8 +983,25 @@ export function validateLifecycleActionSet(actionSet) {
     for (const field of [
         'selectorReceiptDigest', 'remoteSnapshotDigest',
         'semanticGraphDigest', 'aggregateProjectionDigest', 'policyDigest',
-        'runtimeCapabilityBindingDigest', 'actionSetDigest'
+        'runtimeCapabilityBindingDigest',
+        'lifecycleAuthorityBindingDigest',
+        'startupAttestationDigest',
+        'runtimeTrustBindingDigest',
+        'repositoryIdentitySetDigest',
+        'repositoryBindingSetDigest',
+        'packageDigest',
+        'manifestDigest',
+        'policySetDigest',
+        'actionSetDigest'
     ]) requireDigest(actionSet[field], 'lifecycle-action-set-digest-invalid')
+    for (const field of [
+        'runtimeInvocationId',
+        'runtimeSessionId',
+        'rootAuthorityEpoch'
+    ]) requireString(
+        actionSet[field],
+        'lifecycle-action-set-authority-identity-invalid'
+    )
     if (unsignedDigest(actionSet, 'actionSetDigest') !==
         actionSet.actionSetDigest) {
         fail('lifecycle-action-set-digest-mismatch')

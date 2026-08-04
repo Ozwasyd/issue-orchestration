@@ -8,6 +8,8 @@
     "schema",
     "status",
     "runId",
+    "stateRoot",
+    "lifecycleAuthorityBindingDigest",
     "initialStateRootArtifactCount",
     "repositoryEvidence",
     "issueEvidence",
@@ -41,6 +43,8 @@
     },
     "status": { "const": "verified" },
     "runId": { "const": "multi-repository-lifecycle-e2e" },
+    "stateRoot": { "type": "string", "minLength": 1 },
+    "lifecycleAuthorityBindingDigest": { "$ref": "#/$defs/digest" },
     "initialStateRootArtifactCount": { "const": 0 },
     "repositoryEvidence": {
       "type": "array",

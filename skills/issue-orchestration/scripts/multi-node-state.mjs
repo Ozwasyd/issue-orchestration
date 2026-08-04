@@ -5,6 +5,9 @@ import {
     replayEventLedgerSync,
     transitionTable
 } from './event-ledger.mjs'
+import {
+    validateLifecycleAuthorityBinding
+} from './lifecycle-genesis-authority.mjs'
 
 const GENESIS = '0'.repeat(64)
 const SHA256 = /^[a-f0-9]{64}$/u
@@ -12,6 +15,7 @@ const GIT_SHA = /^[a-f0-9]{40}$/u
 
 export const CONTROL_EVENT_TYPES = Object.freeze([
     'scope.refreshed',
+    'runtime-authority.rebound',
     'remote-snapshot.refreshed',
     'node.registered',
     'node.rebound',
@@ -182,13 +186,27 @@ export function readCanonicalNodeLedger({
     return readLedger(location.ledgerPath)
 }
 
-export function sealControlLedgerHeader({ runId, createdAt } = {}) {
+export function sealControlLedgerHeader({
+    runId,
+    createdAt,
+    lifecycleAuthorityBinding = null
+} = {}) {
     requireString(runId, 'control-ledger-run-id-invalid')
     requireString(createdAt, 'control-ledger-created-at-invalid')
+    if (lifecycleAuthorityBinding !== null) {
+        validateLifecycleAuthorityBinding(lifecycleAuthorityBinding)
+        if (lifecycleAuthorityBinding.runId !== runId) {
+            fail('control-ledger-authority-run-id-invalid')
+        }
+    }
     const header = {
         schema: 'issue-orchestration.control-ledger.v1',
         runId,
-        createdAt
+        createdAt,
+        lifecycleAuthorityBinding:
+            lifecycleAuthorityBinding === null
+                ? null
+                : normalize(lifecycleAuthorityBinding)
     }
     return Object.freeze({
         ...header,
@@ -210,6 +228,15 @@ function validateControlHeader(header) {
     }
     requireString(header.runId, 'control-ledger-run-id-invalid')
     requireString(header.createdAt, 'control-ledger-created-at-invalid')
+    if (header.lifecycleAuthorityBinding !== null &&
+        header.lifecycleAuthorityBinding !== undefined) {
+        validateLifecycleAuthorityBinding(
+            header.lifecycleAuthorityBinding
+        )
+        if (header.lifecycleAuthorityBinding.runId !== header.runId) {
+            fail('control-ledger-authority-run-id-invalid')
+        }
+    }
     requireDigest(header.headerDigest, 'control-ledger-header-digest-invalid')
     if (unsignedDigest(header, 'headerDigest') !== header.headerDigest) {
         fail('control-ledger-header-digest-mismatch')
@@ -234,7 +261,8 @@ export function compileControlEvent({
     eventType,
     payload = {},
     actorRole = 'root-scheduler',
-    createdAt
+    createdAt,
+    lifecycleAuthorityBinding = null
 } = {}) {
     validateControlHeader(ledger?.header)
     if (!Array.isArray(ledger.events)) fail('control-ledger-events-invalid')
@@ -242,12 +270,24 @@ export function compileControlEvent({
     if (actorRole !== 'root-scheduler') fail('control-ledger-writer-role')
     requireString(createdAt, 'control-event-created-at-invalid')
     requireObject(payload, 'control-event-payload-invalid')
+    const authorityBinding = lifecycleAuthorityBinding ??
+        ledger.header.lifecycleAuthorityBinding ?? null
+    if (authorityBinding !== null) {
+        validateLifecycleAuthorityBinding(authorityBinding)
+        if (authorityBinding.runId !== ledger.header.runId) {
+            fail('control-event-authority-run-id-invalid')
+        }
+    }
     const event = {
         schema: 'issue-orchestration.control-event.v1',
         sequence: ledger.events.length + 1,
         runId: ledger.header.runId,
         eventType,
         actorRole,
+        lifecycleAuthorityBinding:
+            authorityBinding === null
+                ? null
+                : normalize(authorityBinding),
         payload: normalize(payload),
         payloadDigest: stateDigest(payload),
         createdAt,
@@ -295,6 +335,11 @@ function registrationFromPayload(payload) {
         payload.issueSnapshotFingerprint ?? null
     const repositoryFingerprint =
         payload.repositoryFingerprint ?? null
+    const lifecycleAuthorityBinding =
+        payload.lifecycleAuthorityBinding ?? null
+    if (lifecycleAuthorityBinding !== null) {
+        validateLifecycleAuthorityBinding(lifecycleAuthorityBinding)
+    }
     if (issueSnapshotFingerprint !== null) {
         requireDigest(
             issueSnapshotFingerprint,
@@ -319,6 +364,7 @@ function registrationFromPayload(payload) {
         repositoryBindingDigest,
         issueSnapshotFingerprint,
         repositoryFingerprint,
+        lifecycleAuthorityBinding,
         dependencyKeys: sortedUnique(
             payload.dependencyKeys ?? [],
             'control-node-dependencies-invalid'
@@ -341,6 +387,8 @@ export function replayControlLedger(ledger) {
     const projection = {
         schema: 'issue-orchestration.run-control-projection.v1',
         runId: header.runId,
+        lifecycleAuthorityBinding:
+            header.lifecycleAuthorityBinding ?? null,
         selectorReceiptDigest: null,
         remoteSnapshotDigest: null,
         nodes: {},
@@ -379,7 +427,58 @@ export function replayControlLedger(ledger) {
         if (unsignedDigest(event, 'eventDigest') !== event.eventDigest) {
             fail('control-event-digest')
         }
+        const eventAuthority = event.eventType ===
+            'runtime-authority.rebound'
+            ? event.payload?.lifecycleAuthority?.binding
+            : projection.lifecycleAuthorityBinding
+        if (eventAuthority !== null && eventAuthority !== undefined) {
+            validateLifecycleAuthorityBinding(eventAuthority)
+            if (!event.lifecycleAuthorityBinding ||
+                event.lifecycleAuthorityBinding.bindingDigest !==
+                    eventAuthority.bindingDigest ||
+                event.lifecycleAuthorityBinding.runId !== header.runId) {
+                fail('control-event-authority-binding-invalid')
+            }
+        }
         switch (event.eventType) {
+            case 'runtime-authority.rebound': {
+                const priorBinding = projection.lifecycleAuthorityBinding
+                const nextAuthority = event.payload?.lifecycleAuthority
+                const nextBinding = nextAuthority?.binding
+                if (!priorBinding ||
+                    event.payload?.priorLifecycleAuthorityBindingDigest !==
+                        priorBinding.bindingDigest ||
+                    nextAuthority?.schema !==
+                        'issue-orchestration.lifecycle-run-authority.v1' ||
+                    nextAuthority.status !== 'verified' ||
+                    nextAuthority.authorityKind !== 'takeover' ||
+                    nextAuthority.runId !== header.runId ||
+                    nextAuthority.authorityDigest !==
+                        unsignedDigest(
+                            nextAuthority,
+                            'authorityDigest'
+                        )) {
+                    fail('control-authority-rebound-invalid')
+                }
+                validateLifecycleAuthorityBinding(nextBinding)
+                if (nextBinding.authorityKind !== 'takeover' ||
+                    nextBinding.rootPhase !== 'recovery-takeover' ||
+                    nextBinding.runtimeInvocationId ===
+                        priorBinding.runtimeInvocationId ||
+                    nextBinding.rootAuthorityEpoch ===
+                        priorBinding.rootAuthorityEpoch ||
+                    !SHA256.test(
+                        nextBinding.recoveryAuthorizationDigest ?? ''
+                    ) ||
+                    !SHA256.test(nextBinding.takeoverHandoffDigest ?? '') ||
+                    !SHA256.test(
+                        nextBinding.oldRootFencingReceiptDigest ?? ''
+                    )) {
+                    fail('control-authority-rebound-invalid')
+                }
+                projection.lifecycleAuthorityBinding = nextBinding
+                break
+            }
             case 'scope.refreshed':
                 requireDigest(
                     event.payload.selectorReceiptDigest,
@@ -398,6 +497,12 @@ export function replayControlLedger(ledger) {
                 break
             case 'node.registered': {
                 const registration = registrationFromPayload(event.payload)
+                if (projection.lifecycleAuthorityBinding &&
+                    (!registration.lifecycleAuthorityBinding ||
+                    registration.lifecycleAuthorityBinding.bindingDigest !==
+                        projection.lifecycleAuthorityBinding.bindingDigest)) {
+                    fail('control-node-authority-binding-invalid')
+                }
                 if (projection.nodes[registration.nodeId]) {
                     fail('control-node-duplicate')
                 }
@@ -431,6 +536,12 @@ export function replayControlLedger(ledger) {
                 const registration = registrationFromPayload(
                     event.payload
                 )
+                if (projection.lifecycleAuthorityBinding &&
+                    (!registration.lifecycleAuthorityBinding ||
+                    registration.lifecycleAuthorityBinding.bindingDigest !==
+                        projection.lifecycleAuthorityBinding.bindingDigest)) {
+                    fail('control-node-authority-binding-invalid')
+                }
                 if (registration.nodeEpoch !== prior.nodeEpoch + 1) {
                     fail('control-node-epoch-not-monotonic')
                 }
@@ -755,6 +866,8 @@ function replayRegisteredNodes({ stateRoot, controlProjection, nodeLedgers }) {
     const index = {
         schema: 'issue-orchestration.node-index.v1',
         runId: controlProjection.runId,
+        lifecycleAuthorityBinding:
+            controlProjection.lifecycleAuthorityBinding,
         controlProjectionDigest:
             controlProjection.controlProjectionDigest,
         nodes: entries
@@ -874,6 +987,8 @@ export function projectAggregateRun({
     const projection = {
         schema: 'issue-orchestration.aggregate-runtime-projection.v1',
         runId: controlProjection.runId,
+        lifecycleAuthorityBinding:
+            controlProjection.lifecycleAuthorityBinding,
         controlProjectionDigest:
             controlProjection.controlProjectionDigest,
         nodeIndexDigest: index.nodeIndexDigest,

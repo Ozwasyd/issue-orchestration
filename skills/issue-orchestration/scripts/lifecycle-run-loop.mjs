@@ -35,12 +35,21 @@ import {
 import {
     validateLifecycleStageResult
 } from './lifecycle-stage-admission.mjs'
+import {
+    compileLifecycleRunTakeoverAuthority,
+    lifecycleAuthorityBinding,
+    rebindLifecycleSelectorAuthority,
+    repositoryAuthorityFor,
+    validateLifecycleRunAuthority
+} from './lifecycle-genesis-authority.mjs'
 
 const HANDLE_SCHEMA = 'issue-orchestration.lifecycle-run-handle.v1'
 const GENESIS_SCHEMA = 'issue-orchestration.lifecycle-run-genesis.v1'
 const GENESIS = '0'.repeat(64)
 const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
+const AUTHORITY_CONTEXT = Symbol('lifecycle-authority-context')
+const CONTROL_FACTS_CACHE = Symbol('lifecycle-control-facts-cache')
 
 export class LifecycleRunLoopError extends Error {
     constructor(code, message = code, details = {}) {
@@ -132,15 +141,69 @@ function validateGenesis(genesis) {
             genesis.semanticGraph.policyDigest) {
         fail('lifecycle-run-policy-invalid')
     }
+    const authority = genesis.lifecycleAuthority
+    if (authority?.schema !==
+            'issue-orchestration.lifecycle-run-authority.v1' ||
+        authority.status !== 'verified' ||
+        authority.runId !== genesis.runId ||
+        authority.authorityKind !== 'genesis' ||
+        authority.authorityDigest !==
+            unsignedDigest(authority, 'authorityDigest')) {
+        fail('lifecycle-run-authority-invalid')
+    }
+    try {
+        lifecycleAuthorityBinding(authority)
+    } catch (error) {
+        fail('lifecycle-run-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    if (genesis.selectorReceipt.lifecycleAuthorityBindingDigest !==
+            authority.binding.bindingDigest ||
+        genesis.selectorReceipt.startupAttestationDigest !==
+            authority.binding.startupAttestationDigest ||
+        genesis.selectorReceipt.runtimeInvocationId !==
+            authority.binding.runtimeInvocationId ||
+        genesis.selectorReceipt.runtimeSessionId !==
+            authority.binding.runtimeSessionId ||
+        genesis.selectorReceipt.rootAuthorityEpoch !==
+            authority.binding.rootAuthorityEpoch ||
+        genesis.selectorReceipt.runtimeTrustBindingDigest !==
+            authority.binding.runtimeTrustBindingDigest ||
+        genesis.selectorReceipt.repositoryBindingSetDigest !==
+            authority.binding.repositoryBindingSetDigest) {
+        fail('lifecycle-run-selector-authority-stale')
+    }
     if (genesis.runtimeCapabilityBinding?.schema !==
             'issue-orchestration.runtime-capability-binding.v1' ||
-        genesis.runtimeCapabilityBinding.status !== 'verified') {
+        genesis.runtimeCapabilityBinding.status !== 'verified' ||
+        genesis.runtimeCapabilityBinding.bindingDigest !==
+            authority.runtimeCapabilityBinding.bindingDigest ||
+        genesis.runtimeCapabilityBinding.bindingDigest !==
+            authority.binding.runtimeCapabilityBindingDigest) {
         fail('lifecycle-run-capability-invalid')
     }
     requireDigest(
         genesis.runtimeCapabilityBinding.bindingDigest,
         'lifecycle-run-capability-invalid'
     )
+    for (const repository of genesis.semanticGraph.repositories) {
+        let repositoryAuthority
+        try {
+            repositoryAuthority = repositoryAuthorityFor(
+                authority,
+                repository.repository
+            )
+        } catch (error) {
+            fail('lifecycle-run-repository-authority-invalid', {
+                cause: error?.code ?? error?.message
+            })
+        }
+        if (repository.bindingDigest !==
+                repositoryAuthority.bindingDigest) {
+            fail('lifecycle-run-repository-authority-stale')
+        }
+    }
     requireDigest(
         genesis.genesisDigest,
         'lifecycle-run-genesis-digest-invalid'
@@ -152,14 +215,17 @@ function validateGenesis(genesis) {
     return genesis
 }
 
-function resolveAuthority(value) {
+function resolveAuthorityLocation(value) {
     const authority = value?.ledger ?? value
     requireObject(authority, 'lifecycle-run-handle-required')
     if (authority.schema !== HANDLE_SCHEMA) {
         if (authority.stateRoot && authority.runId) {
             return {
                 stateRoot: path.resolve(authority.stateRoot),
-                runId: authority.runId
+                runId: requireText(
+                    authority.runId,
+                    'lifecycle-run-id-required'
+                )
             }
         }
         fail('lifecycle-run-handle-invalid')
@@ -177,6 +243,30 @@ function resolveAuthority(value) {
     }
 }
 
+function resolveAuthority(value, startup = null) {
+    const candidate = value?.ledger ?? value
+    const currentStartup = startup ?? candidate?.startup ?? null
+    if (!currentStartup) {
+        fail('lifecycle-run-current-startup-required')
+    }
+    if (candidate?.[AUTHORITY_CONTEXT] === true &&
+        candidate.startup === currentStartup) {
+        return candidate
+    }
+    const authority = {
+        ...resolveAuthorityLocation(value),
+        startup: currentStartup
+    }
+    Object.defineProperty(authority, AUTHORITY_CONTEXT, {
+        value: true
+    })
+    return authority
+}
+
+function clearControlFactsCache(authority) {
+    delete authority[CONTROL_FACTS_CACHE]
+}
+
 function genesisFromControlLedger(controlLedger) {
     const event = controlLedger.events.find(
         ({ eventType, payload }) =>
@@ -188,6 +278,32 @@ function genesisFromControlLedger(controlLedger) {
         fail('lifecycle-run-genesis-run-id-mismatch')
     }
     return genesis
+}
+
+function currentLifecycleAuthorityFromControlLedger(
+    controlLedger,
+    genesis,
+    authority
+) {
+    const event = [...controlLedger.events].reverse().find(
+        ({ eventType, payload }) =>
+            eventType === 'runtime-authority.rebound' &&
+            payload?.lifecycleAuthority
+    )
+    const current = event?.payload?.lifecycleAuthority ??
+        genesis.lifecycleAuthority
+    try {
+        validateLifecycleRunAuthority(current, {
+            startup: authority.startup,
+            expectedRunId: authority.runId,
+            expectedStateRoot: authority.stateRoot
+        })
+    } catch (error) {
+        fail('lifecycle-run-current-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    return current
 }
 
 function currentSelectorFromControlLedger(controlLedger, genesis) {
@@ -217,7 +333,12 @@ function currentRemoteFromControlLedger(controlLedger, selector) {
     return expected
 }
 
-function makeHandle({ stateRoot, runId, recovered = null }) {
+function makeHandle({
+    stateRoot,
+    runId,
+    recovered = null,
+    startup = null
+}) {
     const location = canonicalRunStateLocation({ stateRoot, runId })
     const state = recovered ?? recoverAggregateRunState({
         stateRoot: location.stateRoot,
@@ -233,7 +354,10 @@ function makeHandle({ stateRoot, runId, recovered = null }) {
             state.controlProjection.lastEventDigest,
         nodeIndexDigest: state.nodeIndex.nodeIndexDigest,
         aggregateProjectionDigest:
-            state.projection.aggregateProjectionDigest
+            state.projection.aggregateProjectionDigest,
+        lifecycleAuthorityBindingDigest:
+            state.controlProjection.lifecycleAuthorityBinding
+                ?.bindingDigest ?? null
     }
     handle.handleDigest = digest(handle)
     return Object.freeze(handle)
@@ -252,7 +376,8 @@ function nodeRegistration({
     graphNode,
     nodeEpoch,
     repository,
-    selectorReceipt
+    selectorReceipt,
+    lifecycleAuthority
 }) {
     const remoteMemberDigest = selectorReceipt.remoteFactDigests[
         graphNode.id
@@ -273,6 +398,8 @@ function nodeRegistration({
         repositoryBindingDigest: repository.bindingDigest,
         issueSnapshotFingerprint: remoteMemberDigest,
         repositoryFingerprint: repository.bindingDigest,
+        lifecycleAuthorityBinding:
+            clone(lifecycleAuthority.binding),
         dependencyKeys: [...graphNode.dependencyKeys],
         acceptanceGroup: graphNode.acceptanceGroup,
         graphNode: clone(graphNode)
@@ -304,10 +431,27 @@ export function createLifecycleRunLedger({
     selectorReceipt,
     semanticGraph,
     installedPolicy,
-    runtimeCapabilityBinding,
+    lifecycleAuthority,
+    startup,
     slotCapacity
 } = {}) {
     requireText(stateRoot, 'lifecycle-run-state-root-required')
+    try {
+        validateLifecycleRunAuthority(lifecycleAuthority, {
+            startup,
+            expectedKind: 'genesis',
+            expectedRunId: runId,
+            expectedStateRoot: stateRoot
+        })
+    } catch (error) {
+        fail('lifecycle-run-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    if (slotCapacity !==
+        lifecycleAuthority.runtimeCapabilityBinding.slotCapacity) {
+        fail('lifecycle-run-slot-capacity-authority-mismatch')
+    }
     verifySelectorReceipt(selectorReceipt)
     validateSemanticGraph(semanticGraph)
     const remoteSnapshotReceipt =
@@ -320,13 +464,20 @@ export function createLifecycleRunLedger({
         remoteSnapshotReceipt,
         semanticGraph: clone(semanticGraph),
         installedPolicy: clone(installedPolicy),
-        runtimeCapabilityBinding: clone(runtimeCapabilityBinding),
+        lifecycleAuthority: clone(lifecycleAuthority),
+        runtimeCapabilityBinding:
+            clone(lifecycleAuthority.runtimeCapabilityBinding),
         slotCapacity
     }
     genesis.genesisDigest = digest(genesis)
     validateGenesis(genesis)
 
-    const controlLedger = createControlLedger({ runId, createdAt })
+    const controlLedger = createControlLedger({
+        runId,
+        createdAt,
+        lifecycleAuthorityBinding:
+            lifecycleAuthority.binding
+    })
     pushControlEvent(controlLedger, 'scope.refreshed', {
         selectorReceiptDigest: selectorReceipt.receiptDigest,
         selectorReceipt: clone(selectorReceipt),
@@ -338,6 +489,18 @@ export function createLifecycleRunLedger({
     }, createdAt)
 
     const repositories = repositoryMap(semanticGraph)
+    for (const repository of semanticGraph.repositories) {
+        const bound = repositoryAuthorityFor(
+            lifecycleAuthority,
+            repository.repository
+        )
+        if (repository.bindingDigest !== bound.bindingDigest ||
+            repository.baseSha !== bound.observedDefaultBranchHead) {
+            fail('lifecycle-run-repository-genesis-stale', {
+                repository: repository.repository
+            })
+        }
+    }
     const nodeLedgers = []
     for (const graphNode of semanticGraph.nodes) {
         const repository = repositories.get(graphNode.repository)
@@ -350,7 +513,8 @@ export function createLifecycleRunLedger({
             graphNode,
             nodeEpoch: 1,
             repository,
-            selectorReceipt
+            selectorReceipt,
+            lifecycleAuthority
         })
         pushControlEvent(
             controlLedger,
@@ -375,7 +539,7 @@ export function createLifecycleRunLedger({
         controlLedger,
         nodeLedgers
     })
-    return makeHandle({ stateRoot, runId, recovered })
+    return makeHandle({ stateRoot, runId, recovered, startup })
 }
 
 function compileNodeEffect(node, admission, eventSequence) {
@@ -404,13 +568,44 @@ function compileNodeEffect(node, admission, eventSequence) {
 }
 
 function currentControlFacts(authority) {
+    if (authority[CONTROL_FACTS_CACHE]) {
+        return authority[CONTROL_FACTS_CACHE]
+    }
     const controlLedger = readCanonicalControlLedger(authority)
     const controlProjection = replayControlLedger(controlLedger)
     const genesis = genesisFromControlLedger(controlLedger)
+    const lifecycleAuthority =
+        currentLifecycleAuthorityFromControlLedger(
+            controlLedger,
+            genesis,
+            authority
+        )
+    if (controlProjection.lifecycleAuthorityBinding
+            ?.bindingDigest !==
+            lifecycleAuthority.binding.bindingDigest) {
+        fail('lifecycle-run-control-authority-stale')
+    }
     const selectorReceipt = currentSelectorFromControlLedger(
         controlLedger,
         genesis
     )
+    const binding = lifecycleAuthority.binding
+    if (selectorReceipt.lifecycleAuthorityBindingDigest !==
+            binding.bindingDigest ||
+        selectorReceipt.startupAttestationDigest !==
+            binding.startupAttestationDigest ||
+        selectorReceipt.runtimeInvocationId !==
+            binding.runtimeInvocationId ||
+        selectorReceipt.runtimeSessionId !==
+            binding.runtimeSessionId ||
+        selectorReceipt.rootAuthorityEpoch !==
+            binding.rootAuthorityEpoch ||
+        selectorReceipt.runtimeTrustBindingDigest !==
+            binding.runtimeTrustBindingDigest ||
+        selectorReceipt.repositoryBindingSetDigest !==
+            binding.repositoryBindingSetDigest) {
+        fail('lifecycle-run-selector-authority-stale')
+    }
     const remoteSnapshotReceipt = currentRemoteFromControlLedger(
         controlLedger,
         selectorReceipt
@@ -421,18 +616,25 @@ function currentControlFacts(authority) {
             remoteSnapshotReceipt.receiptDigest) {
         fail('lifecycle-run-control-facts-stale')
     }
-    return {
+    const facts = Object.freeze({
         controlLedger,
         controlProjection,
         genesis,
+        lifecycleAuthority,
         selectorReceipt,
         remoteSnapshotReceipt
-    }
+    })
+    Object.defineProperty(authority, CONTROL_FACTS_CACHE, {
+        value: facts,
+        configurable: true
+    })
+    return facts
 }
 
 function currentSemanticGraph({
     controlProjection,
     genesis,
+    lifecycleAuthority,
     recovered,
     selectorReceipt,
     remoteSnapshotReceipt
@@ -444,11 +646,21 @@ function currentSemanticGraph({
         controlProjection.repositoryBases
     ).sort((left, right) =>
         left.repository.localeCompare(right.repository))
-        .map((repository) => ({
-            repository: repository.repository,
-            baseSha: repository.baseSha,
-            bindingDigest: repository.repositoryBindingDigest
-        }))
+        .map((repository) => {
+            const bound = repositoryAuthorityFor(
+                lifecycleAuthority,
+                repository.repository
+            )
+            if (repository.repositoryBindingDigest !==
+                    bound.bindingDigest) {
+                fail('lifecycle-run-repository-authority-stale')
+            }
+            return {
+                repository: repository.repository,
+                baseSha: repository.baseSha,
+                bindingDigest: bound.bindingDigest
+            }
+        })
     const repositoryBindings = new Map(repositories.map(
         (repository) => [repository.repository, repository.bindingDigest]
     ))
@@ -556,6 +768,8 @@ function currentCompatibilityState({
     }))
     return Object.freeze({
         runId: controlProjection.runId,
+        lifecycleAuthorityBinding:
+            clone(controlProjection.lifecycleAuthorityBinding),
         selectorReceipt: clone(selectorReceipt),
         remoteSnapshotReceipt: clone(remoteSnapshotReceipt),
         repositories: Object.fromEntries(Object.values(
@@ -578,8 +792,11 @@ function currentCompatibilityState({
     })
 }
 
-export function replayLifecycleRunLedger(value) {
-    const authority = resolveAuthority(value)
+export function replayLifecycleRunLedger(
+    value,
+    { startup } = {}
+) {
+    const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
     const recovered = recoverAggregateRunState(authority)
     const semanticGraph = currentSemanticGraph({
@@ -593,8 +810,11 @@ export function replayLifecycleRunLedger(value) {
     })
 }
 
-export function projectLifecycleRun(value) {
-    const authority = resolveAuthority(value)
+export function projectLifecycleRun(
+    value,
+    { startup } = {}
+) {
+    const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
     const recovered = recoverAggregateRunState(authority)
     const semanticGraph = currentSemanticGraph({
@@ -614,8 +834,12 @@ export function projectLifecycleRun(value) {
     })
 }
 
-function lifecycleCompilerInput(value, observedSelectorReceipt = null) {
-    const authority = resolveAuthority(value)
+function lifecycleCompilerInput(
+    value,
+    observedSelectorReceipt = null,
+    startup = null
+) {
+    const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
     const recovered = recoverAggregateRunState(authority)
     const semanticGraph = currentSemanticGraph({
@@ -635,23 +859,31 @@ function lifecycleCompilerInput(value, observedSelectorReceipt = null) {
         aggregateProjection: recovered.projection,
         installedPolicy: clone(facts.genesis.installedPolicy),
         runtimeCapabilityBinding:
-            clone(facts.genesis.runtimeCapabilityBinding)
+            clone(facts.lifecycleAuthority.runtimeCapabilityBinding),
+        lifecycleAuthority:
+            clone(facts.lifecycleAuthority)
     }
 }
 
 export function compileLifecycleRunActionSet(
     value,
-    { observedSelectorReceipt = null } = {}
+    { observedSelectorReceipt = null, startup = null } = {}
 ) {
     const actionSet = compileLifecycleActionSet(
-        lifecycleCompilerInput(value, observedSelectorReceipt)
+        lifecycleCompilerInput(
+            value,
+            observedSelectorReceipt,
+            startup
+        )
     )
     validateLifecycleActionSet(actionSet)
     return actionSet
 }
 
 function exactCurrentActionSet(value, actionSet) {
-    const current = compileLifecycleRunActionSet(value)
+    const current = compileLifecycleRunActionSet(value, {
+        startup: value.startup
+    })
     if (!sameValue(current, actionSet)) {
         fail('lifecycle-action-set-stale')
     }
@@ -708,7 +940,9 @@ function compileCanonicalNodeEvent({
         eventSequence
     )
     const eventType = admission.eventType
-    const projected = projectLifecycleRun(authority)
+    const projected = projectLifecycleRun(authority, {
+        startup: authority.startup
+    })
     const payload = {
         schema: 'issue-orchestration.lifecycle-canonical-effect.v1',
         actionSetDigest: actionSet.actionSetDigest,
@@ -736,6 +970,8 @@ function compileCanonicalNodeEvent({
         toState: effect.node.lifecycleState,
         attemptId: result.attemptId,
         actorRole: result.actorRole,
+        lifecycleAuthorityBinding:
+            clone(controlFacts.lifecycleAuthority.binding),
         sourceDagDigest: projected.semanticGraph.semanticGraphDigest,
         issueSnapshotFingerprint:
             registration.issueSnapshotFingerprint,
@@ -779,13 +1015,17 @@ function appendCanonicalControlEvent({
         ledger: controlLedger,
         eventType,
         payload,
-        createdAt
+        createdAt,
+        lifecycleAuthorityBinding:
+            currentControlFacts(authority)
+                .lifecycleAuthority.binding
     })
     appendControlEventAtomicSync({
         ...authority,
         event,
         writerRole: 'root-scheduler'
     })
+    clearControlFactsCache(authority)
     return event
 }
 
@@ -794,12 +1034,13 @@ export function recordLifecycleActionResults({
     actionSet,
     stageResults,
     actorResults,
-    createdAt
+    createdAt,
+    startup
 } = {}) {
     if (actorResults !== undefined) {
         fail('lifecycle-generic-actor-results-forbidden')
     }
-    const authority = resolveAuthority(ledger)
+    const authority = resolveAuthority(ledger, startup)
     exactCurrentActionSet(authority, actionSet)
     if (!Array.isArray(stageResults) ||
         stageResults.length !== actionSet.actions.length ||
@@ -828,7 +1069,9 @@ export function recordLifecycleActionResults({
                 action,
                 node: null
             })
-            const state = replayLifecycleRunLedger(authority)
+            const state = replayLifecycleRunLedger(authority, {
+                startup: authority.startup
+            })
             const groupId = requireText(
                 action.acceptanceGroup,
                 'lifecycle-delivery-group-invalid'
@@ -867,7 +1110,9 @@ export function recordLifecycleActionResults({
                 fail('lifecycle-delivery-effect-unobserved')
             }
             for (const { nodeId } of action.bindings.memberBindings) {
-                const current = replayLifecycleRunLedger(authority)
+                const current = replayLifecycleRunLedger(authority, {
+                startup: authority.startup
+            })
                 const node = current.nodes[nodeId]
                 appendCanonicalNodeResult({
                     authority,
@@ -891,7 +1136,9 @@ export function recordLifecycleActionResults({
             continue
         }
 
-        const current = replayLifecycleRunLedger(authority)
+        const current = replayLifecycleRunLedger(authority, {
+            startup: authority.startup
+        })
         const node = current.nodes[action.nodeId]
         validateLifecycleStageResult({ result, action, node })
         const effect = appendCanonicalNodeResult({
@@ -930,8 +1177,20 @@ function currentNodeLedgers(authority, controlProjection) {
         }))
 }
 
-function appendControlInMemory(ledger, eventType, payload, createdAt) {
-    pushControlEvent(ledger, eventType, payload, createdAt)
+function appendControlInMemory(
+    ledger,
+    eventType,
+    payload,
+    createdAt,
+    lifecycleAuthorityBinding = null
+) {
+    ledger.events.push(compileControlEvent({
+        ledger,
+        eventType,
+        payload,
+        createdAt,
+        lifecycleAuthorityBinding
+    }))
     return ledger.events.at(-1)
 }
 
@@ -939,11 +1198,13 @@ export function recordLifecycleScopeRefresh({
     ledger,
     actionSet,
     selectorReceipt,
-    createdAt
+    createdAt,
+    startup
 } = {}) {
-    const authority = resolveAuthority(ledger)
+    const authority = resolveAuthority(ledger, startup)
     const current = compileLifecycleRunActionSet(authority, {
-        observedSelectorReceipt: selectorReceipt
+        observedSelectorReceipt: selectorReceipt,
+        startup: authority.startup
     })
     if (!sameValue(current, actionSet) ||
         actionSet.actions.length !== 1 ||
@@ -952,6 +1213,20 @@ export function recordLifecycleScopeRefresh({
     }
     const facts = currentControlFacts(authority)
     const selector = verifySelectorReceipt(selectorReceipt)
+    const binding = facts.lifecycleAuthority.binding
+    if (selector.lifecycleAuthorityBindingDigest !==
+            binding.bindingDigest ||
+        selector.startupAttestationDigest !==
+            binding.startupAttestationDigest ||
+        selector.runtimeInvocationId !== binding.runtimeInvocationId ||
+        selector.runtimeSessionId !== binding.runtimeSessionId ||
+        selector.rootAuthorityEpoch !== binding.rootAuthorityEpoch ||
+        selector.runtimeTrustBindingDigest !==
+            binding.runtimeTrustBindingDigest ||
+        selector.repositoryBindingSetDigest !==
+            binding.repositoryBindingSetDigest) {
+        fail('lifecycle-scope-refresh-authority-stale')
+    }
     const changedNodeIds = selector.resolvedIssueSet.filter(
         (nodeId) =>
             facts.selectorReceipt.remoteFactDigests[nodeId] !==
@@ -974,15 +1249,17 @@ export function recordLifecycleScopeRefresh({
         selectorReceiptDigest: selector.receiptDigest,
         selectorReceipt: selector,
         changedNodeIds
-    }, createdAt)
+    }, createdAt, binding)
     appendControlInMemory(controlLedger, 'remote-snapshot.refreshed', {
         remoteSnapshotDigest: remote.receiptDigest,
         remoteSnapshotReceipt: remote
-    }, createdAt)
+    }, createdAt, binding)
 
     const changed = new Set(changedNodeIds)
     const nodeLedgers = []
-    const graph = projectLifecycleRun(authority).semanticGraph
+    const graph = projectLifecycleRun(authority, {
+        startup: authority.startup
+    }).semanticGraph
     const graphById = new Map(graph.nodes.map((node) => [node.id, node]))
     for (const [nodeId, registration] of Object.entries(
         facts.controlProjection.nodes
@@ -1006,13 +1283,15 @@ export function recordLifecycleScopeRefresh({
                 baseSha: repository.baseSha,
                 bindingDigest: repository.repositoryBindingDigest
             },
-            selectorReceipt: selector
+            selectorReceipt: selector,
+            lifecycleAuthority: facts.lifecycleAuthority
         })
         appendControlInMemory(
             controlLedger,
             'node.rebound',
             rebound,
-            createdAt
+            createdAt,
+            binding
         )
         nodeLedgers.push(nodeLedgerForRegistration({
             registration: rebound,
@@ -1073,6 +1352,9 @@ function baseCarryForwardEvent({
         toState: 'acceptance-frozen',
         attemptId: null,
         actorRole: 'root-scheduler',
+        lifecycleAuthorityBinding:
+            clone(currentControlFacts(authority)
+                .lifecycleAuthority.binding),
         sourceDagDigest: graphDigest,
         issueSnapshotFingerprint:
             rebound.issueSnapshotFingerprint,
@@ -1092,12 +1374,15 @@ export function recordLifecycleBaseChange({
     ledger,
     repository,
     baseSha,
-    createdAt
+    createdAt,
+    startup
 } = {}) {
-    const authority = resolveAuthority(ledger)
+    const authority = resolveAuthority(ledger, startup)
     requireText(repository, 'lifecycle-base-change-repository')
     requireSha(baseSha, 'lifecycle-base-change-sha-invalid')
-    const projected = projectLifecycleRun(authority)
+    const projected = projectLifecycleRun(authority, {
+        startup: authority.startup
+    })
     const facts = currentControlFacts(authority)
     const current = facts.controlProjection.repositoryBases[repository]
     if (!current || current.baseSha === baseSha) {
@@ -1113,17 +1398,17 @@ export function recordLifecycleBaseChange({
     )
     if (!eligible) fail('lifecycle-base-change-not-rebindable')
 
-    const repositoryBindingDigest = digest({
-        repository,
-        baseSha,
-        priorBindingDigest: current.repositoryBindingDigest
-    })
+    const repositoryBindingDigest = repositoryAuthorityFor(
+        facts.lifecycleAuthority,
+        repository
+    ).bindingDigest
+    const binding = facts.lifecycleAuthority.binding
     const controlLedger = clone(facts.controlLedger)
     appendControlInMemory(controlLedger, 'repository.base-changed', {
         repository,
         baseSha,
         repositoryBindingDigest
-    }, createdAt)
+    }, createdAt, binding)
 
     const graphById = new Map(projected.semanticGraph.nodes.map((node) => [
         node.id,
@@ -1157,13 +1442,15 @@ export function recordLifecycleBaseChange({
                 baseSha,
                 bindingDigest: repositoryBindingDigest
             },
-            selectorReceipt: facts.selectorReceipt
+            selectorReceipt: facts.selectorReceipt,
+            lifecycleAuthority: facts.lifecycleAuthority
         })
         appendControlInMemory(
             controlLedger,
             'node.rebound',
             rebound,
-            createdAt
+            createdAt,
+            binding
         )
         const event = baseCarryForwardEvent({
             authority,
@@ -1192,32 +1479,180 @@ export function recordLifecycleBaseChange({
     return makeHandle({ ...authority, recovered })
 }
 
+
+export function recordLifecycleAuthorityTakeover({
+    ledger,
+    startup,
+    createdAt
+} = {}) {
+    const location = resolveAuthorityLocation(ledger)
+    if (!startup) fail('lifecycle-run-current-startup-required')
+    const controlLedger = readCanonicalControlLedger(location)
+    const controlProjection = replayControlLedger(controlLedger)
+    const genesis = genesisFromControlLedger(controlLedger)
+    const priorAuthorityEvent = [...controlLedger.events].reverse().find(
+        ({ eventType, payload }) =>
+            eventType === 'runtime-authority.rebound' &&
+            payload?.lifecycleAuthority
+    )
+    const priorAuthority = priorAuthorityEvent?.payload
+        ?.lifecycleAuthority ?? genesis.lifecycleAuthority
+    try {
+        lifecycleAuthorityBinding(priorAuthority)
+    } catch (error) {
+        fail('lifecycle-run-prior-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    const authorization = startup?.takeoverContext?.authorization
+    if (!authorization ||
+        authorization.runId !== location.runId ||
+        authorization.oldRootInvocationId !==
+            priorAuthority.binding.runtimeInvocationId ||
+        authorization.oldRootSessionId !==
+            priorAuthority.binding.runtimeSessionId ||
+        authorization.oldRootAuthorityEpoch !==
+            priorAuthority.binding.rootAuthorityEpoch ||
+        authorization.oldRootStartupAttestationDigest !==
+            priorAuthority.binding.startupAttestationDigest) {
+        fail('lifecycle-run-takeover-handoff-stale')
+    }
+    if (startup.attestation?.rootAuthorityEpoch ===
+            priorAuthority.binding.rootAuthorityEpoch) {
+        fail('lifecycle-run-takeover-epoch-not-advanced')
+    }
+    let nextAuthority
+    try {
+        nextAuthority = compileLifecycleRunTakeoverAuthority({
+            runId: location.runId,
+            startup,
+            stateRoot: location.stateRoot,
+            repositoryTargets: priorAuthority.repositoryTargets,
+            workspaces: priorAuthority.workspaces,
+            worktrees: priorAuthority.worktrees,
+            slotCapacity:
+                priorAuthority.runtimeCapabilityBinding.slotCapacity,
+            createdAt
+        })
+    } catch (error) {
+        fail('lifecycle-run-takeover-authority-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+    const priorSelector = currentSelectorFromControlLedger(
+        controlLedger,
+        genesis
+    )
+    const selectorReceipt = rebindLifecycleSelectorAuthority({
+        lifecycleAuthority: nextAuthority,
+        startup,
+        selectorReceipt: priorSelector
+    })
+    const remoteSnapshotReceipt =
+        compileLifecycleRemoteSnapshotReceipt(selectorReceipt)
+    const nextControlLedger = clone(controlLedger)
+    const binding = nextAuthority.binding
+    appendControlInMemory(
+        nextControlLedger,
+        'runtime-authority.rebound',
+        {
+            priorLifecycleAuthorityBindingDigest:
+                priorAuthority.binding.bindingDigest,
+            lifecycleAuthority: nextAuthority
+        },
+        createdAt,
+        binding
+    )
+    appendControlInMemory(
+        nextControlLedger,
+        'scope.refreshed',
+        {
+            selectorReceiptDigest: selectorReceipt.receiptDigest,
+            selectorReceipt,
+            authorityRebound: true
+        },
+        createdAt,
+        binding
+    )
+    appendControlInMemory(
+        nextControlLedger,
+        'remote-snapshot.refreshed',
+        {
+            remoteSnapshotDigest: remoteSnapshotReceipt.receiptDigest,
+            remoteSnapshotReceipt
+        },
+        createdAt,
+        binding
+    )
+    for (const [repository, current] of Object.entries(
+        controlProjection.repositoryBases
+    ).sort(([left], [right]) => left.localeCompare(right))) {
+        appendControlInMemory(
+            nextControlLedger,
+            'repository.base-changed',
+            {
+                repository,
+                baseSha: current.baseSha,
+                repositoryBindingDigest: repositoryAuthorityFor(
+                    nextAuthority,
+                    repository
+                ).bindingDigest
+            },
+            createdAt,
+            binding
+        )
+    }
+    const nodeLedgers = currentNodeLedgers(
+        location,
+        controlProjection
+    )
+    const recovered = persistAggregateRunState({
+        stateRoot: location.stateRoot,
+        controlLedger: nextControlLedger,
+        nodeLedgers
+    })
+    const currentAuthority = {
+        ...location,
+        startup
+    }
+    currentControlFacts(currentAuthority)
+    return makeHandle({ ...currentAuthority, recovered })
+}
+
 export function persistLifecycleRunLedger({
     stateRoot,
-    ledger
+    ledger,
+    startup
 } = {}) {
-    const authority = resolveAuthority(ledger)
+    const authority = resolveAuthority(ledger, startup)
     if (stateRoot && path.resolve(stateRoot) !== authority.stateRoot) {
         fail('lifecycle-run-state-root-mismatch')
     }
+    currentControlFacts(authority)
     return makeHandle(authority)
 }
 
 export function readLifecycleRunLedger({
     stateRoot,
-    runId
+    runId,
+    startup
 } = {}) {
     const authority = {
         stateRoot: path.resolve(
             requireText(stateRoot, 'lifecycle-run-state-root-required')
         ),
-        runId: requireText(runId, 'lifecycle-run-id-required')
+        runId: requireText(runId, 'lifecycle-run-id-required'),
+        startup
     }
+    currentControlFacts(authority)
     return makeHandle(authority)
 }
 
-export function lifecycleCanonicalLocations(value) {
-    const authority = resolveAuthority(value)
+export function lifecycleCanonicalLocations(
+    value,
+    { startup } = {}
+) {
+    const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
     return Object.freeze({
         run: canonicalRunStateLocation(authority),

@@ -23,12 +23,88 @@ const baseSha = 'a'.repeat(40)
 const policyDigest = sha('policy')
 const selectorDigest = sha('selector')
 const remoteDigest = sha('remote')
+const graphInputDigest = sha('graph-input')
+const scopeDigest = sha('scope')
+const repository = 'ExampleOrg/RepositoryA'
+const repositoryBindingDigest = sha('repository-binding')
+const startupAttestationDigest = sha('startup-attestation')
+const runtimeTrustBindingDigest = sha('runtime-trust-binding')
+const repositoryIdentitySetDigest = sha('repository-identity-set')
+const repositoryBindingSetDigest = sha('repository-binding-set')
+const capabilityDigest = sha('capability')
+const authorityBinding = (() => {
+    const value = {
+        schema: 'issue-orchestration.lifecycle-authority-binding.v1',
+        authorityKind: 'genesis',
+        runId: 'run-lifecycle-1',
+        startupObservationDigest: sha('startup-observation'),
+        startupAttestationDigest,
+        runtimeInvocationId: 'lifecycle-test-invocation',
+        runtimeSessionId: 'lifecycle-test-session',
+        rootRole: 'root-scheduler',
+        rootPhase: 'scheduling',
+        rootProfile: 'terra-low',
+        effectiveModel: 'gpt-5.6-terra',
+        effectiveEffort: 'low',
+        effectiveMultiAgentBackend: 'v2',
+        effectiveApprovalPolicy: 'never',
+        effectivePermissionProfile: 'danger-full-access',
+        permissionInheritance: 'inherited-parent-profile',
+        permissionGuarantee: 'contract-and-postcondition',
+        rootAuthorityEpoch: 'root-authority-epoch-1',
+        recoveryAuthorizationDigest: null,
+        takeoverHandoffDigest: null,
+        oldRootFencingReceiptDigest: null,
+        packageDigest: sha('package'),
+        manifestDigest: sha('manifest'),
+        policySetDigest: sha('policy-set'),
+        runtimeTrustBindingDigest,
+        runtimeTrustMode: 'trusted-owner-repositories',
+        repositoryIdentitySetDigest,
+        repositoryBindingSetDigest,
+        stateRootIdentityDigest: sha('state-root'),
+        runtimeCapabilityBindingDigest: capabilityDigest
+    }
+    value.bindingDigest = digest(value)
+    return Object.freeze(value)
+})()
+const lifecycleAuthority = (() => {
+    const value = {
+        schema: 'issue-orchestration.lifecycle-run-authority.v1',
+        status: 'verified',
+        producerAuthority: 'machine-lifecycle-genesis-authority',
+        authorityKind: 'genesis',
+        runId: 'run-lifecycle-1',
+        createdAt: '2026-08-04T00:00:00.000Z',
+        repositoryTargets: [],
+        workspaces: [],
+        worktrees: [],
+        runtimeTrustBinding: {},
+        repositoryBindings: [{
+            repository,
+            bindingDigest: repositoryBindingDigest
+        }],
+        stateRootIdentity: {},
+        runtimeCapabilityBinding: {
+            schema: 'issue-orchestration.runtime-capability-binding.v1',
+            status: 'verified',
+            bindingDigest: capabilityDigest
+        },
+        binding: authorityBinding
+    }
+    value.authorityDigest = digest(value)
+    return Object.freeze(value)
+})()
 const canonicalSelectorReceipt = (() => {
     const receipt = {
         schema: 'issue-orchestration.selector-receipt.v1',
-        startupAttestationDigest: sha('startup-attestation'),
-        runtimeInvocationId: 'lifecycle-test-invocation',
-        runtimeSessionId: 'lifecycle-test-session',
+        startupAttestationDigest,
+        runtimeInvocationId: authorityBinding.runtimeInvocationId,
+        runtimeSessionId: authorityBinding.runtimeSessionId,
+        rootAuthorityEpoch: authorityBinding.rootAuthorityEpoch,
+        lifecycleAuthorityBindingDigest: authorityBinding.bindingDigest,
+        runtimeTrustBindingDigest,
+        repositoryBindingSetDigest,
         selectorVersion: 'lifecycle-test-selector-v1',
         type: 'explicit-issues',
         parametersDigest: sha('selector-parameters'),
@@ -50,10 +126,6 @@ const canonicalSelectorReceipt = (() => {
     return Object.freeze(receipt)
 })()
 const selectorReceiptDigest = canonicalSelectorReceipt.receiptDigest
-const graphInputDigest = sha('graph-input')
-const scopeDigest = sha('scope')
-const repository = 'ExampleOrg/RepositoryA'
-const repositoryBindingDigest = sha('repository-binding')
 
 function sealReceipt(name, fields = {}) {
     const receipt = {
@@ -145,6 +217,7 @@ function aggregateProjection(nodes, {
     const projection = {
         schema: 'issue-orchestration.aggregate-runtime-projection.v1',
         runId: 'run-lifecycle-1',
+        lifecycleAuthorityBinding: structuredClone(authorityBinding),
         controlProjectionDigest: sha('control-projection'),
         nodeIndexDigest: sha('node-index'),
         nodes: Object.fromEntries(nodes.map((node) => [
@@ -154,6 +227,7 @@ function aggregateProjection(nodes, {
         acceptanceGroups,
         slots: { capacity, active },
         deliveryFreezes,
+        pendingDeliveryEffects: {},
         deliveryEffects,
         cleanupFinalizations: {},
         terminal: null
@@ -180,11 +254,9 @@ function input(nodes, options = {}) {
             status: 'verified',
             policyDigest
         },
-        runtimeCapabilityBinding: {
-            schema: 'issue-orchestration.runtime-capability-binding.v1',
-            status: 'verified',
-            bindingDigest: sha('capability')
-        }
+        runtimeCapabilityBinding:
+            structuredClone(lifecycleAuthority.runtimeCapabilityBinding),
+        lifecycleAuthority: structuredClone(lifecycleAuthority)
     }
 }
 
