@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:multi-repository-lifecycle-e2e-receipt:v1",
+  "title": "issue-orchestration.multi-repository-lifecycle-e2e-receipt.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "runId",
+    "initialStateRootArtifactCount",
+    "repositoryEvidence",
+    "issueEvidence",
+    "nodeEvidence",
+    "actionSetDigests",
+    "actionCount",
+    "maximumConcurrentActions",
+    "dependencyBlockedUntilClosure",
+    "uiAdjudicationVerified",
+    "uxAcceptanceVerified",
+    "documentationVerifiedForEveryNode",
+    "commentRefreshAffectedOnlyOneNode",
+    "baseRebindingVerified",
+    "authorizedRetryCount",
+    "serializeReloadReplayVerified",
+    "deliveryRetryWasIdempotent",
+    "acceptanceGroupMemberCount",
+    "activeAttemptCount",
+    "activeLeaseCount",
+    "residualWorktreeCount",
+    "residualBranchCount",
+    "residualTemporaryResourceCount",
+    "networkInvocationCount",
+    "paidModelInvocationCount",
+    "quiescent",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.multi-repository-lifecycle-e2e-receipt.v1"
+    },
+    "status": { "const": "verified" },
+    "runId": { "const": "multi-repository-lifecycle-e2e" },
+    "initialStateRootArtifactCount": { "const": 0 },
+    "repositoryEvidence": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository",
+          "defaultBranch",
+          "remoteHead",
+          "deliveredCommits",
+          "pushCount"
+        ],
+        "properties": {
+          "repository": { "type": "string", "pattern": "^Fixture/Repo[AB]$" },
+          "defaultBranch": { "const": "main" },
+          "remoteHead": { "$ref": "#/$defs/sha" },
+          "deliveredCommits": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "$ref": "#/$defs/sha" },
+            "uniqueItems": true
+          },
+          "pushCount": { "type": "integer", "minimum": 3 }
+        }
+      }
+    },
+    "issueEvidence": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["issue", "state", "stateReason"],
+        "properties": {
+          "issue": { "type": "string", "minLength": 1 },
+          "state": { "const": "CLOSED" },
+          "stateReason": { "const": "COMPLETED" }
+        }
+      }
+    },
+    "nodeEvidence": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "nodeId",
+          "lifecycleState",
+          "implementationAttempts",
+          "deliveryCommit",
+          "cleanupReceiptDigest"
+        ],
+        "properties": {
+          "nodeId": { "type": "string", "minLength": 1 },
+          "lifecycleState": { "const": "closed" },
+          "implementationAttempts": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2
+          },
+          "deliveryCommit": { "$ref": "#/$defs/sha" },
+          "cleanupReceiptDigest": { "$ref": "#/$defs/digest" }
+        }
+      }
+    },
+    "actionSetDigests": {
+      "type": "array",
+      "minItems": 10,
+      "items": { "$ref": "#/$defs/digest" }
+    },
+    "actionCount": { "type": "integer", "minimum": 30 },
+    "maximumConcurrentActions": { "type": "integer", "minimum": 2 },
+    "dependencyBlockedUntilClosure": { "const": true },
+    "uiAdjudicationVerified": { "const": true },
+    "uxAcceptanceVerified": { "const": true },
+    "documentationVerifiedForEveryNode": { "const": true },
+    "commentRefreshAffectedOnlyOneNode": { "const": true },
+    "baseRebindingVerified": { "const": true },
+    "authorizedRetryCount": { "const": 1 },
+    "serializeReloadReplayVerified": { "const": true },
+    "deliveryRetryWasIdempotent": { "const": true },
+    "acceptanceGroupMemberCount": { "type": "integer", "minimum": 2 },
+    "activeAttemptCount": { "const": 0 },
+    "activeLeaseCount": { "const": 0 },
+    "residualWorktreeCount": { "const": 0 },
+    "residualBranchCount": { "const": 0 },
+    "residualTemporaryResourceCount": { "const": 0 },
+    "networkInvocationCount": { "const": 0 },
+    "paidModelInvocationCount": { "const": 0 },
+    "quiescent": { "const": true },
+    "receiptDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    }
+  }
+}
