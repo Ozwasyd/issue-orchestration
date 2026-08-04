@@ -6,6 +6,9 @@ import { createResourceRegistry } from './resource-lifecycle.mjs'
 import { validateStateRoot } from './validate-state-root.mjs'
 import { canonicalNodeStateLocation } from './multi-node-state.mjs'
 import {
+    validateLifecycleStageResult
+} from './lifecycle-stage-admission.mjs'
+import {
     compileDeterministicSlicePolicy
 } from './slice-plan-validator.mjs'
 
@@ -192,6 +195,10 @@ const FROZEN_SOURCE_EVENT_FIELDS = Object.freeze([
     'issueSnapshotFingerprint', 'repositoryFingerprint', 'baseSha',
     'payload', 'payloadDigest', 'evidenceRefs', 'createdAt',
     'previousEventDigest', 'eventDigest'
+])
+const LIFECYCLE_SOURCE_EVENT_FIELDS = Object.freeze([
+    ...FROZEN_SOURCE_EVENT_FIELDS,
+    'lifecycleAuthorityBinding'
 ])
 const FROZEN_STAGE_CONTRACT_FIELDS = Object.freeze([
     'schema',
@@ -2640,14 +2647,23 @@ function sourceEventSpecification(input) {
     if (input.stagePhase === 'test-contract' &&
         input.stageRole === 'test-owner') {
         return {
-            eventTypes: ['node.discovered'],
-            actorRoles: ['dag-creator-updater'],
+            eventTypes: [
+                'lifecycle.test-contract-planning-recorded',
+                'node.discovered'
+            ],
+            actorRoles: ['test-owner', 'dag-creator-updater'],
             receiptSchemas: [
+                null,
                 'issue-orchestration.node-discovered-receipt.v1'
+            ],
+            lifecycleContractIds: [
+                'test-contract-planning',
+                null
             ],
             invalidatingEvents: [
                 'issue.reopened',
-                'node.resumed'
+                'node.resumed',
+                'lifecycle.base-rebound'
             ]
         }
     }
@@ -2655,36 +2671,58 @@ function sourceEventSpecification(input) {
         input.stagePhase
     )) {
         return {
-            eventTypes: ['test-contract.frozen'],
-            actorRoles: ['test-owner'],
+            eventTypes: [
+                'lifecycle.test-contract-writer-recorded',
+                'test-contract.frozen'
+            ],
+            actorRoles: ['test-owner', 'test-owner'],
             receiptSchemas: [
+                null,
                 'issue-orchestration.test-contract-freeze-receipt.v1'
+            ],
+            lifecycleContractIds: [
+                'test-contract-writer',
+                null
             ],
             invalidatingEvents: [
                 'test-contract.disputed',
                 'contract.rebased',
-                'issue.reopened'
+                'issue.reopened',
+                'lifecycle.base-rebound'
             ]
         }
     }
     if (input.stagePhase === 'documentation') {
         return {
             eventTypes: [
+                'lifecycle.ux-acceptance-recorded',
+                'lifecycle.behavior-recorded',
                 'ux-acceptance.accepted',
                 'independent-verification.passed'
             ],
             actorRoles: [
                 'ux-acceptance-verifier',
+                'test-owner',
+                'ux-acceptance-verifier',
                 'test-owner'
             ],
             receiptSchemas: [
+                null,
+                null,
                 'issue-orchestration.ux-source-receipt.v1',
                 'issue-orchestration.behavior-source-receipt.v1'
+            ],
+            lifecycleContractIds: [
+                'ux-acceptance',
+                'behavior-verification',
+                null,
+                null
             ],
             invalidatingEvents: [
                 'ux-acceptance.rejected',
                 'independent-verification.rejected',
-                'issue.reopened'
+                'issue.reopened',
+                'lifecycle.base-rebound'
             ]
         }
     }
@@ -2705,6 +2743,76 @@ function sourceEventSpecification(input) {
         'frozen-stage-source-phase',
         'writer stage has no permanent predecessor authority'
     )
+}
+
+function validateLifecycleSourceReceipt({
+    event,
+    input,
+    expectedContractId
+}) {
+    const action = event.payload?.action
+    const result = event.payload?.stageResult
+    if (!action || !result ||
+        action.bindings?.runId !== input.runId ||
+        action.nodeId !== input.node ||
+        action.bindings?.repository !== input.repository ||
+        action.bindings?.baseSha !== input.baseSha ||
+        action.bindings?.nodeEpoch !== Number(
+            String(input.epochId).match(/(\d+)$/u)?.[1] ?? 1
+        )) {
+        fail(
+            'frozen-stage-lifecycle-source-binding',
+            'lifecycle writer source action does not match the active stage identity'
+        )
+    }
+    let admission
+    try {
+        admission = validateLifecycleStageResult({
+            result,
+            action,
+            node: {
+                id: input.node,
+                repository: input.repository,
+                issueNumber: Number(
+                    String(input.issue).match(/(\d+)$/u)?.[1]
+                ),
+                uiClass: input.stagePhase === 'ui-implementation'
+                    ? 'ui'
+                    : 'non-ui',
+                receipts: {}
+            }
+        })
+    } catch (error) {
+        fail(
+            'frozen-stage-lifecycle-source-invalid',
+            `lifecycle writer source result is invalid: ${
+                error?.code ?? error?.message
+            }`
+        )
+    }
+    if (admission.contractId !== expectedContractId ||
+        result.actorRole !== event.actorRole ||
+        result.attemptId !== event.attemptId) {
+        fail(
+            'frozen-stage-lifecycle-source-contract',
+            'lifecycle writer source contract does not match the required predecessor'
+        )
+    }
+    return {
+        schema: 'issue-orchestration.lifecycle-writer-source-receipt.v1',
+        verificationStatus: 'verified',
+        actorRole: result.actorRole,
+        runId: input.runId,
+        nodeId: input.node,
+        baseSha: input.baseSha,
+        epochId: input.epochId,
+        testContractDigest: input.testContractDigest,
+        lifecycleContractId: admission.contractId,
+        stageResultDigest: result.resultDigest,
+        receiptDigest: result.resultDigest,
+        dispatchReceiptDigest:
+            result.artifacts?.dispatchReceipt?.receiptDigest ?? null
+    }
 }
 
 function validateFrozenStageSourceLedger(
@@ -2743,7 +2851,9 @@ function validateFrozenStageSourceLedger(
     for (const [index, event] of ledger.events.entries()) {
         exactObjectFields(
             event,
-            FROZEN_SOURCE_EVENT_FIELDS,
+            event.lifecycleAuthorityBinding
+                ? LIFECYCLE_SOURCE_EVENT_FIELDS
+                : FROZEN_SOURCE_EVENT_FIELDS,
             'frozenStageContract.sourceLedger.event'
         )
         const createdAt = parseAuthorityTimestamp(
@@ -2805,8 +2915,18 @@ function validateFrozenStageSourceLedger(
             'writer stage predecessor authority is invalidated or has the wrong role'
         )
     }
+    const lifecycleSource = sourceEvent.eventType.startsWith(
+        'lifecycle.'
+    )
     let sourceReceipt
-    if (input.stagePhase === 'test-contract') {
+    if (lifecycleSource) {
+        sourceReceipt = validateLifecycleSourceReceipt({
+            event: sourceEvent,
+            input,
+            expectedContractId:
+                specification.lifecycleContractIds[sourceTypeIndex]
+        })
+    } else if (input.stagePhase === 'test-contract') {
         sourceReceipt = validateNodeDiscoveredSourceReceipt(
             sourceEvent.payload?.nodeDiscoveredReceipt,
             input,
@@ -2856,8 +2976,9 @@ function validateFrozenStageSourceLedger(
             }
         )
     }
-    if (sourceEvent.payload?.sourceReceiptDigest !==
-            sourceReceipt.receiptDigest ||
+    if ((!lifecycleSource &&
+            sourceEvent.payload?.sourceReceiptDigest !==
+                sourceReceipt.receiptDigest) ||
         expectedSourceEventDigest !== null &&
             sourceEvent.eventDigest !== expectedSourceEventDigest) {
         fail(
@@ -2865,7 +2986,9 @@ function validateFrozenStageSourceLedger(
             'predecessor event does not bind its verified source receipt'
         )
     }
-    let sourceDispatchReceiptDigest = null
+    let sourceDispatchReceiptDigest = lifecycleSource
+        ? sourceReceipt.dispatchReceiptDigest
+        : null
     if (sourceEvent.eventType === 'test-contract.frozen') {
         const started = ledger.events.slice(0, sourceIndex)
             .findLast((event) =>

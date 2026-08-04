@@ -282,3 +282,131 @@ export function validateRuntimeExecutionBinding(value, {
     }
     return value
 }
+
+
+export function compileRuntimeInspectionBinding({
+    inspectionKind,
+    runtimeObservation,
+    startup,
+    runtimeTrustBinding,
+    repositoryTargets
+} = {}) {
+    assertText(inspectionKind, 'runtime-inspection-kind-required')
+    const observation = runtimeObservation
+    if (observation?.schema !==
+            'issue-orchestration.runtime-inspection-observation.v1' ||
+        observation.producerAuthority !==
+            RUNTIME_EXECUTION_BINDING_POLICY.trustedProducerAuthority ||
+        !RUNTIME_EXECUTION_BINDING_POLICY.supportedRuntimeIds
+            .includes(observation.runtimeId) ||
+        observation.inspectionKind !== inspectionKind ||
+        observation.effectiveMultiAgentBackend !== 'v2' ||
+        observation.observationDigest !==
+            unsignedDigest(observation, 'observationDigest')) {
+        fail('runtime-inspection-observation-untrusted')
+    }
+    for (const field of [
+        'runtimeVersion', 'actorInvocationId', 'actorSessionId',
+        'rootInvocationId', 'effectivePermissionProfile',
+        'permissionInheritance', 'permissionGuarantee', 'observedAt'
+    ]) {
+        assertText(observation[field],
+            'runtime-inspection-observation-incomplete')
+    }
+    const startupBinding = requireRuntimeStartupBinding({ startup })
+    validateRuntimeTrustBinding(runtimeTrustBinding, {
+        repositoryTargets,
+        startup
+    })
+    if (observation.rootInvocationId !==
+            startupBinding.runtimeInvocationId ||
+        observation.actorInvocationId ===
+            startupBinding.runtimeInvocationId ||
+        observation.runtimeId !== runtimeTrustBinding.runtimeId ||
+        observation.effectiveMultiAgentBackend !==
+            runtimeTrustBinding.multiAgentBackend ||
+        observation.effectivePermissionProfile !==
+            runtimeTrustBinding.effectivePermissionProfile ||
+        observation.permissionInheritance !==
+            runtimeTrustBinding.childPermissionInheritance ||
+        observation.permissionGuarantee !==
+            runtimeTrustBinding.permissionGuarantee) {
+        fail('runtime-inspection-permission-binding-mismatch')
+    }
+    return seal({
+        schema:
+            'issue-orchestration.runtime-inspection-binding.v1',
+        policyDigest: RUNTIME_EXECUTION_BINDING_POLICY_DIGEST,
+        status: 'verified',
+        inspectionKind,
+        executionClass: 'observe-only',
+        runtimeId: observation.runtimeId,
+        runtimeVersion: observation.runtimeVersion,
+        actorInvocationId: observation.actorInvocationId,
+        actorSessionId: observation.actorSessionId,
+        rootInvocationId: observation.rootInvocationId,
+        startupAttestationDigest:
+            startupBinding.startupAttestationDigest,
+        runtimeTrustBindingDigest:
+            runtimeTrustBinding.bindingDigest,
+        runtimeObservationDigest: observation.observationDigest,
+        effectiveMultiAgentBackend:
+            observation.effectiveMultiAgentBackend,
+        effectivePermissionProfile:
+            observation.effectivePermissionProfile,
+        permissionInheritance:
+            observation.permissionInheritance,
+        permissionGuarantee:
+            observation.permissionGuarantee,
+        mutationContract: 'no-protected-mutation',
+        requiredPostconditionEvidenceClass:
+            'stage-mutation-postcondition-receipt.v1',
+        mutationPostconditionRequired: true,
+        writeLeaseDigest: null
+    }, 'bindingDigest')
+}
+
+export function validateRuntimeInspectionBinding(value, {
+    inspectionKind,
+    startup,
+    runtimeTrustBinding,
+    repositoryTargets
+} = {}) {
+    if (value?.schema !==
+            'issue-orchestration.runtime-inspection-binding.v1' ||
+        value.policyDigest !==
+            RUNTIME_EXECUTION_BINDING_POLICY_DIGEST ||
+        value.status !== 'verified' ||
+        value.inspectionKind !== inspectionKind ||
+        value.executionClass !== 'observe-only' ||
+        value.writeLeaseDigest !== null ||
+        value.bindingDigest !==
+            unsignedDigest(value, 'bindingDigest')) {
+        fail('runtime-inspection-binding-invalid')
+    }
+    const startupBinding = requireRuntimeStartupBinding({ startup })
+    validateRuntimeTrustBinding(runtimeTrustBinding, {
+        repositoryTargets,
+        startup
+    })
+    if (value.startupAttestationDigest !==
+            startupBinding.startupAttestationDigest ||
+        value.rootInvocationId !==
+            startupBinding.runtimeInvocationId ||
+        value.runtimeTrustBindingDigest !==
+            runtimeTrustBinding.bindingDigest ||
+        value.runtimeId !== runtimeTrustBinding.runtimeId ||
+        value.effectiveMultiAgentBackend !==
+            runtimeTrustBinding.multiAgentBackend ||
+        value.effectivePermissionProfile !==
+            runtimeTrustBinding.effectivePermissionProfile ||
+        value.permissionInheritance !==
+            runtimeTrustBinding.childPermissionInheritance ||
+        value.permissionGuarantee !==
+            runtimeTrustBinding.permissionGuarantee ||
+        value.mutationContract !== 'no-protected-mutation' ||
+        value.mutationPostconditionRequired !== true) {
+        fail('runtime-inspection-binding-stale')
+    }
+    return value
+}

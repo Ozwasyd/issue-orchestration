@@ -14,7 +14,8 @@ import {
     STAGE_ROUTE_DEFINITIONS
 } from './stage-profile-policy.mjs'
 import {
-    validateRuntimeExecutionBinding
+    validateRuntimeExecutionBinding,
+    validateRuntimeInspectionBinding
 } from './runtime-execution-binding.mjs'
 
 const POLICY_PATH = path.resolve(
@@ -36,7 +37,10 @@ function git(repositoryPath, args, { buffer = false } = {}) {
             '-C',
             repositoryPath,
             ...args
-        ], buffer ? {} : { encoding: 'utf8' })
+        ], buffer ? { timeout: 10_000 } : {
+            encoding: 'utf8',
+            timeout: 10_000
+        })
     } catch {
         fail('stage-mutation-git-observation-failed')
     }
@@ -327,6 +331,90 @@ function pathAllowed(relative, allowedPaths) {
         relative === allowed ||
         relative.startsWith(`${allowed.replace(/\/$/u, '')}/`)
     )
+}
+
+
+export function captureRuntimeInspectionSnapshot(input = {}) {
+    validateRuntimeInspectionBinding(
+        input.runtimeInspectionBinding,
+        {
+            inspectionKind: input.inspectionKind,
+            startup: input.startup,
+            runtimeTrustBinding: input.runtimeTrustBinding,
+            repositoryTargets: input.repositoryTargets
+        }
+    )
+    for (const field of [
+        'runId', 'attemptId', 'repository', 'deliveryEpoch',
+        'candidateIdentity', 'inspectionKind'
+    ]) assertText(input[field], 'runtime-inspection-identity-incomplete')
+    for (const field of [
+        'routeDecisionDigest', 'compiledPromptDigest',
+        'resourceIdentityDigest', 'remoteSnapshotDigest'
+    ]) assertDigest(input[field], 'runtime-inspection-identity-incomplete')
+    if (!SHA.test(input.baseSha ?? '')) {
+        fail('runtime-inspection-base-invalid')
+    }
+    const binding = input.runtimeInspectionBinding
+    const repositoryPath = fs.realpathSync(input.repositoryPath)
+    const stateRootPath = fs.realpathSync(input.stateRootPath)
+    const headSha = git(
+        repositoryPath,
+        ['rev-parse', '--verify', 'HEAD']
+    ).trim()
+    if (!SHA.test(headSha)) fail('runtime-inspection-head-unobservable')
+    const tracked = trackedEntries(repositoryPath)
+    const untracked = untrackedEntries(repositoryPath)
+    const status = statusEntries(repositoryPath)
+    const indexSource = git(
+        repositoryPath,
+        ['ls-files', '--stage', '-z'],
+        { buffer: true }
+    )
+    const refsSource = git(
+        repositoryPath,
+        ['for-each-ref', '--format=%(refname)%00%(objectname)%00']
+    )
+    return seal({
+        schema: 'issue-orchestration.stage-mutation-snapshot.v1',
+        producerAuthority:
+            STAGE_MUTATION_GUARD_POLICY.producerAuthority,
+        policyDigest: STAGE_MUTATION_GUARD_POLICY_DIGEST,
+        snapshotKind: input.snapshotKind,
+        capturedAt: input.capturedAt,
+        runId: input.runId,
+        actorInvocationId: binding.actorInvocationId,
+        actorSessionId: binding.actorSessionId,
+        attemptId: input.attemptId,
+        stageRole: 'documentation-no-change-verifier',
+        stagePhase: input.inspectionKind,
+        executionClass: 'observe-only',
+        runtimeExecutionBindingDigest: binding.bindingDigest,
+        startupAttestationDigest: binding.startupAttestationDigest,
+        routeDecisionDigest: input.routeDecisionDigest,
+        compiledPromptDigest: input.compiledPromptDigest,
+        repository: input.repository,
+        repositoryPathDigest: digest(repositoryPath),
+        resourceIdentityDigest: input.resourceIdentityDigest,
+        baseSha: input.baseSha,
+        deliveryEpoch: input.deliveryEpoch,
+        candidateIdentity: input.candidateIdentity,
+        leaseDigest: null,
+        sliceDigest: null,
+        allowedPaths: [],
+        allowedPathsDigest: digest([]),
+        headSha,
+        refsDigest: digest(refsSource),
+        indexDigest: digest(indexSource),
+        trackedContentDigest: digest(tracked),
+        trackedEntries: tracked,
+        untrackedDigest: digest(untracked),
+        untrackedEntries: untracked,
+        gitStatusDigest: digest(status),
+        gitStatusEntries: status,
+        stateRootDigest: digest(treeEntries(stateRootPath)),
+        remoteSnapshotDigest: input.remoteSnapshotDigest
+    }, 'snapshotDigest')
 }
 
 export function evaluateStageMutationPostcondition({
