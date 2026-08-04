@@ -4,13 +4,8 @@ on:
   push:
     branches:
       - agent/issue-37-prewriter-executor
-  pull_request:
-    branches:
-      - main
-    types:
-      - opened
-      - reopened
-      - synchronize
+    paths:
+      - .agent-patches/issue37/ready
 
 permissions:
   contents: write
@@ -21,26 +16,23 @@ concurrency:
 
 jobs:
   apply:
-    if: github.event_name == 'push' || github.head_ref == 'agent/issue-37-prewriter-executor'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.ref_name }}
       - name: Apply verified patch and finalize branch
         shell: bash
         env:
-          TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          TARGET_BRANCH: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [[ ! -d .agent-patches/issue37 ]]; then
-            echo "Issue 37 transport already finalized."
-            exit 0
-          fi
-          cat .agent-patches/issue37/part-[0-9]* > /tmp/issue37.patch.gz.b64
-          base64 --decode --ignore-garbage /tmp/issue37.patch.gz.b64 > /tmp/issue37.patch.gz
-          echo "48dbfd218020ecc556fda87d08fc3496fe3103efe0947b7966133736d260b7bd  /tmp/issue37.patch.gz" | sha256sum --check -
+          test -f .agent-patches/issue37/ready
+          cat .agent-patches/issue37/part-[0-9][0-9] > /tmp/issue37.patch.gz.b64
+          echo "755b29cb93288de4b42a1781b6c97cb1f46036bfd7f7b7e32eb5e963194ad002  /tmp/issue37.patch.gz.b64" | sha256sum --check -
+          base64 --decode /tmp/issue37.patch.gz.b64 > /tmp/issue37.patch.gz
+          echo "bfad250aeff628a1693e6c3baa674362423651b396e1ad4e612a060b9de6524f  /tmp/issue37.patch.gz" | sha256sum --check -
           gzip --decompress --stdout /tmp/issue37.patch.gz > /tmp/issue37.patch
           echo "0a5b7a45a1e16b41c0aed3338cfd0fa83d111b67f997e5fc1d9eb9935cfb1d2e  /tmp/issue37.patch" | sha256sum --check -
           git apply --check --whitespace=error-all /tmp/issue37.patch
