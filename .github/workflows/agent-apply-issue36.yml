@@ -1,0 +1,40 @@
+name: Apply issue 36 patch
+
+on:
+  push:
+    branches:
+      - agent/issue-36-stage-receipt-admission
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-issue-36
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply staged patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f .agent-patches/issue36/apply ]]; then
+            echo "Patch marker absent; nothing to do."
+            exit 0
+          fi
+          cat .agent-patches/issue36/part-* > /tmp/issue36.patch.gz.b64
+          base64 --decode /tmp/issue36.patch.gz.b64 > /tmp/issue36.patch.gz
+          echo "60b9e5220817ce9e2286c81c69ae9688faa9e43495392fa4cc33726930edce58  /tmp/issue36.patch.gz" | sha256sum --check -
+          gzip --decompress --stdout /tmp/issue36.patch.gz > /tmp/issue36.patch
+          echo "24854ec012fe1e057b2603ad0cde8cbdf445a3a3eb5bdf4f4a77962d24c6c25b  /tmp/issue36.patch" | sha256sum --check -
+          git apply --index --whitespace=error-all /tmp/issue36.patch
+          git rm .agent-patches/issue36/apply
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Require stage-specific lifecycle receipts"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
