@@ -1,0 +1,56 @@
+name: Fix issue 37 selector fixture
+
+on:
+  push:
+    branches:
+      - agent/issue-37-prewriter-executor
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-issue-37-selector
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Bind fixture to canonical selector and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs')
+          text = path.read_text()
+          old = "        selectorReceipt,\n        semanticGraph,"
+          new = (
+              "        selectorReceipt,\n"
+              "        selectorDefinition: selector(repository.repository),\n"
+              "        semanticGraph,"
+          )
+          if text.count(old) != 1:
+              raise SystemExit('selector fixture anchor is not unique')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-stage-admission.test.mjs
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-stage-admission.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-genesis-authority.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
+            tests/tools/issue-orchestration-multi-node-state.test.mjs
+          git diff --check
+          git rm .github/workflows/agent-fix-issue37-selector.yml
+          git add tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Bind pre-writer tests to canonical selector definition"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
