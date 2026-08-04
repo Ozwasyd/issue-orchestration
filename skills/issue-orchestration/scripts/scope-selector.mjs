@@ -31,8 +31,10 @@ function digest(value) {
 
 function normalizeSelectorDefinition(selector) {
     if (selector?.schema !== 'issue-orchestration.scope-selector.v1' ||
-        typeof selector.selectorVersion !== 'string' ||
-        selector.selectorVersion.length === 0 ||
+        !((typeof selector.selectorVersion === 'string' &&
+            selector.selectorVersion.length > 0) ||
+          (Number.isInteger(selector.selectorVersion) &&
+            selector.selectorVersion >= 0)) ||
         typeof selector.type !== 'string' || selector.type.length === 0 ||
         !Array.isArray(selector.repositories) ||
         selector.repositories.length === 0 ||
@@ -51,7 +53,7 @@ function normalizeSelectorDefinition(selector) {
     }
     return {
         schema: selector.schema,
-        selectorVersion: selector.selectorVersion,
+        selectorVersion: String(selector.selectorVersion),
         type: selector.type,
         repositories: [...selector.repositories].sort(),
         parameters: canonical(selector.parameters),
