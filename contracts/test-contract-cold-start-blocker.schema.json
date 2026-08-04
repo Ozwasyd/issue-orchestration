@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:test-contract-cold-start-blocker:v1",
+  "title": "issue-orchestration.test-contract-cold-start-blocker.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "status", "runId", "nodeId", "code", "message", "recoverable", "blockerDigest"],
+  "properties": {
+    "schema": {"const": "issue-orchestration.test-contract-cold-start-blocker.v1"},
+    "status": {"const": "blocked"},
+    "runId": {"type": ["string", "null"]},
+    "nodeId": {"type": ["string", "null"]},
+    "code": {"type": "string", "minLength": 1},
+    "message": {"type": "string", "minLength": 1},
+    "recoverable": {"type": "boolean"},
+    "blockerDigest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

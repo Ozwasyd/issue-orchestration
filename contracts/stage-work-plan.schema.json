@@ -1216,24 +1216,14 @@
             "additionalProperties": false
         },
         "frozenSourceEventPayload": {
-            "type": "object",
-            "required": [
-                "writerStageContract",
-                "sourceReceipt",
-                "sourceReceiptDigest"
-            ],
-            "properties": {
-                "writerStageContract": {
-                    "$ref": "#/$defs/writerStageSourceContract"
+            "oneOf": [
+                {
+                    "$ref": "#/$defs/nodeDiscoveredSourceEventPayload"
                 },
-                "sourceReceipt": {
-                    "$ref": "#/$defs/frozenSourceReceipt"
-                },
-                "sourceReceiptDigest": {
-                    "$ref": "#/$defs/digest"
+                {
+                    "$ref": "#/$defs/legacyFrozenSourceEventPayload"
                 }
-            },
-            "additionalProperties": false
+            ]
         },
         "frozenSourceEvent": {
             "type": "object",
@@ -1334,7 +1324,35 @@
                     "$ref": "#/$defs/digest"
                 }
             },
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "eventType": {
+                                "const": "node.discovered"
+                            }
+                        },
+                        "required": [
+                            "eventType"
+                        ]
+                    },
+                    "then": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/nodeDiscoveredSourceEventPayload"
+                            }
+                        }
+                    },
+                    "else": {
+                        "properties": {
+                            "payload": {
+                                "$ref": "#/$defs/legacyFrozenSourceEventPayload"
+                            }
+                        }
+                    }
+                }
+            ]
         },
         "writerResourceLease": {
             "type": "object",
@@ -1585,6 +1603,157 @@
                     "$ref": "#/$defs/writerBinding"
                 }
             ],
+            "additionalProperties": false
+        },
+        "legacyFrozenSourceEventPayload": {
+            "type": "object",
+            "required": [
+                "writerStageContract",
+                "sourceReceipt",
+                "sourceReceiptDigest"
+            ],
+            "properties": {
+                "writerStageContract": {
+                    "$ref": "#/$defs/writerStageSourceContract"
+                },
+                "sourceReceipt": {
+                    "$ref": "#/$defs/frozenSourceReceipt"
+                },
+                "sourceReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
+            "additionalProperties": false
+        },
+        "nodeDiscoveredReceipt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "schema",
+                "status",
+                "producerAuthority",
+                "rootAuthored",
+                "runId",
+                "nodeId",
+                "memberId",
+                "repository",
+                "issueNumber",
+                "baseSha",
+                "nodeEpoch",
+                "selectorReceiptDigest",
+                "remoteSnapshotDigest",
+                "remoteMemberDigest",
+                "issueSnapshotFingerprint",
+                "repositoryFingerprint",
+                "semanticProposalDigest",
+                "semanticRouteDecisionDigest",
+                "semanticFactsDigest",
+                "requirementInventoryDigest",
+                "sourceCoverageDigest",
+                "acceptanceContractDigest",
+                "receiptDigest"
+            ],
+            "properties": {
+                "schema": {
+                    "const": "issue-orchestration.node-discovered-receipt.v1"
+                },
+                "status": {
+                    "const": "verified"
+                },
+                "producerAuthority": {
+                    "const": "deterministic-cold-start-compiler"
+                },
+                "rootAuthored": {
+                    "const": false
+                },
+                "runId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "nodeId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "memberId": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "repository": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "issueNumber": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "baseSha": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{40}$"
+                },
+                "nodeEpoch": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "selectorReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "remoteSnapshotDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "remoteMemberDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "issueSnapshotFingerprint": {
+                    "$ref": "#/$defs/digest"
+                },
+                "repositoryFingerprint": {
+                    "$ref": "#/$defs/digest"
+                },
+                "semanticProposalDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "semanticRouteDecisionDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "semanticFactsDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "requirementInventoryDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sourceCoverageDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "acceptanceContractDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "receiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            }
+        },
+        "nodeDiscoveredSourceEventPayload": {
+            "type": "object",
+            "required": [
+                "issueKind",
+                "nodeDiscoveredReceipt",
+                "nodeDiscoveredReceiptDigest",
+                "sourceReceiptDigest"
+            ],
+            "properties": {
+                "issueKind": {
+                    "$ref": "#/$defs/nonEmpty"
+                },
+                "nodeDiscoveredReceipt": {
+                    "$ref": "#/$defs/nodeDiscoveredReceipt"
+                },
+                "nodeDiscoveredReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                },
+                "sourceReceiptDigest": {
+                    "$ref": "#/$defs/digest"
+                }
+            },
             "additionalProperties": false
         }
     }

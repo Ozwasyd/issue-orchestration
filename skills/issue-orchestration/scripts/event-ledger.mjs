@@ -62,6 +62,12 @@ function digest(value) {
         .digest('hex')
 }
 
+function unsignedDigest(value, digestField) {
+    const unsigned = structuredClone(value)
+    delete unsigned[digestField]
+    return digest(unsigned)
+}
+
 function deepFreeze(value) {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
         return value
@@ -72,6 +78,7 @@ function deepFreeze(value) {
 
 const rules = {
     'node.discovered': [['none', 'discovered']],
+    'stage.contract-frozen': [['discovered', 'discovered']],
     'test-contract.started': [['discovered', 'test-contracting']],
     'test-contract.frozen': [['test-contracting', 'test-contract-frozen']],
     'test-contract.disputed': [['test-contracting', 'discovered']],
@@ -856,6 +863,97 @@ function transitionReceipt(event, field) {
 
 function validateV2Special(event, node, context) {
     const payload = event.payload ?? {}
+    if (event.eventType === 'node.discovered') {
+        const receipt = payload.nodeDiscoveredReceipt
+        const forbidden = [
+            'testContractDigest',
+            'writerStageContract',
+            'stageWorkPlan',
+            'executableSlice',
+            'compiledPrompt',
+            'routeDecision',
+            'resourceReceipt',
+            'candidateReceipt',
+            'behaviorReceipt',
+            'deliveryReceipt'
+        ]
+        if (forbidden.some((field) => Object.hasOwn(payload, field)) ||
+            receipt?.schema !==
+                'issue-orchestration.node-discovered-receipt.v1' ||
+            receipt.status !== 'verified' ||
+            receipt.runId !== event.runId ||
+            receipt.nodeId !== event.nodeId ||
+            receipt.memberId !== event.nodeId ||
+            receipt.baseSha !== event.baseSha ||
+            receipt.issueSnapshotFingerprint !==
+                event.issueSnapshotFingerprint ||
+            receipt.repositoryFingerprint !==
+                event.repositoryFingerprint ||
+            !/^[a-f0-9]{64}$/u.test(receipt.receiptDigest ?? '') ||
+            receipt.receiptDigest !==
+                unsignedDigest(receipt, 'receiptDigest') ||
+            payload.nodeDiscoveredReceiptDigest !==
+                receipt.receiptDigest) {
+            fail('node-discovered-receipt-invalid')
+        }
+    }
+    if (event.eventType === 'stage.contract-frozen') {
+        const contract = payload.frozenStageContract
+        const plan = payload.stageWorkPlan
+        const slice = payload.executableSlice
+        const prompt = payload.compiledPrompt
+        const route = payload.routeDecision
+        const resource = payload.resourceReceipt
+        if (event.actorRole !== 'root-scheduler' ||
+            contract?.schema !==
+                'issue-orchestration.frozen-stage-contract.v1' ||
+            contract.status !== 'verified' ||
+            contract.runId !== event.runId ||
+            contract.node !== event.nodeId ||
+            contract.baseSha !== event.baseSha ||
+            contract.stageRole !== 'test-owner' ||
+            contract.stagePhase !== 'test-contract' ||
+            contract.receiptDigest !==
+                unsignedDigest(contract, 'receiptDigest') ||
+            plan?.schema !== 'issue-orchestration.stage-work-plan.v1' ||
+            plan.contractBindingStatus !== 'verified' ||
+            plan.frozenStageContractReceiptDigest !==
+                contract.receiptDigest ||
+            plan.planDigest !== unsignedDigest(plan, 'planDigest') ||
+            slice?.schema !== 'issue-orchestration.executable-slice.v1' ||
+            slice.planDigest !== plan.planDigest ||
+            slice.sliceDigest !== unsignedDigest(slice, 'sliceDigest') ||
+            prompt?.schema !==
+                'issue-orchestration.compiled-dispatch-prompt.v1' ||
+            prompt.planDigest !== plan.planDigest ||
+            prompt.sliceDigest !== slice.sliceDigest ||
+            prompt.promptDigest !==
+                unsignedDigest(prompt, 'promptDigest') ||
+            route?.schema !==
+                'issue-orchestration.execution-route-decision.v2' ||
+            route.stageRole !== 'test-owner' ||
+            route.stagePhase !== 'test-contract' ||
+            route.runtimeExecutionBindingStatus !== 'verified' ||
+            route.routeDecisionDigest !==
+                unsignedDigest(route, 'routeDecisionDigest') ||
+            resource?.schema !==
+                'issue-orchestration.writer-resource-acquisition-receipt.v1' ||
+            resource.status !== 'acquired' ||
+            resource.stageAttemptId !== event.attemptId ||
+            resource.receiptDigest !==
+                unsignedDigest(resource, 'receiptDigest') ||
+            payload.planningBundleDigest !==
+                contract.routingInputDigest ||
+            payload.frozenStageContractReceiptDigest !==
+                contract.receiptDigest ||
+            payload.stageWorkPlanDigest !== plan.planDigest ||
+            payload.executableSliceDigest !== slice.sliceDigest ||
+            payload.compiledPromptDigest !== prompt.promptDigest ||
+            payload.routeDecisionDigest !== route.routeDecisionDigest ||
+            payload.resourceReceiptDigest !== resource.receiptDigest) {
+            fail('stage-contract-frozen-invalid')
+        }
+    }
     if (event.eventType === 'test-contract.started' ||
         event.eventType === 'documentation.started') {
         const dispatchReceipt = payload.dispatchReceipt
@@ -1597,6 +1695,13 @@ function initialNode() {
         deliveryAuthorized: false,
         semanticDagRecomputeRequired: false,
         issueKind: null,
+        nodeDiscoveredReceiptDigest: null,
+        frozenWriterStageContractDigest: null,
+        frozenWriterPlanDigest: null,
+        frozenWriterSliceDigest: null,
+        frozenWriterPromptDigest: null,
+        frozenWriterRouteDigest: null,
+        frozenWriterResourceReceiptDigest: null,
         implementationOwnerActorId: null,
         implementationEffort: null,
         candidateSha: null,
@@ -1802,7 +1907,21 @@ function reduceNode(node, event, context) {
     validateReceipt(event, node, context)
     firstFailure(node, event)
     const { eventType: type, payload = {} } = event
-    if (type === 'node.discovered') node.issueKind = payload.issueKind
+    if (type === 'node.discovered') {
+        node.issueKind = payload.issueKind
+        node.nodeDiscoveredReceiptDigest =
+            payload.nodeDiscoveredReceiptDigest
+    }
+    if (type === 'stage.contract-frozen') {
+        node.frozenWriterStageContractDigest =
+            payload.frozenStageContractReceiptDigest
+        node.frozenWriterPlanDigest = payload.stageWorkPlanDigest
+        node.frozenWriterSliceDigest = payload.executableSliceDigest
+        node.frozenWriterPromptDigest = payload.compiledPromptDigest
+        node.frozenWriterRouteDigest = payload.routeDecisionDigest
+        node.frozenWriterResourceReceiptDigest =
+            payload.resourceReceiptDigest
+    }
     if (type === 'test-contract.frozen') node.receiptContractRequired = true
     if (type === 'test-contract.started' ||
         type === 'documentation.started') {

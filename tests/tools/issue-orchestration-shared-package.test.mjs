@@ -755,7 +755,8 @@ test('P10 package carries orchestration facts, not product design facts', () => 
         'runtime-startup',
         'scope-selector',
         'semantic-graph',
-        'stage-dispatch'
+        'stage-dispatch',
+        'test-contract-cold-start'
     ])
     assert.deepEqual(manifest.excludedAuthorities.toSorted(), [
         'bootstrap-executor',

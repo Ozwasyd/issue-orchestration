@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:cold-start-issue-snapshot:v1",
+  "title": "issue-orchestration.cold-start-issue-snapshot.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "repository", "issueNumber", "issueIdentity", "state",
+    "baseSha", "title", "bodyDigest", "relevantCommentsDigest",
+    "selectorReceiptDigest", "selectorDigest", "remoteSnapshotDigest",
+    "remoteMemberDigest", "normativeBlocks", "sourceCoverageDigest",
+    "issueSnapshotFingerprint", "repositoryFingerprint", "snapshotDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.cold-start-issue-snapshot.v1"},
+    "repository": {"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"},
+    "issueNumber": {"type": "integer", "minimum": 1},
+    "issueIdentity": {"type": "string", "minLength": 1},
+    "state": {"const": "OPEN"},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "title": {"type": "string", "minLength": 1},
+    "bodyDigest": {"$ref": "#/$defs/digest"},
+    "relevantCommentsDigest": {"$ref": "#/$defs/digest"},
+    "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+    "selectorDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "remoteMemberDigest": {"$ref": "#/$defs/digest"},
+    "normativeBlocks": {
+      "type": "array", "minItems": 2, "items": {"$ref": "#/$defs/block"}
+    },
+    "sourceCoverageDigest": {"$ref": "#/$defs/digest"},
+    "issueSnapshotFingerprint": {"$ref": "#/$defs/digest"},
+    "repositoryFingerprint": {"$ref": "#/$defs/digest"},
+    "snapshotDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceIdentity", "sourceKind", "normative", "spanDigest"],
+      "properties": {
+        "sourceIdentity": {"type": "string", "minLength": 1},
+        "sourceKind": {"enum": ["title", "body", "comment"]},
+        "normative": {"const": true},
+        "spanDigest": {"$ref": "#/$defs/digest"},
+        "relevantToCorrectness": {"type": "boolean"}
+      }
+    }
+  }
+}

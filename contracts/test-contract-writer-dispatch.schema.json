@@ -4,34 +4,106 @@
   "title": "issue-orchestration.test-contract-writer-dispatch.v1",
   "type": "object",
   "required": [
-    "schema", "status", "phase", "executionClass", "mutationContract",
+    "schema",
+    "status",
+    "phase",
+    "executionClass",
+    "mutationContract",
     "planningAttemptId",
-    "writerAttemptId", "acceptanceContractDigest", "planningReceiptDigest",
-    "routeDecisionDigest", "runtimeExecutionBindingDigest",
-    "resourceReceiptDigest", "leaseId",
-    "compiledPlanDigest", "executableSliceDigest", "compiledPromptDigest",
-    "fullIssueBodyIncluded", "dispatchDigest"
+    "writerAttemptId",
+    "acceptanceContractDigest",
+    "planningReceiptDigest",
+    "routeDecisionDigest",
+    "runtimeExecutionBindingDigest",
+    "resourceReceiptDigest",
+    "leaseId",
+    "compiledPlanDigest",
+    "executableSliceDigest",
+    "compiledPromptDigest",
+    "fullIssueBodyIncluded",
+    "dispatchDigest",
+    "writeScope",
+    "planningBundleDigest",
+    "frozenStageContractReceiptDigest",
+    "callerSuppliedAuthorityIncluded",
+    "preexistingFrozenHistoryIncluded"
   ],
   "properties": {
-    "schema": {"const": "issue-orchestration.test-contract-writer-dispatch.v1"},
-    "status": {"const": "dispatch-authorized"},
-    "phase": {"const": "test-contract"},
-    "executionClass": {"const": "leased-writer"},
-    "mutationContract": {"const": "lease-and-slice-allowlist"},
-    "planningAttemptId": {"type": "string"},
-    "writerAttemptId": {"type": "string"},
-    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
-    "planningReceiptDigest": {"$ref": "#/$defs/digest"},
-    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
-    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
-    "resourceReceiptDigest": {"$ref": "#/$defs/digest"},
-    "leaseId": {"type": "string"},
-    "compiledPlanDigest": {"$ref": "#/$defs/digest"},
-    "executableSliceDigest": {"$ref": "#/$defs/digest"},
-    "compiledPromptDigest": {"$ref": "#/$defs/digest"},
-    "fullIssueBodyIncluded": {"const": false},
-    "dispatchDigest": {"$ref": "#/$defs/digest"}
+    "schema": {
+      "const": "issue-orchestration.test-contract-writer-dispatch.v1"
+    },
+    "status": {
+      "const": "dispatch-authorized"
+    },
+    "phase": {
+      "const": "test-contract"
+    },
+    "executionClass": {
+      "const": "leased-writer"
+    },
+    "mutationContract": {
+      "const": "lease-and-slice-allowlist"
+    },
+    "planningAttemptId": {
+      "type": "string"
+    },
+    "writerAttemptId": {
+      "type": "string"
+    },
+    "acceptanceContractDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "planningReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "routeDecisionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeExecutionBindingDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "resourceReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "leaseId": {
+      "type": "string"
+    },
+    "compiledPlanDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "executableSliceDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "compiledPromptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "fullIssueBodyIncluded": {
+      "const": false
+    },
+    "dispatchDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "writeScope": {
+      "const": "tests-only"
+    },
+    "planningBundleDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "frozenStageContractReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "callerSuppliedAuthorityIncluded": {
+      "const": false
+    },
+    "preexistingFrozenHistoryIncluded": {
+      "const": false
+    }
   },
   "additionalProperties": false,
-  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
 }

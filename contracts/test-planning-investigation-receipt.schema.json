@@ -3,15 +3,68 @@
   "$id": "urn:issue-orchestration:test-planning-investigation-receipt:v1",
   "title": "issue-orchestration.test-planning-investigation-receipt.v1",
   "type": "object",
-  "required": ["schema", "status", "actorRole", "phase", "sourceFingerprint", "receiptDigest"],
+  "required": [
+    "schema",
+    "status",
+    "actorRole",
+    "phase",
+    "sourceFingerprint",
+    "receiptDigest",
+    "rootAuthored",
+    "attemptId",
+    "requestDigest",
+    "acceptanceContractDigest",
+    "routeDecisionDigest",
+    "runtimeExecutionBindingDigest",
+    "mutationPostconditionReceiptDigest"
+  ],
   "properties": {
-    "schema": {"const": "issue-orchestration.test-planning-investigation-receipt.v1"},
-    "status": {"const": "verified"},
-    "actorRole": {"const": "test-owner"},
-    "phase": {"const": "test-contract-planning"},
-    "sourceFingerprint": {"$ref": "#/$defs/digest"},
-    "receiptDigest": {"$ref": "#/$defs/digest"}
+    "schema": {
+      "const": "issue-orchestration.test-planning-investigation-receipt.v1"
+    },
+    "status": {
+      "const": "verified"
+    },
+    "actorRole": {
+      "const": "test-owner"
+    },
+    "phase": {
+      "const": "test-contract-planning"
+    },
+    "sourceFingerprint": {
+      "$ref": "#/$defs/digest"
+    },
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "rootAuthored": {
+      "const": false
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requestDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "acceptanceContractDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "routeDecisionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeExecutionBindingDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "mutationPostconditionReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    }
   },
-  "additionalProperties": true,
-  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+  "additionalProperties": false,
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
 }

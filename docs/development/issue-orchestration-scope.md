@@ -58,7 +58,7 @@ discoveryFacts
 
 对应的调查阶段是 `discovered → dependency-classified → candidate-ready → dispatch-investigated`。`discoveryFacts` 只承载 issue identity/state、显式依赖、scope membership 和候选 owner；`classificationFacts` 承载 owner evidence、active/satisfied dependencies、conflict/resource domains、risk flags、instruction roots、confidence 与 unresolved decisions；`dispatchInvestigation` 承载 exact base/worktree、AGENTS 链、允许/禁止边界、code/test/current-doc paths、实现决定、acceptance mapping、runtime probes、mutation controls 和完整 prompt inputs。浅层事实不能直接生成 implementer prompt。
 
-各层的 schema 分别是 `issue-orchestration.discovery-facts.v1`、`issue-orchestration.classification-facts.v1` 和 `issue-orchestration.dispatch-investigation.v1`。每层都必须是 `status=complete`、带有自洽的 SHA-256 `digest`，并通过前一层 digest、selector receipt digest 和 member remote-fact digest 串联；dispatch 层还必须绑定节点的 `baseSha`。发现层与分类层由非 root 的 `dag-creator-updater` 以 `stage-model-pool.v3` 的确定性 semantic-proposal route、`executionClass=observe-only`、fresh-context、proposal-only 身份产生且共享同一 actor identity；dispatch 层由冻结合同中的 `test-owner:test-contract` leased-writer route 产生，并绑定 `testOwnerId`。实际 profile 由分类和 routing compiler 决定，不能从 root 或 agent 自述推断。
+各层的 schema 分别是 `issue-orchestration.discovery-facts.v1`、`issue-orchestration.classification-facts.v1` 和 `issue-orchestration.dispatch-investigation.v1`。每层都必须是 `status=complete`、带有自洽的 SHA-256 `digest`，并通过前一层 digest、selector receipt digest 和 member remote-fact digest 串联；dispatch 层还必须绑定节点的 `baseSha`。发现层与分类层由非 root 的 `dag-creator-updater` 以 `stage-model-pool.v3` 的确定性 semantic-proposal route、`executionClass=observe-only`、fresh-context、proposal-only 身份产生且共享同一 actor identity；dispatch investigation 由 fresh observe-only `test-owner:test-contract-planning` 在同一个 planning bundle 中产生，并绑定 planning attempt、route、mutation postcondition 与 `testOwnerId`，不得由 leased test-contract writer 或未定义的独立阶段补写。实际 profile 由 canonical routing compiler 决定，不能从 root 或 agent 自述推断。
 
 三层事实由 `issue-orchestration.investigation-projection.v1` 汇总。projection 必须覆盖 selector receipt 中每个 member 恰好一次，并携带 `selectorReceiptDigest`、`remoteSnapshotDigest`、`inputDigest`、`projectionDigest`、`testOwnerCandidates` 和 `implementationReady`。其 validation 必须使用 `issue-orchestration.investigation-validation-receipt.v1`，由 `layered-investigation-validator` / `machine` / `observe-only` 签发，状态为 `passed`，且 freshness 仍绑定当前 selector、remote snapshot 和每个 member 的 remote fact digest。派生列表只能由 member phase 重新计算：`candidate-ready` 只产生 `test-contract-ready`，`dispatch-investigated` 才产生 `implementation-ready`；`dependency-classified` 仍需保留 `investigation-incomplete`。
 
@@ -69,6 +69,22 @@ Freshness 按 member 和 layer 隔离。issue/relevant-comment 或 selector memb
 Acceptance group 可以复用共享 code/test/docs 索引、schema/runtime facts 和 conflict/resource evidence，但每个 member 在冻结合同前仍独立绑定 issue-specific paths、tests/probes、current docs、constraints/non-goals、owner repository、allowed/forbidden paths、acceptance map 和 investigation digest。组级 evidence 不能替代 member contract；一个 member 缺证据只阻塞该 member。Implementer 只消费完整、base/receipt-bound prompt；缺 owner、design、acceptance、counterexample、command、probe、mutation 或 stop condition 时必须返回 `test-contract-disputed`，不得自行补调查。
 
 Projection、validation 和每层事实的 digest 或 selector/freshness 任一漂移都使 frontier 重新计算并 fail closed。旧的 `node.investigation` 属性及任何兼容 fallback 不是 current schema；出现时必须拒绝，不能把旧字段重放为 dispatch authority。
+
+## Deterministic test-contract cold start
+
+新选中的 open issue 从空 state root 到首个 test-contract writer dispatch 只能调用公共 `advanceTestContractColdStart`。调用方提供的初始事实限于已验证 selector receipt、当前 remote issue snapshot、accepted semantic proposal、runtime capability observations 与 installed policy；不得注入 prebuilt receipt、frozen contract、work plan、slice、prompt、checkpoint、candidate、projection、完整 issue body 或 caller-authored authority。
+
+确定性顺序为：
+
+1. 从 title、body 和所有 relevant comment blocks 构建 exact、digest-bound normative source coverage；
+2. 从 accepted proposal 编译 requirement inventory 与 acceptance contract；
+3. 编译并验证 `issue-orchestration.node-discovered-receipt.v1`，随后首次追加仅含 discovery/acceptance facts 的 `node.discovered`；
+4. fresh observe-only `test-owner:test-contract-planning` 在一个 `test-contract-planning-bundle.v1` 中返回 planning receipt、dispatch investigation、slice proposal 与 passed mutation postcondition；
+5. deterministic validators 编译 slice validation、stage work plan、first executable slice、compiled prompt 与 pending canonical route selection；
+6. 使用 distinct writer attempt 获取 exclusive lease/resource，再编译 runtime-bound final route；
+7. 只有 plan、slice、prompt、route、resource 与 predecessor mutually digest-bound 后，才追加 `stage.contract-frozen` 并生成 `test-contract-writer-dispatch.v1`。
+
+Planning attempt 与 writer attempt 重用、selector/comment/base 漂移、source coverage 缺失、`authority-choice-required`、mutation postcondition 缺失、route/runtime mismatch 或 stale canonical authority 都必须返回 typed blocker。API 可重复调用，但不得重写既有 `node.discovered` ledger、回退 projection 或制造第二份 frozen authority。
 
 ## Writer work plan、executable slice 与可恢复进度
 

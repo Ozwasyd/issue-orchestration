@@ -489,13 +489,31 @@ function acceptanceContract() {
     return value
 }
 
-function planningReceipt() {
+function planningReceipt(request = null) {
     const value = {
         schema: 'issue-orchestration.test-contract-plan-receipt.v1',
         status: 'verified',
         rootAuthored: false,
-        attemptId: 'planning-attempt-1',
-        acceptanceContractDigest: acceptanceContract().contractDigest,
+        attemptId: request?.attemptId ?? 'planning-attempt-1',
+        nodeDiscoveredReceiptDigest:
+            request?.nodeDiscoveredReceiptDigest ?? digest('discovered'),
+        requestDigest: request?.requestDigest ?? digest('planning-request'),
+        acceptanceContractDigest:
+            request?.acceptanceContractDigest ?? acceptanceContract().contractDigest,
+        routeDecisionDigest:
+            request?.routeDecisionDigest ??
+            routeDecisionFor({
+                stageRole: 'test-owner',
+                stagePhase: 'test-contract-planning',
+                selectedProfile: 'terra-high'
+            }).routeDecisionDigest,
+        runtimeExecutionBindingDigest:
+            request?.runtimeExecutionBindingDigest ??
+            routeDecisionFor({
+                stageRole: 'test-owner',
+                stagePhase: 'test-contract-planning',
+                selectedProfile: 'terra-high'
+            }).runtimeExecutionBindingDigest,
         ownerRepository: 'ExampleOrg/RepositoryA',
         testPaths: ['tests/tools/issue-1879.test.mjs'],
         commands: ['node --test tests/tools/issue-1879.test.mjs'],
@@ -517,6 +535,35 @@ function planningReceipt() {
 }
 
 
+function discoveredReceiptFor(acceptance) {
+    const value = {
+        schema: 'issue-orchestration.node-discovered-receipt.v1',
+        status: 'verified',
+        producerAuthority: 'deterministic-cold-start-compiler',
+        rootAuthored: false,
+        runId: 'run-authority-1879',
+        nodeId: `${acceptance.repository}#${acceptance.issueNumber}`,
+        memberId: `${acceptance.repository}#${acceptance.issueNumber}`,
+        repository: acceptance.repository,
+        issueNumber: acceptance.issueNumber,
+        baseSha: 'a'.repeat(40),
+        nodeEpoch: 1,
+        selectorReceiptDigest: digest('selector'),
+        remoteSnapshotDigest: digest('remote'),
+        remoteMemberDigest: digest('remote-member'),
+        issueSnapshotFingerprint: digest('issue-snapshot'),
+        repositoryFingerprint: digest('repository'),
+        semanticProposalDigest: digest('semantic-proposal'),
+        semanticRouteDecisionDigest: digest('semantic-route'),
+        semanticFactsDigest: digest('semantic-facts'),
+        requirementInventoryDigest: digest('requirement-inventory'),
+        sourceCoverageDigest: digest('source-coverage'),
+        acceptanceContractDigest: acceptance.contractDigest
+    }
+    value.receiptDigest = digest(value)
+    return value
+}
+
 test('A79-01 advances a new issue through distinct planning and writer attempts', async () => {
     const {
         compileTestContractPlanningRequest,
@@ -525,12 +572,7 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
     } = await importRuntime(1879)
     const acceptance = acceptanceContract()
     const request = compileTestContractPlanningRequest({
-        nodeDiscoveredReceipt: {
-            schema: 'issue-orchestration.node-discovered-receipt.v1',
-            repository: acceptance.repository,
-            issueNumber: acceptance.issueNumber,
-            receiptDigest: digest('discovered')
-        },
+        nodeDiscoveredReceipt: discoveredReceiptFor(acceptance),
         acceptanceContract: acceptance,
         routeDecision: routeDecisionFor({
             stageRole: 'test-owner',
@@ -542,7 +584,7 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
     assert.equal(request.phase, 'test-contract-planning')
     assert.equal(request.executionClass, 'observe-only')
     const plan = verifyTestContractPlanReceipt({
-        receipt: planningReceipt(),
+        receipt: planningReceipt(request),
         request
     })
     const dispatch = compileTestContractWriterDispatch({
@@ -555,13 +597,16 @@ test('A79-01 advances a new issue through distinct planning and writer attempts'
         }),
         writerAttemptId: 'writer-attempt-1',
         resourceReceipt: {
+            schema: 'issue-orchestration.writer-resource-acquisition-receipt.v1',
             status: 'acquired',
             leaseId: 'lease-1',
             receiptDigest: digest('resource')
         },
         compiledPlanDigest: digest('compiled-plan'),
         executableSliceDigest: digest('slice'),
-        compiledPromptDigest: digest('prompt')
+        compiledPromptDigest: digest('prompt'),
+        planningBundleDigest: digest('planning-bundle'),
+        frozenStageContractReceiptDigest: digest('frozen-stage-contract')
     })
     assert.equal(dispatch.status, 'dispatch-authorized')
     assert.notEqual(dispatch.planningAttemptId, dispatch.writerAttemptId)
@@ -582,18 +627,23 @@ test('A79-02 rejects fabricated history, Root authority and cold-start loops', a
             selectedProfile: 'terra-high'
         }),
         attemptId: 'planning'
-    }), { code: 'test-planning-node-discovered' })
-    const receipt = planningReceipt()
+    }), { code: 'node-discovered-receipt-invalid' })
+    const acceptance = acceptanceContract()
+    const request = compileTestContractPlanningRequest({
+        nodeDiscoveredReceipt: discoveredReceiptFor(acceptance),
+        acceptanceContract: acceptance,
+        routeDecision: routeDecisionFor({
+            stageRole: 'test-owner',
+            stagePhase: 'test-contract-planning',
+            selectedProfile: 'terra-high'
+        }),
+        attemptId: 'planning-attempt-1'
+    })
+    const receipt = planningReceipt(request)
     receipt.rootAuthored = true
     assert.throws(() => verifyTestContractPlanReceipt({
         receipt,
-        request: {
-            acceptanceContractDigest:
-                acceptanceContract().contractDigest,
-            attemptId: 'planning-attempt-1',
-            runtimeExecutionBindingDigest:
-                digest('runtime-execution-binding')
-        }
+        request
     }), { code: 'test-planning-authority' })
     assert.throws(() => compileTestContractWriterDispatch({
         acceptanceContract: acceptanceContract(),

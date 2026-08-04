@@ -4,38 +4,145 @@
   "title": "issue-orchestration.test-contract-plan-receipt.v1",
   "type": "object",
   "required": [
-    "schema", "status", "actorRole", "phase", "rootAuthored",
-    "executionClass", "mutationContract", "freshContext", "attemptId",
-    "acceptanceContractDigest", "runtimeExecutionBindingDigest",
+    "schema",
+    "status",
+    "actorRole",
+    "phase",
+    "rootAuthored",
+    "executionClass",
+    "mutationContract",
+    "freshContext",
+    "attemptId",
+    "acceptanceContractDigest",
+    "runtimeExecutionBindingDigest",
     "mutationPostconditionReceiptDigest",
-    "ownerRepository", "testPaths", "commands", "fixturePaths",
-    "runtimeProbes", "stageBoundaries", "sliceProposalDigest",
-    "filesystemWrites", "receiptDigest"
+    "ownerRepository",
+    "testPaths",
+    "commands",
+    "fixturePaths",
+    "runtimeProbes",
+    "stageBoundaries",
+    "sliceProposalDigest",
+    "filesystemWrites",
+    "receiptDigest",
+    "nodeDiscoveredReceiptDigest",
+    "requestDigest",
+    "routeDecisionDigest"
   ],
   "properties": {
-    "schema": {"const": "issue-orchestration.test-contract-plan-receipt.v1"},
-    "status": {"const": "verified"},
-    "actorRole": {"const": "test-owner"},
-    "phase": {"const": "test-contract-planning"},
-    "rootAuthored": {"const": false},
-    "executionClass": {"const": "observe-only"},
-    "mutationContract": {"const": "no-protected-mutation"},
-    "freshContext": {"const": true},
-    "attemptId": {"type": "string"},
-    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
-    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
-    "mutationPostconditionReceiptDigest": {"$ref": "#/$defs/digest"},
-    "ownerRepository": {"type": "string"},
-    "testPaths": {"type": "array", "items": {"type": "string"}},
-    "commands": {"type": "array", "items": {"type": "string"}},
-    "fixturePaths": {"type": "array", "items": {"type": "string"}},
-    "runtimeProbes": {"type": "array"},
-    "stageBoundaries": {"type": "array", "items": {"type": "string"}},
-    "sliceProposalDigest": {"$ref": "#/$defs/digest"},
-    "filesystemWrites": {"maxItems": 0},
+    "schema": {
+      "const": "issue-orchestration.test-contract-plan-receipt.v1"
+    },
+    "status": {
+      "const": "verified"
+    },
+    "actorRole": {
+      "const": "test-owner"
+    },
+    "phase": {
+      "const": "test-contract-planning"
+    },
+    "rootAuthored": {
+      "const": false
+    },
+    "executionClass": {
+      "const": "observe-only"
+    },
+    "mutationContract": {
+      "const": "no-protected-mutation"
+    },
+    "freshContext": {
+      "const": true
+    },
+    "attemptId": {
+      "type": "string"
+    },
+    "acceptanceContractDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "runtimeExecutionBindingDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "mutationPostconditionReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "ownerRepository": {
+      "type": "string"
+    },
+    "testPaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "fixturePaths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "runtimeProbes": {
+      "type": "array"
+    },
+    "stageBoundaries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sliceProposalDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "filesystemWrites": {
+      "maxItems": 0
+    },
     "disputedAuthority": {},
-    "receiptDigest": {"$ref": "#/$defs/digest"}
+    "receiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "nodeDiscoveredReceiptDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "requestDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "routeDecisionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "actorId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "const": "test-owner"
+    },
+    "stagePhase": {
+      "const": "test-contract-planning"
+    },
+    "proposalOnly": {
+      "const": true
+    },
+    "writeScope": {
+      "const": "none"
+    },
+    "routeDecision": {
+      "type": "object"
+    },
+    "executionRouteDecision": {
+      "type": "object"
+    }
   },
   "additionalProperties": false,
-  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
 }

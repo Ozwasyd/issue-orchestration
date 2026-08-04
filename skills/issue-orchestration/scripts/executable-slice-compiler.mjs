@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { createResourceRegistry } from './resource-lifecycle.mjs'
 import { validateStateRoot } from './validate-state-root.mjs'
+import { canonicalNodeStateLocation } from './multi-node-state.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const GIT_DIGEST = /^[a-f0-9]{40,64}$/u
@@ -1380,55 +1381,73 @@ function verifySealedFrozenStageContract(plan) {
             'sealed source event is not the phase predecessor'
         )
     }
-    const expectedStageContract = {
-        schema: 'issue-orchestration.writer-stage-source-contract.v1',
-        runId: contract.runId,
-        repository: contract.repository,
-        issue: contract.issue,
-        node: contract.node,
-        baseSha: contract.baseSha,
-        epochId: contract.epochId,
-        stageRole: contract.stageRole,
-        stagePhase: contract.stagePhase,
-        stageObjective: contract.stageObjective,
-        testContractDigest: contract.testContractDigest,
-        skillDigest: contract.skillDigest,
-        baselineDigest: contract.baselineDigest,
-        routingInputDigest: contract.routingInputDigest,
-        acceptanceItems: structuredClone(contract.acceptanceItems),
-        stageAllowedPaths: structuredClone(contract.stageAllowedPaths),
-        stageForbiddenPaths:
-            structuredClone(contract.stageForbiddenPaths),
-        stageRequiredCommands:
-            structuredClone(contract.stageRequiredCommands),
-        stageTerminalArtifacts:
-            structuredClone(contract.stageTerminalArtifacts),
-        slicePolicyDigest,
-        rootAuthored: false
-    }
-    if (!sameValue(
-        sourceEvent.payload?.writerStageContract,
-        expectedStageContract
-    )) {
-        fail(
-            'sealed-frozen-stage-contract-source',
-            'sealed source event does not bind the frozen stage contract'
+    let sourceReceipt
+    if (contract.stagePhase === 'test-contract') {
+        sourceReceipt = validateNodeDiscoveredSourceReceipt(
+            sourceEvent.payload?.nodeDiscoveredReceipt,
+            contract,
+            sourceEvent
         )
-    }
-    const sourceReceipt = validateFrozenSourceReceipt(
-        sourceEvent.payload?.sourceReceipt,
-        contract,
-        {
-            actorRole: specification.actorRoles[sourceTypeIndex],
-            schema: specification.receiptSchemas[sourceTypeIndex]
+        if (sourceEvent.payload?.nodeDiscoveredReceiptDigest !==
+                sourceReceipt.receiptDigest ||
+            sourceEvent.payload?.sourceReceiptDigest !==
+                sourceReceipt.receiptDigest) {
+            fail(
+                'sealed-frozen-stage-contract-source',
+                'sealed node-discovered receipt digest is invalid'
+            )
         }
-    )
-    if (sourceEvent.payload?.sourceReceiptDigest !==
-            sourceReceipt.receiptDigest) {
-        fail(
-            'sealed-frozen-stage-contract-source',
-            'sealed source receipt digest is invalid'
+    } else {
+        const expectedStageContract = {
+            schema: 'issue-orchestration.writer-stage-source-contract.v1',
+            runId: contract.runId,
+            repository: contract.repository,
+            issue: contract.issue,
+            node: contract.node,
+            baseSha: contract.baseSha,
+            epochId: contract.epochId,
+            stageRole: contract.stageRole,
+            stagePhase: contract.stagePhase,
+            stageObjective: contract.stageObjective,
+            testContractDigest: contract.testContractDigest,
+            skillDigest: contract.skillDigest,
+            baselineDigest: contract.baselineDigest,
+            routingInputDigest: contract.routingInputDigest,
+            acceptanceItems: structuredClone(contract.acceptanceItems),
+            stageAllowedPaths: structuredClone(contract.stageAllowedPaths),
+            stageForbiddenPaths:
+                structuredClone(contract.stageForbiddenPaths),
+            stageRequiredCommands:
+                structuredClone(contract.stageRequiredCommands),
+            stageTerminalArtifacts:
+                structuredClone(contract.stageTerminalArtifacts),
+            slicePolicyDigest,
+            rootAuthored: false
+        }
+        if (!sameValue(
+            sourceEvent.payload?.writerStageContract,
+            expectedStageContract
+        )) {
+            fail(
+                'sealed-frozen-stage-contract-source',
+                'sealed source event does not bind the frozen stage contract'
+            )
+        }
+        sourceReceipt = validateFrozenSourceReceipt(
+            sourceEvent.payload?.sourceReceipt,
+            contract,
+            {
+                actorRole: specification.actorRoles[sourceTypeIndex],
+                schema: specification.receiptSchemas[sourceTypeIndex]
+            }
         )
+        if (sourceEvent.payload?.sourceReceiptDigest !==
+                sourceReceipt.receiptDigest) {
+            fail(
+                'sealed-frozen-stage-contract-source',
+                'sealed source receipt digest is invalid'
+            )
+        }
     }
     const sourceDispatchReceiptDigest =
         HASH.test(sourceReceipt.dispatchReceiptDigest ?? '')
@@ -1917,11 +1936,17 @@ export function writerStageAuthorityLocation({
     nonEmptyString(node, 'writer-authority.node')
     nonEmptyString(stageAttemptId, 'writer-authority.stageAttemptId')
     const runtime = activeWriterAuthorityRuntime()
-    const runKey = digest({ runId })
-    const nodeKey = digest({ runId, node })
-    const attemptKey = digest({ runId, node, stageAttemptId })
-    const runRoot = path.join(runtime.root, 'runs', runKey)
-    const nodeRoot = path.join(runRoot, 'nodes', nodeKey)
+    const nodeLocation = canonicalNodeStateLocation({
+        stateRoot: runtime.root,
+        runId,
+        nodeId: node
+    })
+    const { runKey, nodeKey, runRoot, nodeRoot } = nodeLocation
+    const attemptKey = digest({
+        runId,
+        nodeId: node,
+        stageAttemptId
+    })
     const attemptRoot = path.join(
         nodeRoot,
         'writer-attempts',
@@ -2272,6 +2297,127 @@ function validateWriterResourceAuthority({
     }
 }
 
+function persistOwnerOnlyAuthorityJson(filePath, value) {
+    fs.mkdirSync(path.dirname(filePath), {
+        mode: 0o700,
+        recursive: true
+    })
+    fs.chmodSync(path.dirname(filePath), 0o700)
+    const source = `${JSON.stringify(value)}\n`
+    if (fs.existsSync(filePath)) {
+        const existing = JSON.parse(fs.readFileSync(filePath, 'utf8'))
+        if (!sameValue(existing, value)) {
+            fail(
+                'writer-resource-authority-conflict',
+                'canonical writer resource authority already exists with different content'
+            )
+        }
+        return
+    }
+    fs.writeFileSync(filePath, source, {
+        encoding: 'utf8',
+        flag: 'wx',
+        mode: 0o600
+    })
+    fs.chmodSync(filePath, 0o600)
+}
+
+export function persistWriterResourceAuthority({
+    runId,
+    node,
+    stageAttemptId,
+    stageRole,
+    baseSha,
+    epochId,
+    worktreeIdentity,
+    stageAllowedPaths,
+    testContractDigest,
+    resourceRegistry,
+    resourceLease
+} = {}) {
+    for (const [value, label] of [
+        [runId, 'runId'],
+        [node, 'node'],
+        [stageAttemptId, 'stageAttemptId'],
+        [stageRole, 'stageRole'],
+        [epochId, 'epochId'],
+        [worktreeIdentity, 'worktreeIdentity']
+    ]) nonEmptyString(value, `writer-resource.${label}`)
+    if (!/^[a-f0-9]{40}$/u.test(baseSha ?? '') ||
+        !HASH.test(testContractDigest ?? '')) {
+        fail(
+            'writer-resource-authority-input',
+            'writer resource authority requires a Git base and test-contract digest'
+        )
+    }
+    const allowedPaths = pathList(
+        stageAllowedPaths,
+        'stageAllowedPaths'
+    )
+    let registry
+    try {
+        registry = createResourceRegistry(resourceRegistry)
+    } catch (error) {
+        fail(
+            'writer-resource-registry-invalid',
+            `resource registry is invalid: ${error.code ?? error.message}`
+        )
+    }
+    if (registry.runId !== runId ||
+        registry.issueId !== node ||
+        registry.stageAttemptId !== stageAttemptId ||
+        registry.stageRole !== stageRole ||
+        registry.baseSha !== baseSha ||
+        registry.epochId !== epochId ||
+        registry.allowedPathsDigest !== digest(allowedPaths) ||
+        registry.testContractDigest !== testContractDigest ||
+        registry.slotHeld !== true) {
+        fail(
+            'writer-resource-registry-mismatch',
+            'resource registry does not match the cold-start writer identity'
+        )
+    }
+    const registryIdentityDigest =
+        writerResourceRegistryIdentityDigest({
+            registry,
+            worktreeIdentity
+        })
+    const lease = validateWriterResourceLease({
+        lease: resourceLease,
+        registry,
+        registryIdentityDigest,
+        stageRole,
+        worktreeIdentity,
+        requireFreshAcquisition: true
+    })
+    const location = writerStageAuthorityLocation({
+        runId,
+        node,
+        stageAttemptId
+    })
+    persistOwnerOnlyAuthorityJson(
+        location.resourceRegistryPath,
+        registry
+    )
+    persistOwnerOnlyAuthorityJson(location.writerLeasePath, lease)
+    return seal({
+        schema:
+            'issue-orchestration.writer-resource-acquisition-receipt.v1',
+        status: 'acquired',
+        runId,
+        nodeId: node,
+        stageAttemptId,
+        stageRole,
+        baseSha,
+        epochId,
+        testContractDigest,
+        leaseId: lease.leaseId,
+        leaseDigest: lease.leaseDigest,
+        registryIdentityDigest,
+        runtimeStateRootDigest: location.runtimeStateRootDigest
+    }, 'receiptDigest')
+}
+
 export function validateActiveWriterResourceAuthority(plan) {
     if (plan?.contractBindingStatus === 'unbound-test-only') return true
     if (plan?.contractBindingStatus !== 'verified') {
@@ -2380,6 +2526,50 @@ function validateSourceDispatchReceipt(receipt, input, attemptId) {
     return receipt
 }
 
+function validateNodeDiscoveredSourceReceipt(
+    receipt,
+    input,
+    sourceEvent
+) {
+    const issueNumber = Number(
+        String(input.issue).match(/(\d+)$/u)?.[1]
+    )
+    if (receipt?.schema !==
+            'issue-orchestration.node-discovered-receipt.v1' ||
+        receipt.status !== 'verified' ||
+        receipt.producerAuthority !==
+            'deterministic-cold-start-compiler' ||
+        receipt.rootAuthored !== false ||
+        receipt.runId !== input.runId ||
+        receipt.nodeId !== input.node ||
+        receipt.memberId !== input.node ||
+        receipt.repository !== input.repository ||
+        receipt.issueNumber !== issueNumber ||
+        receipt.baseSha !== input.baseSha ||
+        receipt.issueSnapshotFingerprint !==
+            sourceEvent.issueSnapshotFingerprint ||
+        receipt.repositoryFingerprint !==
+            sourceEvent.repositoryFingerprint ||
+        !HASH.test(receipt.selectorReceiptDigest ?? '') ||
+        !HASH.test(receipt.remoteSnapshotDigest ?? '') ||
+        !HASH.test(receipt.remoteMemberDigest ?? '') ||
+        !HASH.test(receipt.semanticProposalDigest ?? '') ||
+        !HASH.test(receipt.semanticRouteDecisionDigest ?? '') ||
+        !HASH.test(receipt.semanticFactsDigest ?? '') ||
+        !HASH.test(receipt.requirementInventoryDigest ?? '') ||
+        !HASH.test(receipt.sourceCoverageDigest ?? '') ||
+        !HASH.test(receipt.acceptanceContractDigest ?? '') ||
+        !HASH.test(receipt.receiptDigest ?? '') ||
+        unsignedDigest(receipt, 'receiptDigest') !==
+            receipt.receiptDigest) {
+        fail(
+            'frozen-stage-source-receipt',
+            'test-contract cold start requires a verified node-discovered receipt'
+        )
+    }
+    return receipt
+}
+
 function validateFrozenSourceReceipt(
     receipt,
     input,
@@ -2414,7 +2604,7 @@ function sourceEventSpecification(input) {
             eventTypes: ['node.discovered'],
             actorRoles: ['dag-creator-updater'],
             receiptSchemas: [
-                'issue-orchestration.dag-scope-receipt.v1'
+                'issue-orchestration.node-discovered-receipt.v1'
             ],
             invalidatingEvents: [
                 'issue.reopened',
@@ -2576,48 +2766,57 @@ function validateFrozenStageSourceLedger(
             'writer stage predecessor authority is invalidated or has the wrong role'
         )
     }
-    const expectedStageContract = {
-        schema: 'issue-orchestration.writer-stage-source-contract.v1',
-        runId: input.runId,
-        repository: input.repository,
-        issue: input.issue,
-        node: input.node,
-        baseSha: input.baseSha,
-        epochId: input.epochId,
-        stageRole: input.stageRole,
-        stagePhase: input.stagePhase,
-        stageObjective: input.stageObjective,
-        testContractDigest: input.testContractDigest,
-        skillDigest: input.skillDigest,
-        baselineDigest: input.baselineDigest,
-        routingInputDigest: input.routingInputDigest,
-        acceptanceItems: structuredClone(input.acceptanceItems),
-        stageAllowedPaths: structuredClone(input.stageAllowedPaths),
-        stageForbiddenPaths: structuredClone(input.stageForbiddenPaths),
-        stageRequiredCommands:
-            structuredClone(input.stageRequiredCommands),
-        stageTerminalArtifacts:
-            structuredClone(input.stageTerminalArtifacts),
-        slicePolicyDigest,
-        rootAuthored: false
-    }
-    if (!sameValue(
-        sourceEvent.payload?.writerStageContract,
-        expectedStageContract
-    )) {
-        fail(
-            'frozen-stage-source-contract',
-            'predecessor event does not bind the exact writer stage contract'
+    let sourceReceipt
+    if (input.stagePhase === 'test-contract') {
+        sourceReceipt = validateNodeDiscoveredSourceReceipt(
+            sourceEvent.payload?.nodeDiscoveredReceipt,
+            input,
+            sourceEvent
+        )
+    } else {
+        const expectedStageContract = {
+            schema: 'issue-orchestration.writer-stage-source-contract.v1',
+            runId: input.runId,
+            repository: input.repository,
+            issue: input.issue,
+            node: input.node,
+            baseSha: input.baseSha,
+            epochId: input.epochId,
+            stageRole: input.stageRole,
+            stagePhase: input.stagePhase,
+            stageObjective: input.stageObjective,
+            testContractDigest: input.testContractDigest,
+            skillDigest: input.skillDigest,
+            baselineDigest: input.baselineDigest,
+            routingInputDigest: input.routingInputDigest,
+            acceptanceItems: structuredClone(input.acceptanceItems),
+            stageAllowedPaths: structuredClone(input.stageAllowedPaths),
+            stageForbiddenPaths: structuredClone(input.stageForbiddenPaths),
+            stageRequiredCommands:
+                structuredClone(input.stageRequiredCommands),
+            stageTerminalArtifacts:
+                structuredClone(input.stageTerminalArtifacts),
+            slicePolicyDigest,
+            rootAuthored: false
+        }
+        if (!sameValue(
+            sourceEvent.payload?.writerStageContract,
+            expectedStageContract
+        )) {
+            fail(
+                'frozen-stage-source-contract',
+                'predecessor event does not bind the exact writer stage contract'
+            )
+        }
+        sourceReceipt = validateFrozenSourceReceipt(
+            sourceEvent.payload?.sourceReceipt,
+            input,
+            {
+                actorRole: specification.actorRoles[sourceTypeIndex],
+                schema: specification.receiptSchemas[sourceTypeIndex]
+            }
         )
     }
-    const sourceReceipt = validateFrozenSourceReceipt(
-        sourceEvent.payload?.sourceReceipt,
-        input,
-        {
-            actorRole: specification.actorRoles[sourceTypeIndex],
-            schema: specification.receiptSchemas[sourceTypeIndex]
-        }
-    )
     if (sourceEvent.payload?.sourceReceiptDigest !==
             sourceReceipt.receiptDigest ||
         expectedSourceEventDigest !== null &&
