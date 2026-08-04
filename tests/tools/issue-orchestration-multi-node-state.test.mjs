@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import {
+    appendControlEventAtomic,
     appendNodeEventAtomic,
     buildNodeIndex,
     canonicalNodeStateLocation,
@@ -12,6 +13,8 @@ import {
     createControlLedger,
     persistAggregateRunState,
     projectAggregateRun,
+    readCanonicalControlLedger,
+    readCanonicalNodeLedger,
     recoverAggregateRunState,
     replayControlLedger,
     stateDigest
@@ -134,6 +137,18 @@ function makeNodeLedger(identity, stateRoot) {
     }
     event.eventDigest = stateDigest(event)
     return { header, events: [event] }
+}
+
+
+function makeEmptyNodeLedger(identity, stateRoot) {
+    return {
+        header: makeNodeLedger(identity, stateRoot).header,
+        events: []
+    }
+}
+
+function fileBytes(filePath) {
+    return fs.readFileSync(filePath)
 }
 
 function addControl(ledger, eventType, payload, offset = 0) {
@@ -401,4 +416,186 @@ test('production layout has no run-wide ordinary ledger or primary-node replay i
         )]
     })
     assert.equal(index.schema, 'issue-orchestration.node-index.v1')
+})
+
+
+test('node append mutates only its canonical ledger and derived projections', async () => {
+    const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'node-append-scope-'))
+    const left = nodeIdentity({ nodeId: 'RepositoryA#20', issueNumber: 20 })
+    const right = nodeIdentity({ nodeId: 'RepositoryA#21', issueNumber: 21 })
+    persistAggregateRunState({
+        stateRoot,
+        controlLedger: makeControl([left, right]),
+        nodeLedgers: [
+            makeEmptyNodeLedger(left, stateRoot),
+            makeEmptyNodeLedger(right, stateRoot)
+        ]
+    })
+    const run = canonicalRunStateLocation({ stateRoot, runId })
+    const leftLocation = canonicalNodeStateLocation({
+        stateRoot, runId, nodeId: left.nodeId
+    })
+    const rightLocation = canonicalNodeStateLocation({
+        stateRoot, runId, nodeId: right.nodeId
+    })
+    const before = {
+        controlLedger: fileBytes(run.controlLedgerPath),
+        controlProjection: fileBytes(run.controlProjectionPath),
+        leftLedger: fileBytes(leftLocation.ledgerPath),
+        rightLedger: fileBytes(rightLocation.ledgerPath),
+        rightProjection: fileBytes(rightLocation.projectionPath),
+        nodeIndex: fileBytes(run.nodeIndexPath),
+        aggregate: fileBytes(run.aggregateProjectionPath)
+    }
+    await appendNodeEventAtomic({
+        stateRoot,
+        runId,
+        nodeId: left.nodeId,
+        event: makeNodeLedger(left, stateRoot).events[0],
+        writerRole: 'root-scheduler'
+    })
+    assert.deepEqual(fileBytes(run.controlLedgerPath), before.controlLedger)
+    assert.deepEqual(
+        fileBytes(run.controlProjectionPath),
+        before.controlProjection
+    )
+    assert.notDeepEqual(fileBytes(leftLocation.ledgerPath), before.leftLedger)
+    assert.deepEqual(fileBytes(rightLocation.ledgerPath), before.rightLedger)
+    assert.deepEqual(
+        fileBytes(rightLocation.projectionPath),
+        before.rightProjection
+    )
+    assert.notDeepEqual(fileBytes(run.nodeIndexPath), before.nodeIndex)
+    assert.notDeepEqual(
+        fileBytes(run.aggregateProjectionPath),
+        before.aggregate
+    )
+})
+
+test('control append leaves every node ledger and projection byte-identical', async () => {
+    const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'control-append-scope-'))
+    const left = nodeIdentity({ nodeId: 'RepositoryA#20', issueNumber: 20 })
+    const right = nodeIdentity({ nodeId: 'RepositoryA#21', issueNumber: 21 })
+    persistAggregateRunState({
+        stateRoot,
+        controlLedger: makeControl([left, right]),
+        nodeLedgers: [
+            makeNodeLedger(left, stateRoot),
+            makeNodeLedger(right, stateRoot)
+        ]
+    })
+    const run = canonicalRunStateLocation({ stateRoot, runId })
+    const control = readCanonicalControlLedger({ stateRoot, runId })
+    const event = compileControlEvent({
+        ledger: control,
+        eventType: 'slots.updated',
+        payload: { capacity: 3, activeNodeIds: [] },
+        createdAt: '2026-08-04T00:01:00.000Z'
+    })
+    const nodeFiles = [left, right].flatMap((identity) => {
+        const location = canonicalNodeStateLocation({
+            stateRoot, runId, nodeId: identity.nodeId
+        })
+        return [location.ledgerPath, location.projectionPath]
+    })
+    const beforeNodes = new Map(nodeFiles.map((filePath) => [
+        filePath,
+        fileBytes(filePath)
+    ]))
+    const beforeControl = fileBytes(run.controlLedgerPath)
+    const beforeAggregate = fileBytes(run.aggregateProjectionPath)
+    await appendControlEventAtomic({
+        stateRoot,
+        runId,
+        event,
+        writerRole: 'root-scheduler'
+    })
+    assert.notDeepEqual(fileBytes(run.controlLedgerPath), beforeControl)
+    assert.notDeepEqual(
+        fileBytes(run.aggregateProjectionPath),
+        beforeAggregate
+    )
+    for (const [filePath, content] of beforeNodes) {
+        assert.deepEqual(fileBytes(filePath), content)
+    }
+})
+
+test('caller-edited projections cannot authorize recovery', () => {
+    const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'projection-authority-'))
+    const identity = nodeIdentity({
+        nodeId: 'RepositoryA#20',
+        issueNumber: 20
+    })
+    const initial = persistAggregateRunState({
+        stateRoot,
+        controlLedger: makeControl([identity]),
+        nodeLedgers: [makeNodeLedger(identity, stateRoot)]
+    })
+    const run = canonicalRunStateLocation({ stateRoot, runId })
+    const node = canonicalNodeStateLocation({
+        stateRoot, runId, nodeId: identity.nodeId
+    })
+    const forgedAggregate = JSON.parse(
+        fs.readFileSync(run.aggregateProjectionPath, 'utf8')
+    )
+    forgedAggregate.nodes[identity.nodeId].lifecycleState = 'closed'
+    forgedAggregate.nodes[identity.nodeId].dispatchable = false
+    forgedAggregate.aggregateProjectionDigest = stateDigest({ forged: true })
+    fs.writeFileSync(
+        run.aggregateProjectionPath,
+        `${JSON.stringify(forgedAggregate, null, 2)}\n`
+    )
+    const forgedNodeProjection = JSON.parse(
+        fs.readFileSync(node.projectionPath, 'utf8')
+    )
+    forgedNodeProjection.nodes[identity.nodeId].status = 'closed'
+    forgedNodeProjection.projectionDigest = stateDigest({ forged: true })
+    fs.writeFileSync(
+        node.projectionPath,
+        `${JSON.stringify(forgedNodeProjection, null, 2)}\n`
+    )
+    const recovered = recoverAggregateRunState({ stateRoot, runId })
+    assert.deepEqual(recovered.projection, initial.projection)
+    assert.equal(
+        recovered.projection.nodes[identity.nodeId].lifecycleState,
+        'discovered'
+    )
+})
+
+test('lifecycle run loop is a canonical-ledger facade, not a second authority', () => {
+    const scriptsRoot = new URL(
+        '../../skills/issue-orchestration/scripts/',
+        import.meta.url
+    )
+    const runLoopSource = fs.readFileSync(
+        new URL('lifecycle-run-loop.mjs', scriptsRoot),
+        'utf8'
+    )
+    assert.doesNotMatch(runLoopSource, /from ['"]node:fs['"]/u)
+    assert.doesNotMatch(
+        runLoopSource,
+        /lifecycle-run-ledger\.json|lifecycle-run-ledger\.v1/u
+    )
+    assert.doesNotMatch(
+        runLoopSource,
+        /function\s+(?:atomicWrite|readLedger|writeLedger|replayLedger)\b/u
+    )
+    for (const canonicalApi of [
+        'persistAggregateRunState',
+        'recoverAggregateRunState',
+        'appendNodeEventAtomicSync',
+        'appendControlEventAtomicSync',
+        'readCanonicalControlLedger',
+        'readCanonicalNodeLedger'
+    ]) {
+        assert.match(runLoopSource, new RegExp(`\\b${canonicalApi}\\b`, 'u'))
+    }
+    const productionSources = fs.readdirSync(scriptsRoot)
+        .filter((name) => name.endsWith('.mjs'))
+        .map((name) => fs.readFileSync(new URL(name, scriptsRoot), 'utf8'))
+        .join('\n')
+    assert.doesNotMatch(
+        productionSources,
+        /lifecycle-run-ledger\.json|issue-orchestration\.lifecycle-run-ledger/u
+    )
 })

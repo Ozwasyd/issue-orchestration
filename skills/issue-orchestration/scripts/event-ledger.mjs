@@ -193,7 +193,50 @@ const rules = {
     'group.session.cleaned': [['cleaning', 'cleaned']],
     'group.session.cancelled': [['*', 'cancelled']],
     'group.session.failed': [['*', 'failed']],
-    'group.session.completed': [['cleaned', 'completed']]
+    'group.session.completed': [['cleaned', 'completed']],
+    'lifecycle.semantic-proposal-recorded': [
+        ['none', 'discovered']
+    ],
+    'lifecycle.acceptance-contract-recorded': [
+        ['discovered', 'acceptance-frozen']
+    ],
+    'lifecycle.test-contract-planning-recorded': [
+        ['acceptance-frozen', 'test-contracting']
+    ],
+    'lifecycle.test-contract-writer-recorded': [
+        ['test-contracting', 'test-contract-frozen']
+    ],
+    'lifecycle.implementation-retry-recorded': [
+        ['test-contract-frozen', 'implementing-self-testing'],
+        ['implementing-self-testing', 'implementing-self-testing']
+    ],
+    'lifecycle.implementation-candidate-recorded': [
+        ['test-contract-frozen', 'candidate-green'],
+        ['implementing-self-testing', 'candidate-green']
+    ],
+    'lifecycle.behavior-recorded': [
+        ['candidate-green', 'behavior-green']
+    ],
+    'lifecycle.ui-adjudication-recorded': [
+        ['behavior-green', 'behavior-green']
+    ],
+    'lifecycle.ux-acceptance-recorded': [
+        ['behavior-green', 'ux-accepted']
+    ],
+    'lifecycle.documentation-recorded': [
+        ['behavior-green', 'documentation-green'],
+        ['ux-accepted', 'documentation-green']
+    ],
+    'lifecycle.delivery-recorded': [
+        ['documentation-green', 'cleaning'],
+        ['delivery-ready', 'cleaning'],
+        ['delivering', 'cleaning']
+    ],
+    'lifecycle.cleanup-recorded': [
+        ['cleaning', 'closed']
+    ],
+    'lifecycle.terminal-recorded': [['*', 'terminal']],
+    'lifecycle.base-rebound': [['none', 'acceptance-frozen']]
 }
 
 export const transitionTable = Object.freeze(Object.fromEntries(
@@ -215,6 +258,141 @@ function receiptDigestValid(item) {
     const unsigned = { ...item }
     delete unsigned.receiptDigest
     return item.receiptDigest === digest(unsigned)
+}
+
+const LIFECYCLE_EVENT_CONTRACT = Object.freeze({
+    'lifecycle.semantic-proposal-recorded': Object.freeze({
+        actionType: 'request-semantic-proposal',
+        outcome: 'completed'
+    }),
+    'lifecycle.acceptance-contract-recorded': Object.freeze({
+        actionType: 'compile-acceptance-contract',
+        outcome: 'completed'
+    }),
+    'lifecycle.test-contract-planning-recorded': Object.freeze({
+        actionType: 'request-test-contract-planning',
+        outcome: 'completed'
+    }),
+    'lifecycle.test-contract-writer-recorded': Object.freeze({
+        actionType: 'dispatch-test-contract-writer',
+        outcome: 'completed'
+    }),
+    'lifecycle.implementation-retry-recorded': Object.freeze({
+        actionType: 'dispatch-implementation-writer',
+        outcome: 'recoverable-failure'
+    }),
+    'lifecycle.implementation-candidate-recorded': Object.freeze({
+        actionType: 'dispatch-implementation-writer',
+        outcome: 'completed'
+    }),
+    'lifecycle.behavior-recorded': Object.freeze({
+        actionType: 'dispatch-behavior-verifier',
+        outcome: 'completed'
+    }),
+    'lifecycle.ui-adjudication-recorded': Object.freeze({
+        actionType: 'request-ui-adjudication',
+        outcome: 'completed'
+    }),
+    'lifecycle.ux-acceptance-recorded': Object.freeze({
+        actionType: 'dispatch-ux-acceptance-verifier',
+        outcome: 'completed'
+    }),
+    'lifecycle.documentation-recorded': Object.freeze({
+        actionType: 'dispatch-documentation-writer',
+        outcome: 'completed'
+    }),
+    'lifecycle.delivery-recorded': Object.freeze({
+        actionType: 'deliver-acceptance-group',
+        outcome: 'completed'
+    }),
+    'lifecycle.cleanup-recorded': Object.freeze({
+        actionType: 'cleanup-node-resources',
+        outcome: 'completed'
+    }),
+    'lifecycle.terminal-recorded': Object.freeze({
+        actionType: 'terminalize-node',
+        outcome: 'completed'
+    })
+})
+
+function artifactDigestValid(item) {
+    if (typeof item === 'boolean') return true
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+        return false
+    }
+    for (const field of [
+        'receiptDigest', 'workPlanDigest', 'planDigest', 'sliceDigest',
+        'promptDigest', 'routeDecisionDigest', 'proposalDigest',
+        'contractDigest', 'bundleDigest'
+    ]) {
+        if (!Object.hasOwn(item, field)) continue
+        return /^[a-f0-9]{64}$/u.test(item[field] ?? '') &&
+            unsignedDigest(item, field) === item[field]
+    }
+    return false
+}
+
+function validateLifecycleIntegrationEvent(event, node) {
+    if (event.eventType === 'lifecycle.base-rebound') {
+        const payload = event.payload ?? {}
+        if (event.actorRole !== 'root-scheduler' ||
+            payload.schema !==
+                'issue-orchestration.lifecycle-carry-forward.v1' ||
+            !Number.isInteger(payload.priorNodeEpoch) ||
+            payload.priorNodeEpoch < 1 ||
+            !/^[a-f0-9]{64}$/u.test(
+                payload.priorLedgerHeadDigest ?? ''
+            ) ||
+            !payload.receipts ||
+            typeof payload.receipts !== 'object' ||
+            Array.isArray(payload.receipts) ||
+            payload.receiptsDigest !== digest(payload.receipts) ||
+            Object.values(payload.receipts).some(
+                (item) => !artifactDigestValid(item)
+            )) {
+            fail('lifecycle-carry-forward-invalid')
+        }
+        return
+    }
+    const contract = LIFECYCLE_EVENT_CONTRACT[event.eventType]
+    if (!contract) return
+    const payload = event.payload ?? {}
+    const action = payload.action
+    const result = payload.actorResult
+    const receipts = payload.machineReceipts
+    if (payload.schema !==
+            'issue-orchestration.lifecycle-canonical-effect.v1' ||
+        !action || action.schema !==
+            'issue-orchestration.lifecycle-action.v1' ||
+        action.type !== contract.actionType ||
+        (action.nodeId !== event.nodeId &&
+            contract.actionType !== 'deliver-acceptance-group') ||
+        !/^[a-f0-9]{64}$/u.test(action.actionDigest ?? '') ||
+        unsignedDigest(action, 'actionDigest') !== action.actionDigest ||
+        !result || result.schema !==
+            'issue-orchestration.lifecycle-actor-result.v1' ||
+        result.actionDigest !== action.actionDigest ||
+        result.actionType !== contract.actionType ||
+        result.outcome !== contract.outcome ||
+        result.actorRole !== event.actorRole ||
+        result.resultDigest !== unsignedDigest(result, 'resultDigest') ||
+        result.decisionDigest !== digest(result.decision) ||
+        !receipts || typeof receipts !== 'object' ||
+        Array.isArray(receipts) ||
+        payload.machineReceiptsDigest !== digest(receipts) ||
+        Object.values(receipts).some(
+            (item) => !artifactDigestValid(item)
+        ) ||
+        !Number.isInteger(payload.implementationAttempts) ||
+        payload.implementationAttempts <
+            (node.implementationAttempts ?? 0) ||
+        (payload.deliveryCommit !== null &&
+            !/^[a-f0-9]{40}$/u.test(payload.deliveryCommit ?? '')) ||
+        (payload.closedAtSequence !== null &&
+            (!Number.isInteger(payload.closedAtSequence) ||
+                payload.closedAtSequence < 1))) {
+        fail('lifecycle-canonical-effect-invalid')
+    }
 }
 
 function sameValue(left, right) {
@@ -863,6 +1041,9 @@ function transitionReceipt(event, field) {
 
 function validateV2Special(event, node, context) {
     const payload = event.payload ?? {}
+    if (event.eventType.startsWith('lifecycle.')) {
+        validateLifecycleIntegrationEvent(event, node)
+    }
     if (event.eventType === 'node.discovered') {
         const receipt = payload.nodeDiscoveredReceipt
         const forbidden = [
@@ -1695,6 +1876,10 @@ function initialNode() {
         deliveryAuthorized: false,
         semanticDagRecomputeRequired: false,
         issueKind: null,
+        lifecycleReceipts: {},
+        implementationAttempts: 0,
+        deliveryCommit: null,
+        closedAtSequence: null,
         nodeDiscoveredReceiptDigest: null,
         frozenWriterStageContractDigest: null,
         frozenWriterPlanDigest: null,
@@ -1907,6 +2092,20 @@ function reduceNode(node, event, context) {
     validateReceipt(event, node, context)
     firstFailure(node, event)
     const { eventType: type, payload = {} } = event
+    if (type === 'lifecycle.base-rebound') {
+        node.lifecycleReceipts = structuredClone(payload.receipts)
+        node.implementationAttempts = 0
+        node.deliveryCommit = null
+        node.closedAtSequence = null
+    } else if (type.startsWith('lifecycle.')) {
+        node.lifecycleReceipts = {
+            ...node.lifecycleReceipts,
+            ...structuredClone(payload.machineReceipts)
+        }
+        node.implementationAttempts = payload.implementationAttempts
+        node.deliveryCommit = payload.deliveryCommit
+        node.closedAtSequence = payload.closedAtSequence
+    }
     if (type === 'node.discovered') {
         node.issueKind = payload.issueKind
         node.nodeDiscoveredReceiptDigest =
@@ -2254,7 +2453,9 @@ function replayLedger(
         nodeIdentityDigest: mode === 'active-node-v1'
             ? ledger.header.headerDigest
             : null,
-        nodes: {},
+        nodes: mode === 'active-node-v1'
+            ? { [ledger.header.nodeId]: initialNode() }
+            : {},
         groups: {},
         corrections: [],
         dagProposals: [],

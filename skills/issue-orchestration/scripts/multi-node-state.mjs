@@ -14,8 +14,10 @@ export const CONTROL_EVENT_TYPES = Object.freeze([
     'scope.refreshed',
     'remote-snapshot.refreshed',
     'node.registered',
+    'node.rebound',
     'node.removed',
     'node.tombstoned',
+    'repository.base-changed',
     'dependency.updated',
     'acceptance-group.updated',
     'slots.updated',
@@ -23,6 +25,7 @@ export const CONTROL_EVENT_TYPES = Object.freeze([
     'delivery.freeze-acquired',
     'delivery.freeze-released',
     'delivery.effect-recorded',
+    'delivery.effect-completed',
     'cleanup.finalized',
     'run.terminalized'
 ])
@@ -137,15 +140,20 @@ export function canonicalRunStateLocation({ stateRoot, runId } = {}) {
 export function canonicalNodeStateLocation({
     stateRoot,
     runId,
-    nodeId
+    nodeId,
+    nodeEpoch = 1
 } = {}) {
     requireString(nodeId, 'node-id-required')
+    if (!Number.isInteger(nodeEpoch) || nodeEpoch < 1) {
+        fail('node-epoch-required')
+    }
     const run = canonicalRunStateLocation({ stateRoot, runId })
-    const nodeKey = stateDigest({ runId, nodeId })
+    const nodeKey = stateDigest({ runId, nodeId, nodeEpoch })
     const nodeRoot = path.join(run.nodesRoot, nodeKey)
     return Object.freeze({
         ...run,
         nodeId,
+        nodeEpoch,
         nodeKey,
         nodeRoot,
         ledgerPath: path.join(nodeRoot, 'event-ledger.jsonl'),
@@ -162,12 +170,14 @@ export function readCanonicalControlLedger({ stateRoot, runId } = {}) {
 export function readCanonicalNodeLedger({
     stateRoot,
     runId,
-    nodeId
+    nodeId,
+    nodeEpoch = 1
 } = {}) {
     const location = canonicalNodeStateLocation({
         stateRoot,
         runId,
-        nodeId
+        nodeId,
+        nodeEpoch
     })
     return readLedger(location.ledgerPath)
 }
@@ -272,6 +282,31 @@ function registrationFromPayload(payload) {
         fail('control-node-epoch-invalid')
     }
     requireGitSha(payload.baseSha, 'control-node-base-sha-invalid')
+    const repositoryBindingDigest = payload.repositoryBindingDigest ??
+        stateDigest({
+            repository: payload.repository,
+            baseSha: payload.baseSha
+        })
+    requireDigest(
+        repositoryBindingDigest,
+        'control-node-repository-binding-invalid'
+    )
+    const issueSnapshotFingerprint =
+        payload.issueSnapshotFingerprint ?? null
+    const repositoryFingerprint =
+        payload.repositoryFingerprint ?? null
+    if (issueSnapshotFingerprint !== null) {
+        requireDigest(
+            issueSnapshotFingerprint,
+            'control-node-issue-fingerprint-invalid'
+        )
+    }
+    if (repositoryFingerprint !== null) {
+        requireDigest(
+            repositoryFingerprint,
+            'control-node-repository-fingerprint-invalid'
+        )
+    }
     return {
         nodeId: payload.nodeId,
         memberId: payload.memberId,
@@ -281,11 +316,15 @@ function registrationFromPayload(payload) {
         remoteMemberDigest: payload.remoteMemberDigest,
         nodeEpoch: payload.nodeEpoch,
         baseSha: payload.baseSha,
+        repositoryBindingDigest,
+        issueSnapshotFingerprint,
+        repositoryFingerprint,
         dependencyKeys: sortedUnique(
             payload.dependencyKeys ?? [],
             'control-node-dependencies-invalid'
         ),
         acceptanceGroup: payload.acceptanceGroup ?? null,
+        graphNode: payload.graphNode ?? null,
         status: 'active'
     }
 }
@@ -309,7 +348,9 @@ export function replayControlLedger(ledger) {
         acceptanceGroups: {},
         slots: { capacity: 0, active: [] },
         dispatchBatches: [],
+        repositoryBases: {},
         deliveryFreezes: {},
+        pendingDeliveryEffects: {},
         deliveryEffects: {},
         cleanupFinalizations: {},
         terminal: null,
@@ -361,6 +402,12 @@ export function replayControlLedger(ledger) {
                     fail('control-node-duplicate')
                 }
                 projection.nodes[registration.nodeId] = registration
+                projection.repositoryBases[registration.repository] ??= {
+                    repository: registration.repository,
+                    baseSha: registration.baseSha,
+                    repositoryBindingDigest:
+                        registration.repositoryBindingDigest
+                }
                 projection.dependencies[registration.nodeId] =
                     registration.dependencyKeys
                 if (registration.acceptanceGroup) {
@@ -376,6 +423,52 @@ export function replayControlLedger(ledger) {
                 }
                 break
             }
+            case 'node.rebound': {
+                const prior = ensureNode(
+                    projection,
+                    event.payload.nodeId
+                )
+                const registration = registrationFromPayload(
+                    event.payload
+                )
+                if (registration.nodeEpoch !== prior.nodeEpoch + 1) {
+                    fail('control-node-epoch-not-monotonic')
+                }
+                if (registration.repository !== prior.repository ||
+                    registration.issueNumber !== prior.issueNumber ||
+                    registration.memberId !== prior.memberId) {
+                    fail('control-node-rebind-identity-drift')
+                }
+                projection.nodes[registration.nodeId] = registration
+                projection.dependencies[registration.nodeId] =
+                    registration.dependencyKeys
+                for (const [groupId, members] of Object.entries(
+                    projection.acceptanceGroups
+                )) {
+                    if (groupId === registration.acceptanceGroup) continue
+                    projection.acceptanceGroups[groupId] = members.filter(
+                        (memberId) => memberId !== registration.nodeId
+                    )
+                }
+                if (registration.acceptanceGroup) {
+                    const members = projection.acceptanceGroups[
+                        registration.acceptanceGroup
+                    ] ?? []
+                    projection.acceptanceGroups[
+                        registration.acceptanceGroup
+                    ] = [...new Set([
+                        ...members,
+                        registration.nodeId
+                    ])].sort()
+                }
+                projection.repositoryBases[registration.repository] = {
+                    repository: registration.repository,
+                    baseSha: registration.baseSha,
+                    repositoryBindingDigest:
+                        registration.repositoryBindingDigest
+                }
+                break
+            }
             case 'node.removed':
             case 'node.tombstoned': {
                 const node = ensureNode(projection, event.payload.nodeId)
@@ -383,6 +476,27 @@ export function replayControlLedger(ledger) {
                     ? 'removed'
                     : 'tombstoned'
                 node.removalReason = event.payload.reason ?? null
+                break
+            }
+            case 'repository.base-changed': {
+                requireString(
+                    event.payload.repository,
+                    'control-repository-base-repository-invalid'
+                )
+                requireGitSha(
+                    event.payload.baseSha,
+                    'control-repository-base-sha-invalid'
+                )
+                requireDigest(
+                    event.payload.repositoryBindingDigest,
+                    'control-repository-binding-invalid'
+                )
+                projection.repositoryBases[event.payload.repository] = {
+                    repository: event.payload.repository,
+                    baseSha: event.payload.baseSha,
+                    repositoryBindingDigest:
+                        event.payload.repositoryBindingDigest
+                }
                 break
             }
             case 'dependency.updated': {
@@ -461,11 +575,43 @@ export function replayControlLedger(ledger) {
                     event.payload.effectId,
                     'control-delivery-effect-id-invalid'
                 )
-                if (projection.deliveryEffects[event.payload.effectId]) {
+                const duplicate = [
+                    ...Object.values(projection.pendingDeliveryEffects),
+                    ...Object.values(projection.deliveryEffects)
+                ].some(({ effectId }) =>
+                    effectId === event.payload.effectId)
+                if (duplicate) {
                     fail('control-run-effect-duplicate')
                 }
-                projection.deliveryEffects[event.payload.effectId] =
-                    normalize(event.payload)
+                const key = event.payload.groupId ?? event.payload.effectId
+                if (event.payload.status === 'remote-effect-applied') {
+                    projection.pendingDeliveryEffects[key] =
+                        normalize(event.payload)
+                } else {
+                    projection.deliveryEffects[key] =
+                        normalize(event.payload)
+                }
+                break
+            }
+            case 'delivery.effect-completed': {
+                requireString(
+                    event.payload.effectId,
+                    'control-delivery-effect-id-invalid'
+                )
+                const key = event.payload.groupId ?? event.payload.effectId
+                const pending = projection.pendingDeliveryEffects[key]
+                if (!pending || pending.effectId !== event.payload.effectId) {
+                    fail('control-delivery-effect-unobserved')
+                }
+                if (projection.deliveryEffects[key]) {
+                    fail('control-run-effect-duplicate')
+                }
+                projection.deliveryEffects[key] = normalize({
+                    ...pending,
+                    ...event.payload,
+                    status: 'completed'
+                })
+                delete projection.pendingDeliveryEffects[key]
                 break
             }
             case 'cleanup.finalized': {
@@ -506,9 +652,21 @@ function verifyNodeIdentity(runId, registration, header) {
         ['selectorReceiptDigest', 'node-index-selector-mismatch'],
         ['remoteMemberDigest', 'node-index-remote-member-mismatch'],
         ['nodeEpoch', 'node-index-epoch-mismatch'],
-        ['baseSha', 'node-index-base-sha-mismatch']
+        ['baseSha', 'node-index-base-sha-mismatch'],
     ]) {
         if (header[field] !== registration[field]) fail(code)
+    }
+    for (const [field, code] of [
+        ['issueSnapshotFingerprint',
+            'node-index-issue-fingerprint-mismatch'],
+        ['repositoryFingerprint',
+            'node-index-repository-fingerprint-mismatch']
+    ]) {
+        if (registration[field] !== null &&
+            registration[field] !== undefined &&
+            header[field] !== registration[field]) {
+            fail(code)
+        }
     }
 }
 
@@ -530,7 +688,8 @@ function replayRegisteredNodes({ stateRoot, controlProjection, nodeLedgers }) {
         const location = canonicalNodeStateLocation({
             stateRoot,
             runId: controlProjection.runId,
-            nodeId
+            nodeId,
+            nodeEpoch: registration.nodeEpoch
         })
         const ledger = supplied.get(nodeId)
         if (!ledger) {
@@ -622,12 +781,16 @@ function statusAtOrAfter(status, expected) {
     const order = [
         'none',
         'discovered',
+        'acceptance-frozen',
+        'test-contract-planning',
         'test-contracting',
         'test-contract-frozen',
+        'implementing',
         'implementing-self-testing',
         'candidate-green',
         'independent-verifying',
         'behavior-green',
+        'ui-adjudicating',
         'ux-acceptance',
         'ux-accepted',
         'documenting',
@@ -695,7 +858,9 @@ export function projectAggregateRun({
                 lifecycleState,
                 'candidate-green'
             ),
-            deliveryComplete: lifecycleState === 'closed',
+            deliveryComplete: [
+                'cleaning', 'closed'
+            ].includes(lifecycleState),
             dispatchable:
                 registration.status === 'active'
                 && blockedBy.length === 0
@@ -715,13 +880,29 @@ export function projectAggregateRun({
         nodes,
         acceptanceGroups: controlProjection.acceptanceGroups,
         slots: controlProjection.slots,
+        repositoryBases: controlProjection.repositoryBases,
         deliveryFreezes: controlProjection.deliveryFreezes,
+        pendingDeliveryEffects:
+            controlProjection.pendingDeliveryEffects,
         deliveryEffects: controlProjection.deliveryEffects,
         cleanupFinalizations: controlProjection.cleanupFinalizations,
         terminal: controlProjection.terminal
     }
     projection.aggregateProjectionDigest = stateDigest(projection)
-    return { controlProjection, nodeIndex: index, projection }
+    return {
+        controlProjection,
+        nodeIndex: index,
+        nodeProjections: projections,
+        projection
+    }
+}
+
+export async function appendNodeEventAtomic(input = {}) {
+    return appendNodeEventAtomicSync(input)
+}
+
+export async function appendControlEventAtomic(input = {}) {
+    return appendControlEventAtomicSync(input)
 }
 
 export function persistAggregateRunState({
@@ -747,7 +928,8 @@ export function persistAggregateRunState({
         const nodeLocation = canonicalNodeStateLocation({
             stateRoot,
             runId: controlLedger.header.runId,
-            nodeId: ledger.header.nodeId
+            nodeId: ledger.header.nodeId,
+            nodeEpoch: ledger.header.nodeEpoch
         })
         writeLedger(nodeLocation.ledgerPath, ledger)
         const projection = replayEventLedgerSync(ledger)
@@ -784,11 +966,12 @@ export function recoverAggregateRunState({ stateRoot, runId } = {}) {
     const nodeLedgers = Object.entries(controlProjection.nodes)
         .filter(([, registration]) => registration.status === 'active')
         .sort(([left], [right]) => left.localeCompare(right))
-        .map(([nodeId]) => {
+        .map(([nodeId, registration]) => {
             const nodeLocation = canonicalNodeStateLocation({
                 stateRoot,
                 runId,
-                nodeId
+                nodeId,
+                nodeEpoch: registration.nodeEpoch
             })
             try {
                 return readLedger(nodeLocation.ledgerPath)
@@ -820,7 +1003,8 @@ export function recoverAggregateRunState({ stateRoot, runId } = {}) {
         const nodeLocation = canonicalNodeStateLocation({
             stateRoot,
             runId,
-            nodeId: ledger.header.nodeId
+            nodeId: ledger.header.nodeId,
+            nodeEpoch: ledger.header.nodeEpoch
         })
         const projection = replayEventLedgerSync(ledger)
         atomicWrite(
@@ -839,7 +1023,84 @@ export function recoverAggregateRunState({ stateRoot, runId } = {}) {
     return result
 }
 
-export async function appendNodeEventAtomic({
+function loadActiveNodeLedgers({ stateRoot, controlProjection }) {
+    return Object.entries(controlProjection.nodes)
+        .filter(([, registration]) => registration.status === 'active')
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([nodeId, registration]) => {
+            const nodeLocation = canonicalNodeStateLocation({
+                stateRoot,
+                runId: controlProjection.runId,
+                nodeId,
+                nodeEpoch: registration.nodeEpoch
+            })
+            try {
+                return readLedger(nodeLocation.ledgerPath)
+            } catch (error) {
+                return {
+                    header: {
+                        schema:
+                            'issue-orchestration.corrupt-node-ledger.v1',
+                        runId: controlProjection.runId,
+                        nodeId,
+                        memberId: nodeId
+                    },
+                    events: [],
+                    recoveryErrorCode:
+                        error?.code ?? 'node-ledger-replay-invalid'
+                }
+            }
+        })
+}
+
+function writeAggregateDerivedArtifacts({
+    stateRoot,
+    runId,
+    result,
+    writeControlProjection = false
+}) {
+    const location = canonicalRunStateLocation({ stateRoot, runId })
+    if (writeControlProjection) {
+        atomicWrite(
+            location.controlProjectionPath,
+            `${JSON.stringify(result.controlProjection, null, 2)}\n`
+        )
+    }
+    atomicWrite(
+        location.nodeIndexPath,
+        `${JSON.stringify(result.nodeIndex, null, 2)}\n`
+    )
+    atomicWrite(
+        location.aggregateProjectionPath,
+        `${JSON.stringify(result.projection, null, 2)}\n`
+    )
+}
+
+function refreshAggregateDerivedState({
+    stateRoot,
+    controlLedger,
+    writeControlProjection = false
+}) {
+    const controlProjection = replayControlLedger(controlLedger)
+    const nodeLedgers = loadActiveNodeLedgers({
+        stateRoot,
+        controlProjection
+    })
+    const result = projectAggregateRun({
+        stateRoot,
+        controlLedger,
+        nodeLedgers
+    })
+    writeAggregateDerivedArtifacts({
+        stateRoot,
+        runId: controlLedger.header.runId,
+        result,
+        writeControlProjection
+    })
+    return result
+}
+
+export function appendNodeEventAtomicSync({
     stateRoot,
     runId,
     nodeId,
@@ -847,7 +1108,18 @@ export async function appendNodeEventAtomic({
     writerRole
 } = {}) {
     if (writerRole !== 'root-scheduler') fail('ledger-writer-role')
-    const location = canonicalNodeStateLocation({ stateRoot, runId, nodeId })
+    const controlLedger = readCanonicalControlLedger({ stateRoot, runId })
+    const controlProjection = replayControlLedger(controlLedger)
+    const registration = controlProjection.nodes[nodeId]
+    if (!registration || registration.status !== 'active') {
+        fail('control-node-not-active')
+    }
+    const location = canonicalNodeStateLocation({
+        stateRoot,
+        runId,
+        nodeId,
+        nodeEpoch: registration.nodeEpoch
+    })
     const ledger = readLedger(location.ledgerPath)
     if (ledger.header.nodeId !== nodeId || event?.nodeId !== nodeId) {
         fail('event-node-identity')
@@ -866,10 +1138,14 @@ export async function appendNodeEventAtomic({
         location.projectionPath,
         `${JSON.stringify(projection, null, 2)}\n`
     )
-    return projection
+    const aggregate = refreshAggregateDerivedState({
+        stateRoot,
+        controlLedger
+    })
+    return { projection, aggregate }
 }
 
-export async function appendControlEventAtomic({
+export function appendControlEventAtomicSync({
     stateRoot,
     runId,
     event,
@@ -894,5 +1170,10 @@ export async function appendControlEventAtomic({
         location.controlProjectionPath,
         `${JSON.stringify(projection, null, 2)}\n`
     )
-    return projection
+    const aggregate = refreshAggregateDerivedState({
+        stateRoot,
+        controlLedger: candidate,
+        writeControlProjection: false
+    })
+    return { projection, aggregate }
 }
