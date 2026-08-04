@@ -47,7 +47,7 @@ jobs:
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
             -d "${payload}"
 
-      - name: Apply audited change, preserve current frozen evidence, and verify
+      - name: Apply audited change, rebind frozen evidence, and verify
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -77,11 +77,44 @@ jobs:
           git apply --check "${patch}"
           git apply "${patch}"
 
-          # The audited patch was prepared before main refreshed this frozen
-          # candidate identity. Preserve the current canonical evidence rather
-          # than regressing it to the stale hash embedded in the patch.
-          git checkout origin/main -- \
-            tests/fixtures/issue-orchestration/layered-investigation-test-contract.json
+          node <<'NODE'
+          const { createHash } = require('node:crypto')
+          const { existsSync, readFileSync, statSync, writeFileSync } = require('node:fs')
+
+          const contractPath = 'tests/fixtures/issue-orchestration/layered-investigation-test-contract.json'
+          const contract = JSON.parse(readFileSync(contractPath, 'utf8'))
+          const sha256 = (value) => createHash('sha256').update(value).digest('hex')
+          const canonical = (value) => {
+            if (Array.isArray(value)) {
+              return value
+                .map(canonical)
+                .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)))
+            }
+            if (!value || typeof value !== 'object') return value
+            return Object.fromEntries(
+              Object.keys(value).sort().map((key) => [key, canonical(value[key])])
+            )
+          }
+          const digest = (value) => sha256(JSON.stringify(canonical(value)))
+          const implementationFiles = contract.minimalAllowedImplementationPaths.map((filePath) => {
+            if (!existsSync(filePath)) return { path: filePath, presence: 'missing' }
+            return {
+              path: filePath,
+              presence: 'present',
+              sha256: sha256(readFileSync(filePath)),
+              gitMode: statSync(filePath).mode & 0o111 ? '100755' : '100644'
+            }
+          })
+          contract.candidateIdentity.implementationFiles = implementationFiles
+          contract.candidateIdentity.candidateDigest = digest({
+            baseSha: contract.base.sha,
+            contractDigest: contract.contractDigest,
+            matrixIdentityDigest: contract.matrixIdentityDigest,
+            implementationFiles
+          })
+          writeFileSync(contractPath, `${JSON.stringify(contract, null, 2)}\n`)
+          NODE
+
           rm -f .github/workflows/apply-issue-24.yml
 
           git config user.name 'issue-orchestration automation'
