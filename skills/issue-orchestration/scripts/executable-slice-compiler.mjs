@@ -5,6 +5,9 @@ import path from 'node:path'
 import { createResourceRegistry } from './resource-lifecycle.mjs'
 import { validateStateRoot } from './validate-state-root.mjs'
 import { canonicalNodeStateLocation } from './multi-node-state.mjs'
+import {
+    compileDeterministicSlicePolicy
+} from './slice-plan-validator.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 const GIT_DIGEST = /^[a-f0-9]{40,64}$/u
@@ -900,7 +903,9 @@ function createVerifiedPlannerReceipt({
     orderedSlices,
     sliceDependencyGraph
 }) {
-    if (contractBinding.contractBindingStatus !== 'verified') return null
+    if (![
+        'verified', 'pre-writer-verified'
+    ].includes(contractBinding.contractBindingStatus)) return null
     const ownership = orderedSlices.map((slice) => ({
         sliceId: slice.sliceId,
         acceptanceItemIds: slice.acceptanceItemIds,
@@ -958,7 +963,9 @@ function verifyPlannerBinding(plan) {
         }
         return
     }
-    if (plan.contractBindingStatus !== 'verified' ||
+    if (![
+        'verified', 'pre-writer-verified'
+    ].includes(plan.contractBindingStatus) ||
         plan.plannerBindingStatus !== 'verified') {
         fail(
             'stage-work-plan-planner-binding',
@@ -1257,7 +1264,7 @@ function normalizeSliceDefinition(slice, plan) {
     }
 }
 
-function verifyPlanDigest(plan) {
+function verifyPlanEnvelope(plan) {
     if (plan?.schema !== 'issue-orchestration.stage-work-plan.v1' ||
         plan.status !== 'verified' ||
         !HASH.test(plan.planDigest ?? '') ||
@@ -1265,6 +1272,38 @@ function verifyPlanDigest(plan) {
         fail('stage-work-plan-invalid', 'verified stage work plan digest is invalid')
     }
     verifyPlannerBinding(plan)
+}
+
+function verifyPreWriterAuthorityBoundary(plan) {
+    if (plan.contractBindingStatus !== 'pre-writer-verified' ||
+        !HASH.test(plan.preWriterPlanningAuthorityDigest ?? '') ||
+        plan.frozenStageContract !== null ||
+        plan.frozenStageContractReceiptDigest !== null ||
+        plan.activeWriteLeaseId !== null ||
+        plan.resourceLeaseReceiptDigest !== null ||
+        plan.stageAttemptId !== null ||
+        plan.runtimeStateRootDigest !== null ||
+        plan.runtimeAuthorityIdentityDigest !== null ||
+        plan.resourceRegistryIdentityDigest !== null ||
+        plan.resourceRegistrySnapshotDigest !== null ||
+        plan.resourceRegistryObservedAt !== null ||
+        plan.sourceEventDigest !== null ||
+        plan.sourceLedgerDigest !== null ||
+        plan.sourceLedgerObservedAt !== null ||
+        plan.sourceDispatchReceiptDigest !== null) {
+        fail(
+            'pre-writer-stage-work-plan-invalid',
+            'pre-writer plan cannot carry writer authority'
+        )
+    }
+}
+
+function verifyPlanDigest(plan) {
+    verifyPlanEnvelope(plan)
+    if (plan.contractBindingStatus === 'pre-writer-verified') {
+        verifyPreWriterAuthorityBoundary(plan)
+        return
+    }
     validateActiveWriterResourceAuthority(plan)
     validateActiveWriterSourceAuthority(plan)
     verifyCanonicalFrozenContractBinding(plan)
@@ -3372,6 +3411,131 @@ export function compileStageWorkPlan(input) {
         fail('stage-command-coverage-missing', 'stage required command lacks a slice owner')
     }
     return plan
+}
+
+
+export function compilePreWriterStageWorkPlan({
+    input,
+    acceptanceContract,
+    sliceProposal,
+    slicePlanValidation,
+    planningBundleDigest
+} = {}) {
+    if (input?.schema !==
+            'issue-orchestration.stage-work-plan-input.v1' ||
+        acceptanceContract?.schema !==
+            'issue-orchestration.issue-acceptance-contract.v1' ||
+        sliceProposal?.schema !==
+            'issue-orchestration.slice-plan-proposal.v1' ||
+        slicePlanValidation?.schema !==
+            'issue-orchestration.slice-plan-validation-receipt.v1' ||
+        !HASH.test(planningBundleDigest ?? '')) {
+        fail(
+            'pre-writer-stage-work-plan-input',
+            'verified planning inputs are required'
+        )
+    }
+    const deterministicSlicePolicy = compileDeterministicSlicePolicy({
+        acceptanceContract,
+        proposal: sliceProposal,
+        validationReceipt: slicePlanValidation
+    })
+    const orderedSlices = deterministicSlicePolicy.orderedSliceBlueprints
+    const sliceDependencyGraph = Object.fromEntries(
+        orderedSlices.map((slice) => [
+            slice.sliceId,
+            [...slice.prerequisiteSliceIds]
+        ])
+    )
+    const unbound = compileStageWorkPlan({
+        ...input,
+        acceptanceItems:
+            [...acceptanceContract.executableAcceptanceIds],
+        orderedSlices,
+        sliceDependencyGraph,
+        stageObjective: sliceProposal.objective,
+        stageAllowedPaths: [...sliceProposal.allowedPaths],
+        stageForbiddenPaths: [...sliceProposal.forbiddenPaths],
+        stageRequiredCommands: [...sliceProposal.requiredCommands],
+        stageTerminalArtifacts: [
+            'test-contract-plan',
+            'test-contract-files',
+            'test-contract-command-evidence'
+        ]
+    })
+    const body = structuredClone(unbound)
+    delete body.planDigest
+    body.contractBindingStatus = 'pre-writer-verified'
+    body.plannerBindingStatus = 'verified'
+    body.deterministicSlicePolicy =
+        structuredClone(deterministicSlicePolicy)
+    body.slicePolicyDigest = digest(deterministicSlicePolicy)
+    body.frozenStageContract = null
+    body.frozenStageContractReceiptDigest = null
+    body.activeWriteLeaseId = null
+    body.resourceLeaseReceiptDigest = null
+    body.stageAttemptId = null
+    body.runtimeStateRootDigest = null
+    body.runtimeAuthorityIdentityDigest = null
+    body.resourceRegistryIdentityDigest = null
+    body.resourceRegistrySnapshotDigest = null
+    body.resourceRegistryObservedAt = null
+    body.sourceEventDigest = null
+    body.sourceLedgerDigest = null
+    body.sourceLedgerObservedAt = null
+    body.sourceDispatchReceiptDigest = null
+    body.preWriterPlanningAuthorityDigest = digest({
+        acceptanceContractDigest: acceptanceContract.contractDigest,
+        slicePlanProposalDigest: sliceProposal.proposalDigest,
+        slicePlanValidationDigest: slicePlanValidation.validationDigest,
+        planningBundleDigest
+    })
+    body.plannerReceipt = createVerifiedPlannerReceipt({
+        contractBinding: body,
+        orderedSlices,
+        sliceDependencyGraph
+    })
+    body.plannerReceiptDigest = body.plannerReceipt.receiptDigest
+    const plan = seal(body, 'planDigest')
+    verifyPlanDigest(plan)
+    return plan
+}
+
+export function validatePreWriterStageWorkPlan(plan) {
+    verifyPlanEnvelope(plan)
+    verifyPreWriterAuthorityBoundary(plan)
+    return plan
+}
+
+export function validatePreWriterExecutableSlice({ plan, slice } = {}) {
+    validatePreWriterStageWorkPlan(plan)
+    const expected = compileExecutableSlice({
+        plan,
+        sliceId: slice?.sliceId
+    })
+    if (!sameValue(expected, slice)) {
+        fail(
+            'pre-writer-executable-slice-invalid',
+            'pre-writer slice differs from deterministic plan output'
+        )
+    }
+    return slice
+}
+
+export function validatePreWriterCompiledDispatchPrompt({
+    plan,
+    slice,
+    compiled
+} = {}) {
+    validatePreWriterExecutableSlice({ plan, slice })
+    const expected = compileDispatchPrompt({ plan, slice })
+    if (!sameValue(expected, compiled)) {
+        fail(
+            'pre-writer-compiled-prompt-invalid',
+            'pre-writer prompt differs from deterministic compiler output'
+        )
+    }
+    return compiled
 }
 
 export function compileExecutableSlice({ plan, sliceId } = {}) {
