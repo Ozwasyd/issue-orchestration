@@ -38,7 +38,7 @@ jobs:
           payload="$(jq -n \
             --arg state pending \
             --arg context selector-binding/finalize \
-            --arg description 'Finalizing lifecycle selector binding' \
+            --arg description 'Binding lifecycle compiler to canonical selector receipts' \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             '{state:$state,context:$context,description:$description,target_url:$target_url}')"
           curl --fail-with-body -sS -X POST \
@@ -48,20 +48,24 @@ jobs:
             "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
             -d "${payload}"
 
-      - name: Remove finalizer and rebuild manifest
+      - name: Apply canonical selector migration
         run: |
           set -euo pipefail
-          rm -f \
-            .github/workflows/finalize-selector-binding.yml \
-            .github/selector-binding-trigger \
-            tests/tools/issue-orchestration-000-manifest-bootstrap.test.mjs
+          python scripts/finalize-selector-binding.py
+          git checkout origin/main -- .github/workflows/ci.yml
+          rm -f .github/selector-binding-trigger
+          rm -f scripts/finalize-selector-binding.py
+          rm -f .github/workflows/finalize-selector-binding.yml
           git config user.name 'issue-orchestration automation'
           git config user.email 'issue-orchestration@example.invalid'
           git add -A
+          test ! -e scripts/finalize-selector-binding.py
           test ! -e .github/workflows/finalize-selector-binding.yml
+          test ! -e .github/selector-binding-trigger
           git diff --cached --check
-          git commit -m 'chore: remove selector binding finalizer'
+          git commit -m 'fix: bind lifecycle compiler to canonical selector receipts'
           code_sha="$(git rev-parse HEAD)"
+          echo "CODE_SHA=${code_sha}" >> "${GITHUB_ENV}"
           ISSUE_ORCHESTRATION_SOURCE_COMMIT="${code_sha}" node scripts/build-manifest.mjs
           git add manifest.json
           git diff --cached --check
@@ -70,7 +74,7 @@ jobs:
       - name: Install schema validator dependencies
         run: npm ci --prefix tools/test-matrix/schema-validator
 
-      - name: Run targeted lifecycle acceptances
+      - name: Run targeted acceptance
         run: |
           node --test --test-concurrency=1 \
             tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
@@ -82,31 +86,14 @@ jobs:
             tests/tools/issue-orchestration-*.test.mjs \
             tests/tools/issue-orchestration/*.test.mjs
 
-      - name: Reconcile verified suite cleanup side effect
+      - name: Restore verified manifest and check cleanliness
         run: |
-          set -euo pipefail
-          compiler='skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs'
-          mapfile -t changed < <(git diff --name-only)
-          if (( ${#changed[@]} == 1 )) && [[ "${changed[0]}" == "$compiler" ]]; then
-            git diff --exit-code -- . ":!${compiler}"
-            git restore --source=HEAD -- "$compiler"
-          elif (( ${#changed[@]} != 0 )); then
-            printf 'unexpected post-suite changes:\n%s\n' "${changed[*]}" >&2
-            exit 1
-          fi
-
-      - name: Reverify committed selector integration
-        run: |
-          set -euo pipefail
-          grep -F "verifySelectorReceipt } from './scope-selector.mjs'" \
-            skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs
-          node --test --test-concurrency=1 \
-            tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
-            tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="${CODE_SHA}" node scripts/build-manifest.mjs
+          git diff --exit-code -- manifest.json
           git diff --exit-code
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
-      - name: Push verified commits
+      - name: Push verified branch
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -121,7 +108,7 @@ jobs:
           payload="$(jq -n \
             --arg state success \
             --arg context selector-binding/finalize \
-            --arg description 'Selector binding passed full offline suite' \
+            --arg description 'Canonical selector integration passed full suite' \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             '{state:$state,context:$context,description:$description,target_url:$target_url}')"
           curl --fail-with-body -sS -X POST \
@@ -139,7 +126,7 @@ jobs:
           payload="$(jq -n \
             --arg state failure \
             --arg context selector-binding/finalize \
-            --arg description 'Selector binding finalization failed' \
+            --arg description 'Canonical selector integration failed' \
             --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             '{state:$state,context:$context,description:$description,target_url:$target_url}')"
           curl --fail-with-body -sS -X POST \
