@@ -1,0 +1,31 @@
+name: Bootstrap source export
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Pack complete checkout
+        shell: bash
+        run: tar --exclude='./source-checkout.tar.gz' -czf source-checkout.tar.gz .
+
+      - name: Upload source checkout
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-checkout
+          path: source-checkout.tar.gz
+          if-no-files-found: error
+          retention-days: 1
