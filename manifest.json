@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "fba032db5483594930115cb671942254eef99b7b",
-    "sourceTreeDigest": "a2f72179302d1c5906de680546a89002e4bcab7b4da8b06454a957814d6b9290",
+    "sourceCommit": "7d5a1955fadcb1d7d53a4924839d797da894cd07",
+    "sourceTreeDigest": "69fa6edb3dd463a5daf7141ff4b9b1c8b2e552f1dc8596cbffa2fd16e7b21b68",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
     "agentDigests": {
@@ -285,7 +285,7 @@
         "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "a41e7efda3d70610e7062188bcee4a1595b1212e2cb22d0ab77f6541fab4f456",
         "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "cc4f13ca20ac7b7242e5019535134c82324912756152b566570de22f0e5ff8e1",
         "skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs": "8d34aa5105ff77fa2e60035c69e8604456d8b14fe8ba962f0d2253194297d2a8",
-        "skills/issue-orchestration/scripts/event-ledger.mjs": "8a3ef2da1339c63746cd56c46dff11bfd59f7b5bdef45d5c9aab968ecad50445",
+        "skills/issue-orchestration/scripts/event-ledger.mjs": "2d3a52a0bde6cdc58051e06e11728d3403c68f6c00b47460a4c86cb755edd044",
         "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "fa61a46acdfd9895affbff070167c452b4589d446641df90f8dffab7ae1996ef",
         "skills/issue-orchestration/scripts/execution-route-compiler.mjs": "11c2701a830723d606b98794c31402bcbdf753a492fbd7167e5a98d67354c1cd",
         "skills/issue-orchestration/scripts/frontier-compiler.mjs": "ddeb77546ec2f854754e0bb6dc6c8c2e62457806486eb0dca9a5cd59b73244d0",
@@ -293,9 +293,10 @@
         "skills/issue-orchestration/scripts/human-decision.mjs": "5f91d60c56c2f26082ddaa7a4a2263a805063e9413d4be7b503c8efe9fd0f5a5",
         "skills/issue-orchestration/scripts/investigation-compiler.mjs": "5fb3f5faf84a4ac22a08899f6e684144ee31d603d10d03a5f8a16740f906263b",
         "skills/issue-orchestration/scripts/issue-requirement-authority.mjs": "4b78a883b2e760f71637e0f85ad353d59bee098e8c4791d0f72e4d598568d596",
-        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "087b73ce9938b232384e70e498c8601c4e98795abc248d535fcd8c21f06a66e9",
+        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "8c35a722314ec3fe7fb3d8940af0bd15f695b13c690a5093ea9cf4012165abeb",
+        "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "9c3b5aeb943b97ee556f314c26ea860ed63eb90d1d251551b3744d944cd1800f",
         "skills/issue-orchestration/scripts/lifecycle-state-machine.mjs": "a49215ff410e2eb474e6a7acf11e899b371c675348e4b5efa0819dad18c6066d",
-        "skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs": "30ce3f12cb22f265712cca2460e392f69fe9d85d6ad27d3ed54b581e92b6d7fd",
+        "skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs": "88c744e2388933b3e916815af32be960cc8c38bff69e9bee4a0a9ae7ca2e5d98",
         "skills/issue-orchestration/scripts/multi-node-state.mjs": "f5df4be3ccc089e99a59914e3ae0d8490c60000eea76b0ed41586474a423b935",
         "skills/issue-orchestration/scripts/permanent-e2e.mjs": "5da73b668273cbc713312d5556d97325e4a70fd49cccc39a654022e642eabbe8",
         "skills/issue-orchestration/scripts/quiescence-observation-collector.mjs": "b3996fb1520ad195d23587839e02811d0ff67f297dae878884ee509cf658cede",
@@ -324,5 +325,5 @@
         "skills/issue-orchestration/SKILL.md": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "8a6c42aa9dd491419b81367e16ffdfbeebcd37cd7ed75840ada9566af7b34c32"
+    "manifestDigest": "9f99de4e7a03ac14069b40c582eba71827adcc751f98f82d77c631d084eec7a0"
 }
