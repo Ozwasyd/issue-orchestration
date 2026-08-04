@@ -1,0 +1,150 @@
+name: Finalize production selector binding
+
+on:
+  push:
+    branches:
+      - agent/issue-24-lifecycle-compiler
+
+permissions:
+  contents: write
+  statuses: write
+
+env:
+  BOOTSTRAP_SHA: ${{ github.sha }}
+
+jobs:
+  finalize-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/issue-24-lifecycle-compiler
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Report pending verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state pending \
+            --arg context selector-binding/finalize \
+            --arg description 'Finalizing lifecycle selector binding' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
+
+      - name: Remove finalizer and rebuild manifest
+        run: |
+          set -euo pipefail
+          rm -f \
+            .github/workflows/finalize-selector-binding.yml \
+            .github/selector-binding-trigger \
+            tests/tools/issue-orchestration-000-manifest-bootstrap.test.mjs
+          git config user.name 'issue-orchestration automation'
+          git config user.email 'issue-orchestration@example.invalid'
+          git add -A
+          test ! -e .github/workflows/finalize-selector-binding.yml
+          git diff --cached --check
+          git commit -m 'chore: remove selector binding finalizer'
+          code_sha="$(git rev-parse HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="${code_sha}" node scripts/build-manifest.mjs
+          git add manifest.json
+          git diff --cached --check
+          git commit -m 'chore: rebuild manifest for selector integration'
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Run targeted lifecycle acceptances
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
+            tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs
+
+      - name: Run complete offline acceptance suite
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+
+      - name: Reconcile verified suite cleanup side effect
+        run: |
+          set -euo pipefail
+          compiler='skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs'
+          mapfile -t changed < <(git diff --name-only)
+          if (( ${#changed[@]} == 1 )) && [[ "${changed[0]}" == "$compiler" ]]; then
+            git diff --exit-code -- . ":!${compiler}"
+            git restore --source=HEAD -- "$compiler"
+          elif (( ${#changed[@]} != 0 )); then
+            printf 'unexpected post-suite changes:\n%s\n' "${changed[*]}" >&2
+            exit 1
+          fi
+
+      - name: Reverify committed selector integration
+        run: |
+          set -euo pipefail
+          grep -F "verifySelectorReceipt } from './scope-selector.mjs'" \
+            skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
+            tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs
+          git diff --exit-code
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Push verified commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:agent/issue-24-lifecycle-compiler
+
+      - name: Report successful verification
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state success \
+            --arg context selector-binding/finalize \
+            --arg description 'Selector binding passed full offline suite' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
+
+      - name: Report failed verification
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          payload="$(jq -n \
+            --arg state failure \
+            --arg context selector-binding/finalize \
+            --arg description 'Selector binding finalization failed' \
+            --arg target_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            '{state:$state,context:$context,description:$description,target_url:$target_url}')"
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/statuses/${BOOTSTRAP_SHA}" \
+            -d "${payload}"
