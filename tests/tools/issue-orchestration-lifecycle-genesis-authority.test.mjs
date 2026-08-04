@@ -183,6 +183,7 @@ function makeFixture({
             runId,
             createdAt: CREATED_AT,
             selectorReceipt,
+            selectorDefinition: selectorDefinition(repository.repository),
             semanticGraph,
             installedPolicy,
             lifecycleAuthority: authority,

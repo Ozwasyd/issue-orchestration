@@ -28,6 +28,60 @@ function digest(value) {
     return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex')
 }
 
+
+function normalizeSelectorDefinition(selector) {
+    if (selector?.schema !== 'issue-orchestration.scope-selector.v1' ||
+        typeof selector.selectorVersion !== 'string' ||
+        selector.selectorVersion.length === 0 ||
+        typeof selector.type !== 'string' || selector.type.length === 0 ||
+        !Array.isArray(selector.repositories) ||
+        selector.repositories.length === 0 ||
+        new Set(selector.repositories).size !==
+            selector.repositories.length ||
+        selector.repositories.some((value) =>
+            typeof value !== 'string' || value.length === 0) ||
+        !selector.parameters ||
+        typeof selector.parameters !== 'object' ||
+        Array.isArray(selector.parameters) ||
+        typeof selector.remoteQueryIdentity !== 'string' ||
+        selector.remoteQueryIdentity.length === 0) {
+        throw Object.assign(new Error('invalid selector schema'), {
+            code: 'invalid-selector-schema'
+        })
+    }
+    return {
+        schema: selector.schema,
+        selectorVersion: selector.selectorVersion,
+        type: selector.type,
+        repositories: [...selector.repositories].sort(),
+        parameters: canonical(selector.parameters),
+        remoteQueryIdentity: selector.remoteQueryIdentity
+    }
+}
+
+export function selectorDefinitionDigest(selector) {
+    return digest(normalizeSelectorDefinition(selector))
+}
+
+export function verifySelectorDefinition(selector, receipt = null) {
+    const normalized = normalizeSelectorDefinition(selector)
+    if (receipt) {
+        verifySelectorReceipt(receipt)
+        if (receipt.selectorVersion !== normalized.selectorVersion ||
+            receipt.type !== normalized.type ||
+            receipt.remoteQueryIdentity !==
+                normalized.remoteQueryIdentity ||
+            receipt.parametersDigest !== digest(normalized.parameters) ||
+            receipt.selectorDigest !== digest(normalized)) {
+            throw Object.assign(
+                new Error('selector definition does not match receipt'),
+                { code: 'selector-definition-receipt-mismatch' }
+            )
+        }
+    }
+    return Object.freeze(structuredClone(normalized))
+}
+
 function issueId(issue) {
     return `${issue.repository}#${issue.number}`
 }
@@ -46,7 +100,9 @@ function remoteFact(issue) {
         labels: issue.labels ?? [],
         milestone: issue.milestone
             ? { number: issue.milestone.number, title: issue.milestone.title }
-            : null
+            : null,
+        declaredDependencies: [...(issue.dependsOn ?? [])].sort(),
+        trackedIssueIds: [...(issue.trackedIssueIds ?? [])].sort()
     }
 }
 
@@ -117,18 +173,11 @@ export function resolveSelector({
         activity: 'scope-selection',
         startup
     })
-    if (selector?.schema !== 'issue-orchestration.scope-selector.v1') {
-        throw Object.assign(new Error('invalid selector schema'), {
-            code: 'invalid-selector-schema'
-        })
-    }
+    const definition = normalizeSelectorDefinition(selector)
+    selector = definition
 
     const parametersDigest = digest(selector.parameters)
-    const selectorDigest = digest({
-        ...selector,
-        repositories: [...selector.repositories].sort(),
-        parameters: canonical(selector.parameters)
-    })
+    const selectorDigest = digest(selector)
     if (previousReceipt
         && previousReceipt.selectorVersion === selector.selectorVersion
         && previousReceipt.selectorDigest !== selectorDigest) {
