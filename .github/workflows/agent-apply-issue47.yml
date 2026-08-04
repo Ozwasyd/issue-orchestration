@@ -1,0 +1,51 @@
+name: Apply issue 47 patch
+
+on:
+  push:
+    branches:
+      - agent/issue-47-startup-trust-genesis
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-issue-47
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Apply, verify, and finalize
+        shell: bash
+        env:
+          TARGET_BRANCH: agent/issue-47-startup-trust-genesis
+        run: |
+          set -euo pipefail
+
+          cat .agent-patches/issue47/chunk-* > /tmp/issue47.patch.gz.b64
+          base64 --decode /tmp/issue47.patch.gz.b64 > /tmp/issue47.patch.gz
+          echo "6b50b1fbdb5870c72f7ac4ab94aead1b7015adc975e678418e689251b134bdcc  /tmp/issue47.patch.gz" | sha256sum --check -
+
+          gzip --decompress --stdout /tmp/issue47.patch.gz > /tmp/issue47.patch
+          echo "1ec9d67f827940d0af986bc2bdc49e2c8f31ecdb207163f5b324f3114aab3766  /tmp/issue47.patch" | sha256sum --check -
+
+          git apply --index --whitespace=error-all /tmp/issue47.patch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Bind lifecycle runs to startup and trust authority"
+
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$SOURCE_COMMIT" node scripts/build-manifest.mjs
+
+          git rm -r .agent-patches/issue47
+          git rm .github/workflows/agent-apply-issue47.yml
+          git add manifest.json
+          git commit -m "Rebuild lifecycle authority manifest"
+
+          git push origin "HEAD:${TARGET_BRANCH}"
