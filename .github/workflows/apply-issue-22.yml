@@ -85,14 +85,21 @@ jobs:
           git apply --check "${patch}"
           git apply "${patch}"
 
-          curl --fail-with-body -sS \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/blobs/51c49008bdd178c5ac1a283302e351394adc46c0" \
-            | jq -r '.content' \
-            | tr -d '\n' \
-            | base64 -d > "${schema_fix}"
+          : > "${schema_fix}"
+          for sha in \
+            268d5db81e69d097a63da10a738f6b5cff5a4a5c \
+            4e2558543bf3f6baa3605a8f56bd1daae50a2afc \
+            26d3e496a6a155a009437d2632c18801cede530f
+          do
+            curl --fail-with-body -sS \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" \
+              | jq -r '.content' \
+              | tr -d '\n' \
+              | base64 -d >> "${schema_fix}"
+          done
           echo 'ea0890f5766be9ac975d9c911b0033c7130fe511046aac2d1c8bbf812e816324  '"${schema_fix}" | sha256sum --check
           git apply --check "${schema_fix}"
           git apply "${schema_fix}"
