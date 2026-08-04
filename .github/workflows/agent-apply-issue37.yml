@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - agent/issue-37-prewriter-executor
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
@@ -14,16 +21,23 @@ concurrency:
 
 jobs:
   apply:
+    if: github.event_name == 'push' || github.head_ref == 'agent/issue-37-prewriter-executor'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       - name: Apply verified patch and finalize branch
         shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
         run: |
           set -euo pipefail
+          if [[ ! -d .agent-patches/issue37 ]]; then
+            echo "Issue 37 transport already finalized."
+            exit 0
+          fi
           cat .agent-patches/issue37/part-* > /tmp/issue37.patch.gz.b64
           base64 --decode /tmp/issue37.patch.gz.b64 > /tmp/issue37.patch.gz
           echo "48dbfd218020ecc556fda87d08fc3496fe3103efe0947b7966133736d260b7bd  /tmp/issue37.patch.gz" | sha256sum --check -
@@ -40,4 +54,4 @@ jobs:
           git rm .github/workflows/agent-apply-issue37.yml
           git add manifest.json
           git commit -m "Rebuild pre-writer executor manifest"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+          git push origin "HEAD:${TARGET_BRANCH}"
