@@ -32,72 +32,15 @@ import {
     replayEventLedgerSync,
     sealNodeLedgerHeader
 } from './event-ledger.mjs'
+import {
+    validateLifecycleStageResult
+} from './lifecycle-stage-admission.mjs'
 
 const HANDLE_SCHEMA = 'issue-orchestration.lifecycle-run-handle.v1'
 const GENESIS_SCHEMA = 'issue-orchestration.lifecycle-run-genesis.v1'
-const ACTOR_RESULT_SCHEMA =
-    'issue-orchestration.lifecycle-actor-result.v1'
 const GENESIS = '0'.repeat(64)
 const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
-
-const EXPECTED_ACTOR_ROLE = Object.freeze({
-    'request-semantic-proposal': 'dag-creator-updater',
-    'compile-acceptance-contract': 'acceptance-contract-compiler',
-    'request-test-contract-planning': 'test-owner',
-    'dispatch-test-contract-writer': 'test-owner',
-    'dispatch-behavior-verifier': 'test-owner',
-    'request-ui-adjudication': 'ui-system-adjudicator',
-    'dispatch-ux-acceptance-verifier': 'ux-acceptance-verifier',
-    'dispatch-documentation-writer': 'documentation-writer',
-    'deliver-acceptance-group': 'root-delivery-adapter',
-    'cleanup-node-resources': 'root-cleanup-adapter',
-    'terminalize-node': 'root-scheduler'
-})
-
-const ALLOWED_OUTCOMES = Object.freeze({
-    'request-semantic-proposal': ['completed'],
-    'compile-acceptance-contract': ['completed'],
-    'request-test-contract-planning': ['completed'],
-    'dispatch-test-contract-writer': ['completed'],
-    'dispatch-implementation-writer': [
-        'completed', 'recoverable-failure'
-    ],
-    'dispatch-behavior-verifier': ['completed'],
-    'request-ui-adjudication': ['completed'],
-    'dispatch-ux-acceptance-verifier': ['completed'],
-    'dispatch-documentation-writer': ['completed'],
-    'deliver-acceptance-group': [
-        'remote-effect-applied', 'completed'
-    ],
-    'cleanup-node-resources': ['completed'],
-    'terminalize-node': ['completed']
-})
-
-const EVENT_TYPE_BY_ACTION = Object.freeze({
-    'request-semantic-proposal':
-        'lifecycle.semantic-proposal-recorded',
-    'compile-acceptance-contract':
-        'lifecycle.acceptance-contract-recorded',
-    'request-test-contract-planning':
-        'lifecycle.test-contract-planning-recorded',
-    'dispatch-test-contract-writer':
-        'lifecycle.test-contract-writer-recorded',
-    'dispatch-behavior-verifier':
-        'lifecycle.behavior-recorded',
-    'request-ui-adjudication':
-        'lifecycle.ui-adjudication-recorded',
-    'dispatch-ux-acceptance-verifier':
-        'lifecycle.ux-acceptance-recorded',
-    'dispatch-documentation-writer':
-        'lifecycle.documentation-recorded',
-    'deliver-acceptance-group':
-        'lifecycle.delivery-recorded',
-    'cleanup-node-resources':
-        'lifecycle.cleanup-recorded',
-    'terminalize-node':
-        'lifecycle.terminal-recorded'
-})
 
 export class LifecycleRunLoopError extends Error {
     constructor(code, message = code, details = {}) {
@@ -435,228 +378,23 @@ export function createLifecycleRunLedger({
     return makeHandle({ stateRoot, runId, recovered })
 }
 
-function validateActorResult(result, action, node) {
-    requireObject(result, 'lifecycle-actor-result-invalid')
-    if (result.schema !== ACTOR_RESULT_SCHEMA ||
-        result.producerAuthority !==
-            'deterministic-scripted-stage-actor' ||
-        result.rootAuthored !== false ||
-        result.actionDigest !== action.actionDigest ||
-        result.actionType !== action.type ||
-        result.nodeId !== (action.nodeId ?? null) ||
-        result.resultDigest !==
-            unsignedDigest(result, 'resultDigest')) {
-        fail('lifecycle-actor-result-invalid')
-    }
-    const expectedRole = action.type ===
-        'dispatch-implementation-writer'
-        ? node?.uiClass === 'ui'
-            ? 'ui-ux-implementer'
-            : 'code-implementer'
-        : EXPECTED_ACTOR_ROLE[action.type]
-    if (result.actorRole !== expectedRole ||
-        !ALLOWED_OUTCOMES[action.type]?.includes(
-            result.outcome
-        )) {
-        fail('lifecycle-actor-result-authority')
-    }
-    requireObject(
-        result.decision,
-        'lifecycle-actor-decision-invalid'
-    )
-    if (result.decisionDigest !== digest(result.decision)) {
-        fail('lifecycle-actor-decision-digest')
-    }
-    const source = JSON.stringify(result.decision)
-    if (/(?:receipt|projection|ledger|stageState)/iu.test(source)) {
-        fail('lifecycle-actor-machine-authority-forbidden')
-    }
-    return result
-}
-
-export function compileLifecycleActorResult({
-    action,
-    actorRole,
-    outcome = 'completed',
-    decision = {}
-} = {}) {
-    requireObject(action, 'lifecycle-action-required')
-    requireText(actorRole, 'lifecycle-actor-role-required')
-    requireObject(decision, 'lifecycle-actor-decision-invalid')
-    const result = {
-        schema: ACTOR_RESULT_SCHEMA,
-        producerAuthority:
-            'deterministic-scripted-stage-actor',
-        rootAuthored: false,
-        actionDigest: action.actionDigest,
-        actionType: action.type,
-        nodeId: action.nodeId ?? null,
-        actorRole,
-        outcome,
-        decision: clone(decision),
-        decisionDigest: digest(decision)
-    }
-    result.resultDigest = digest(result)
-    return Object.freeze(result)
-}
-
-function sealMachineReceipt({
-    kind,
-    node,
-    action,
-    eventSequence,
-    decision = {}
-}) {
-    const receipt = {
-        schema:
-            'issue-orchestration.lifecycle-machine-receipt.v1',
-        receiptKind: kind,
-        status: 'verified',
-        producerAuthority:
-            'deterministic-lifecycle-run-loop',
-        rootAuthored: false,
-        runId: action.bindings.runId,
-        nodeId: node.id,
-        repository: node.repository,
-        issueNumber: node.issueNumber,
-        nodeEpoch: node.chainVersion,
-        actionDigest: action.actionDigest,
-        eventSequence,
-        decisionDigest: digest(decision)
-    }
-    receipt.receiptDigest = digest(receipt)
-    return receipt
-}
-
-function sealedArtifact(schema, digestField, value) {
-    const artifact = {
-        schema,
-        producerAuthority:
-            'deterministic-lifecycle-run-loop',
-        rootAuthored: false,
-        ...value
-    }
-    artifact[digestField] = digest(artifact)
-    return artifact
-}
-
-function compileNodeEffect(node, action, result, eventSequence) {
+function compileNodeEffect(node, admission, eventSequence) {
     const next = clone(node)
-    const receipts = {}
-    const machine = (kind, decision = result.decision) =>
-        sealMachineReceipt({
-            kind,
-            node: next,
-            action,
-            eventSequence,
-            decision
-        })
-    switch (action.type) {
-        case 'request-semantic-proposal':
-            receipts.semanticProposal = machine('semantic-proposal')
-            next.lifecycleState = 'discovered'
-            break
-        case 'compile-acceptance-contract':
-            receipts.requirementInventory =
-                machine('requirement-inventory')
-            receipts.acceptanceContract =
-                machine('acceptance-contract')
-            receipts.documentationRequired = true
-            next.lifecycleState = 'acceptance-frozen'
-            break
-        case 'request-test-contract-planning': {
-            const common = {
-                nodeId: next.id,
-                chainVersion: next.chainVersion,
-                baseSha: action.bindings.baseSha,
-                actionDigest: action.actionDigest,
-                decisionDigest: result.decisionDigest
-            }
-            receipts.planningAttempt =
-                machine('test-contract-planning-attempt')
-            receipts.testContractPlan = machine('test-contract-plan')
-            receipts.workPlan = sealedArtifact(
-                'issue-orchestration.stage-work-plan.v1',
-                'workPlanDigest',
-                common
-            )
-            receipts.executableSlice = sealedArtifact(
-                'issue-orchestration.executable-slice.v1',
-                'sliceDigest',
-                common
-            )
-            receipts.compiledPrompt = sealedArtifact(
-                'issue-orchestration.compiled-dispatch-prompt.v1',
-                'promptDigest',
-                common
-            )
-            receipts.resourceAcquisition =
-                machine('writer-resource-acquisition')
-            receipts.routeBinding = machine('stage-route-binding')
-            next.lifecycleState = 'test-contracting'
-            break
-        }
-        case 'dispatch-test-contract-writer':
-            receipts.testContractWriter =
-                machine('test-contract-writer-terminal')
-            next.lifecycleState = 'test-contract-frozen'
-            break
-        case 'dispatch-implementation-writer':
-            next.implementationAttempts += 1
-            if (result.outcome === 'recoverable-failure') {
-                receipts.writerFailure = machine('writer-stage-failure')
-                receipts.retryAuthorization =
-                    machine('writer-stage-retry-authorization')
-                next.lifecycleState = 'implementing-self-testing'
-            } else {
-                receipts.implementationTerminal =
-                    machine('implementation-terminal')
-                receipts.candidate = machine('candidate')
-                next.lifecycleState = 'candidate-green'
-            }
-            break
-        case 'dispatch-behavior-verifier':
-            receipts.behavior = machine('behavior-verification')
-            next.lifecycleState = 'behavior-green'
-            break
-        case 'request-ui-adjudication':
-            receipts.uiAdjudication = machine('ui-adjudication')
-            next.lifecycleState = 'behavior-green'
-            break
-        case 'dispatch-ux-acceptance-verifier':
-            receipts.uxAcceptance = machine('ux-acceptance')
-            next.lifecycleState = 'ux-accepted'
-            break
-        case 'dispatch-documentation-writer':
-            receipts.documentation = machine('documentation-terminal')
-            next.lifecycleState = 'documentation-green'
-            break
-        case 'deliver-acceptance-group':
-            if (result.outcome !== 'completed') {
-                fail('lifecycle-delivery-result-incomplete')
-            }
-            receipts.deliveryAttempt = machine('delivery-attempt')
-            receipts.delivery = machine('delivery-completion')
-            next.deliveryCommit =
-                result.decision.commits?.[next.id] ?? null
-            next.lifecycleState = 'cleaning'
-            break
-        case 'cleanup-node-resources':
-            receipts.cleanupAuthorization =
-                machine('cleanup-authorization')
-            receipts.cleanup = machine('resource-cleanup')
-            receipts.closure = machine('issue-closure')
-            next.lifecycleState = 'closed'
-            next.closedAtSequence = eventSequence
-            break
-        case 'terminalize-node':
-            receipts.terminal = machine('terminal')
-            next.lifecycleState = 'terminal'
-            break
-        default:
-            fail('lifecycle-run-action-unsupported', {
-                actionType: action.type
-            })
+    const receipts = clone(admission.artifacts)
+    if (admission.contractId === 'acceptance-contract') {
+        receipts.documentationRequired =
+            admission.artifacts.documentationRequirement.evidence.required
+    }
+    next.lifecycleState = admission.toState
+    next.implementationAttempts +=
+        admission.implementationAttemptDelta
+    if (admission.contractId === 'delivery-completed') {
+        next.deliveryCommit =
+            admission.artifacts.remoteEffect.evidence.commits[next.id] ??
+            null
+    }
+    if (admission.contractId === 'cleanup-and-closure') {
+        next.closedAtSequence = eventSequence
     }
     next.receipts = {
         ...next.receipts,
@@ -920,21 +658,14 @@ function exactCurrentActionSet(value, actionSet) {
     return current
 }
 
-function eventTypeForResult(action, result) {
-    if (action.type === 'dispatch-implementation-writer') {
-        return result.outcome === 'recoverable-failure'
-            ? 'lifecycle.implementation-retry-recorded'
-            : 'lifecycle.implementation-candidate-recorded'
-    }
-    return EVENT_TYPE_BY_ACTION[action.type] ?? null
-}
-
 function receiptEvidence(receipts) {
     return Object.values(receipts).flatMap((receipt) => {
         if (!receipt || typeof receipt !== 'object') return []
         for (const field of [
             'receiptDigest', 'workPlanDigest', 'planDigest',
-            'sliceDigest', 'promptDigest', 'routeDecisionDigest'
+            'sliceDigest', 'promptDigest', 'routeDecisionDigest',
+            'proposalDigest', 'inventoryDigest', 'contractDigest',
+            'bindingDigest', 'snapshotDigest'
         ]) {
             if (HASH.test(receipt[field] ?? '')) {
                 return [`receipt://${receipt[field]}`]
@@ -960,26 +691,29 @@ function compileCanonicalNodeEvent({
         nodeEpoch: registration.nodeEpoch
     })
     const eventSequence = ledger.events.length + 1
-    const effect = compileNodeEffect(
-        node,
-        action,
+    const admission = validateLifecycleStageResult({
         result,
-        eventSequence
-    )
-    const eventType = eventTypeForResult(action, result)
-    if (!eventType) {
-        fail('lifecycle-run-action-unsupported', {
-            actionType: action.type
+        action,
+        node
+    })
+    if (!admission.eventType || !admission.toState) {
+        fail('lifecycle-stage-result-node-event-forbidden', {
+            actionType: action.type,
+            contractId: admission.contractId
         })
     }
+    const effect = compileNodeEffect(
+        node,
+        admission,
+        eventSequence
+    )
+    const eventType = admission.eventType
     const projected = projectLifecycleRun(authority)
     const payload = {
         schema: 'issue-orchestration.lifecycle-canonical-effect.v1',
         actionSetDigest: actionSet.actionSetDigest,
         action: clone(action),
-        actorResult: clone(result),
-        machineReceipts: clone(effect.receipts),
-        machineReceiptsDigest: digest(effect.receipts),
+        stageResult: clone(result),
         implementationAttempts:
             effect.node.implementationAttempts,
         deliveryCommit: effect.node.deliveryCommit,
@@ -991,7 +725,7 @@ function compileCanonicalNodeEvent({
             runId: authority.runId,
             nodeId: node.id,
             actionDigest: action.actionDigest,
-            actorResultDigest: result.resultDigest,
+            stageResultDigest: result.resultDigest,
             sequence: eventSequence
         })}`,
         sequence: eventSequence,
@@ -1000,7 +734,7 @@ function compileCanonicalNodeEvent({
         eventType,
         fromState: node.lifecycleState,
         toState: effect.node.lifecycleState,
-        attemptId: result.decision.attemptId ?? null,
+        attemptId: result.attemptId,
         actorRole: result.actorRole,
         sourceDagDigest: projected.semanticGraph.semanticGraphDigest,
         issueSnapshotFingerprint:
@@ -1058,40 +792,56 @@ function appendCanonicalControlEvent({
 export function recordLifecycleActionResults({
     ledger,
     actionSet,
+    stageResults,
     actorResults,
     createdAt
 } = {}) {
+    if (actorResults !== undefined) {
+        fail('lifecycle-generic-actor-results-forbidden')
+    }
     const authority = resolveAuthority(ledger)
     exactCurrentActionSet(authority, actionSet)
-    if (!Array.isArray(actorResults) ||
-        actorResults.length !== actionSet.actions.length ||
+    if (!Array.isArray(stageResults) ||
+        stageResults.length !== actionSet.actions.length ||
         actionSet.actions.some(({ type }) => type === 'idle' ||
             type === 'refresh-scope')) {
-        fail('lifecycle-action-results-incomplete')
+        fail('lifecycle-stage-results-incomplete')
     }
-    const byDigest = new Map(actorResults.map((result) => [
-        result.actionDigest,
-        result
-    ]))
-    if (byDigest.size !== actorResults.length) {
-        fail('lifecycle-action-result-duplicate')
+    const byDigest = new Map()
+    for (const result of stageResults) {
+        requireObject(result, 'lifecycle-stage-result-invalid')
+        const actionDigest = requireDigest(
+            result.actionDigest,
+            'lifecycle-stage-result-action-digest-invalid'
+        )
+        if (byDigest.has(actionDigest)) {
+            fail('lifecycle-stage-result-duplicate')
+        }
+        byDigest.set(actionDigest, result)
     }
 
     for (const action of actionSet.actions) {
         const result = byDigest.get(action.actionDigest)
         if (action.type === 'deliver-acceptance-group') {
-            validateActorResult(result, action, null)
+            const admission = validateLifecycleStageResult({
+                result,
+                action,
+                node: null
+            })
             const state = replayLifecycleRunLedger(authority)
             const groupId = requireText(
                 action.acceptanceGroup,
                 'lifecycle-delivery-group-invalid'
             )
             const effectId = requireText(
-                result.decision.effectId,
+                admission.artifacts.remoteEffect.evidence.effectId,
                 'lifecycle-delivery-effect-id-invalid'
             )
+            const commits = clone(
+                admission.artifacts.remoteEffect.evidence.commits
+            )
             const pending = state.pendingDeliveryEffects[groupId]
-            if (result.outcome === 'remote-effect-applied') {
+            if (admission.deliveryPhase === 'remote-effect-applied') {
                 if (pending && pending.effectId !== effectId) {
                     fail('lifecycle-delivery-effect-conflict')
                 }
@@ -1103,12 +853,15 @@ export function recordLifecycleActionResults({
                             groupId,
                             effectId,
                             status: 'remote-effect-applied',
-                            commits: clone(result.decision.commits ?? {})
+                            commits
                         },
                         createdAt
                     })
                 }
                 continue
+            }
+            if (admission.deliveryPhase !== 'completed') {
+                fail('lifecycle-delivery-result-incomplete')
             }
             if (!pending || pending.effectId !== effectId) {
                 fail('lifecycle-delivery-effect-unobserved')
@@ -1131,7 +884,7 @@ export function recordLifecycleActionResults({
                 payload: {
                     groupId,
                     effectId,
-                    commits: clone(result.decision.commits ?? {})
+                    commits
                 },
                 createdAt
             })
@@ -1140,7 +893,7 @@ export function recordLifecycleActionResults({
 
         const current = replayLifecycleRunLedger(authority)
         const node = current.nodes[action.nodeId]
-        validateActorResult(result, action, node)
+        validateLifecycleStageResult({ result, action, node })
         const effect = appendCanonicalNodeResult({
             authority,
             actionSet,
@@ -1288,8 +1041,11 @@ function baseCarryForwardEvent({
     const carried = Object.fromEntries(Object.entries(receipts).filter(
         ([key]) => [
             'semanticProposal',
+            'semanticProposalValidation',
             'requirementInventory',
             'acceptanceContract',
+            'nodeDiscovered',
+            'documentationRequirement',
             'documentationRequired'
         ].includes(key)
     ))

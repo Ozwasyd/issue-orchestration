@@ -23,6 +23,9 @@ import {
     verifyWriterStageCheckpointLiveEvidence,
     writerStageSliceMaterialDigest
 } from './writer-stage-progress.mjs'
+import {
+    validateLifecycleStageResult
+} from './lifecycle-stage-admission.mjs'
 
 const GENESIS = '0'.repeat(64)
 const EVENT_FIELDS = [
@@ -260,61 +263,6 @@ function receiptDigestValid(item) {
     return item.receiptDigest === digest(unsigned)
 }
 
-const LIFECYCLE_EVENT_CONTRACT = Object.freeze({
-    'lifecycle.semantic-proposal-recorded': Object.freeze({
-        actionType: 'request-semantic-proposal',
-        outcome: 'completed'
-    }),
-    'lifecycle.acceptance-contract-recorded': Object.freeze({
-        actionType: 'compile-acceptance-contract',
-        outcome: 'completed'
-    }),
-    'lifecycle.test-contract-planning-recorded': Object.freeze({
-        actionType: 'request-test-contract-planning',
-        outcome: 'completed'
-    }),
-    'lifecycle.test-contract-writer-recorded': Object.freeze({
-        actionType: 'dispatch-test-contract-writer',
-        outcome: 'completed'
-    }),
-    'lifecycle.implementation-retry-recorded': Object.freeze({
-        actionType: 'dispatch-implementation-writer',
-        outcome: 'recoverable-failure'
-    }),
-    'lifecycle.implementation-candidate-recorded': Object.freeze({
-        actionType: 'dispatch-implementation-writer',
-        outcome: 'completed'
-    }),
-    'lifecycle.behavior-recorded': Object.freeze({
-        actionType: 'dispatch-behavior-verifier',
-        outcome: 'completed'
-    }),
-    'lifecycle.ui-adjudication-recorded': Object.freeze({
-        actionType: 'request-ui-adjudication',
-        outcome: 'completed'
-    }),
-    'lifecycle.ux-acceptance-recorded': Object.freeze({
-        actionType: 'dispatch-ux-acceptance-verifier',
-        outcome: 'completed'
-    }),
-    'lifecycle.documentation-recorded': Object.freeze({
-        actionType: 'dispatch-documentation-writer',
-        outcome: 'completed'
-    }),
-    'lifecycle.delivery-recorded': Object.freeze({
-        actionType: 'deliver-acceptance-group',
-        outcome: 'completed'
-    }),
-    'lifecycle.cleanup-recorded': Object.freeze({
-        actionType: 'cleanup-node-resources',
-        outcome: 'completed'
-    }),
-    'lifecycle.terminal-recorded': Object.freeze({
-        actionType: 'terminalize-node',
-        outcome: 'completed'
-    })
-})
-
 function artifactDigestValid(item) {
     if (typeof item === 'boolean') return true
     if (!item || typeof item !== 'object' || Array.isArray(item)) {
@@ -323,7 +271,8 @@ function artifactDigestValid(item) {
     for (const field of [
         'receiptDigest', 'workPlanDigest', 'planDigest', 'sliceDigest',
         'promptDigest', 'routeDecisionDigest', 'proposalDigest',
-        'contractDigest', 'bundleDigest'
+        'inventoryDigest', 'contractDigest', 'bundleDigest',
+        'bindingDigest', 'snapshotDigest'
     ]) {
         if (!Object.hasOwn(item, field)) continue
         return /^[a-f0-9]{64}$/u.test(item[field] ?? '') &&
@@ -348,49 +297,63 @@ function validateLifecycleIntegrationEvent(event, node) {
             Array.isArray(payload.receipts) ||
             payload.receiptsDigest !== digest(payload.receipts) ||
             Object.values(payload.receipts).some(
-                (item) => !artifactDigestValid(item)
+                (item) => typeof item !== 'boolean' &&
+                    !artifactDigestValid(item)
             )) {
             fail('lifecycle-carry-forward-invalid')
         }
         return
     }
-    const contract = LIFECYCLE_EVENT_CONTRACT[event.eventType]
-    if (!contract) return
+    if (!event.eventType.startsWith('lifecycle.')) return
     const payload = event.payload ?? {}
     const action = payload.action
-    const result = payload.actorResult
-    const receipts = payload.machineReceipts
+    const stageResult = payload.stageResult
+    let admission
+    try {
+        admission = validateLifecycleStageResult({
+            result: stageResult,
+            action,
+            node: {
+                ...node,
+                id: event.nodeId,
+                receipts: node.lifecycleReceipts
+            }
+        })
+    } catch (error) {
+        fail(
+            'lifecycle-stage-result-admission-invalid',
+            'lifecycle-stage-result-admission-invalid',
+            { cause: error?.code ?? error?.message }
+        )
+    }
+    const expectedImplementationAttempts =
+        (node.implementationAttempts ?? 0) +
+        admission.implementationAttemptDelta
+    const expectedDeliveryCommit = admission.contractId ===
+        'delivery-completed'
+        ? admission.artifacts.remoteEffect.evidence.commits[event.nodeId] ??
+            null
+        : node.deliveryCommit ?? null
+    const expectedClosedAtSequence = admission.contractId ===
+        'cleanup-and-closure'
+        ? event.sequence
+        : node.closedAtSequence ?? null
     if (payload.schema !==
             'issue-orchestration.lifecycle-canonical-effect.v1' ||
         !action || action.schema !==
             'issue-orchestration.lifecycle-action.v1' ||
-        action.type !== contract.actionType ||
         (action.nodeId !== event.nodeId &&
-            contract.actionType !== 'deliver-acceptance-group') ||
+            action.type !== 'deliver-acceptance-group') ||
         !/^[a-f0-9]{64}$/u.test(action.actionDigest ?? '') ||
         unsignedDigest(action, 'actionDigest') !== action.actionDigest ||
-        !result || result.schema !==
-            'issue-orchestration.lifecycle-actor-result.v1' ||
-        result.actionDigest !== action.actionDigest ||
-        result.actionType !== contract.actionType ||
-        result.outcome !== contract.outcome ||
-        result.actorRole !== event.actorRole ||
-        result.resultDigest !== unsignedDigest(result, 'resultDigest') ||
-        result.decisionDigest !== digest(result.decision) ||
-        !receipts || typeof receipts !== 'object' ||
-        Array.isArray(receipts) ||
-        payload.machineReceiptsDigest !== digest(receipts) ||
-        Object.values(receipts).some(
-            (item) => !artifactDigestValid(item)
-        ) ||
-        !Number.isInteger(payload.implementationAttempts) ||
-        payload.implementationAttempts <
-            (node.implementationAttempts ?? 0) ||
-        (payload.deliveryCommit !== null &&
-            !/^[a-f0-9]{40}$/u.test(payload.deliveryCommit ?? '')) ||
-        (payload.closedAtSequence !== null &&
-            (!Number.isInteger(payload.closedAtSequence) ||
-                payload.closedAtSequence < 1))) {
+        admission.eventType !== event.eventType ||
+        admission.toState !== event.toState ||
+        stageResult.actorRole !== event.actorRole ||
+        stageResult.attemptId !== event.attemptId ||
+        payload.implementationAttempts !==
+            expectedImplementationAttempts ||
+        payload.deliveryCommit !== expectedDeliveryCommit ||
+        payload.closedAtSequence !== expectedClosedAtSequence) {
         fail('lifecycle-canonical-effect-invalid')
     }
 }
@@ -2100,7 +2063,12 @@ function reduceNode(node, event, context) {
     } else if (type.startsWith('lifecycle.')) {
         node.lifecycleReceipts = {
             ...node.lifecycleReceipts,
-            ...structuredClone(payload.machineReceipts)
+            ...structuredClone(payload.stageResult.artifacts)
+        }
+        if (payload.action?.type === 'compile-acceptance-contract') {
+            node.lifecycleReceipts.documentationRequired =
+                payload.stageResult.artifacts.documentationRequirement
+                    .evidence.required
         }
         node.implementationAttempts = payload.implementationAttempts
         node.deliveryCommit = payload.deliveryCommit

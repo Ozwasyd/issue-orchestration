@@ -61,7 +61,8 @@ const SLOT_ACTIONS = new Set([
 const DIGEST_FIELDS = Object.freeze([
     'receiptDigest', 'routeDecisionDigest', 'proposalDigest',
     'workPlanDigest', 'planDigest', 'sliceDigest', 'promptDigest',
-    'contractDigest', 'bundleDigest', 'projectionDigest', 'eventDigest'
+    'inventoryDigest', 'contractDigest', 'bundleDigest', 'bindingDigest',
+    'snapshotDigest', 'projectionDigest', 'eventDigest'
 ])
 
 export class LifecycleTransitionError extends Error {

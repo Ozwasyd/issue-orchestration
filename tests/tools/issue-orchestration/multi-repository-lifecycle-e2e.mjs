@@ -16,7 +16,6 @@ import {
     currentRuntimeStartupAuthority
 } from '../../../skills/issue-orchestration/scripts/runtime-startup-attestation.mjs'
 import {
-    compileLifecycleActorResult,
     compileLifecycleRunActionSet,
     createLifecycleRunLedger,
     persistLifecycleRunLedger,
@@ -26,6 +25,9 @@ import {
     recordLifecycleBaseChange,
     recordLifecycleScopeRefresh
 } from '../../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
+import {
+    compileScriptedLifecycleStageResult
+} from './scripted-lifecycle-stage-result.mjs'
 
 const RECEIPT_SCHEMA =
     'issue-orchestration.multi-repository-lifecycle-e2e-receipt.v1'
@@ -430,7 +432,7 @@ function stageDecision(action, node) {
             }
         case 'request-ui-adjudication':
             return {
-                decision: 'bounded-ui-contract-confirmed'
+                adjudication: 'bounded-ui-contract-confirmed'
             }
         case 'dispatch-ux-acceptance-verifier':
             return {
@@ -445,7 +447,7 @@ function stageDecision(action, node) {
         case 'cleanup-node-resources':
             return { residueCount: 0 }
         case 'terminalize-node':
-            return { category: 'policy-terminal' }
+            return { category: 'externally_blocked' }
         default:
             return {}
     }
@@ -539,13 +541,13 @@ function resultForAction({
         const pending = state.pendingDeliveryEffects[
             action.acceptanceGroup
         ]
-        return compileLifecycleActorResult({
+        return compileScriptedLifecycleStageResult({
             action,
             actorRole: 'root-delivery-adapter',
-            outcome: pending
+            mode: pending
                 ? 'completed'
                 : 'remote-effect-applied',
-            decision: effect
+            facts: effect
         })
     }
     const node = state.nodes[action.nodeId]
@@ -557,13 +559,14 @@ function resultForAction({
             node.implementationAttempts === 0 &&
             !failureInjected.value) {
             failureInjected.value = true
-            return compileLifecycleActorResult({
+            return compileScriptedLifecycleStageResult({
                 action,
+                node,
                 actorRole: actorRole(action, node),
-                outcome: 'recoverable-failure',
-                decision: {
-                    category: 'scripted-recoverable-failure',
-                    retryHint: 'same-contract-continuation'
+                mode: 'recoverable-failure',
+                facts: {
+                    failureCode:
+                        'writer-stage.scripted-recoverable-failure'
                 }
             })
         }
@@ -574,11 +577,12 @@ function resultForAction({
             force: true
         })
     }
-    return compileLifecycleActorResult({
+    return compileScriptedLifecycleStageResult({
         action,
+        node,
         actorRole: actorRole(action, node),
-        outcome: 'completed',
-        decision: stageDecision(action, node)
+        mode: 'completed',
+        facts: stageDecision(action, node)
     })
 }
 
@@ -837,7 +841,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                 recordLifecycleActionResults({
                     ledger,
                     actionSet,
-                    actorResults: staleResults,
+                    stageResults: staleResults,
                     createdAt:
                         '2026-08-04T00:30:01.000Z'
                 })
@@ -878,7 +882,7 @@ export function runMultiRepositoryLifecycleAcceptance({
         }
 
         const state = projectLifecycleRun(ledger).state
-        const actorResults = actionSet.actions.map(
+        const stageResults = actionSet.actions.map(
             (action) => resultForAction({
                 action,
                 state,
@@ -890,14 +894,14 @@ export function runMultiRepositoryLifecycleAcceptance({
                 issues
             })
         )
-        for (const [index, result] of actorResults.entries()) {
-            if (result.outcome === 'recoverable-failure') {
+        for (const [index, result] of stageResults.entries()) {
+            if (result.artifacts.writerFailure) {
                 authorizedRetryCount += 1
             }
             const action = actionSet.actions[index]
             if (action.recoveryMode ===
                 'authorized-continuation' &&
-                result.outcome === 'completed') {
+                !result.artifacts.writerFailure) {
                 if (!failureInjected.value) {
                     fail('multi-repository-e2e-retry-without-failure')
                 }
@@ -921,7 +925,7 @@ export function runMultiRepositoryLifecycleAcceptance({
         ledger = recordLifecycleActionResults({
             ledger,
             actionSet,
-            actorResults,
+            stageResults,
             createdAt:
                 `2026-08-04T01:${String(loopCount).padStart(2, '0')}:00.000Z`
         })
