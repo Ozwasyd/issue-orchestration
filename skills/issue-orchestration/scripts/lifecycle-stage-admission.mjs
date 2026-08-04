@@ -4,6 +4,10 @@ import {
     sameValue,
     unsignedDigest
 } from './runtime-contract-lib.mjs'
+import {
+    compileIssueAcceptanceContract,
+    compileRequirementInventory
+} from './issue-requirement-authority.mjs'
 
 export const LIFECYCLE_STAGE_RESULT_SCHEMA =
     'issue-orchestration.lifecycle-stage-result.v1'
@@ -399,7 +403,7 @@ const PLANNING_ARTIFACTS = Object.freeze({
         schema: 'issue-orchestration.stage-work-plan.v1',
         digestField: 'workPlanDigest',
         producerAuthority: 'stage-work-plan-compiler',
-        validator: 'validateSealedStageWorkPlan',
+        validator: 'validatePreWriterStageWorkPlan',
         evidence: (value) => {
             commonEvidence(value, 'work-plan')
             hash(value.acceptanceContractDigest,
@@ -414,7 +418,7 @@ const PLANNING_ARTIFACTS = Object.freeze({
         schema: 'issue-orchestration.executable-slice.v1',
         digestField: 'sliceDigest',
         producerAuthority: 'executable-slice-compiler',
-        validator: 'validateSealedExecutableSlice',
+        validator: 'validatePreWriterExecutableSlice',
         evidence: (value) => {
             commonEvidence(value, 'executable-slice')
             hash(value.workPlanDigest,
@@ -450,7 +454,7 @@ const PLANNING_ARTIFACTS = Object.freeze({
             'issue-orchestration.compiled-dispatch-prompt.v1',
         digestField: 'promptDigest',
         producerAuthority: 'compiled-dispatch-prompt-validator',
-        validator: 'validateSealedCompiledDispatchPrompt',
+        validator: 'validatePreWriterCompiledDispatchPrompt',
         evidence: (value) => {
             commonEvidence(value, 'compiled-prompt')
             hash(value.workPlanDigest,
@@ -480,6 +484,11 @@ const PLANNING_ARTIFACTS = Object.freeze({
                 'lifecycle-resource-identity-required')
             hash(value.leaseDigest,
                 'lifecycle-resource-lease-required')
+            if ((value.writeLeaseAcquired !== undefined &&
+                    value.writeLeaseAcquired !== false) ||
+                value.registry?.writeLease !== undefined) {
+                fail('lifecycle-prewriter-write-lease-forbidden')
+            }
         }
     }),
     runtimeBinding: COMMON.runtimeBinding,
@@ -1586,6 +1595,327 @@ function validateCrossArtifactBindings(contract_, artifacts, node) {
     }
 }
 
+
+function validateSealedPayload(value, {
+    schema,
+    digestField,
+    code,
+    status = null
+}) {
+    evidenceObject(value, code)
+    if (value.schema !== schema ||
+        (status !== null && value.status !== status) ||
+        value[digestField] !== unsignedDigest(value, digestField)) {
+        fail(code)
+    }
+    return value
+}
+
+function expectedRequirementInventory(snapshot, proposal) {
+    validateSealedPayload(snapshot, {
+        schema: 'issue-orchestration.cold-start-issue-snapshot.v1',
+        digestField: 'snapshotDigest',
+        code: 'lifecycle-semantic-snapshot-invalid'
+    })
+    try {
+        return compileRequirementInventory({
+            snapshot,
+            proposal,
+            rootDecision: {
+                action: 'accept',
+                proposalDigest: proposal?.proposalDigest,
+                modified: false
+            }
+        })
+    } catch (error) {
+        fail('lifecycle-semantic-proposal-payload-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+}
+
+function expectedAcceptanceContract(snapshot, inventory) {
+    try {
+        return compileIssueAcceptanceContract({ snapshot, inventory })
+    } catch (error) {
+        fail('lifecycle-acceptance-contract-payload-invalid', {
+            cause: error?.code ?? error?.message
+        })
+    }
+}
+
+function validateSemanticPayloads(artifacts) {
+    const evidence = artifacts.semanticProposal.evidence
+    const proposalPresent = Object.hasOwn(evidence, 'proposal')
+    const snapshotPresent = Object.hasOwn(evidence, 'snapshot')
+    if (!proposalPresent && !snapshotPresent) return
+    if (!proposalPresent || !snapshotPresent) {
+        fail('lifecycle-semantic-payload-incomplete')
+    }
+    const proposal = evidence.proposal
+    const snapshot = evidence.snapshot
+    const inventory = expectedRequirementInventory(snapshot, proposal)
+    const classifications = proposal.classifications.map((entry) =>
+        `${entry.sourceIdentity}:${entry.classification}`)
+    if (!sameValue(evidence.classifications, classifications) ||
+        evidence.sourceFingerprint !== snapshot.issueSnapshotFingerprint ||
+        artifacts.semanticProposalValidation.evidence
+            .validationInventoryDigest !== inventory.inventoryDigest) {
+        fail('lifecycle-semantic-payload-mismatch')
+    }
+}
+
+function validateAcceptancePayloads(artifacts, node, action) {
+    const nestedFields = [
+        Object.hasOwn(artifacts.requirementInventory.evidence, 'inventory'),
+        Object.hasOwn(
+            artifacts.acceptanceContract.evidence,
+            'acceptanceContract'
+        ),
+        Object.hasOwn(artifacts.nodeDiscovered.evidence, 'receipt'),
+        Object.hasOwn(
+            artifacts.documentationRequirement.evidence,
+            'receipt'
+        )
+    ]
+    if (nestedFields.every((present) => !present)) return
+    if (nestedFields.some((present) => !present)) {
+        fail('lifecycle-acceptance-payload-incomplete')
+    }
+    const semantic = node?.receipts?.semanticProposal?.evidence
+    const snapshot = semantic?.snapshot
+    const proposal = semantic?.proposal
+    if (!snapshot || !proposal) {
+        fail('lifecycle-acceptance-semantic-history-invalid')
+    }
+    const expectedInventory = expectedRequirementInventory(snapshot, proposal)
+    const inventoryEvidence = artifacts.requirementInventory.evidence
+    const inventory = inventoryEvidence.inventory
+    if (!sameValue(inventory, expectedInventory) ||
+        !sameValue(
+            inventoryEvidence.requirementIds,
+            expectedInventory.requirements.map(({ requirementId }) =>
+                requirementId)
+        ) ||
+        inventoryEvidence.sourceCoverageDigest !==
+            expectedInventory.sourceCoverageDigest) {
+        fail('lifecycle-requirement-inventory-payload-mismatch')
+    }
+    const expectedContract = expectedAcceptanceContract(
+        snapshot,
+        expectedInventory
+    )
+    const contractEvidence = artifacts.acceptanceContract.evidence
+    const contractPayload = contractEvidence.acceptanceContract
+    if (!sameValue(contractPayload, expectedContract) ||
+        !sameValue(
+            contractEvidence.acceptanceIds,
+            expectedContract.executableAcceptanceIds
+        ) ||
+        contractEvidence.sourceCoverageDigest !==
+            expectedInventory.sourceCoverageDigest) {
+        fail('lifecycle-acceptance-contract-payload-mismatch')
+    }
+    const discovered = validateSealedPayload(
+        artifacts.nodeDiscovered.evidence.receipt,
+        {
+            schema: 'issue-orchestration.node-discovered-receipt.v1',
+            digestField: 'receiptDigest',
+            code: 'lifecycle-node-discovered-payload-invalid',
+            status: 'verified'
+        }
+    )
+    if (discovered.runId !== action.bindings.runId ||
+        discovered.nodeId !== action.nodeId ||
+        discovered.repository !== action.bindings.repository ||
+        discovered.issueNumber !== action.bindings.issueNumber ||
+        discovered.semanticProposalDigest !== proposal.proposalDigest ||
+        discovered.requirementInventoryDigest !==
+            expectedInventory.inventoryDigest ||
+        discovered.acceptanceContractDigest !==
+            expectedContract.contractDigest) {
+        fail('lifecycle-node-discovered-payload-invalid')
+    }
+    const documentation = validateSealedPayload(
+        artifacts.documentationRequirement.evidence.receipt,
+        {
+            schema: 'issue-orchestration.completion-evidence.v1',
+            digestField: 'receiptDigest',
+            code: 'lifecycle-documentation-requirement-payload-invalid',
+            status: 'verified'
+        }
+    )
+    const required = expectedContract.executableAcceptanceIds.length > 0 ||
+        expectedContract.constraintIds.length > 0
+    if (documentation.required !== required ||
+        artifacts.documentationRequirement.evidence.required !== required ||
+        documentation.acceptanceContractDigest !==
+            expectedContract.contractDigest) {
+        fail('lifecycle-documentation-requirement-payload-invalid')
+    }
+}
+
+function validatePlanningPayloads(artifacts) {
+    const nestedFields = [
+        [artifacts.planningAttempt, 'receipt'],
+        [artifacts.dispatchInvestigation, 'receipt'],
+        [artifacts.slicePlan, 'proposal'],
+        [artifacts.slicePlanValidation, 'receipt'],
+        [artifacts.workPlan, 'plan'],
+        [artifacts.executableSlice, 'slice'],
+        [artifacts.routeBinding, 'routeDecision'],
+        [artifacts.compiledPrompt, 'prompt'],
+        [artifacts.resourceAcquisition, 'registry']
+    ].map(([artifact, field]) =>
+        Object.hasOwn(artifact.evidence, field))
+    if (nestedFields.every((present) => !present)) return
+    if (nestedFields.some((present) => !present)) {
+        fail('lifecycle-planning-payload-incomplete')
+    }
+    const planning = validateSealedPayload(
+        artifacts.planningAttempt.evidence.receipt,
+        {
+            schema: 'issue-orchestration.test-contract-plan-receipt.v1',
+            digestField: 'receiptDigest',
+            code: 'lifecycle-planning-receipt-payload-invalid',
+            status: 'verified'
+        }
+    )
+    if (!sameValue(
+        artifacts.planningAttempt.evidence.testPaths,
+        planning.testPaths
+    ) || !sameValue(
+        artifacts.planningAttempt.evidence.commands,
+        planning.commands
+    )) {
+        fail('lifecycle-planning-receipt-payload-invalid')
+    }
+    const investigation = validateSealedPayload(
+        artifacts.dispatchInvestigation.evidence.receipt,
+        {
+            schema: 'issue-orchestration.dispatch-investigation.v1',
+            digestField: 'receiptDigest',
+            code: 'lifecycle-dispatch-investigation-payload-invalid',
+            status: 'complete'
+        }
+    )
+    if (investigation.repositoryEvidenceDigest !==
+            artifacts.dispatchInvestigation.evidence
+                .repositoryEvidenceDigest) {
+        fail('lifecycle-dispatch-investigation-payload-invalid')
+    }
+    const proposal = validateSealedPayload(
+        artifacts.slicePlan.evidence.proposal,
+        {
+            schema: 'issue-orchestration.slice-plan-proposal.v1',
+            digestField: 'proposalDigest',
+            code: 'lifecycle-slice-plan-payload-invalid'
+        }
+    )
+    if (!sameValue(
+        artifacts.slicePlan.evidence.sliceIds,
+        proposal.orderedSlices.map(({ sliceId }) => sliceId)
+    )) {
+        fail('lifecycle-slice-plan-payload-invalid')
+    }
+    const validation = validateSealedPayload(
+        artifacts.slicePlanValidation.evidence.receipt,
+        {
+            schema:
+                'issue-orchestration.slice-plan-validation-receipt.v1',
+            digestField: 'validationDigest',
+            code: 'lifecycle-slice-plan-validation-payload-invalid',
+            status: 'verified'
+        }
+    )
+    if (validation.proposalDigest !== proposal.proposalDigest) {
+        fail('lifecycle-slice-plan-validation-payload-invalid')
+    }
+    const plan = validateSealedPayload(
+        artifacts.workPlan.evidence.plan,
+        {
+            schema: 'issue-orchestration.stage-work-plan.v1',
+            digestField: 'planDigest',
+            code: 'lifecycle-work-plan-payload-invalid',
+            status: 'verified'
+        }
+    )
+    if (plan.contractBindingStatus !== 'pre-writer-verified' ||
+        plan.activeWriteLeaseId !== null ||
+        plan.resourceLeaseReceiptDigest !== null ||
+        plan.frozenStageContract !== null ||
+        artifacts.workPlan.evidence.currentSliceId !==
+            plan.orderedSlices?.[0]?.sliceId) {
+        fail('lifecycle-work-plan-payload-invalid')
+    }
+    const slice = validateSealedPayload(
+        artifacts.executableSlice.evidence.slice,
+        {
+            schema: 'issue-orchestration.executable-slice.v1',
+            digestField: 'sliceDigest',
+            code: 'lifecycle-executable-slice-payload-invalid'
+        }
+    )
+    if (slice.planDigest !== plan.planDigest ||
+        slice.sliceId !== artifacts.executableSlice.evidence.sliceId ||
+        !sameValue(slice.allowedPaths,
+            artifacts.executableSlice.evidence.allowedPaths)) {
+        fail('lifecycle-executable-slice-payload-invalid')
+    }
+    const route = validateSealedPayload(
+        artifacts.routeBinding.evidence.routeDecision,
+        {
+            schema: 'issue-orchestration.execution-route-decision.v2',
+            digestField: 'routeDecisionDigest',
+            code: 'lifecycle-route-binding-payload-invalid'
+        }
+    )
+    if (route.selectedProfile !==
+            artifacts.routeBinding.evidence.selectedProfile ||
+        route.stageRole !== artifacts.routeBinding.evidence.stageRole ||
+        route.stagePhase !== artifacts.routeBinding.evidence.stagePhase) {
+        fail('lifecycle-route-binding-payload-invalid')
+    }
+    const prompt = validateSealedPayload(
+        artifacts.compiledPrompt.evidence.prompt,
+        {
+            schema:
+                'issue-orchestration.compiled-dispatch-prompt.v1',
+            digestField: 'promptDigest',
+            code: 'lifecycle-compiled-prompt-payload-invalid'
+        }
+    )
+    if (prompt.planDigest !== plan.planDigest ||
+        prompt.sliceDigest !== slice.sliceDigest ||
+        artifacts.compiledPrompt.evidence.promptContentDigest !==
+            digest(prompt.prompt)) {
+        fail('lifecycle-compiled-prompt-payload-invalid')
+    }
+    const registry = artifacts.resourceAcquisition.evidence.registry
+    evidenceObject(registry, 'lifecycle-resource-registry-payload-invalid')
+    if (registry.schema !== 'issue-orchestration.resource-registry.v1' ||
+        registry.writeLease !== undefined ||
+        artifacts.resourceAcquisition.evidence.writeLeaseAcquired !== false) {
+        fail('lifecycle-resource-registry-payload-invalid')
+    }
+}
+
+function validatePreWriterPayloads(contract_, artifacts, node, action) {
+    switch (contract_.id) {
+        case 'semantic-proposal':
+            validateSemanticPayloads(artifacts)
+            break
+        case 'acceptance-contract':
+            validateAcceptancePayloads(artifacts, node, action)
+            break
+        case 'test-contract-planning':
+            validatePlanningPayloads(artifacts)
+            break
+        default:
+            break
+    }
+}
+
 function validateAttempt(result, contract_) {
     if (contract_.attempt === 'required') {
         text(result.attemptId, 'lifecycle-stage-attempt-required')
@@ -1623,6 +1953,9 @@ export function validateLifecycleStageResult({
         validateArtifact(result.artifacts[key], key, spec, action)
     }
     validateCrossArtifactBindings(contract_, result.artifacts, node)
+    validatePreWriterPayloads(
+        contract_, result.artifacts, node, action
+    )
     return deepFreeze({
         result: clone(result),
         contractId: contract_.id,
