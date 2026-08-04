@@ -19,6 +19,7 @@ export const CONTROL_EVENT_TYPES = Object.freeze([
     'remote-snapshot.refreshed',
     'node.registered',
     'node.rebound',
+    'node.reopened',
     'node.removed',
     'node.tombstoned',
     'repository.base-changed',
@@ -549,6 +550,58 @@ export function replayControlLedger(ledger) {
                     registration.issueNumber !== prior.issueNumber ||
                     registration.memberId !== prior.memberId) {
                     fail('control-node-rebind-identity-drift')
+                }
+                projection.nodes[registration.nodeId] = registration
+                projection.dependencies[registration.nodeId] =
+                    registration.dependencyKeys
+                for (const [groupId, members] of Object.entries(
+                    projection.acceptanceGroups
+                )) {
+                    if (groupId === registration.acceptanceGroup) continue
+                    projection.acceptanceGroups[groupId] = members.filter(
+                        (memberId) => memberId !== registration.nodeId
+                    )
+                }
+                if (registration.acceptanceGroup) {
+                    const members = projection.acceptanceGroups[
+                        registration.acceptanceGroup
+                    ] ?? []
+                    projection.acceptanceGroups[
+                        registration.acceptanceGroup
+                    ] = [...new Set([
+                        ...members,
+                        registration.nodeId
+                    ])].sort()
+                }
+                projection.repositoryBases[registration.repository] = {
+                    repository: registration.repository,
+                    baseSha: registration.baseSha,
+                    repositoryBindingDigest:
+                        registration.repositoryBindingDigest
+                }
+                break
+            }
+            case 'node.reopened': {
+                const prior = projection.nodes[event.payload.nodeId]
+                if (!prior || prior.status === 'active') {
+                    fail('control-node-reopen-state-invalid')
+                }
+                const registration = registrationFromPayload(
+                    event.payload
+                )
+                if (projection.lifecycleAuthorityBinding &&
+                    (!registration.lifecycleAuthorityBinding ||
+                    registration.lifecycleAuthorityBinding.bindingDigest !==
+                        projection.lifecycleAuthorityBinding.bindingDigest)) {
+                    fail('control-node-authority-binding-invalid')
+                }
+                if (registration.nodeEpoch !== prior.nodeEpoch + 1) {
+                    fail('control-node-epoch-not-monotonic')
+                }
+                if (registration.repository !== prior.repository ||
+                    registration.issueNumber !== prior.issueNumber ||
+                    registration.memberId !== prior.memberId) {
+                    fail('control-node-reopen-identity-drift')
                 }
                 projection.nodes[registration.nodeId] = registration
                 projection.dependencies[registration.nodeId] =

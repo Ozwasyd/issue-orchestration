@@ -24,10 +24,13 @@ import {
     persistLifecycleRunLedger,
     projectLifecycleRun,
     readLifecycleRunLedger,
-    recordLifecycleActionResults,
-    recordLifecycleBaseChange,
-    recordLifecycleScopeRefresh
+    lifecycleRunObservationContext,
+    recordLifecycleActionResults
 } from '../../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
+import {
+    executeLifecycleScopeRefresh,
+    observeLifecycleRepositoryBaseBeforeAction
+} from '../../../skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs'
 import {
     compileScriptedLifecycleStageResult
 } from './scripted-lifecycle-stage-result.mjs'
@@ -706,6 +709,7 @@ export function runMultiRepositoryLifecycleAcceptance({
         runId: RUN_ID,
         createdAt: CREATED_AT,
         selectorReceipt,
+        selectorDefinition: selectorDefinition(issues, selectorVersion),
         semanticGraph,
         installedPolicy: {
             schema: 'issue-orchestration.installed-route-policy.v1',
@@ -789,33 +793,36 @@ export function runMultiRepositoryLifecycleAcceptance({
             })
             issues[commentTarget].updatedAt =
                 '2026-08-04T00:20:00.000Z'
-            selectorVersion += 1
-            const refreshedSelector = resolveCurrentSelector({
-                issues,
-                version: selectorVersion,
-                startup,
-                lifecycleAuthority,
-                previousReceipt: selectorReceipt
-            })
-            const refreshActionSet =
-                compileLifecycleRunActionSet(ledger, {
-                    observedSelectorReceipt: refreshedSelector,
-                    startup
-                })
-            if (refreshActionSet.actions.length !== 1 ||
-                refreshActionSet.actions[0].type !==
-                    'refresh-scope') {
-                fail('multi-repository-e2e-refresh-not-prioritized')
-            }
-            ledger = recordLifecycleScopeRefresh({
+            ledger = executeLifecycleScopeRefresh({
                 ledger,
-                actionSet: refreshActionSet,
-                selectorReceipt: refreshedSelector,
+                observeRemoteIssues(request) {
+                    const observation = {
+                        schema:
+                            'issue-orchestration.lifecycle-remote-scope-observation.v1',
+                        producerAuthority:
+                            'trusted-remote-observation-adapter',
+                        rootAuthored: false,
+                        selectorDigest: request.selectorDigest,
+                        remoteQueryIdentity:
+                            request.remoteQueryIdentity,
+                        repositories: request.repositories,
+                        issues: Object.values(issues).map(
+                            (issue) => structuredClone(issue)
+                        ),
+                        observedAt:
+                            '2026-08-04T00:20:00.000Z'
+                    }
+                    observation.observationDigest = digest(observation)
+                    return observation
+                },
                 createdAt:
                     '2026-08-04T00:20:01.000Z',
                 startup
             })
-            selectorReceipt = refreshedSelector
+            selectorReceipt = lifecycleRunObservationContext(
+                ledger,
+                { startup }
+            ).selectorReceipt
             ledger = persist(stateRoot, ledger, startup)
             const after = projectLifecycleRun(ledger, { startup })
             const unaffectedAfter = Object.fromEntries(
@@ -848,14 +855,23 @@ export function runMultiRepositoryLifecycleAcceptance({
                 scenarioRoot,
                 repository: repositories.RepoA
             })
-            ledger = recordLifecycleBaseChange({
-                ledger,
-                repository: repositories.RepoA.repository,
-                baseSha: newBase,
-                createdAt:
-                    '2026-08-04T00:30:00.000Z',
-                startup
-            })
+            const targetAction = actionSet.actions.find(
+                (action) => action.nodeId === baseTarget
+            )
+            const baseRefresh =
+                observeLifecycleRepositoryBaseBeforeAction({
+                    ledger,
+                    actionSet,
+                    actionDigest: targetAction.actionDigest,
+                    createdAt:
+                        '2026-08-04T00:30:00.000Z',
+                    startup
+                })
+            if (baseRefresh.status !== 'rebound' ||
+                baseRefresh.currentBaseSha !== newBase) {
+                fail('multi-repository-e2e-base-not-observed')
+            }
+            ledger = baseRefresh.ledger
             try {
                 const staleResults = actionSet.actions.map(
                     (action) => resultForAction({

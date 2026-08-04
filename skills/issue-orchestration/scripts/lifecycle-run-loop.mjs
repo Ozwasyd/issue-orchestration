@@ -13,7 +13,10 @@ import {
     compileLifecycleRemoteSnapshotReceipt,
     validateLifecycleActionSet
 } from './lifecycle-transition-compiler.mjs'
-import { verifySelectorReceipt } from './scope-selector.mjs'
+import {
+    verifySelectorDefinition,
+    verifySelectorReceipt
+} from './scope-selector.mjs'
 import {
     appendControlEventAtomicSync,
     appendNodeEventAtomicSync,
@@ -116,6 +119,10 @@ function validateGenesis(genesis) {
     }
     try {
         verifySelectorReceipt(genesis.selectorReceipt)
+        verifySelectorDefinition(
+            genesis.selectorDefinition,
+            genesis.selectorReceipt
+        )
         validateSemanticGraph(genesis.semanticGraph)
     } catch (error) {
         fail('lifecycle-run-genesis-authority-invalid', {
@@ -429,6 +436,7 @@ export function createLifecycleRunLedger({
     runId,
     createdAt,
     selectorReceipt,
+    selectorDefinition,
     semanticGraph,
     installedPolicy,
     lifecycleAuthority,
@@ -461,6 +469,12 @@ export function createLifecycleRunLedger({
         runId,
         createdAt,
         selectorReceipt: clone(selectorReceipt),
+        selectorDefinition: clone(
+            verifySelectorDefinition(
+                selectorDefinition,
+                selectorReceipt
+            )
+        ),
         remoteSnapshotReceipt,
         semanticGraph: clone(semanticGraph),
         installedPolicy: clone(installedPolicy),
@@ -789,6 +803,26 @@ function currentCompatibilityState({
         cleanupFinalizations:
             clone(controlProjection.cleanupFinalizations),
         lastControlSequence: controlProjection.lastSequence
+    })
+}
+
+export function lifecycleRunObservationContext(
+    value,
+    { startup } = {}
+) {
+    const authority = resolveAuthority(value, startup)
+    const facts = currentControlFacts(authority)
+    return Object.freeze({
+        runId: authority.runId,
+        stateRoot: authority.stateRoot,
+        selectorDefinition: clone(facts.genesis.selectorDefinition),
+        selectorReceipt: clone(facts.selectorReceipt),
+        remoteSnapshotReceipt: clone(facts.remoteSnapshotReceipt),
+        lifecycleAuthority: clone(facts.lifecycleAuthority),
+        repositoryBases: clone(
+            facts.controlProjection.repositoryBases
+        ),
+        nodes: clone(facts.controlProjection.nodes)
     })
 }
 
@@ -1194,6 +1228,53 @@ function appendControlInMemory(
     return ledger.events.at(-1)
 }
 
+function lifecycleNodeIdentity(nodeId) {
+    const separator = nodeId.lastIndexOf('#')
+    if (separator <= 0) {
+        fail('lifecycle-scope-refresh-node-identity-invalid', { nodeId })
+    }
+    const repository = nodeId.slice(0, separator)
+    const issueNumber = Number(nodeId.slice(separator + 1))
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
+        fail('lifecycle-scope-refresh-node-identity-invalid', { nodeId })
+    }
+    return { repository, issueNumber }
+}
+
+function refreshedGraphNode({
+    nodeId,
+    prior = null,
+    selector,
+    remote,
+    repositoryBindingDigest
+}) {
+    const identity = lifecycleNodeIdentity(nodeId)
+    const base = prior?.graphNode ?? prior ?? {}
+    return {
+        id: nodeId,
+        memberId: nodeId,
+        repository: identity.repository,
+        issueNumber: identity.issueNumber,
+        owner: base.owner ?? 'semantic-owner-unresolved',
+        dependencyKeys: [...(base.dependencyKeys ?? [])],
+        conflictKeys: [...(base.conflictKeys ?? [])],
+        riskClass: base.riskClass ?? 'unclassified',
+        uiClass: base.uiClass ?? 'unclassified',
+        acceptanceGroup: base.acceptanceGroup ?? null,
+        lifecycleState: 'none',
+        selectorReceiptDigest: selector.receiptDigest,
+        remoteSnapshotDigest: remote.receiptDigest,
+        repositoryBindingDigest,
+        semanticFactsDigest: digest({
+            priorSemanticFactsDigest: base.semanticFactsDigest ?? null,
+            remoteMemberDigest: selector.remoteFactDigests[nodeId],
+            selectorReceiptDigest: selector.receiptDigest
+        }),
+        contractDigest: null,
+        receipts: {}
+    }
+}
+
 export function recordLifecycleScopeRefresh({
     ledger,
     actionSet,
@@ -1224,47 +1305,104 @@ export function recordLifecycleScopeRefresh({
         selector.runtimeTrustBindingDigest !==
             binding.runtimeTrustBindingDigest ||
         selector.repositoryBindingSetDigest !==
-            binding.repositoryBindingSetDigest) {
+            binding.repositoryBindingSetDigest ||
+        selector.previousRemoteSnapshotDigest !==
+            facts.selectorReceipt.remoteSnapshotDigest) {
         fail('lifecycle-scope-refresh-authority-stale')
     }
-    const changedNodeIds = selector.resolvedIssueSet.filter(
-        (nodeId) =>
-            facts.selectorReceipt.remoteFactDigests[nodeId] !==
-            selector.remoteFactDigests[nodeId]
-    )
+
+    const changeSet = selector.remoteChangeSet ?? {}
+    const added = [...new Set(changeSet.added ?? [])].sort()
+    const changed = [...new Set(changeSet.changed ?? [])].sort()
+    const removed = [...new Set(changeSet.removed ?? [])].sort()
+    const reopened = [...new Set(changeSet.reopened ?? [])].sort()
+    const changedNodeIds = [...new Set([
+        ...added,
+        ...changed,
+        ...removed,
+        ...reopened
+    ])].sort()
     if (changedNodeIds.length === 0) {
         fail('lifecycle-scope-refresh-without-change')
     }
-    const added = selector.resolvedIssueSet.filter(
-        (nodeId) => !facts.controlProjection.nodes[nodeId]
-    )
-    if (added.length > 0) {
-        fail('lifecycle-scope-refresh-new-node-unsupported', {
-            nodeIds: added
-        })
-    }
+    const selected = new Set(selector.resolvedIssueSet)
     const remote = compileLifecycleRemoteSnapshotReceipt(selector)
     const controlLedger = clone(facts.controlLedger)
     appendControlInMemory(controlLedger, 'scope.refreshed', {
         selectorReceiptDigest: selector.receiptDigest,
         selectorReceipt: selector,
-        changedNodeIds
+        changedNodeIds,
+        remoteChangeSet: clone(selector.remoteChangeSet)
     }, createdAt, binding)
     appendControlInMemory(controlLedger, 'remote-snapshot.refreshed', {
         remoteSnapshotDigest: remote.receiptDigest,
         remoteSnapshotReceipt: remote
     }, createdAt, binding)
 
-    const changed = new Set(changedNodeIds)
+    const changedSet = new Set([...changed, ...reopened])
+    const removedSet = new Set(removed)
     const nodeLedgers = []
-    const graph = projectLifecycleRun(authority, {
+    const projected = projectLifecycleRun(authority, {
         startup: authority.startup
-    }).semanticGraph
-    const graphById = new Map(graph.nodes.map((node) => [node.id, node]))
+    })
+    const graphById = new Map(projected.semanticGraph.nodes.map(
+        (node) => [node.id, node]
+    ))
+
     for (const [nodeId, registration] of Object.entries(
         facts.controlProjection.nodes
     ).sort(([left], [right]) => left.localeCompare(right))) {
-        if (!changed.has(nodeId)) {
+        if (removedSet.has(nodeId)) {
+            if (registration.status === 'active') {
+                appendControlInMemory(controlLedger, 'node.removed', {
+                    nodeId,
+                    reason: 'left-selector-scope',
+                    selectorReceiptDigest: selector.receiptDigest
+                }, createdAt, binding)
+            }
+            continue
+        }
+        if (!selected.has(nodeId)) continue
+        if (registration.status !== 'active') {
+            const repository = facts.controlProjection.repositoryBases[
+                registration.repository
+            ]
+            const graphNode = refreshedGraphNode({
+                nodeId,
+                prior: registration,
+                selector,
+                remote,
+                repositoryBindingDigest:
+                    repository.repositoryBindingDigest
+            })
+            const next = nodeRegistration({
+                graphNode,
+                nodeEpoch: registration.nodeEpoch + 1,
+                repository: {
+                    repository: repository.repository,
+                    baseSha: repository.baseSha,
+                    bindingDigest:
+                        repository.repositoryBindingDigest
+                },
+                selectorReceipt: selector,
+                lifecycleAuthority: facts.lifecycleAuthority
+            })
+            appendControlInMemory(
+                controlLedger,
+                'node.reopened',
+                next,
+                createdAt,
+                binding
+            )
+            nodeLedgers.push(nodeLedgerForRegistration({
+                registration: next,
+                runId: authority.runId,
+                stateRoot: authority.stateRoot,
+                createdAt
+            }))
+            continue
+        }
+        if (!changedSet.has(nodeId)) {
             nodeLedgers.push(readCanonicalNodeLedger({
                 ...authority,
                 nodeId,
@@ -1275,8 +1413,16 @@ export function recordLifecycleScopeRefresh({
         const repository = facts.controlProjection.repositoryBases[
             registration.repository
         ]
+        const graphNode = refreshedGraphNode({
+            nodeId,
+            prior: graphById.get(nodeId) ?? registration,
+            selector,
+            remote,
+            repositoryBindingDigest:
+                repository.repositoryBindingDigest
+        })
         const rebound = nodeRegistration({
-            graphNode: graphById.get(nodeId),
+            graphNode,
             nodeEpoch: registration.nodeEpoch + 1,
             repository: {
                 repository: repository.repository,
@@ -1300,6 +1446,53 @@ export function recordLifecycleScopeRefresh({
             createdAt
         }))
     }
+
+    for (const nodeId of added) {
+        const prior = facts.controlProjection.nodes[nodeId]
+        if (prior) continue
+        const identity = lifecycleNodeIdentity(nodeId)
+        const repository = facts.controlProjection.repositoryBases[
+            identity.repository
+        ]
+        if (!repository) {
+            fail('lifecycle-scope-refresh-repository-unbound', {
+                nodeId,
+                repository: identity.repository
+            })
+        }
+        const graphNode = refreshedGraphNode({
+            nodeId,
+            selector,
+            remote,
+            repositoryBindingDigest:
+                repository.repositoryBindingDigest
+        })
+        const registration = nodeRegistration({
+            graphNode,
+            nodeEpoch: 1,
+            repository: {
+                repository: repository.repository,
+                baseSha: repository.baseSha,
+                bindingDigest: repository.repositoryBindingDigest
+            },
+            selectorReceipt: selector,
+            lifecycleAuthority: facts.lifecycleAuthority
+        })
+        appendControlInMemory(
+            controlLedger,
+            'node.registered',
+            registration,
+            createdAt,
+            binding
+        )
+        nodeLedgers.push(nodeLedgerForRegistration({
+            registration,
+            runId: authority.runId,
+            stateRoot: authority.stateRoot,
+            createdAt
+        }))
+    }
+
     const recovered = persistAggregateRunState({
         stateRoot: authority.stateRoot,
         controlLedger,

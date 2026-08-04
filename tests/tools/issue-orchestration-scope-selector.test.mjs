@@ -260,7 +260,13 @@ test('[A04][M03] only enumerated live remote facts participate in the snapshot d
         ['body', (issue) => { issue.body += ' changed' }],
         ['relevant comment', (issue) => { issue.comments[0].body += ' changed' }],
         ['labels', (issue) => { issue.labels.push('priority:high') }],
-        ['milestone', (issue) => { issue.milestone.title += ' changed' }]
+        ['milestone', (issue) => { issue.milestone.title += ' changed' }],
+        ['declared dependency', (issue) => {
+            issue.dependsOn.push('ExampleOrg/RepositoryA#109')
+        }],
+        ['tracked issue identity', (issue) => {
+            issue.trackedIssueIds.push('ExampleOrg/RepositoryA#109')
+        }]
     ]
 
     for (const [name, mutate] of mutations) {
