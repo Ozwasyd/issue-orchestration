@@ -50,6 +50,10 @@ function remoteFact(issue) {
     }
 }
 
+export function remoteIssueFactDigest(issue) {
+    return digest(remoteFact(issue))
+}
+
 function selectedIds(selector, issuesById) {
     const repositories = new Set(selector.repositories)
     const candidates = [...issuesById.values()].filter((issue) =>
@@ -217,6 +221,29 @@ export function resolveSelector({
     }
     receipt.receiptDigest = digest(receipt)
     return receipt
+}
+
+export function verifySelectorReceipt(receipt) {
+    if (receipt?.schema !== RECEIPT_SCHEMA ||
+        typeof receipt.receiptDigest !== 'string' ||
+        !/^[a-f0-9]{64}$/u.test(receipt.receiptDigest)) {
+        throw Object.assign(new Error('invalid selector receipt'), {
+            code: 'selector-receipt-invalid'
+        })
+    }
+    const unsigned = structuredClone(receipt)
+    delete unsigned.receiptDigest
+    if (digest(unsigned) !== receipt.receiptDigest ||
+        typeof receipt.selectorDigest !== 'string' ||
+        typeof receipt.remoteSnapshotDigest !== 'string' ||
+        !Array.isArray(receipt.resolvedIssueSet) ||
+        !receipt.remoteFactDigests ||
+        typeof receipt.remoteFactDigests !== 'object') {
+        throw Object.assign(new Error('selector receipt digest mismatch'), {
+            code: 'selector-receipt-invalid'
+        })
+    }
+    return Object.freeze(structuredClone(receipt))
 }
 
 function denied(code, reason, base) {

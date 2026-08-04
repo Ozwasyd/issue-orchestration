@@ -184,13 +184,53 @@ function activeEmptyLedger(options = {}) {
     }
 }
 
+function activeNodeDiscoveredReceipt(ledger) {
+    const receipt = {
+        schema: 'issue-orchestration.node-discovered-receipt.v1',
+        status: 'verified',
+        producerAuthority: 'deterministic-cold-start-compiler',
+        rootAuthored: false,
+        runId: ledger.header.runId,
+        nodeId: ledger.header.nodeId,
+        memberId: ledger.header.memberId,
+        repository: ledger.header.repository,
+        issueNumber: ledger.header.issueNumber,
+        baseSha: ledger.header.baseSha,
+        nodeEpoch: ledger.header.nodeEpoch,
+        selectorReceiptDigest: ledger.header.selectorReceiptDigest,
+        remoteSnapshotDigest: digest('remote-snapshot'),
+        remoteMemberDigest: ledger.header.remoteMemberDigest,
+        issueSnapshotFingerprint:
+            ledger.header.issueSnapshotFingerprint,
+        repositoryFingerprint:
+            ledger.header.repositoryFingerprint,
+        semanticProposalDigest: digest('semantic-proposal'),
+        semanticRouteDecisionDigest: digest('semantic-route'),
+        semanticFactsDigest: digest('semantic-facts'),
+        requirementInventoryDigest: digest('requirement-inventory'),
+        sourceCoverageDigest: digest('source-coverage'),
+        acceptanceContractDigest: digest('acceptance-contract')
+    }
+    receipt.receiptDigest = digest(receipt)
+    return receipt
+}
+
 function activeDiscoveredLedger(options = {}) {
     const ledger = activeEmptyLedger(options)
+    const nodeDiscoveredReceipt =
+        activeNodeDiscoveredReceipt(ledger)
     sealEvent(ledger, {
         actorRole: 'dag-creator-updater',
         eventType: 'node.discovered',
         fromState: 'none',
-        payload: { issueKind: 'code' },
+        payload: {
+            issueKind: 'code',
+            nodeDiscoveredReceipt,
+            nodeDiscoveredReceiptDigest:
+                nodeDiscoveredReceipt.receiptDigest,
+            sourceReceiptDigest:
+                nodeDiscoveredReceipt.receiptDigest
+        },
         toState: 'discovered'
     })
     return ledger
@@ -2087,6 +2127,18 @@ function canonicalIo(
     for (const event of ledger.events) {
         event.runId = canonicalRunId
         event.nodeId = node
+        if (event.eventType === 'node.discovered' &&
+            event.payload?.nodeDiscoveredReceipt) {
+            const receipt = event.payload.nodeDiscoveredReceipt
+            receipt.runId = canonicalRunId
+            receipt.nodeId = node
+            receipt.memberId = node
+            delete receipt.receiptDigest
+            receipt.receiptDigest = digest(receipt)
+            event.payload.nodeDiscoveredReceiptDigest =
+                receipt.receiptDigest
+            event.payload.sourceReceiptDigest = receipt.receiptDigest
+        }
     }
     resealFrom(ledger)
     fs.rmSync(location.ledgerPath, { force: true })

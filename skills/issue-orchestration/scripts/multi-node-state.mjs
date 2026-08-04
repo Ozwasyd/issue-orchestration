@@ -154,6 +154,24 @@ export function canonicalNodeStateLocation({
     })
 }
 
+export function readCanonicalControlLedger({ stateRoot, runId } = {}) {
+    const location = canonicalRunStateLocation({ stateRoot, runId })
+    return readLedger(location.controlLedgerPath)
+}
+
+export function readCanonicalNodeLedger({
+    stateRoot,
+    runId,
+    nodeId
+} = {}) {
+    const location = canonicalNodeStateLocation({
+        stateRoot,
+        runId,
+        nodeId
+    })
+    return readLedger(location.ledgerPath)
+}
+
 export function sealControlLedgerHeader({ runId, createdAt } = {}) {
     requireString(runId, 'control-ledger-run-id-invalid')
     requireString(createdAt, 'control-ledger-created-at-invalid')

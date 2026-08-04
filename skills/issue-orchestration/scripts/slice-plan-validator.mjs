@@ -241,3 +241,90 @@ export function validatedSliceSequence({
             structuredClone(proposal.sliceDependencyGraph)
     })
 }
+
+export function compileDeterministicSlicePolicy({
+    acceptanceContract,
+    proposal,
+    validationReceipt
+}) {
+    verifySlicePlanValidation({
+        acceptanceContract,
+        proposal,
+        receipt: validationReceipt
+    })
+    const orderedSliceBlueprints = proposal.orderedSlices.map(
+        (slice, index) => {
+            const prerequisiteSliceIds =
+                proposal.sliceDependencyGraph[slice.sliceId]
+            const firstWritablePath =
+                slice.firstWritablePath ??
+                (slice.firstRequiredAction?.startsWith('write:')
+                    ? slice.firstRequiredAction.slice('write:'.length)
+                    : null)
+            const explicitReadOnlyOutput =
+                firstWritablePath === null
+                    ? (slice.explicitReadOnlyOutput ??
+                        `read-only-output:${slice.sliceId}`)
+                    : null
+            return {
+                sliceId: slice.sliceId,
+                order: index + 1,
+                prerequisiteSliceIds,
+                singleObjective: slice.objective,
+                firstRequiredAction: slice.firstRequiredAction,
+                firstReadTargets: [...(slice.firstReadTargets ??
+                    slice.allowedPaths)],
+                firstWritablePath,
+                explicitReadOnlyOutput,
+                allowedPaths: [...slice.allowedPaths],
+                forbiddenPaths: [...proposal.forbiddenPaths],
+                requiredCreatedOrModifiedFiles:
+                    [...(slice.requiredCreatedOrModifiedFiles ??
+                        (firstWritablePath ? [firstWritablePath] : []))],
+                requiredCommands: [...(slice.requiredCommands ?? [])],
+                requiredEvidence: [...(slice.requiredEvidence ?? [])],
+                explicitNonGoals: [...(slice.explicitNonGoals ?? [])],
+                expectedFailureOrProgressSignal:
+                    slice.expectedFailureOrProgressSignal ??
+                    `progress:${slice.sliceId}`,
+                maxChangedFiles: slice.maxChangedFiles,
+                maxOwnedModules: slice.maxOwnedModules,
+                maxReadOnlyOperationsBeforeCheckpoint:
+                    slice.maxReadOnlyOperationsBeforeCheckpoint ?? 16,
+                maxNoArtifactToolCalls:
+                    slice.maxNoArtifactToolCalls ?? 8,
+                maxNoArtifactActiveDurationClass:
+                    slice.maxNoArtifactActiveDurationClass ?? 'short',
+                safeCheckpointKind:
+                    slice.safeCheckpointKind ?? 'stage-progress',
+                acceptanceItemIds: [...slice.acceptanceIds],
+                completionPredicate:
+                    `required-files-commands-evidence-complete:${slice.sliceId}`,
+                continuationPredicate:
+                    `sealed-checkpoint-cursor-resume:${slice.sliceId}`
+            }
+        }
+    )
+    return Object.freeze({
+        schema:
+            'issue-orchestration.deterministic-slice-policy.v1',
+        maxSliceCount: 16,
+        maxAcceptanceItemsPerSlice: 8,
+        maxFirstReadTargetsPerSlice: 32,
+        maxAllowedPathsPerSlice: 32,
+        maxRequiredFilesPerSlice: 32,
+        maxRequiredCommandsPerSlice: 16,
+        maxRequiredEvidencePerSlice: 32,
+        maxExplicitNonGoalsPerSlice: 16,
+        maxChangedFilesPerSlice: 32,
+        maxOwnedModulesPerSlice: 16,
+        maxReadOnlyOperationsBeforeCheckpointPerSlice: 64,
+        maxNoArtifactToolCallsPerSlice: 32,
+        allowedNoArtifactActiveDurationClasses: ['short', 'medium'],
+        allowedSafeCheckpointKinds: [
+            'stage-progress',
+            'slice-terminal'
+        ],
+        orderedSliceBlueprints
+    })
+}

@@ -5,6 +5,10 @@ import path from 'node:path'
 import test, { after } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
+import {
+    STAGE_ROUTE_DEFINITIONS
+} from '../../skills/issue-orchestration/scripts/stage-profile-policy.mjs'
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const runtimeStateRoot = fs.mkdtempSync(path.join(
     os.tmpdir(),
@@ -751,9 +755,12 @@ test('C19 route receipts bind one exact cell, all predicates and no search resul
     )
     assert.equal(decision.requiredProfile, decision.selectedProfile)
     assert.equal(decision.capabilityValidationResult, 'accepted')
-    assert.deepEqual(decision.allowedProfiles, [
-        decision.requiredProfile
-    ])
+    assert.deepEqual(
+        decision.allowedProfiles,
+        STAGE_ROUTE_DEFINITIONS[
+            'code-implementer:implementation'
+        ].allowedProfiles
+    )
 })
 
 test('C20 there is one exported production selector and no global ladder', () => {

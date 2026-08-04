@@ -83,6 +83,7 @@ const manifest = {
         'external-runtime-state-root',
         'per-node-event-ledger',
         'verified-aggregate-runtime-projection',
+        'deterministic-test-contract-cold-start',
         'fresh-context-routing',
         'git-worktree-discovery',
         'runtime-permission-observation',
@@ -139,7 +140,8 @@ const manifest = {
         'scope-selector',
         'semantic-graph',
         'stage-dispatch',
-        'control-plane-advisor'
+        'control-plane-advisor',
+        'test-contract-cold-start'
     ],
     excludedAuthorities: [
         'product-api',

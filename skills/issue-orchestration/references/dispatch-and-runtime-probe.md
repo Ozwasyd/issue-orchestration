@@ -36,13 +36,19 @@ receipt identity，不读取完整 issue、完整 DAG/state 或语义源文件�
 
 ## Verified plan、slice 与 compiled prompt
 
-完整 issue 不是 writer 任务。`issue-requirement-authority.mjs` 先从完整远端
-issue body 与所有 relevant comment blocks 精确一次性编译 immutable
-requirement inventory 和 acceptance contract。Root 只能接受或拒绝该
-contract，不能增删改 requirement。随后 semantic proposer 给出 slice plan，
-`slice-plan-validator.mjs` 独立验证 acceptance/command ownership、无环顺序、
-路径、first action 与 capacity。Root 不能提议或修改 slice。Canonical
-compiler 再处理通过验证的投影：
+完整 issue 不是 writer 任务。新节点只能通过公共
+`advanceTestContractColdStart` 推进。Fresh observe-only
+`dag-creator-updater:semantic-proposal` 只提交 discovery/classification 与
+requirement-classification proposal；确定性 compiler 从 selector receipt、
+当前 remote member facts、accepted proposal 和 title/body/relevant-comment
+规范来源块精确编译 immutable requirement inventory、acceptance contract 与
+`node-discovered-receipt.v1`。Root 只能接受或拒绝 typed proposal，不能增删改
+requirement、acceptance scope、test scope、slice 或 prompt。随后 fresh
+observe-only `test-owner:test-contract-planning` 必须在一个绑定响应中产生
+planning receipt、issue-specific dispatch investigation 与 test-contract writer
+slice proposal；`slice-plan-validator.mjs` 再独立验证 acceptance/command
+ownership、无环顺序、路径、first action 与 capacity。Canonical compiler 只
+处理通过验证的投影：
 
 1. `compileStageWorkPlan(input)` 生成并验证 `issue-orchestration.stage-work-plan.v1`；
 2. `compileExecutableSlice({ plan, sliceId })` 只提取当前 `issue-orchestration.executable-slice.v1`；
@@ -69,10 +75,17 @@ Writer stage 与永久输出合同如下：
 Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v3` 或永久 routing policy。
 
 首次 test-contract writer 不允许依赖虚构历史或空白 attempt。固定冷启动顺序
-是：immutable acceptance contract → fresh observe-only planning
-request/receipt → 资源和 exclusive lease → frozen test contract →
-validated slice/compiled prompt → fresh writer attempt。Planning 与 writer
-必须是不同 rollout/thread；历史 bootstrap、旧 runner 或旧 checkpoint 不能替代。
+是：selector/remote freshness → accepted semantic proposal → deterministic
+requirement inventory/acceptance contract/`node-discovered-receipt.v1` → fresh
+observe-only planning bundle → validated slice/work plan/compiled prompt → pending
+canonical route selection → exclusive lease/resource acquisition → runtime-bound
+final route → `stage.contract-frozen` → fresh writer dispatch。Planning 与 writer
+必须是不同 rollout/thread；`node.discovered` 只包含 discovery/acceptance freeze
+时已存在的事实，不能携带 test contract、writer paths、commands、plan、slice、
+prompt、candidate 或 verification history。只有 planning bundle、slice validation、
+work plan、executable slice、route、prompt 与 resource mutually digest-bound 后才
+能追加 `stage.contract-frozen`。历史 bootstrap、旧 runner、旧 checkpoint、
+`preexistingFrozenContract`、caller-supplied authority 或完整 issue body 都不能替代。
 
 ## Implementer contract
 

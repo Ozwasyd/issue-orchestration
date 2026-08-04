@@ -33,7 +33,7 @@
   "hashAlgorithm": "sha256",
   "selfHashPolicy": "fileHashes covers raw bytes for every allowedTestPath except this manifest; stage 1 testContractDigest covers canonical JSON with testContractDigest and candidateIdentity omitted; stage 2 candidateDigest covers canonical JSON of baseSha, the stage 1 testContractDigest, and path-sorted exact implementationFiles records",
   "fileHashes": {
-    "tests/tools/issue-orchestration-event-ledger.test.mjs": "38c2ee8b30420120ecab425dfcae8522f32855aea30c644a946cd52dafe54116",
+    "tests/tools/issue-orchestration-event-ledger.test.mjs": "17df1959aeaeeb94d8b915687d040984dbdd02bdbcb091c39b06dca4d597c894",
     "tests/fixtures/issue-orchestration/event-ledger-acceptance-map.json": "29ab6284bd92ba416bfa6c74585a4fd7ef4c2e3e85a86a2a10a84abe2559accd",
     "tests/fixtures/issue-orchestration/event-ledger-mutation-controls.json": "4c69c0946b4369c0dc90d6164c98676d2bd61165f67af98ee54b8fa03a8a05fa",
     "tests/fixtures/issue-orchestration/event-ledger-runtime-probes.json": "089544e96ae5623e9117c26df12c927489c0be28aa93046959d1cf315e72d608"
@@ -103,12 +103,12 @@
       "evidence": "Shared helpers add a verified dispatch prerequisite and implementer-self-test-receipt.v1 without weakening any downstream assertion."
     }
   ],
-  "testContractDigest": "6417e6baa2f501e9b80f23ea685654e51f2a888b4f3d63731307bd6731425329",
+  "testContractDigest": "01d4760bb4b547388d9d769224b745c5c7ca86a1c1c188aeb1f9d15ce0316bc9",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "f99e6091165edc9dba7f2b1314568c3a07b69537",
-    "testContractDigest": "6417e6baa2f501e9b80f23ea685654e51f2a888b4f3d63731307bd6731425329",
+    "testContractDigest": "01d4760bb4b547388d9d769224b745c5c7ca86a1c1c188aeb1f9d15ce0316bc9",
     "implementationFiles": [
       {
         "path": "skills/issue-orchestration/scripts/event-ledger.mjs",
@@ -116,6 +116,6 @@
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "958ab6a979c98652c066be6ce176ba366e25a0fe7e4ad5bf9d7cecef8421b4f7"
+    "candidateDigest": "841ef1960a4087b22e6e2d45b89b1cdc87094617d58c4f37b0f9b5cbeeec4a19"
   }
 }

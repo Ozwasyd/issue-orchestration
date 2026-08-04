@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:test-contract-planning-bundle:v1",
+  "title": "issue-orchestration.test-contract-planning-bundle.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "attemptId", "requestDigest",
+    "nodeDiscoveredReceiptDigest", "acceptanceContractDigest",
+    "routeDecisionDigest", "runtimeExecutionBindingDigest",
+    "mutationPostconditionReceiptDigest", "planningReceipt",
+    "planningReceiptDigest", "investigationReceipt",
+    "investigationReceiptDigest", "sliceProposal", "sliceProposalDigest",
+    "protectedFilesystemWrites", "bundleDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.test-contract-planning-bundle.v1"},
+    "status": {"const": "verified"},
+    "attemptId": {"type": "string", "minLength": 1},
+    "requestDigest": {"$ref": "#/$defs/digest"},
+    "nodeDiscoveredReceiptDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "routeDecisionDigest": {"$ref": "#/$defs/digest"},
+    "runtimeExecutionBindingDigest": {"$ref": "#/$defs/digest"},
+    "mutationPostconditionReceiptDigest": {"$ref": "#/$defs/digest"},
+    "planningReceipt": {"type": "object"},
+    "planningReceiptDigest": {"$ref": "#/$defs/digest"},
+    "investigationReceipt": {"type": "object"},
+    "investigationReceiptDigest": {"$ref": "#/$defs/digest"},
+    "sliceProposal": {"type": "object"},
+    "sliceProposalDigest": {"$ref": "#/$defs/digest"},
+    "protectedFilesystemWrites": {"type": "array", "maxItems": 0},
+    "bundleDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

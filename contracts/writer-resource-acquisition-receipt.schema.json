@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:writer-resource-acquisition-receipt:v1",
+  "title": "issue-orchestration.writer-resource-acquisition-receipt.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "runId", "nodeId", "stageAttemptId", "stageRole",
+    "baseSha", "epochId", "testContractDigest", "leaseId", "leaseDigest",
+    "registryIdentityDigest", "runtimeStateRootDigest", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.writer-resource-acquisition-receipt.v1"},
+    "status": {"const": "acquired"},
+    "runId": {"type": "string", "minLength": 1},
+    "nodeId": {"type": "string", "minLength": 1},
+    "stageAttemptId": {"type": "string", "minLength": 1},
+    "stageRole": {"type": "string", "minLength": 1},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "epochId": {"type": "string", "minLength": 1},
+    "testContractDigest": {"$ref": "#/$defs/digest"},
+    "leaseId": {"type": "string", "minLength": 1},
+    "leaseDigest": {"$ref": "#/$defs/digest"},
+    "registryIdentityDigest": {"$ref": "#/$defs/digest"},
+    "runtimeStateRootDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

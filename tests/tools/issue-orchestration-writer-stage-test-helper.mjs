@@ -91,7 +91,7 @@ function sourceBindingForPhase(stagePhase) {
             actorRole: 'dag-creator-updater',
             eventType: 'node.discovered',
             receiptSchema:
-                'issue-orchestration.dag-scope-receipt.v1'
+                'issue-orchestration.node-discovered-receipt.v1'
         }
     }
     if (['implementation', 'ui-implementation'].includes(stagePhase)) {
@@ -154,8 +154,54 @@ function createSourceReceipt({
     source,
     stageRole,
     testContractDigest,
-    testOwnerDispatchReceipt
+    testOwnerDispatchReceipt,
+    repository,
+    issue,
+    issueSnapshotFingerprint,
+    repositoryFingerprint,
+    selectorReceiptDigest,
+    remoteMemberDigest
 }) {
+    if (source.eventType === 'node.discovered') {
+        return sealTestReceipt({
+            schema: source.receiptSchema,
+            status: 'verified',
+            producerAuthority: 'deterministic-cold-start-compiler',
+            rootAuthored: false,
+            runId,
+            nodeId: node,
+            memberId: node,
+            repository,
+            issueNumber: Number(String(issue).match(/(\d+)$/u)?.[1] ?? issue),
+            baseSha,
+            nodeEpoch: 1,
+            selectorReceiptDigest,
+            remoteSnapshotDigest: writerTestDigest({
+                runId, node, kind: 'remote-snapshot'
+            }),
+            remoteMemberDigest,
+            issueSnapshotFingerprint,
+            repositoryFingerprint,
+            semanticProposalDigest: writerTestDigest({
+                runId, node, kind: 'semantic-proposal'
+            }),
+            semanticRouteDecisionDigest: writerTestDigest({
+                runId, node, kind: 'semantic-route'
+            }),
+            semanticFactsDigest: writerTestDigest({
+                runId, node, kind: 'semantic-facts'
+            }),
+            requirementInventoryDigest: writerTestDigest({
+                runId, node, kind: 'requirement-inventory'
+            }),
+            sourceCoverageDigest: writerTestDigest({
+                runId, node, kind: 'source-coverage'
+            }),
+            acceptanceContractDigest: writerTestDigest({
+                runId, node, kind: 'acceptance-contract'
+            })
+        })
+    }
     const receipt = {
         schema: source.receiptSchema,
         verificationStatus: 'verified',
@@ -552,16 +598,6 @@ function createWriterAuthority({
             runId,
             testContractDigest
         })
-    const sourceReceipt = createSourceReceipt({
-        baseSha,
-        epochId,
-        node,
-        runId,
-        source,
-        stageRole,
-        testContractDigest,
-        testOwnerDispatchReceipt
-    })
     const sourceDagDigest = writerTestDigest({
         runId,
         node,
@@ -576,6 +612,28 @@ function createWriterAuthority({
         runId,
         node,
         owner: 'repository'
+    })
+    const selectorReceiptDigest = writerTestDigest({
+        runId, node, kind: 'selector'
+    })
+    const remoteMemberDigest = writerTestDigest({
+        runId, node, kind: 'remote-member'
+    })
+    const sourceReceipt = createSourceReceipt({
+        baseSha,
+        epochId,
+        node,
+        runId,
+        source,
+        stageRole,
+        testContractDigest,
+        testOwnerDispatchReceipt,
+        repository,
+        issue,
+        issueSnapshotFingerprint,
+        repositoryFingerprint,
+        selectorReceiptDigest,
+        remoteMemberDigest
     })
     const blueprints = sourceEventBlueprints(stagePhase)
     const location = writerStageAuthorityLocation({
@@ -639,13 +697,20 @@ function createWriterAuthority({
             }
         }
         if (blueprint.eventType === source.eventType) {
-            payload = {
-                ...(canonicalPrelude?.payload ??
-                    {}),
-                writerStageContract: stageSourceContract,
-                sourceReceipt,
-                sourceReceiptDigest: sourceReceipt.receiptDigest
-            }
+            payload = blueprint.eventType === 'node.discovered'
+                ? {
+                    issueKind: 'code',
+                    nodeDiscoveredReceipt: sourceReceipt,
+                    nodeDiscoveredReceiptDigest:
+                        sourceReceipt.receiptDigest,
+                    sourceReceiptDigest: sourceReceipt.receiptDigest
+                }
+                : {
+                    ...(canonicalPrelude?.payload ?? {}),
+                    writerStageContract: stageSourceContract,
+                    sourceReceipt,
+                    sourceReceiptDigest: sourceReceipt.receiptDigest
+                }
         }
         events.push(sealLedgerEvent({
             ...boundBlueprint,
@@ -673,8 +738,8 @@ function createWriterAuthority({
         memberId: node,
         repository,
         issueNumber: Number(String(issue).match(/(\d+)$/u)?.[1] ?? issue),
-        selectorReceiptDigest: writerTestDigest({ runId, node, kind: 'selector' }),
-        remoteMemberDigest: writerTestDigest({ runId, node, kind: 'remote-member' }),
+        selectorReceiptDigest,
+        remoteMemberDigest,
         nodeEpoch: 1,
         stateRootCanonical: path.dirname(path.dirname(location.runRoot)),
         baseSha,

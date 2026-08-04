@@ -58,7 +58,59 @@ function makeNodeLedger(identity, stateRoot) {
         repositoryFingerprint,
         createdAt
     })
-    const payload = { issueKind: 'code' }
+    const nodeDiscoveredReceipt = {
+        schema: 'issue-orchestration.node-discovered-receipt.v1',
+        status: 'verified',
+        producerAuthority: 'deterministic-cold-start-compiler',
+        rootAuthored: false,
+        runId,
+        nodeId: identity.nodeId,
+        memberId: identity.nodeId,
+        repository: identity.repository,
+        issueNumber: identity.issueNumber,
+        baseSha: identity.baseSha,
+        nodeEpoch: identity.nodeEpoch,
+        selectorReceiptDigest: identity.selectorReceiptDigest,
+        remoteSnapshotDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'remote-snapshot'
+        }),
+        remoteMemberDigest: identity.remoteMemberDigest,
+        issueSnapshotFingerprint,
+        repositoryFingerprint,
+        semanticProposalDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'semantic-proposal'
+        }),
+        semanticRouteDecisionDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'semantic-route'
+        }),
+        semanticFactsDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'semantic-facts'
+        }),
+        requirementInventoryDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'requirement-inventory'
+        }),
+        sourceCoverageDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'source-coverage'
+        }),
+        acceptanceContractDigest: stateDigest({
+            nodeId: identity.nodeId,
+            kind: 'acceptance-contract'
+        })
+    }
+    nodeDiscoveredReceipt.receiptDigest =
+        stateDigest(nodeDiscoveredReceipt)
+    const payload = {
+        issueKind: 'code',
+        nodeDiscoveredReceipt,
+        nodeDiscoveredReceiptDigest:
+            nodeDiscoveredReceipt.receiptDigest
+    }
     const event = {
         schema: 'issue-orchestration.event.v2',
         eventId: `discover-${identity.nodeId}`,

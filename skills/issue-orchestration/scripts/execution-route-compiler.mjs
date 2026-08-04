@@ -1289,7 +1289,7 @@ function compileDecision({
             selected.capabilityValidationResult,
         reviewedAssumptionDigest:
             selected.reviewedAssumptionDigest,
-        allowedProfiles: selected.allowedProfiles,
+        allowedProfiles: [...stageDefinition.allowedProfiles],
         selectedProfile: selected.selectedProfile,
         selectedProfileReason: selected.selectedProfileReason,
         requestedModel: runtime.model,

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:issue-orchestration:node-discovered-receipt:v1",
+  "title": "issue-orchestration.node-discovered-receipt.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "producerAuthority", "rootAuthored", "runId",
+    "nodeId", "memberId", "repository", "issueNumber", "baseSha",
+    "nodeEpoch", "selectorReceiptDigest", "remoteSnapshotDigest",
+    "remoteMemberDigest", "issueSnapshotFingerprint", "repositoryFingerprint",
+    "semanticProposalDigest", "semanticRouteDecisionDigest",
+    "semanticFactsDigest", "requirementInventoryDigest", "sourceCoverageDigest",
+    "acceptanceContractDigest", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.node-discovered-receipt.v1"},
+    "status": {"const": "verified"},
+    "producerAuthority": {"const": "deterministic-cold-start-compiler"},
+    "rootAuthored": {"const": false},
+    "runId": {"type": "string", "minLength": 1},
+    "nodeId": {"type": "string", "minLength": 1},
+    "memberId": {"type": "string", "minLength": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "issueNumber": {"type": "integer", "minimum": 1},
+    "baseSha": {"type": "string", "pattern": "^[a-f0-9]{40}$"},
+    "nodeEpoch": {"type": "integer", "minimum": 1},
+    "selectorReceiptDigest": {"$ref": "#/$defs/digest"},
+    "remoteSnapshotDigest": {"$ref": "#/$defs/digest"},
+    "remoteMemberDigest": {"$ref": "#/$defs/digest"},
+    "issueSnapshotFingerprint": {"$ref": "#/$defs/digest"},
+    "repositoryFingerprint": {"$ref": "#/$defs/digest"},
+    "semanticProposalDigest": {"$ref": "#/$defs/digest"},
+    "semanticRouteDecisionDigest": {"$ref": "#/$defs/digest"},
+    "semanticFactsDigest": {"$ref": "#/$defs/digest"},
+    "requirementInventoryDigest": {"$ref": "#/$defs/digest"},
+    "sourceCoverageDigest": {"$ref": "#/$defs/digest"},
+    "acceptanceContractDigest": {"$ref": "#/$defs/digest"},
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}
