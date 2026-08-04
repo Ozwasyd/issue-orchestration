@@ -55,6 +55,7 @@ jobs:
           set -euo pipefail
           compressed="${RUNNER_TEMP}/issue22.patch.gz"
           patch="${RUNNER_TEMP}/issue22.patch"
+          schema_fix="${RUNNER_TEMP}/issue22-schema-fix.patch"
           : > "${compressed}"
           for sha in \
             475bd4d62cfba4f848bbdb0b6e5174ab70e144bc \
@@ -83,6 +84,18 @@ jobs:
           echo '56fe344718c8794f463b622b732785e33b0d3c183ed92a89dbddb4fbe3175832  '"${patch}" | sha256sum --check
           git apply --check "${patch}"
           git apply "${patch}"
+
+          curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/git/blobs/51c49008bdd178c5ac1a283302e351394adc46c0" \
+            | jq -r '.content' \
+            | tr -d '\n' \
+            | base64 -d > "${schema_fix}"
+          echo 'ea0890f5766be9ac975d9c911b0033c7130fe511046aac2d1c8bbf812e816324  '"${schema_fix}" | sha256sum --check
+          git apply --check "${schema_fix}"
+          git apply "${schema_fix}"
           rm -f .github/workflows/apply-issue-22.yml
 
           git config user.name 'issue-orchestration automation'
