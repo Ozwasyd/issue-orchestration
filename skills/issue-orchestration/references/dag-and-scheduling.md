@@ -112,6 +112,15 @@ DAG 至少记录：
 - 不处于未变化的 terminal 状态；
 - 没有同一 slice 正在被另一名 writer 处理。
 
+
+## 确定性 lifecycle action compiler
+
+`lifecycle-transition-compiler.mjs` 是 verified run state 到下一组合法动作的唯一生产 authority。输入只允许 current selector/remote receipts、`semantic-graph.v2`、从 control/node ledgers 重放得到的 `aggregate-runtime-projection.v1`、installed route policy 和 runtime capability binding；caller 提供的 stage state、projection summary、semantic/test/implementation scope、prompt 或自然语言指令一律拒绝。
+
+compiler 返回 canonical `lifecycle-action-set.v1`。所有非 `idle` action 都必须绑定 run/node/repository/issue/base/epoch、selector/remote/graph/aggregate digest、node projection digest、prior ledger head、policy/capability digest，以及当前已验证的 route/plan/slice/prompt/resource/receipt digests。它是纯函数：不得 spawn agent、调用 Git/GitHub、修改文件、选择 canonical routing 之外的模型或充当 daemon。
+
+Root 主循环固定为：执行 action set → 写入 verified result → 重放 control/node ledgers → 重建 aggregate projection → 再次编译。active attempt 或 exclusive lease 抑制重复 dispatch；空闲槽位必须被独立 ready 节点填满；stale remote facts 只能先返回 `refresh-scope`；acceptance group 只有全部 required members green 且 exactly-once delivery 未完成时才能交付。只有 canonical `idle` 才表示 quiescence。
+
 ## 工作守恒
 
 存在 `ready` writer stage、已验证的下一 executable slice 且有空闲槽位时，下一次调度动作必须派发该 slice；不得以等待、轮询或汇总代替派发。完整 issue、完整 stage 或手写 prompt 不是 dispatch unit。只在没有可执行 slice、没有空闲槽位或需要完成一次不可并行的根代理交付动作时等待。

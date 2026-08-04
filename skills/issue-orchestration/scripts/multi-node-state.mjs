@@ -686,6 +686,9 @@ export function projectAggregateRun({
         const lifecycleState = nodeProjection?.status ?? 'none'
         nodes[nodeId] = {
             ...registration,
+            nodeId,
+            ledgerHeadDigest: entry?.ledgerHeadDigest ?? null,
+            nodeProjectionDigest: entry?.projectionDigest ?? null,
             lifecycleState,
             activeAttemptId: nodeProjection?.activeAttemptId ?? null,
             candidateGreen: statusAtOrAfter(

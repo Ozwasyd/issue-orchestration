@@ -991,6 +991,23 @@ export function validateReadyFrontier({
         : { valid: false, code: 'frontier-projection-mismatch' }
 }
 
+export function selectWorkConservingCandidates({
+    candidates,
+    availableSlots
+} = {}) {
+    if (!Array.isArray(candidates) || !Number.isInteger(availableSlots) ||
+        availableSlots < 0) {
+        fail('dispatch-candidate-input-invalid')
+    }
+    return [...candidates]
+        .sort((left, right) =>
+            `${left.issueId}@${left.stage}`.localeCompare(
+                `${right.issueId}@${right.stage}`
+            )
+        )
+        .slice(0, availableSlots)
+}
+
 export function selectDispatchCandidates({ projection, runtimeState }) {
     if (runtimeState.rootOnlyDeliveryAction) {
         return {
@@ -1003,7 +1020,10 @@ export function selectDispatchCandidates({ projection, runtimeState }) {
     }
     const availableSlots = Math.max(0, runtimeState.availableSlots ?? 0)
     return {
-        dispatchCandidates: projection.readyFrontier.slice(0, availableSlots),
+        dispatchCandidates: selectWorkConservingCandidates({
+            candidates: projection.readyFrontier,
+            availableSlots
+        }),
         noDispatchReason: null
     }
 }
