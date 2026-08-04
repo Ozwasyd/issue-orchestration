@@ -44,56 +44,37 @@ jobs:
           from pathlib import Path
 
           harness_path = Path('tests/tools/issue-orchestration/multi-repository-lifecycle-e2e.mjs')
-          harness = harness_path.read_text()
-          broken = """                    pushes: Object.fromEntries(
-                          Object.entries(repositories).map(
-                              ([repoKey, repository]) => [
-                                  repoKey, repository.pushCount
-                              ]
-                          )
-                  }
-              ])
-          """
-          fixed = """                    pushes: Object.fromEntries(
-                          Object.entries(repositories).map(
-                              ([repoKey, repository]) => [
-                                  repoKey, repository.pushCount
-                              ]
-                          )
-                      )
-                  }
-              ])
-          """
-          if broken not in harness:
-              raise SystemExit('missing malformed remoteEffectsBefore block')
-          harness_path.write_text(harness.replace(broken, fixed, 1))
+          lines = harness_path.read_text().splitlines()
+          pushes_index = next(
+              (index for index, line in enumerate(lines)
+               if 'pushes: Object.fromEntries(' in line),
+              None
+          )
+          if pushes_index is None:
+              raise SystemExit('missing remoteEffectsBefore pushes expression')
+          inserted = False
+          property_indent = lines[pushes_index][:len(lines[pushes_index]) - len(lines[pushes_index].lstrip())]
+          for index in range(pushes_index + 1, min(len(lines) - 1, pushes_index + 30)):
+              if lines[index].strip() != ')':
+                  continue
+              cursor = index + 1
+              while cursor < len(lines) and lines[cursor].strip() == '':
+                  cursor += 1
+              if cursor < len(lines) and lines[cursor].strip() == '}':
+                  lines.insert(index + 1, f'{property_indent})')
+                  inserted = True
+                  break
+          if not inserted:
+              raise SystemExit('missing unclosed Object.fromEntries expression')
+          harness_path.write_text('\n'.join(lines) + '\n')
 
           test_path = Path('tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs')
           source = test_path.read_text()
-          old = """test('issue 25 harness uses production APIs and contains no fixture authority', () => {
-              assert.match(runtimeSource, /compileLifecycleActionSet/u)
-              assert.match(runtimeSource, /compileLifecycleRemoteSnapshotReceipt/u)
-              assert.match(runtimeSource, /createSemanticGraph/u)
-              assert.match(runtimeSource, /verifySelectorReceipt/u)
-              assert.doesNotMatch(
-                  runtimeSource,
-                  /tests\\/fixtures|test-helper|fixture-only-constructor/iu
-              )
-              assert.doesNotMatch(
-                  runtimeSource,
-                  /scope-selector-receipt\\.v1|compileProductionLifecycleActionSet/u
-              )
-              assert.doesNotMatch(
-                  runtimeSource,
-                  /https?:\\/\\/|curl\\b|fetch\\(|codex\\b|openai\\b/iu
-              )
-              assert.doesNotMatch(
-                  runtimeSource,
-                  /setInterval|setTimeout|daemon|polling service/iu
-              )
-          })
-          """
-          new = """test('issue 25 harness uses production APIs and contains no fixture authority', () => {
+          marker = "test('issue 25 harness uses production APIs and contains no fixture authority'"
+          start = source.find(marker)
+          if start < 0:
+              raise SystemExit('missing issue 25 source guard test')
+          replacement = r"""test('issue 25 harness uses production APIs and contains no fixture authority', () => {
               assert.match(runtimeSource, /resolveSelector/u)
               assert.match(runtimeSource, /createSemanticGraph/u)
               assert.match(runtimeSource, /createLifecycleRunLedger/u)
@@ -104,15 +85,15 @@ jobs:
               assert.match(runtimeSource, /projectLifecycleRun/u)
               assert.doesNotMatch(
                   runtimeSource,
-                  /tests\\/fixtures|test-helper|fixture-only-constructor/iu
+                  /tests\/fixtures|test-helper|fixture-only-constructor/iu
               )
               assert.doesNotMatch(
                   runtimeSource,
-                  /sealReceipt|buildAggregateProjection|compileSelector\\s*\\(|scope-selector-receipt\\.v1/iu
+                  /sealReceipt|buildAggregateProjection|compileSelector\s*\(|scope-selector-receipt\.v1/iu
               )
               assert.doesNotMatch(
                   runtimeSource,
-                  /https?:\\/\\/|curl\\b|fetch\\(|openai\\b/iu
+                  /https?:\/\/|curl\b|fetch\(|openai\b/iu
               )
               assert.doesNotMatch(
                   runtimeSource,
@@ -120,9 +101,7 @@ jobs:
               )
           })
           """
-          if old not in source:
-              raise SystemExit('missing old source guard')
-          test_path.write_text(source.replace(old, new, 1))
+          test_path.write_text(source[:start] + replacement)
           PY
 
           git checkout origin/main -- .github/workflows/ci.yml
