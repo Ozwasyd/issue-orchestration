@@ -230,12 +230,10 @@ function runtimeCapabilityBinding({ startup, slotCapacity }) {
 function expectedAuthorityKind(startup) {
     const binding = requireRuntimeStartupBinding({ startup })
     if (binding.rootPhase === 'scheduling' &&
-        binding.rootProfile === 'terra-low' &&
         startup?.takeoverContext == null) {
         return 'genesis'
     }
     if (binding.rootPhase === 'recovery-takeover' &&
-        binding.rootProfile === 'terra-medium' &&
         startup?.takeoverContext) {
         return 'takeover'
     }

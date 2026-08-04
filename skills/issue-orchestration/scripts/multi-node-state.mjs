@@ -463,7 +463,6 @@ export function replayControlLedger(ledger) {
                 validateLifecycleAuthorityBinding(nextBinding)
                 if (nextBinding.authorityKind !== 'takeover' ||
                     nextBinding.rootPhase !== 'recovery-takeover' ||
-                    nextBinding.rootProfile !== 'terra-medium' ||
                     nextBinding.runtimeInvocationId ===
                         priorBinding.runtimeInvocationId ||
                     nextBinding.rootAuthorityEpoch ===
