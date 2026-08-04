@@ -1,0 +1,64 @@
+name: Fix issue 46 selector compatibility
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-issue-46-selector
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.head_ref == 'agent/issue-46-live-scope-base-refresh'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Normalize historical numeric selector versions
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          test -f .agent-patches/issue46-selector-fix
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('skills/issue-orchestration/scripts/scope-selector.mjs')
+          source = p.read_text()
+          source = source.replace(
+              "        typeof selector.selectorVersion !== 'string' ||\n        selector.selectorVersion.length === 0 ||",
+              "        !((typeof selector.selectorVersion === 'string' &&\n            selector.selectorVersion.length > 0) ||\n          (Number.isInteger(selector.selectorVersion) &&\n            selector.selectorVersion >= 0)) ||"
+          )
+          source = source.replace(
+              "        selectorVersion: selector.selectorVersion,\n        type: selector.type,",
+              "        selectorVersion: String(selector.selectorVersion),\n        type: selector.type,",
+              1
+          )
+          p.write_text(source)
+          PY
+          node --check skills/issue-orchestration/scripts/scope-selector.mjs
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-cold-start-pipeline.test.mjs \
+            tests/tools/issue-orchestration-scope-selector.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs
+          git diff --check
+          git rm .agent-patches/issue46-selector-fix
+          git rm .github/workflows/agent-fix-issue46-selector.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add skills/issue-orchestration/scripts/scope-selector.mjs
+          git commit -m "Preserve numeric selector compatibility at input boundary"
+          SOURCE_COMMIT="$(git rev-parse HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$SOURCE_COMMIT" node scripts/build-manifest.mjs
+          git add manifest.json
+          git commit -m "Rebuild selector compatibility manifest"
+          git push origin "HEAD:${TARGET_BRANCH}"
