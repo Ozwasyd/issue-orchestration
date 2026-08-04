@@ -1,0 +1,80 @@
+name: Finalize selector binding v2
+
+on:
+  push:
+    branches:
+      - agent/issue-24-lifecycle-compiler
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/issue-24-lifecycle-compiler
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Apply production integration and remove bootstrap residue
+        run: |
+          set -euo pipefail
+          python scripts/finalize-selector-binding.py
+          git checkout origin/main -- .github/workflows/ci.yml
+          rm -f \
+            .github/selector-binding-trigger \
+            .github/workflows/finalize-selector-binding.yml \
+            .github/workflows/finalize-selector-binding-v2.yml \
+            scripts/finalize-selector-binding.py \
+            tests/tools/issue-orchestration-000-manifest-bootstrap.test.mjs
+
+          git config user.name 'issue-orchestration automation'
+          git config user.email 'issue-orchestration@example.invalid'
+          git add -A
+          git diff --cached --check
+          git commit -m 'fix: bind lifecycle compiler to canonical selector receipts'
+          code_sha="$(git rev-parse HEAD)"
+
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="${code_sha}" node scripts/build-manifest.mjs
+          git add manifest.json
+          git diff --cached --check
+          git commit -m 'chore: rebuild manifest for lifecycle acceptance'
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Run targeted lifecycle acceptance
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-transition.test.mjs \
+            tests/tools/issue-orchestration-multi-repository-lifecycle-e2e.test.mjs
+
+      - name: Run complete offline acceptance suite
+        run: |
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-*.test.mjs \
+            tests/tools/issue-orchestration/*.test.mjs
+
+      - name: Verify committed tree is clean
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Push verified branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:agent/issue-24-lifecycle-compiler
