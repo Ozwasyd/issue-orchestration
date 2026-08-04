@@ -108,6 +108,8 @@ test('issue 25 harness uses production APIs and contains no fixture authority', 
     assert.match(runtimeSource, /createLifecycleRunLedger/u)
     assert.match(runtimeSource, /compileLifecycleRunActionSet/u)
     assert.match(runtimeSource, /recordLifecycleActionResults/u)
+    assert.match(runtimeSource, /compileScriptedLifecycleStageResult/u)
+    assert.match(runtimeSource, /stageResults/u)
     assert.match(runtimeSource, /recordLifecycleScopeRefresh/u)
     assert.match(runtimeSource, /recordLifecycleBaseChange/u)
     assert.match(runtimeSource, /projectLifecycleRun/u)
@@ -118,6 +120,10 @@ test('issue 25 harness uses production APIs and contains no fixture authority', 
     assert.doesNotMatch(
         runtimeSource,
         /sealReceipt|buildAggregateProjection|compileSelector\s*\(|scope-selector-receipt\.v1/iu
+    )
+    assert.doesNotMatch(
+        runtimeSource,
+        /compileLifecycleActorResult|lifecycle-actor-result\.v1|actorResults\s*:/iu
     )
     assert.doesNotMatch(
         runtimeSource,
