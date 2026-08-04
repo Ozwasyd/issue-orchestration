@@ -1,0 +1,55 @@
+name: Fix issue 37 selector fixture
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-issue-37-selector
+  cancel-in-progress: false
+
+jobs:
+  fix:
+    if: github.head_ref == 'agent/issue-37-prewriter-executor'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Bind the canonical selector definition in the test genesis
+        shell: bash
+        env:
+          TARGET_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs')
+          source = path.read_text()
+          old = "        selectorReceipt,\n        semanticGraph,\n"
+          new = "        selectorReceipt,\n        selectorDefinition: selector(repository.repository),\n        semanticGraph,\n"
+          if source.count(old) != 1:
+              raise SystemExit(f'expected one selector insertion point, found {source.count(old)}')
+          path.write_text(source.replace(old, new, 1))
+          PY
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs \
+            tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/tools/issue-orchestration-lifecycle-prewriter-executor.test.mjs
+          git commit -m "Bind pre-writer tests to the canonical selector definition"
+          CODE_COMMIT="$(git rev-parse HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$CODE_COMMIT" node scripts/build-manifest.mjs
+          git rm .github/workflows/agent-fix-issue37-selector.yml
+          git add manifest.json
+          git commit -m "Rebuild pre-writer selector fixture manifest"
+          git push origin "HEAD:${TARGET_BRANCH}"
