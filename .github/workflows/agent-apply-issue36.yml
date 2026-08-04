@@ -1,4 +1,4 @@
-name: Apply issue 36 patch
+name: Finalize issue 36 branch
 
 on:
   push:
@@ -16,11 +16,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-issue-36
+  group: finalize-issue-36
   cancel-in-progress: false
 
 jobs:
-  apply:
+  finalize:
     if: github.event_name == 'push' || github.head_ref == 'agent/issue-36-stage-receipt-admission'
     runs-on: ubuntu-latest
     steps:
@@ -28,24 +28,21 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-      - name: Apply staged patch
+      - name: Rebuild manifest and remove transport
         shell: bash
         env:
           TARGET_BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          SOURCE_COMMIT: 7d5a1955fadcb1d7d53a4924839d797da894cd07
         run: |
           set -euo pipefail
-          if [[ ! -f .agent-patches/issue36/apply ]]; then
-            echo "Patch marker absent; nothing to do."
-            exit 0
-          fi
-          cat .agent-patches/issue36/part-* > /tmp/issue36.patch.gz.b64
-          base64 --decode /tmp/issue36.patch.gz.b64 > /tmp/issue36.patch.gz
-          echo "60b9e5220817ce9e2286c81c69ae9688faa9e43495392fa4cc33726930edce58  /tmp/issue36.patch.gz" | sha256sum --check -
-          gzip --decompress --stdout /tmp/issue36.patch.gz > /tmp/issue36.patch
-          echo "24854ec012fe1e057b2603ad0cde8cbdf445a3a3eb5bdf4f4a77962d24c6c25b  /tmp/issue36.patch" | sha256sum --check -
-          git apply --index --whitespace=error-all /tmp/issue36.patch
-          git rm .agent-patches/issue36/apply
+          git merge-base --is-ancestor "$SOURCE_COMMIT" HEAD
+          test ! -e .agent-patches/issue36/apply
+          test -f skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$SOURCE_COMMIT" node scripts/build-manifest.mjs
+          git rm -r .agent-patches/issue36
+          git rm .github/workflows/agent-apply-issue36.yml
+          git add manifest.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Require stage-specific lifecycle receipts"
+          git commit -m "Rebuild lifecycle receipt manifest"
           git push origin "HEAD:${TARGET_BRANCH}"
