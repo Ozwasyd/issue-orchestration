@@ -326,6 +326,7 @@ function fixture() {
         runId,
         createdAt: CREATED_AT,
         selectorReceipt,
+        selectorDefinition: selector(repository.repository),
         semanticGraph,
         installedPolicy: {
             schema: 'issue-orchestration.installed-route-policy.v1',
