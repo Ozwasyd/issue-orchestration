@@ -130,129 +130,231 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "type": "object",
-        "required": [
-          "target",
-          "uiNode",
-          "completionEvidenceDigest",
-          "remoteSnapshotDigest",
-          "frozenTestContractDigest",
-          "implementationCandidateDigest",
-          "behaviorGreenReceiptDigest",
-          "uxAcceptedReceiptDigest",
-          "designSkillDigest",
-          "documentationGreenReceiptDigest",
-          "remoteDeliveryEvidenceDigest",
-          "resourceCleanupReceiptDigest",
-          "candidateEpochDigest",
-          "roleSkillReceiptDigest",
-          "issueEvidenceDigest",
-          "stageEvidenceDigest",
-          "evidenceDigest"
-        ],
-        "properties": {
-          "target": {
-            "type": "string",
-            "pattern": "^[^/#\\s]+/[^/#\\s]+#[1-9][0-9]*$"
-          },
-          "issueEvidenceDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "stageEvidenceDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "uiNode": {
-            "type": "boolean"
-          },
-          "completionEvidenceDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "remoteSnapshotDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "frozenTestContractDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "implementationCandidateDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "behaviorGreenReceiptDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "uxAcceptedReceiptDigest": {
-            "oneOf": [
-              {
-                "$ref": "#/$defs/digest"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "designSkillDigest": {
-            "oneOf": [
-              {
-                "$ref": "#/$defs/digest"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "documentationGreenReceiptDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "remoteDeliveryEvidenceDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "resourceCleanupReceiptDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "candidateEpochDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "roleSkillReceiptDigest": {
-            "$ref": "#/$defs/digest"
-          },
-          "evidenceDigest": {
-            "$ref": "#/$defs/digest"
-          }
-        },
-        "allOf": [
+        "oneOf": [
           {
-            "if": {
-              "properties": {
-                "uiNode": {
-                  "const": true
-                }
+            "type": "object",
+            "required": [
+              "target",
+              "disposition",
+              "uiNode",
+              "completionEvidenceDigest",
+              "remoteSnapshotDigest",
+              "frozenTestContractDigest",
+              "implementationCandidateDigest",
+              "behaviorGreenReceiptDigest",
+              "uxAcceptedReceiptDigest",
+              "designSkillDigest",
+              "documentationGreenReceiptDigest",
+              "remoteDeliveryEvidenceDigest",
+              "resourceCleanupReceiptDigest",
+              "candidateEpochDigest",
+              "roleSkillReceiptDigest",
+              "issueEvidenceDigest",
+              "stageEvidenceDigest",
+              "evidenceDigest",
+              "canonicalDeliveryEffectDigest",
+              "canonicalCleanupFinalizationDigest",
+              "canonicalClosureEffectDigest"
+            ],
+            "properties": {
+              "target": {
+                "type": "string",
+                "pattern": "^[^/#\\s]+/[^/#\\s]+#[1-9][0-9]*$"
               },
-              "required": [
-                "uiNode"
-              ]
-            },
-            "then": {
-              "properties": {
-                "uxAcceptedReceiptDigest": {
-                  "$ref": "#/$defs/digest"
-                },
-                "designSkillDigest": {
-                  "$ref": "#/$defs/digest"
-                }
+              "issueEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "stageEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "uiNode": {
+                "type": "boolean"
+              },
+              "completionEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "remoteSnapshotDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "frozenTestContractDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "implementationCandidateDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "behaviorGreenReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "uxAcceptedReceiptDigest": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "designSkillDigest": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "documentationGreenReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "remoteDeliveryEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "resourceCleanupReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "candidateEpochDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "roleSkillReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "evidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "disposition": {
+                "const": "closed"
+              },
+              "canonicalDeliveryEffectDigest": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "canonicalCleanupFinalizationDigest": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "canonicalClosureEffectDigest": {
+                "oneOf": [
+                  {
+                    "$ref": "#/$defs/digest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
-            "else": {
-              "properties": {
-                "uxAcceptedReceiptDigest": {
-                  "type": "null"
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "uiNode": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "uiNode"
+                  ]
                 },
-                "designSkillDigest": {
-                  "type": "null"
+                "then": {
+                  "properties": {
+                    "uxAcceptedReceiptDigest": {
+                      "$ref": "#/$defs/digest"
+                    },
+                    "designSkillDigest": {
+                      "$ref": "#/$defs/digest"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "uxAcceptedReceiptDigest": {
+                      "type": "null"
+                    },
+                    "designSkillDigest": {
+                      "type": "null"
+                    }
+                  }
                 }
               }
-            }
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "target",
+              "disposition",
+              "terminalCategory",
+              "completionEvidenceDigest",
+              "remoteSnapshotDigest",
+              "terminalReceiptDigest",
+              "recoveryFingerprintDigest",
+              "retentionStateDigest",
+              "roleSkillReceiptDigest",
+              "issueEvidenceDigest",
+              "stageEvidenceDigest",
+              "evidenceDigest"
+            ],
+            "properties": {
+              "target": {
+                "type": "string",
+                "pattern": "^[^/#\\s]+/[^/#\\s]+#[1-9][0-9]*$"
+              },
+              "disposition": {
+                "const": "terminal"
+              },
+              "terminalCategory": {
+                "enum": [
+                  "impossible",
+                  "externally_blocked",
+                  "not_applicable"
+                ]
+              },
+              "completionEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "remoteSnapshotDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "terminalReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "recoveryFingerprintDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "retentionStateDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "roleSkillReceiptDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "issueEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "stageEvidenceDigest": {
+                "$ref": "#/$defs/digest"
+              },
+              "evidenceDigest": {
+                "$ref": "#/$defs/digest"
+              }
+            },
+            "additionalProperties": false
           }
-        ],
-        "additionalProperties": false
+        ]
       }
     },
     "observationDigest": {

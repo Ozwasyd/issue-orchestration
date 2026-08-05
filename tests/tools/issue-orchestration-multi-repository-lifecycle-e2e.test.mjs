@@ -23,14 +23,14 @@ const runtimeSource = fs.readFileSync(path.resolve(
 
 test('multi-repository lifecycle E2E advances four raw issues to canonical quiescence', {
     timeout: 180000
-}, () => {
+}, async () => {
     const scenarioRoot = fs.mkdtempSync(path.join(
         os.tmpdir(),
         'issue-orchestration-issue-25-'
     ))
     let stateRoot = null
     try {
-        const receipt = runMultiRepositoryLifecycleAcceptance({
+        const receipt = await runMultiRepositoryLifecycleAcceptance({
             scenarioRoot
         })
         stateRoot = receipt.stateRoot
@@ -52,13 +52,12 @@ test('multi-repository lifecycle E2E advances four raw issues to canonical quies
         assert.equal(receipt.deliveryRetryWasIdempotent, true)
         assert.ok(receipt.acceptanceGroupMemberCount > 1)
         assert.equal(receipt.activeAttemptCount, 0)
-        assert.equal(receipt.activeLeaseCount, 0)
-        assert.equal(receipt.residualWorktreeCount, 0)
-        assert.equal(receipt.residualBranchCount, 0)
         assert.equal(receipt.residualTemporaryResourceCount, 0)
         assert.equal(receipt.networkInvocationCount, 0)
         assert.equal(receipt.paidModelInvocationCount, 0)
-        assert.equal(receipt.quiescent, true)
+        assert.match(receipt.quiescenceReceiptDigest, /^[a-f0-9]{64}$/u)
+        assert.match(receipt.quiescenceObservationDigest, /^[a-f0-9]{64}$/u)
+        assert.equal(receipt.runTerminalized, true)
         assert.deepEqual(validateJsonSchema(receipt, schema), [])
         assert.equal(
             receipt.nodeEvidence.filter(
@@ -148,4 +147,9 @@ test('issue 25 harness uses production APIs and contains no fixture authority', 
         runtimeSource,
         /setInterval|setTimeout|daemon|polling service/iu
     )
+    assert.doesNotMatch(
+        runtimeSource,
+        /activeLeaseCount:\s*0|residualWorktreeCount:\s*0|residualBranchCount:\s*0|quiescent:\s*true/u
+    )
+    assert.match(runtimeSource, /executeLifecycleQuiescenceFinalization/u)
 })

@@ -12,7 +12,7 @@ import {
 } from './runtime-contract-lib.mjs'
 
 const execFileAsync = promisify(execFile)
-const INVENTORY_NAMES = Object.freeze([
+export const QUIESCENCE_INVENTORY_NAMES = Object.freeze([
     'issues',
     'stages',
     'attempts',
@@ -404,7 +404,7 @@ export async function collectQuiescenceObservation(config) {
         ])
     const live = { git, processes, ports, docker, locks, filesystem }
     const inventories = {}
-    for (const name of INVENTORY_NAMES) {
+    for (const name of QUIESCENCE_INVENTORY_NAMES) {
         const collected = live[name] ?? {
             observable: true,
             records: emptyInventoryRecord(name, config)
@@ -429,7 +429,7 @@ export async function collectQuiescenceObservation(config) {
         staticFixtureUsed: false,
         cleanupPerformed: false,
         stateMutationCount: 0,
-        inventoryNames: INVENTORY_NAMES,
+        inventoryNames: QUIESCENCE_INVENTORY_NAMES,
         baselineDigest: config.baseline.baselineDigest,
         collectedAt
     }, 'receiptDigest')
@@ -459,10 +459,10 @@ export function verifyCollectedObservation(observation) {
         fail('collector-observation-invalid')
     }
     const names = Object.keys(observation.inventories ?? {})
-    if (!sameValue([...names].sort(), [...INVENTORY_NAMES].sort())) {
+    if (!sameValue([...names].sort(), [...QUIESCENCE_INVENTORY_NAMES].sort())) {
         fail('collector-inventory-incomplete')
     }
-    for (const name of INVENTORY_NAMES) {
+    for (const name of QUIESCENCE_INVENTORY_NAMES) {
         const value = observation.inventories[name]
         if (value?.observable !== true) {
             fail('collector-inventory-unobservable', name)

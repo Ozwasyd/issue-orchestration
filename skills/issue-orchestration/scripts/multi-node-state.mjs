@@ -70,6 +70,7 @@ function unsignedDigest(value, digestField) {
 
 function requireObject(value, code) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) fail(code)
+    return value
 }
 
 function requireString(value, code) {
@@ -939,10 +940,45 @@ export function replayControlLedger(ledger) {
                 ]
                 break
             }
-            case 'run.terminalized':
+            case 'run.terminalized': {
                 if (projection.terminal) fail('control-run-terminal-duplicate')
-                projection.terminal = normalize(event.payload)
+                const payload = requireObject(
+                    event.payload,
+                    'control-run-terminal-payload-invalid'
+                )
+                if (payload.schema !==
+                        'issue-orchestration.run-terminalization.v1' ||
+                    payload.status !== 'quiescent' ||
+                    !Array.isArray(payload.violations) ||
+                    payload.violations.length !== 0) {
+                    fail('control-run-terminal-status-invalid')
+                }
+                for (const [field, code] of [
+                    ['actionDigest', 'control-run-terminal-action-invalid'],
+                    ['actionSetDigest', 'control-run-terminal-action-set-invalid'],
+                    ['receiptDigest', 'control-run-terminal-receipt-invalid'],
+                    ['observationDigest', 'control-run-terminal-observation-invalid'],
+                    ['verifierIdentityDigest', 'control-run-terminal-verifier-invalid'],
+                    ['aggregateProjectionDigest', 'control-run-terminal-projection-invalid'],
+                    ['preTerminalControlEventDigest', 'control-run-terminal-head-invalid'],
+                    ['completedIssueEvidenceDigest', 'control-run-terminal-evidence-invalid']
+                ]) requireDigest(payload[field], code)
+                const receipt = requireObject(
+                    payload.quiescenceReceipt,
+                    'control-run-terminal-receipt-payload-invalid'
+                )
+                if (receipt.status !== 'quiescent' ||
+                    !Array.isArray(receipt.violations) ||
+                    receipt.violations.length !== 0) {
+                    fail('control-run-terminal-receipt-status-invalid')
+                }
+                if (receipt.receiptDigest !== payload.receiptDigest ||
+                    receipt.observationDigest !== payload.observationDigest) {
+                    fail('control-run-terminal-receipt-reference-invalid')
+                }
+                projection.terminal = normalize(payload)
                 break
+            }
         }
         projection.lastSequence = event.sequence
         projection.lastEventDigest = event.eventDigest
