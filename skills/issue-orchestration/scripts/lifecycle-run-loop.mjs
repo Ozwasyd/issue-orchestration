@@ -803,6 +803,11 @@ function currentCompatibilityState({
         deliveryFreezes: clone(controlProjection.deliveryFreezes),
         cleanupFinalizations:
             clone(controlProjection.cleanupFinalizations),
+        pendingClosureAuthorizations:
+            clone(controlProjection.pendingClosureAuthorizations),
+        pendingClosureEffects:
+            clone(controlProjection.pendingClosureEffects),
+        closureEffects: clone(controlProjection.closureEffects),
         lastControlSequence: controlProjection.lastSequence
     })
 }
@@ -1153,6 +1158,291 @@ export function releaseLifecycleDeliveryFreeze({
     return makeHandle(authority)
 }
 
+
+function exactCleanupAction(authority, actionSet, action) {
+    exactCurrentActionSet(authority, actionSet)
+    if (action?.type !== 'cleanup-node-resources') {
+        fail('lifecycle-cleanup-action-invalid')
+    }
+    const current = actionSet.actions.find((candidate) =>
+        candidate.actionDigest === action.actionDigest)
+    if (!current || !sameValue(current, action)) {
+        fail('lifecycle-cleanup-action-stale')
+    }
+    return action
+}
+
+function validateMachineState(value, digestField, code) {
+    requireObject(value, code)
+    const valueDigest = requireDigest(value[digestField], code)
+    if (unsignedDigest(value, digestField) !== valueDigest) fail(code)
+    return clone(value)
+}
+
+export function recordLifecycleCleanupFinalization({
+    ledger,
+    actionSet,
+    action,
+    cleanupState,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCleanupAction(authority, actionSet, action)
+    const state = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const node = state.nodes[action.nodeId]
+    if (!node || node.lifecycleState !== 'cleaning' ||
+        state.cleanupFinalizations[action.nodeId]) {
+        fail('lifecycle-cleanup-finalization-state-invalid')
+    }
+    requireObject(cleanupState, 'lifecycle-cleanup-state-invalid')
+    const receipt = validateMachineState(
+        cleanupState.cleanupReceipt,
+        'receiptDigest',
+        'lifecycle-cleanup-receipt-invalid'
+    )
+    requireDigest(
+        cleanupState.cleanupStateDigest,
+        'lifecycle-cleanup-state-invalid'
+    )
+    if (cleanupState.cleanupStateDigest !==
+        digest({ ...cleanupState, cleanupStateDigest: undefined })) {
+        fail('lifecycle-cleanup-state-invalid')
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'cleanup.finalized',
+        payload: {
+            cleanupId: action.nodeId,
+            nodeId: action.nodeId,
+            actionDigest: action.actionDigest,
+            actionSetDigest: actionSet.actionSetDigest,
+            cleanupReceiptDigest: receipt.receiptDigest,
+            cleanupArtifactsDigest: cleanupState.cleanupStateDigest,
+            cleanupArtifacts: clone(cleanupState),
+            finalizedAt: createdAt
+        },
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
+export function recordLifecycleClosureAuthorization({
+    ledger,
+    actionSet,
+    action,
+    effectId,
+    authorizationState,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCleanupAction(authority, actionSet, action)
+    const state = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const finalization = state.cleanupFinalizations[action.nodeId]
+    if (!finalization ||
+        state.pendingClosureAuthorizations[action.nodeId] ||
+        state.pendingClosureEffects[action.nodeId] ||
+        state.closureEffects[action.nodeId]) {
+        fail('lifecycle-closure-authorization-state-invalid')
+    }
+    requireObject(
+        authorizationState,
+        'lifecycle-closure-authorization-invalid'
+    )
+    requireText(effectId, 'lifecycle-closure-effect-id-invalid')
+    validateMachineState(
+        authorizationState.deliveryControlReceipt,
+        'receiptDigest',
+        'lifecycle-closure-authorization-invalid'
+    )
+    validateMachineState(
+        authorizationState.preRemoteSnapshot,
+        'snapshotDigest',
+        'lifecycle-closure-authorization-invalid'
+    )
+    requireDigest(
+        authorizationState.expectedPostStateDigest,
+        'lifecycle-closure-post-state-invalid'
+    )
+    if (authorizationState.effectId !== effectId ||
+        authorizationState.cleanupReceiptDigest !==
+            finalization.cleanupReceiptDigest) {
+        fail('lifecycle-closure-authorization-stale')
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'closure.authorization-recorded',
+        payload: {
+            nodeId: action.nodeId,
+            effectId,
+            cleanupReceiptDigest: finalization.cleanupReceiptDigest,
+            authorizationDigest: digest(authorizationState),
+            authorizationState: clone(authorizationState),
+            authorizedAt: createdAt
+        },
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
+export function recordLifecycleClosureEffect({
+    ledger,
+    actionSet,
+    action,
+    effectId,
+    effectState,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCleanupAction(authority, actionSet, action)
+    const state = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const authorization =
+        state.pendingClosureAuthorizations[action.nodeId]
+    if (!authorization || authorization.effectId !== effectId) {
+        fail('lifecycle-closure-effect-authorization-missing')
+    }
+    requireObject(effectState, 'lifecycle-closure-effect-invalid')
+    validateMachineState(
+        effectState.postRemoteSnapshot,
+        'snapshotDigest',
+        'lifecycle-closure-effect-invalid'
+    )
+    validateMachineState(
+        effectState.remoteMutationReceipt,
+        'receiptDigest',
+        'lifecycle-closure-effect-invalid'
+    )
+    validateMachineState(
+        effectState.closureReceipt,
+        'receiptDigest',
+        'lifecycle-closure-effect-invalid'
+    )
+    if (effectState.effectId !== effectId ||
+        effectState.cleanupReceiptDigest !==
+            authorization.cleanupReceiptDigest ||
+        effectState.closureReceipt.cleanupReceiptDigest !==
+            authorization.cleanupReceiptDigest ||
+        effectState.closureReceipt.remotePreSnapshotDigest !==
+            authorization.authorizationState.preRemoteSnapshot
+                .snapshotDigest ||
+        effectState.closureReceipt.remotePostSnapshotDigest !==
+            effectState.postRemoteSnapshot.snapshotDigest) {
+        fail('lifecycle-closure-effect-stale')
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'closure.effect-recorded',
+        payload: {
+            nodeId: action.nodeId,
+            effectId,
+            cleanupReceiptDigest:
+                authorization.cleanupReceiptDigest,
+            effectDigest: digest(effectState),
+            effectState: clone(effectState),
+            observedAt: createdAt
+        },
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
+function appendCleanupClosureResult({
+    authority,
+    actionSet,
+    action,
+    result,
+    createdAt
+}) {
+    if (action?.type !== 'cleanup-node-resources' ||
+        !actionSet.actions.some((candidate) =>
+            candidate.actionDigest === action.actionDigest &&
+            sameValue(candidate, action))) {
+        fail('lifecycle-cleanup-action-stale')
+    }
+    const current = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const node = current.nodes[action.nodeId]
+    const admission = validateLifecycleStageResult({
+        result,
+        action,
+        node
+    })
+    const finalization = current.cleanupFinalizations[action.nodeId]
+    const pending = current.pendingClosureEffects[action.nodeId]
+    if (!finalization || !pending) {
+        fail('lifecycle-cleanup-closure-effect-unobserved')
+    }
+    const cleanupEvidence = admission.artifacts.cleanup.evidence
+    const authorityEvidence =
+        admission.artifacts.remoteCloseAuthority.evidence
+    const preEvidence = admission.artifacts.remotePreSnapshot.evidence
+    const postEvidence = admission.artifacts.remotePostSnapshot.evidence
+    const closureEvidence = admission.artifacts.closure.evidence
+    if (cleanupEvidence.machineCleanupReceiptDigest !==
+            finalization.cleanupReceiptDigest ||
+        authorityEvidence.deliveryControlReceiptDigest !==
+            pending.authorizationState.deliveryControlReceipt
+                .receiptDigest ||
+        preEvidence.machineSnapshotDigest !==
+            pending.authorizationState.preRemoteSnapshot.snapshotDigest ||
+        postEvidence.machineSnapshotDigest !==
+            pending.effectState.postRemoteSnapshot.snapshotDigest ||
+        closureEvidence.machineClosureReceiptDigest !==
+            pending.effectState.closureReceipt.receiptDigest ||
+        closureEvidence.remoteMutationReceiptDigest !==
+            pending.effectState.remoteMutationReceipt.receiptDigest) {
+        fail('lifecycle-cleanup-closure-result-stale')
+    }
+    appendCanonicalNodeResult({
+        authority,
+        actionSet,
+        action,
+        result,
+        node,
+        createdAt
+    })
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'closure.effect-completed',
+        payload: {
+            nodeId: action.nodeId,
+            effectId: pending.effectId,
+            cleanupReceiptDigest: finalization.cleanupReceiptDigest,
+            completedAt: createdAt
+        },
+        createdAt
+    })
+}
+
+export function recordLifecycleCleanupClosureResult({
+    ledger,
+    actionSet,
+    action,
+    result,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCleanupAction(authority, actionSet, action)
+    appendCleanupClosureResult({
+        authority,
+        actionSet,
+        action,
+        result,
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
 export function recordLifecycleActionResults({
     ledger,
     actionSet,
@@ -1351,8 +1641,22 @@ export function recordLifecycleActionResults({
             startup: authority.startup
         })
         const node = current.nodes[action.nodeId]
-        validateLifecycleStageResult({ result, action, node })
-        const effect = appendCanonicalNodeResult({
+        const admission = validateLifecycleStageResult({
+            result,
+            action,
+            node
+        })
+        if (action.type === 'cleanup-node-resources') {
+            appendCleanupClosureResult({
+                authority,
+                actionSet,
+                action,
+                result,
+                createdAt
+            })
+            continue
+        }
+        appendCanonicalNodeResult({
             authority,
             actionSet,
             action,
@@ -1360,19 +1664,6 @@ export function recordLifecycleActionResults({
             node,
             createdAt
         })
-        if (action.type === 'cleanup-node-resources') {
-            appendCanonicalControlEvent({
-                authority,
-                eventType: 'cleanup.finalized',
-                payload: {
-                    cleanupId: action.nodeId,
-                    nodeId: action.nodeId,
-                    cleanupReceiptDigest:
-                        effect.receipts.cleanup.receiptDigest
-                },
-                createdAt
-            })
-        }
     }
     return makeHandle(authority)
 }

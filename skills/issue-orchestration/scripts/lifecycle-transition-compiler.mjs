@@ -388,7 +388,22 @@ function actionBindings({
         packageDigest: authority.binding.packageDigest,
         manifestDigest: authority.binding.manifestDigest,
         policySetDigest: authority.binding.policySetDigest,
-        receiptDigests: digests
+        receiptDigests: digests,
+        cleanupFinalization: actionType === 'cleanup-node-resources'
+            ? structuredClone(
+                aggregate.cleanupFinalizations?.[node.nodeId ?? graphNode.memberId] ?? null
+            )
+            : null,
+        pendingClosureAuthorization: actionType === 'cleanup-node-resources'
+            ? structuredClone(
+                aggregate.pendingClosureAuthorizations?.[node.nodeId ?? graphNode.memberId] ?? null
+            )
+            : null,
+        pendingClosureEffect: actionType === 'cleanup-node-resources'
+            ? structuredClone(
+                aggregate.pendingClosureEffects?.[node.nodeId ?? graphNode.memberId] ?? null
+            )
+            : null
     }
     for (const [field, code] of [
         ['baseSha', 'lifecycle-node-base-missing'],

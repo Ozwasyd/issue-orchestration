@@ -10,6 +10,9 @@ import {
 import { relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { digest, seal } from './runtime-contract-lib.mjs'
+import { validateRemoteStateSnapshot } from './remote-mutation-authority.mjs'
+
 import {
     isWithinOrEqual,
     StateRootValidationError,
@@ -180,6 +183,78 @@ function evaluate(evidence, stateRoot) {
         ciEvidence: ci.status === 'not_started' ? 'not_obtained' : ci.status,
         blockers
     }
+}
+
+
+export function evaluateMachineDeliveryClosure({
+    cleanupReceipt,
+    preRemoteSnapshot,
+    postRemoteSnapshot,
+    issueState,
+    stateReason,
+    evaluatedAt
+} = {}) {
+    if (!cleanupReceipt || typeof cleanupReceipt !== 'object' ||
+        Array.isArray(cleanupReceipt)) {
+        fail('cleanup-receipt-required',
+            'A canonical cleanup receipt is required.')
+    }
+    const cleanupReceiptDigest = [
+        'receiptDigest',
+        'proposalDigest',
+        'inventoryDigest',
+        'contractDigest'
+    ].map((field) => cleanupReceipt[field]).find((value) =>
+        /^[a-f0-9]{64}$/u.test(value ?? ''))
+    if (!cleanupReceiptDigest) {
+        fail('cleanup-receipt-invalid',
+            'The cleanup receipt has no canonical digest.')
+    }
+    try {
+        validateRemoteStateSnapshot(preRemoteSnapshot)
+        validateRemoteStateSnapshot(postRemoteSnapshot)
+    } catch (error) {
+        fail('remote-snapshot-invalid',
+            'Remote issue closure snapshots are invalid.', {
+                cause: error?.code ?? error?.message
+            })
+    }
+    if (preRemoteSnapshot.repository !== postRemoteSnapshot.repository ||
+        preRemoteSnapshot.issueId !== postRemoteSnapshot.issueId ||
+        preRemoteSnapshot.defaultBranch !==
+            postRemoteSnapshot.defaultBranch ||
+        preRemoteSnapshot.defaultBranchSha !==
+            postRemoteSnapshot.defaultBranchSha) {
+        fail('remote-snapshot-identity-drift',
+            'Remote issue identity or default branch drifted during closure.')
+    }
+    if (issueState !== 'CLOSED' || stateReason !== 'COMPLETED') {
+        fail('remote-issue-not-closed-completed',
+            'The remote issue is not closed with the completed reason.', {
+                issueState,
+                stateReason
+            })
+    }
+    if (postRemoteSnapshot.issueStateDigest !== digest({
+        issueState,
+        stateReason
+    })) {
+        fail('remote-issue-state-digest-mismatch',
+            'The post-close snapshot does not match the observed issue state.')
+    }
+    const result = {
+        schema: 'issue-orchestration.delivery-closure-result.v1',
+        producerAuthority: 'remote-issue-closure-validator',
+        closeAllowed: true,
+        issueState,
+        stateReason,
+        cleanupReceiptDigest,
+        remotePreSnapshotDigest: preRemoteSnapshot.snapshotDigest,
+        remotePostSnapshotDigest: postRemoteSnapshot.snapshotDigest,
+        blockers: [],
+        evaluatedAt
+    }
+    return seal(result, 'receiptDigest')
 }
 
 export function evaluateDeliveryClosure({

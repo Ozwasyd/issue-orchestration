@@ -32,6 +32,9 @@ export const CONTROL_EVENT_TYPES = Object.freeze([
     'delivery.effect-recorded',
     'delivery.effect-completed',
     'cleanup.finalized',
+    'closure.authorization-recorded',
+    'closure.effect-recorded',
+    'closure.effect-completed',
     'run.terminalized'
 ])
 const CONTROL_EVENT_TYPE_SET = new Set(CONTROL_EVENT_TYPES)
@@ -402,6 +405,9 @@ export function replayControlLedger(ledger) {
         pendingDeliveryEffects: {},
         deliveryEffects: {},
         cleanupFinalizations: {},
+        pendingClosureAuthorizations: {},
+        pendingClosureEffects: {},
+        closureEffects: {},
         terminal: null,
         lastSequence: 0,
         lastEventDigest: GENESIS
@@ -790,14 +796,147 @@ export function replayControlLedger(ledger) {
                     event.payload.cleanupId,
                     'control-cleanup-id-invalid'
                 )
-                if (projection.cleanupFinalizations[
-                    event.payload.cleanupId
-                ]) {
+                requireString(
+                    event.payload.nodeId,
+                    'control-cleanup-node-id-invalid'
+                )
+                requireDigest(
+                    event.payload.cleanupReceiptDigest,
+                    'control-cleanup-receipt-invalid'
+                )
+                requireDigest(
+                    event.payload.cleanupArtifactsDigest,
+                    'control-cleanup-artifacts-invalid'
+                )
+                requireObject(
+                    event.payload.cleanupArtifacts,
+                    'control-cleanup-artifacts-invalid'
+                )
+                if (event.payload.cleanupId !== event.payload.nodeId ||
+                    projection.cleanupFinalizations[
+                        event.payload.cleanupId
+                    ]) {
                     fail('control-run-effect-duplicate')
                 }
                 projection.cleanupFinalizations[
                     event.payload.cleanupId
                 ] = normalize(event.payload)
+                break
+            }
+            case 'closure.authorization-recorded': {
+                requireString(
+                    event.payload.nodeId,
+                    'control-closure-node-id-invalid'
+                )
+                requireString(
+                    event.payload.effectId,
+                    'control-closure-effect-id-invalid'
+                )
+                requireDigest(
+                    event.payload.cleanupReceiptDigest,
+                    'control-closure-cleanup-invalid'
+                )
+                requireDigest(
+                    event.payload.authorizationDigest,
+                    'control-closure-authorization-invalid'
+                )
+                requireObject(
+                    event.payload.authorizationState,
+                    'control-closure-authorization-invalid'
+                )
+                const cleanup = projection.cleanupFinalizations[
+                    event.payload.nodeId
+                ]
+                if (!cleanup || cleanup.cleanupReceiptDigest !==
+                        event.payload.cleanupReceiptDigest ||
+                    projection.pendingClosureAuthorizations[
+                        event.payload.nodeId
+                    ] || projection.pendingClosureEffects[
+                        event.payload.nodeId
+                    ] || projection.closureEffects[
+                        event.payload.nodeId
+                    ]) {
+                    fail('control-closure-authorization-stale')
+                }
+                projection.pendingClosureAuthorizations[
+                    event.payload.nodeId
+                ] = normalize(event.payload)
+                break
+            }
+            case 'closure.effect-recorded': {
+                requireString(
+                    event.payload.nodeId,
+                    'control-closure-node-id-invalid'
+                )
+                requireString(
+                    event.payload.effectId,
+                    'control-closure-effect-id-invalid'
+                )
+                requireDigest(
+                    event.payload.cleanupReceiptDigest,
+                    'control-closure-cleanup-invalid'
+                )
+                requireDigest(
+                    event.payload.effectDigest,
+                    'control-closure-effect-invalid'
+                )
+                requireObject(
+                    event.payload.effectState,
+                    'control-closure-effect-invalid'
+                )
+                const pendingAuthorization =
+                    projection.pendingClosureAuthorizations[
+                        event.payload.nodeId
+                    ]
+                if (!pendingAuthorization ||
+                    pendingAuthorization.effectId !==
+                        event.payload.effectId ||
+                    pendingAuthorization.cleanupReceiptDigest !==
+                        event.payload.cleanupReceiptDigest ||
+                    projection.pendingClosureEffects[
+                        event.payload.nodeId
+                    ] || projection.closureEffects[
+                        event.payload.nodeId
+                    ]) {
+                    fail('control-closure-effect-unauthorized')
+                }
+                projection.pendingClosureEffects[
+                    event.payload.nodeId
+                ] = normalize({
+                    ...pendingAuthorization,
+                    ...event.payload,
+                    status: 'remote-effect-applied'
+                })
+                delete projection.pendingClosureAuthorizations[
+                    event.payload.nodeId
+                ]
+                break
+            }
+            case 'closure.effect-completed': {
+                requireString(
+                    event.payload.nodeId,
+                    'control-closure-node-id-invalid'
+                )
+                requireString(
+                    event.payload.effectId,
+                    'control-closure-effect-id-invalid'
+                )
+                const pending = projection.pendingClosureEffects[
+                    event.payload.nodeId
+                ]
+                if (!pending || pending.effectId !==
+                        event.payload.effectId ||
+                    projection.closureEffects[event.payload.nodeId]) {
+                    fail('control-closure-effect-unobserved')
+                }
+                projection.closureEffects[event.payload.nodeId] = normalize({
+                    ...pending,
+                    ...event.payload,
+                    status: 'completed'
+                })
+                delete projection.pendingClosureEffects[
+                    event.payload.nodeId
+                ]
                 break
             }
             case 'run.terminalized':
@@ -1061,6 +1200,10 @@ export function projectAggregateRun({
             controlProjection.pendingDeliveryEffects,
         deliveryEffects: controlProjection.deliveryEffects,
         cleanupFinalizations: controlProjection.cleanupFinalizations,
+        pendingClosureAuthorizations:
+            controlProjection.pendingClosureAuthorizations,
+        pendingClosureEffects: controlProjection.pendingClosureEffects,
+        closureEffects: controlProjection.closureEffects,
         terminal: controlProjection.terminal
     }
     projection.aggregateProjectionDigest = stateDigest(projection)

@@ -4,7 +4,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { digest } from '../../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
+import {
+    digest,
+    seal
+} from '../../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
 import {
     createSemanticGraph
 } from '../../../skills/issue-orchestration/scripts/semantic-runtime-projection.mjs'
@@ -25,14 +28,21 @@ import {
     projectLifecycleRun,
     readLifecycleRunLedger,
     lifecycleRunObservationContext,
-    recordLifecycleActionResults
+    recordLifecycleActionResults,
+    recordLifecycleCleanupFinalization,
+    recordLifecycleClosureAuthorization,
+    recordLifecycleClosureEffect
 } from '../../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
     executeLifecycleScopeRefresh,
     observeLifecycleRepositoryBaseBeforeAction
 } from '../../../skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs'
 import {
-    compileScriptedLifecycleStageResult
+    LIFECYCLE_STAGE_ADMISSION_MAP
+} from '../../../skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs'
+import {
+    compileScriptedLifecycleStageResult,
+    resealScriptedLifecycleStageResult
 } from './scripted-lifecycle-stage-result.mjs'
 
 const RECEIPT_SCHEMA =
@@ -617,6 +627,273 @@ function resultForAction({
     })
 }
 
+function resealStageArtifact(artifact, kind) {
+    const next = structuredClone(artifact)
+    const digestField = LIFECYCLE_STAGE_ADMISSION_MAP[
+        'cleanup-and-closure'
+    ].artifactSet[kind].digestField
+    next.evidenceDigest = digest(next.evidence)
+    delete next[digestField]
+    next[digestField] = digest(next)
+    return next
+}
+
+function prepareScriptedCleanupClosures({
+    ledger,
+    actionSet,
+    resourceRoot,
+    startup,
+    createdAt
+}) {
+    const cleanupNodeIds = actionSet.actions
+        .filter(({ type }) => type === 'cleanup-node-resources')
+        .map(({ nodeId }) => nodeId)
+    const preparedByNode = new Map()
+
+    for (const nodeId of cleanupNodeIds) {
+        let currentActionSet = compileLifecycleRunActionSet(ledger, {
+            startup
+        })
+        let action = currentActionSet.actions.find((candidate) =>
+            candidate.nodeId === nodeId &&
+            candidate.type === 'cleanup-node-resources')
+        if (!action) {
+            fail('multi-repository-e2e-cleanup-action-disappeared')
+        }
+        const state = projectLifecycleRun(ledger, { startup }).state
+        const node = state.nodes[nodeId]
+        fs.rmSync(resourcePath(resourceRoot, node.id), {
+            recursive: true,
+            force: true
+        })
+        const cleanupReceipt = seal({
+            schema:
+                'issue-orchestration.scripted-machine-cleanup-receipt.v1',
+            producerAuthority: 'machine-resource-verifier',
+            nodeId,
+            deliveryReceiptDigest: node.receipts.delivery.receiptDigest,
+            inventoryDigest: digest({ nodeId, resources: [] }),
+            postCleanupInventoryDigest: digest([]),
+            status: 'resources-clean'
+        }, 'receiptDigest')
+        const cleanupState = {
+            schema: 'issue-orchestration.scripted-cleanup-state.v1',
+            cleanupReceipt,
+            resourceCleanupReceipt: cleanupReceipt,
+            gitCleanupVerifications: [],
+            candidateDispositionReceipts: [],
+            proposals: []
+        }
+        cleanupState.cleanupStateDigest = digest(cleanupState)
+        ledger = recordLifecycleCleanupFinalization({
+            ledger,
+            actionSet: currentActionSet,
+            action,
+            cleanupState,
+            createdAt,
+            startup
+        })
+
+        currentActionSet = compileLifecycleRunActionSet(ledger, {
+            startup
+        })
+        action = currentActionSet.actions.find((candidate) =>
+            candidate.nodeId === nodeId &&
+            candidate.type === 'cleanup-node-resources')
+        const effectId = `closure:${digest({
+            nodeId,
+            cleanupReceiptDigest: cleanupReceipt.receiptDigest
+        })}`
+        const preRemoteSnapshot = seal({
+            schema:
+                'issue-orchestration.scripted-remote-state-snapshot.v1',
+            producerAuthority: 'trusted-remote-observer',
+            repository: node.repository,
+            issueId: node.id,
+            issueState: 'OPEN',
+            stateReason: null
+        }, 'snapshotDigest')
+        const expectedPostStateDigest = digest({
+            issueState: 'CLOSED',
+            stateReason: 'COMPLETED'
+        })
+        const deliveryControlReceipt = seal({
+            schema:
+                'issue-orchestration.scripted-delivery-control-receipt.v1',
+            producerAuthority: 'machine-remote-mutation-authority',
+            effectId,
+            preRemoteSnapshotDigest: preRemoteSnapshot.snapshotDigest,
+            expectedPostStateDigest
+        }, 'receiptDigest')
+        const authorizationState = {
+            effectId,
+            cleanupReceiptDigest: cleanupReceipt.receiptDigest,
+            cleanupState: structuredClone(cleanupState),
+            deliveryControlReceipt,
+            preRemoteSnapshot,
+            expectedPostStateDigest
+        }
+        ledger = recordLifecycleClosureAuthorization({
+            ledger,
+            actionSet: currentActionSet,
+            action,
+            effectId,
+            authorizationState,
+            createdAt,
+            startup
+        })
+
+        currentActionSet = compileLifecycleRunActionSet(ledger, {
+            startup
+        })
+        action = currentActionSet.actions.find((candidate) =>
+            candidate.nodeId === nodeId &&
+            candidate.type === 'cleanup-node-resources')
+        const postRemoteSnapshot = seal({
+            schema:
+                'issue-orchestration.scripted-remote-state-snapshot.v1',
+            producerAuthority: 'trusted-remote-observer',
+            repository: node.repository,
+            issueId: node.id,
+            issueState: 'CLOSED',
+            stateReason: 'COMPLETED'
+        }, 'snapshotDigest')
+        const remoteMutationReceipt = seal({
+            schema:
+                'issue-orchestration.scripted-remote-mutation-receipt.v1',
+            producerAuthority: 'machine-remote-mutation-authority',
+            effectId,
+            observedPostStateDigest: expectedPostStateDigest
+        }, 'receiptDigest')
+        const closureReceipt = seal({
+            schema:
+                'issue-orchestration.scripted-delivery-closure-receipt.v1',
+            producerAuthority: 'machine-delivery-closure-evaluator',
+            effectId,
+            cleanupReceiptDigest: cleanupReceipt.receiptDigest,
+            remotePreSnapshotDigest: preRemoteSnapshot.snapshotDigest,
+            remotePostSnapshotDigest: postRemoteSnapshot.snapshotDigest,
+            issueState: 'CLOSED',
+            stateReason: 'COMPLETED'
+        }, 'receiptDigest')
+        const effectState = {
+            effectId,
+            cleanupReceiptDigest: cleanupReceipt.receiptDigest,
+            postRemoteSnapshot,
+            remoteMutationReceipt,
+            closureReceipt
+        }
+        ledger = recordLifecycleClosureEffect({
+            ledger,
+            actionSet: currentActionSet,
+            action,
+            effectId,
+            effectState,
+            createdAt,
+            startup
+        })
+        preparedByNode.set(nodeId, {
+            cleanupReceipt,
+            deliveryControlReceipt,
+            preRemoteSnapshot,
+            postRemoteSnapshot,
+            remoteMutationReceipt,
+            closureReceipt
+        })
+    }
+
+    return {
+        ledger,
+        actionSet: compileLifecycleRunActionSet(ledger, { startup }),
+        state: projectLifecycleRun(ledger, { startup }).state,
+        preparedByNode
+    }
+}
+
+function cleanupArtifactDigest(artifacts, kind) {
+    const digestField = LIFECYCLE_STAGE_ADMISSION_MAP[
+        'cleanup-and-closure'
+    ].artifactSet[kind].digestField
+    return artifacts[kind][digestField]
+}
+
+function resultForPreparedCleanup({ action, state, prepared }) {
+    const result = structuredClone(compileScriptedLifecycleStageResult({
+        action,
+        node: state.nodes[action.nodeId],
+        actorRole: 'root-cleanup-adapter',
+        mode: 'completed',
+        facts: {}
+    }))
+
+    result.artifacts.cleanup.evidence = {
+        ...result.artifacts.cleanup.evidence,
+        machineCleanupReceiptDigest:
+            prepared.cleanupReceipt.receiptDigest
+    }
+    result.artifacts.cleanup = resealStageArtifact(
+        result.artifacts.cleanup,
+        'cleanup'
+    )
+    const cleanupDigest = cleanupArtifactDigest(
+        result.artifacts,
+        'cleanup'
+    )
+
+    result.artifacts.remoteCloseAuthority.evidence = {
+        ...result.artifacts.remoteCloseAuthority.evidence,
+        cleanupReceiptDigest: cleanupDigest,
+        deliveryControlReceiptDigest:
+            prepared.deliveryControlReceipt.receiptDigest
+    }
+    result.artifacts.remoteCloseAuthority = resealStageArtifact(
+        result.artifacts.remoteCloseAuthority,
+        'remoteCloseAuthority'
+    )
+
+    result.artifacts.remotePreSnapshot.evidence = {
+        ...result.artifacts.remotePreSnapshot.evidence,
+        machineSnapshotDigest:
+            prepared.preRemoteSnapshot.snapshotDigest
+    }
+    result.artifacts.remotePreSnapshot = resealStageArtifact(
+        result.artifacts.remotePreSnapshot,
+        'remotePreSnapshot'
+    )
+
+    result.artifacts.remotePostSnapshot.evidence = {
+        ...result.artifacts.remotePostSnapshot.evidence,
+        machineSnapshotDigest:
+            prepared.postRemoteSnapshot.snapshotDigest
+    }
+    result.artifacts.remotePostSnapshot = resealStageArtifact(
+        result.artifacts.remotePostSnapshot,
+        'remotePostSnapshot'
+    )
+
+    result.artifacts.closure.evidence = {
+        ...result.artifacts.closure.evidence,
+        cleanupReceiptDigest: cleanupDigest,
+        remotePreSnapshotDigest: cleanupArtifactDigest(
+            result.artifacts,
+            'remotePreSnapshot'
+        ),
+        remotePostSnapshotDigest: cleanupArtifactDigest(
+            result.artifacts,
+            'remotePostSnapshot'
+        ),
+        machineClosureReceiptDigest:
+            prepared.closureReceipt.receiptDigest,
+        remoteMutationReceiptDigest:
+            prepared.remoteMutationReceipt.receiptDigest
+    }
+    result.artifacts.closure = resealStageArtifact(
+        result.artifacts.closure,
+        'closure'
+    )
+    return resealScriptedLifecycleStageResult(result)
+}
+
 function injectExternalBaseChange({
     scenarioRoot,
     repository
@@ -952,9 +1229,36 @@ export function runMultiRepositoryLifecycleAcceptance({
                 beforeProjection === afterProjection
         }
 
-        const state = projectLifecycleRun(ledger, { startup }).state
-        const stageResults = actionSet.actions.map(
-            (action) => resultForAction({
+        let state = projectLifecycleRun(ledger, { startup }).state
+        let preparedCleanupByNode = new Map()
+        if (actionSet.actions.some(({ type }) =>
+            type === 'cleanup-node-resources')) {
+            const prepared = prepareScriptedCleanupClosures({
+                ledger,
+                actionSet,
+                resourceRoot,
+                startup,
+                createdAt:
+                    `2026-08-04T01:${String(loopCount).padStart(2, '0')}:00.000Z`
+            })
+            ledger = prepared.ledger
+            actionSet = prepared.actionSet
+            state = prepared.state
+            preparedCleanupByNode = prepared.preparedByNode
+        }
+        const stageResults = actionSet.actions.map((action) => {
+            const preparedCleanup = preparedCleanupByNode.get(
+                action.nodeId
+            )
+            if (action.type === 'cleanup-node-resources' &&
+                preparedCleanup) {
+                return resultForPreparedCleanup({
+                    action,
+                    state,
+                    prepared: preparedCleanup
+                })
+            }
+            return resultForAction({
                 action,
                 state,
                 resourceRoot,
@@ -964,7 +1268,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                 repositories,
                 issues
             })
-        )
+        })
         for (const [index, result] of stageResults.entries()) {
             if (result.artifacts.writerFailure) {
                 authorizedRetryCount += 1

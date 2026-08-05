@@ -435,12 +435,19 @@ export function validateLifecycleRunAuthority(
         createdAt: value.createdAt
     })
     const stable = (authority) => {
-        const result = {
-            ...authority,
-            repositoryBindings: authority.repositoryBindings.map(
-                ({ observedDefaultBranchHead, ...binding }) => binding
-            )
-        }
+        const result = structuredClone(authority)
+        result.repositoryBindings = result.repositoryBindings.map(
+            ({ observedDefaultBranchHead, ...binding }) => binding
+        )
+        // validateStateRoot above re-proves disjointness against the current
+        // repository/worktree inventory. That inventory is intentionally
+        // mutable across dispatch, landing, and cleanup, so it must not make
+        // the otherwise identical lifecycle authority drift merely because a
+        // canonical worktree was added or retired.
+        delete result.stateRootIdentity.protectedRootsDigest
+        delete result.stateRootIdentity.identityDigest
+        delete result.binding.stateRootIdentityDigest
+        delete result.binding.bindingDigest
         delete result.authorityDigest
         return result
     }
