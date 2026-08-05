@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "6788165abc0c9ea4d0d00b3b10f8f594443ed30f",
-    "sourceTreeDigest": "aa14d0be8b9a91e4ed2e6674065b0ebb14e854881603dfd1633402a37a58c68b",
+    "sourceCommit": "c6256dda63c1d7d773324be5577856342ac605a7",
+    "sourceTreeDigest": "3788e7a0fae42b65cf86e9e07cbc28264249df09a2b7843d48e5c83e56242a24",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
     "agentDigests": {
@@ -295,6 +295,7 @@
         "skills/issue-orchestration/scripts/issue-requirement-authority.mjs": "4b78a883b2e760f71637e0f85ad353d59bee098e8c4791d0f72e4d598568d596",
         "skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs": "d6f52bd6f6c33f4aa64b9e2220b01e11ecd8730f4da922296aacdcbe8fb9f152",
         "skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs": "146626af27ecb33d6d8bf21d2fb8d32504c05e9a115f14112d79f4d8fc91a012",
+        "skills/issue-orchestration/scripts/lifecycle-observe-only-executor.mjs": "22cbd131f76bd5c8dc8f465600e5699dd19232f015613f6aaad15a129915e9ae",
         "skills/issue-orchestration/scripts/lifecycle-prewriter-executor.mjs": "199ab42b2a9af6c77013f6da5e6330a69614ff0d1db93fef3b9fb7379bf98861",
         "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "1210f0ae3c3fa3acca6058bba394d26bb8598900d53424ec2da4406600d6e13f",
         "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "0473bc0067c0fde7cd63d682ce00bd760a0b6f8c3e8bf301e8bdc368899dc070",
@@ -329,5 +330,5 @@
         "skills/issue-orchestration/SKILL.md": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "7c057332acf70b74d3868dbf98cc474fb9c5bc5844ae4de25e5897062cbf496d"
+    "manifestDigest": "b901fc42f08a85749cc333b6eb6ce365d56fb9071b5a4b0175a2c4deb8efecfa"
 }
