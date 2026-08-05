@@ -1,0 +1,31 @@
+name: Export main for issue 44
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build source snapshot
+        shell: bash
+        run: |
+          tar --exclude=.git --exclude=.github/workflows/export-main-for-issue44.yml -czf issue-orchestration-main-3b2f763.tar.gz .
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-orchestration-main-3b2f763
+          path: issue-orchestration-main-3b2f763.tar.gz
+          if-no-files-found: error
+          retention-days: 1
