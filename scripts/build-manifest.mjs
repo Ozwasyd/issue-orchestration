@@ -101,7 +101,8 @@ const manifest = {
         'invocation-bound-downstream-authority',
         'caller-supplied-repository-identity',
         'stage-scoped-write-lease',
-        'typed-terminalization-authority'
+        'typed-terminalization-authority',
+        'deterministic-dispatcher-performance-telemetry'
     ],
     installTargets: [
         {

@@ -36,6 +36,11 @@ import {
     runLifecycleProductionDispatcher
 } from '../../skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs'
 import {
+    createDispatcherPerformanceCollector,
+    normalizeDispatcherPerformanceReceipt,
+    verifyDispatcherPerformanceReceipt
+} from '../../skills/issue-orchestration/scripts/dispatcher-performance-telemetry.mjs'
+import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
 
@@ -417,6 +422,35 @@ function clock() {
         sequence += 1
         return `2026-08-05T09:00:${String(sequence).padStart(2, '0')}.000Z`
     }
+}
+
+function performanceClock(start = '2026-08-05T10:00:00.000Z') {
+    let value = Date.parse(start)
+    return () => {
+        value += 5
+        return new Date(value).toISOString()
+    }
+}
+
+function stateTree(root) {
+    const entries = []
+    function visit(directory) {
+        for (const entry of fs.readdirSync(directory, {
+            withFileTypes: true
+        }).sort((left, right) => left.name.localeCompare(right.name))) {
+            const absolute = path.join(directory, entry.name)
+            if (entry.isDirectory()) {
+                visit(absolute)
+                continue
+            }
+            entries.push({
+                path: path.relative(root, absolute),
+                source: fs.readFileSync(absolute, 'utf8')
+            })
+        }
+    }
+    visit(root)
+    return entries
 }
 
 test('production dispatcher map is exhaustive, immutable, and has no fallback', () => {
@@ -810,4 +844,258 @@ test('independent actors settling in reverse wall-clock order preserve the same 
     assert.equal(reverse.activeDispatchCount, 0)
     assert.deepEqual(forward.settlementOrder, [first, second])
     assert.deepEqual(reverse.settlementOrder, [second, first])
+})
+
+test('performance telemetry is deterministic after timestamp normalization', () => {
+    function receipt(start) {
+        const collector = createDispatcherPerformanceCollector({
+            runId: 'performance-run',
+            stateRoot: path.join(os.tmpdir(), 'performance-state'),
+            clock: performanceClock(start)
+        })
+        collector.setTransition(2)
+        collector.measureSync(
+            ['remoteScopeObservation'],
+            { boundary: 'scope' },
+            () => 'unchanged'
+        )
+        collector.recordSlotSnapshot({
+            reason: 'fixture',
+            capacity: 2,
+            active: 1,
+            available: 1
+        })
+        return collector.finalize({
+            status: 'failed',
+            transitions: 2,
+            failureCode: 'fixture-stop'
+        })
+    }
+    const first = receipt('2026-08-05T10:00:00.000Z')
+    const second = receipt('2026-08-06T12:30:00.000Z')
+    assert.deepEqual(
+        normalizeDispatcherPerformanceReceipt(first),
+        normalizeDispatcherPerformanceReceipt(second)
+    )
+    assert.equal(verifyDispatcherPerformanceReceipt(first).receiptDigest,
+        first.receiptDigest)
+    const forged = structuredClone(first)
+    forged.authority.grants.push('route-selection')
+    forged.receiptDigest = digest((() => {
+        const value = structuredClone(forged)
+        delete value.receiptDigest
+        return value
+    })())
+    assert.throws(
+        () => verifyDispatcherPerformanceReceipt(forged),
+        (error) => error?.code === 'dispatcher-performance-receipt-invalid'
+    )
+})
+
+test('enabling performance telemetry leaves canonical state byte-identical', async (t) => {
+    const value = fixture()
+    const snapshot = fs.mkdtempSync(path.join(os.tmpdir(), 'dispatcher-snapshot-'))
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+        fs.rmSync(snapshot, { recursive: true, force: true })
+    })
+    fs.cpSync(value.stateRoot, snapshot, {
+        recursive: true,
+        preserveTimestamps: true
+    })
+    function providerWithScopeChange() {
+        const base = semanticContextProvider(value)
+        return {
+            ...base,
+            observeRemoteIssues(request) {
+                const observation = {
+                    schema:
+                        'issue-orchestration.lifecycle-remote-scope-observation.v1',
+                    producerAuthority:
+                        'trusted-remote-observation-adapter',
+                    rootAuthored: false,
+                    selectorDigest: request.selectorDigest,
+                    remoteQueryIdentity: request.remoteQueryIdentity,
+                    repositories: [...request.repositories],
+                    issues: structuredClone(value.issues.slice(0, 2)),
+                    observedAt: CREATED_AT
+                }
+                observation.observationDigest = digest(observation)
+                return observation
+            }
+        }
+    }
+
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: providerWithScopeChange(),
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const withoutTelemetryTree = stateTree(value.stateRoot)
+
+    fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    fs.mkdirSync(value.stateRoot, { recursive: true })
+    fs.cpSync(snapshot, value.stateRoot, {
+        recursive: true,
+        preserveTimestamps: true
+    })
+    let receipt = null
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: providerWithScopeChange(),
+            clock: clock(),
+            maxTransitions: 1,
+            performanceTelemetry: {
+                clock: performanceClock(),
+                onReceipt(value) {
+                    receipt = value
+                }
+            }
+        }),
+        (error) => {
+            assert.equal(
+                error?.code,
+                'dispatcher-transition-limit-exceeded'
+            )
+            assert.equal(
+                error.performanceReceipt?.receiptDigest,
+                receipt?.receiptDigest
+            )
+            return true
+        }
+    )
+    assert.deepEqual(stateTree(value.stateRoot), withoutTelemetryTree)
+    assert.equal(receipt.status, 'failed')
+    assert.equal(receipt.failureCode, 'dispatcher-transition-limit-exceeded')
+    assert.equal(receipt.transitions, 1)
+    assert.deepEqual(receipt.operationSummary, {
+        canonicalReplay: { count: 3, durationMs: 15 },
+        aggregateProjectionRebuild: { count: 3, durationMs: 15 },
+        actionSetCompilation: { count: 0, durationMs: 0 },
+        remoteScopeObservation: { count: 1, durationMs: 5 },
+        repositoryBaseObservation: { count: 0, durationMs: 0 },
+        contextPreparation: { count: 0, durationMs: 0 },
+        machineActionExecution: { count: 0, durationMs: 0 },
+        actorResultAdmission: { count: 0, durationMs: 0 }
+    })
+    assert.ok(receipt.bytes.canonicalLedgersRead > 0)
+    assert.equal(receipt.bytes.actorContextPrepared, 0)
+    assert.ok(receipt.wallTime.rootControlPlaneObservedDurationMs > 0)
+    assert.equal(receipt.wallTime.actorObservedWallDurationMs, 0)
+})
+
+test('two-slot telemetry exposes dispatch, admission, and refill timing', async (t) => {
+    const value = fixture()
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    let receipt = null
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 3,
+            performanceTelemetry: {
+                clock: performanceClock(),
+                onReceipt(value) {
+                    receipt = value
+                }
+            }
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    assert.ok(receipt)
+    assert.deepEqual(receipt.operationSummary, {
+        canonicalReplay: { count: 17, durationMs: 85 },
+        aggregateProjectionRebuild: { count: 17, durationMs: 85 },
+        actionSetCompilation: { count: 3, durationMs: 15 },
+        remoteScopeObservation: { count: 3, durationMs: 15 },
+        repositoryBaseObservation: { count: 5, durationMs: 25 },
+        contextPreparation: { count: 3, durationMs: 15 },
+        machineActionExecution: { count: 0, durationMs: 0 },
+        actorResultAdmission: { count: 2, durationMs: 10 }
+    })
+    assert.equal(receipt.actorDispatches.length, 3)
+    assert.equal(
+        receipt.actorDispatches.filter(({ admittedAt }) => admittedAt)
+            .length,
+        2
+    )
+    assert.equal(receipt.slotRefills.length, 1)
+    assert.equal(receipt.slotRefills[0].durationMs, 125)
+    assert.equal(receipt.idleSafeSlotDurationMs, 125)
+    assert.equal(receipt.slotSamples.length, 9)
+    assert.ok(receipt.slotSamples.some(({ capacity, active, available }) =>
+        capacity === 2 && active === 2 && available === 0))
+    assert.ok(receipt.slotSamples.some(({ capacity, active, available }) =>
+        capacity === 2 && active === 1 && available === 1))
+    assert.deepEqual(receipt.repositoryBaseObservations, [{
+        repository: value.repository.repository,
+        count: 5,
+        durationMs: 25
+    }])
+    assert.equal(
+        receipt.bytes.canonicalLedgersRead,
+        receipt.spans.reduce(
+            (total, span) => total + span.canonicalLedgerBytesRead,
+            0
+        )
+    )
+    assert.equal(
+        receipt.bytes.actorContextPrepared,
+        receipt.spans.reduce(
+            (total, span) => total + span.actorContextBytesPrepared,
+            0
+        )
+    )
+    assert.ok(receipt.bytes.canonicalLedgersRead > 0)
+    assert.ok(receipt.bytes.actorContextPrepared > 0)
+    assert.ok(receipt.wallTime.actorObservedWallDurationMs > 0)
+    assert.ok(receipt.wallTime.rootControlPlaneObservedDurationMs > 0)
+    assert.notEqual(
+        receipt.wallTime.actorObservedWallDurationMs,
+        receipt.wallTime.rootControlPlaneObservedDurationMs
+    )
+})
+
+test('dispatcher performance metrics are absent from authority inputs', () => {
+    const forbidden = [
+        'execution-route-compiler.mjs',
+        'stage-profile-policy.mjs',
+        'lifecycle-transition-compiler.mjs',
+        'lifecycle-stage-admission.mjs',
+        'lifecycle-terminalization-executor.mjs',
+        'remote-mutation-authority.mjs'
+    ]
+    const scripts = path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        '../../skills/issue-orchestration/scripts'
+    )
+    for (const file of forbidden) {
+        const source = fs.readFileSync(path.join(scripts, file), 'utf8')
+        assert.doesNotMatch(
+            source,
+            /dispatcher-performance|performanceTelemetry|performanceReceipt/u,
+            file
+        )
+    }
+    const dispatcher = fs.readFileSync(
+        path.join(scripts, 'lifecycle-production-dispatcher.mjs'),
+        'utf8'
+    )
+    assert.doesNotMatch(
+        dispatcher,
+        /(?:routeDecision|retry|terminal|mutation)[^\n]{0,120}(?:performanceTelemetry|performanceReceipt)/u
+    )
 })
