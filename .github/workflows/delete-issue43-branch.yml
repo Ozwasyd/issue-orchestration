@@ -1,9 +1,11 @@
 name: Delete merged issue 43 branch
 
 on:
-  push:
+  pull_request:
+    types:
+      - opened
     branches:
-      - agent/issue-43-quiescence-finalization
+      - main
     paths:
       - .github/workflows/delete-issue43-branch.yml
 
@@ -19,5 +21,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # The workflow exists before this triggering push.
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --delete agent/issue-43-quiescence-finalization
