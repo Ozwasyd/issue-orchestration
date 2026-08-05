@@ -201,6 +201,12 @@ test('Q02 a complete verified inventory produces the recomputable v1 receipt', a
     assert.deepEqual(receipt.violations, [])
     assert.deepEqual(receipt.targetIssueSet, ['ExampleOrg/RepositoryA#1829'])
     assert.equal(receipt.completedIssueEvidence.length, 1)
+    assert.equal(receipt.completedIssueEvidence[0].disposition, 'closed')
+    for (const field of [
+        'canonicalDeliveryEffectDigest',
+        'canonicalCleanupFinalizationDigest',
+        'canonicalClosureEffectDigest'
+    ]) assert.equal(field in receipt.completedIssueEvidence[0], true)
     assert.equal(receipt.bootstrapDisposition.status, 'retired')
     assert.equal(receipt.bootstrapDisposition.fallbackEnabled, false)
 
@@ -256,6 +262,47 @@ test('Q02 a complete verified inventory produces the recomputable v1 receipt', a
         'runtime receipt and strict schema required fields must stay aligned'
     )
     assert.equal(receiptSchema.additionalProperties, false)
+})
+
+test('Q02A receipt schema keeps closed and typed-terminal evidence disjoint', async () => {
+    const loaded = await implementation()
+    const observation = await validObservation()
+    const receipt = loaded.evaluateQuiescence(observation)
+    const receiptSchema = JSON.parse(readFileSync(receiptSchemaPath, 'utf8'))
+    const closed = receipt.completedIssueEvidence[0]
+    const terminalReceipt = clone(receipt)
+    terminalReceipt.completedIssueEvidence = [{
+        target: closed.target,
+        disposition: 'terminal',
+        terminalCategory: 'externally_blocked',
+        completionEvidenceDigest: closed.completionEvidenceDigest,
+        remoteSnapshotDigest: closed.remoteSnapshotDigest,
+        terminalReceiptDigest: 'a1'.repeat(32),
+        recoveryFingerprintDigest: 'a2'.repeat(32),
+        retentionStateDigest: 'a3'.repeat(32),
+        roleSkillReceiptDigest: closed.roleSkillReceiptDigest,
+        issueEvidenceDigest: closed.issueEvidenceDigest,
+        stageEvidenceDigest: closed.stageEvidenceDigest,
+        evidenceDigest: 'a4'.repeat(32)
+    }]
+
+    assert.deepEqual(validateJsonSchema(terminalReceipt, receiptSchema), [])
+
+    const mixedAuthority = clone(terminalReceipt)
+    mixedAuthority.completedIssueEvidence[0].uiNode = false
+    assert.notDeepEqual(
+        validateJsonSchema(mixedAuthority, receiptSchema),
+        [],
+        'terminal evidence must not accept closed-node authority fields'
+    )
+
+    const unknownCategory = clone(terminalReceipt)
+    unknownCategory.completedIssueEvidence[0].terminalCategory = 'free_text'
+    assert.notDeepEqual(
+        validateJsonSchema(unknownCategory, receiptSchema),
+        [],
+        'terminal category must stay in the versioned vocabulary'
+    )
 })
 
 test('Q03 set enumeration is deterministic while ordered evidence remains bound', async () => {

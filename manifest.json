@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "61b12073e35ad8880525f0d206397bbfe5da0dc6",
-    "sourceTreeDigest": "d272f6a32160b033e3a3d79e7a942c7760937dd9fd52c6044ac93db1ac58a118",
+    "sourceCommit": "aa146299b0b38bc8c670c0eff54b6ef7c68745b2",
+    "sourceTreeDigest": "a84b8b426b79bdf3ffde44bbf7dc3763fdd69c619c1bf83053af0737dba07606",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
     "agentDigests": {
@@ -187,7 +187,7 @@
         "contracts/profile-availability-binding.schema.json": "d24cf53ac2e41121db498a43d0f40295d986d0b308a7ed8beb6579338b3f1b86",
         "contracts/quarantine-preservation-receipt.schema.json": "4d95d9d018458f5cb48872ca2d9fb8fc0eb4e4198b57f341d51d319ce3ac6d4a",
         "contracts/quiescence-observation-collector-receipt.schema.json": "d5e3e3548182929d5fac8d0cb14ccb4209ce7cdc4bfcdaf01e1bc3302b2825c4",
-        "contracts/quiescence-receipt.schema.json": "2b3b184f02524ca16294e50e58d57d648a7358233b184815f7774792450e5aee",
+        "contracts/quiescence-receipt.schema.json": "d806950ff3e02189ab63386c32467062b257e475c304164b6663689a0b4c27c5",
         "contracts/remote-mutation-policy.schema.json": "97b1ebaaf16e62306a96eb02ee578a7344cbe2da44a220c8baf675fe092ae3c9",
         "contracts/remote-mutation-receipt.schema.json": "f0c824306b982050d6f7b437036f6386f7d9da69a5eea3d955f3ab10a40e6930",
         "contracts/remote-staging-ref-cleanup-receipt.schema.json": "d8e6774a1cdc3eb5e864dae72d56496e1eb5447f540db54a62ea1da896bfb091",
@@ -340,5 +340,5 @@
         "skills/issue-orchestration/SKILL.md": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "212842ae51d46372db734ea6b6b118aa6c7818adef4f0377f2200df92c953b38"
+    "manifestDigest": "97d7c79a386827393091ab942a7ea67a5a6724262a84e3890e5904acbb9194ce"
 }
