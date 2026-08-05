@@ -27,6 +27,8 @@ export const CONTROL_EVENT_TYPES = Object.freeze([
     'acceptance-group.updated',
     'slots.updated',
     'dispatch-batch.recorded',
+    'dispatch.action-started',
+    'dispatch.action-settled',
     'delivery.freeze-acquired',
     'delivery.freeze-released',
     'delivery.effect-recorded',
@@ -401,6 +403,8 @@ export function replayControlLedger(ledger) {
         acceptanceGroups: {},
         slots: { capacity: 0, active: [] },
         dispatchBatches: [],
+        activeDispatches: {},
+        dispatchHistory: [],
         repositoryBases: {},
         deliveryFreezes: {},
         pendingDeliveryEffects: {},
@@ -706,6 +710,13 @@ export function replayControlLedger(ledger) {
                     fail('control-slot-capacity-exceeded')
                 }
                 for (const nodeId of active) ensureNode(projection, nodeId)
+                const dispatchNodes = Object.values(
+                    projection.activeDispatches
+                ).map(({ nodeId }) => nodeId).sort()
+                if (dispatchNodes.length > 0 &&
+                    stateDigest(dispatchNodes) !== stateDigest(active)) {
+                    fail('control-slot-active-dispatch-mismatch')
+                }
                 projection.slots = {
                     capacity: event.payload.capacity,
                     active
@@ -717,8 +728,126 @@ export function replayControlLedger(ledger) {
                     event.payload.batchDigest,
                     'control-dispatch-batch-digest-invalid'
                 )
+                if (unsignedDigest(event.payload, 'batchDigest') !==
+                    event.payload.batchDigest) {
+                    fail('control-dispatch-batch-digest-invalid')
+                }
                 projection.dispatchBatches.push(normalize(event.payload))
                 break
+            case 'dispatch.action-started': {
+                const payload = event.payload
+                for (const [field, code] of [
+                    ['dispatchId', 'control-dispatch-id-invalid'],
+                    ['actionType', 'control-dispatch-action-type-invalid'],
+                    ['owner', 'control-dispatch-owner-invalid'],
+                    ['nodeId', 'control-dispatch-node-invalid'],
+                    ['attemptId', 'control-dispatch-attempt-invalid'],
+                    ['slotId', 'control-dispatch-slot-invalid']
+                ]) requireString(payload[field], code)
+                for (const [field, code] of [
+                    ['actionDigest', 'control-dispatch-action-digest-invalid'],
+                    ['actionSetDigest', 'control-dispatch-action-set-invalid'],
+                    ['actionBindingsDigest', 'control-dispatch-bindings-invalid'],
+                    ['runtimeBindingDigest', 'control-dispatch-runtime-invalid'],
+                    ['leaseDigest', 'control-dispatch-lease-invalid'],
+                    ['resourceDigest', 'control-dispatch-resource-invalid']
+                ]) requireDigest(payload[field], code)
+                const action = requireObject(
+                    payload.action,
+                    'control-dispatch-action-invalid'
+                )
+                const actionSet = requireObject(
+                    payload.actionSet,
+                    'control-dispatch-action-set-invalid'
+                )
+                if (action.actionDigest !== payload.actionDigest ||
+                    action.type !== payload.actionType ||
+                    action.nodeId !== payload.nodeId ||
+                    actionSet.actionSetDigest !== payload.actionSetDigest ||
+                    !Array.isArray(actionSet.actions) ||
+                    !actionSet.actions.some((candidate) =>
+                        candidate.actionDigest === payload.actionDigest &&
+                        stateDigest(candidate) === stateDigest(action)) ||
+                    stateDigest(action.bindings) !==
+                        payload.actionBindingsDigest) {
+                    fail('control-dispatch-authority-invalid')
+                }
+                requireDigest(
+                    payload.receiptDigest,
+                    'control-dispatch-receipt-invalid'
+                )
+                if (unsignedDigest(payload, 'receiptDigest') !==
+                    payload.receiptDigest) {
+                    fail('control-dispatch-receipt-invalid')
+                }
+                if (payload.executionClass !== 'actor') {
+                    fail('control-dispatch-execution-class-invalid')
+                }
+                ensureNode(projection, payload.nodeId)
+                if (projection.activeDispatches[payload.dispatchId] ||
+                    Object.values(projection.activeDispatches).some(
+                        (dispatch) =>
+                            dispatch.actionDigest === payload.actionDigest ||
+                            dispatch.nodeId === payload.nodeId ||
+                            dispatch.slotId === payload.slotId
+                    )) {
+                    fail('control-dispatch-active-duplicate')
+                }
+                if (projection.slots.active.includes(payload.nodeId)) {
+                    fail('control-dispatch-node-slot-duplicate')
+                }
+                if (projection.slots.active.length >=
+                    projection.slots.capacity) {
+                    fail('control-slot-capacity-exceeded')
+                }
+                projection.activeDispatches[payload.dispatchId] =
+                    normalize(payload)
+                projection.slots.active = [...projection.slots.active,
+                    payload.nodeId].sort()
+                break
+            }
+            case 'dispatch.action-settled': {
+                const payload = event.payload
+                requireString(
+                    payload.dispatchId,
+                    'control-dispatch-id-invalid'
+                )
+                requireDigest(
+                    payload.actionDigest,
+                    'control-dispatch-action-digest-invalid'
+                )
+                requireDigest(
+                    payload.resultDigest,
+                    'control-dispatch-result-invalid'
+                )
+                requireDigest(
+                    payload.settlementDigest,
+                    'control-dispatch-settlement-invalid'
+                )
+                if (unsignedDigest(payload, 'settlementDigest') !==
+                    payload.settlementDigest) {
+                    fail('control-dispatch-settlement-invalid')
+                }
+                if (payload.outcome !== 'completed') {
+                    fail('control-dispatch-outcome-invalid')
+                }
+                const active = projection.activeDispatches[
+                    payload.dispatchId
+                ]
+                if (!active || active.actionDigest !==
+                    payload.actionDigest) {
+                    fail('control-dispatch-not-active')
+                }
+                delete projection.activeDispatches[payload.dispatchId]
+                projection.slots.active = projection.slots.active.filter(
+                    (nodeId) => nodeId !== active.nodeId
+                )
+                projection.dispatchHistory.push(normalize({
+                    ...active,
+                    ...payload
+                }))
+                break
+            }
             case 'delivery.freeze-acquired': {
                 requireString(
                     event.payload.freezeId,
@@ -1247,6 +1376,8 @@ export function projectAggregateRun({
         nodes,
         acceptanceGroups: controlProjection.acceptanceGroups,
         slots: controlProjection.slots,
+        activeDispatches: controlProjection.activeDispatches,
+        dispatchHistory: controlProjection.dispatchHistory,
         repositoryBases: controlProjection.repositoryBases,
         deliveryFreezes: controlProjection.deliveryFreezes,
         pendingDeliveryEffects:

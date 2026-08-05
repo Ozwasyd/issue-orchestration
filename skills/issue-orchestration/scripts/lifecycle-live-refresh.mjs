@@ -357,6 +357,63 @@ export function observeLifecycleRepositoryBaseBeforeAction({
     return Object.freeze(receipt)
 }
 
+export function observeLifecycleRepositoryBaseForActiveAction({
+    ledger,
+    action,
+    startup
+} = {}) {
+    if (!action || typeof action !== 'object' || Array.isArray(action) ||
+        typeof action.actionDigest !== 'string') {
+        fail('lifecycle-active-base-action-invalid')
+    }
+    const expectedRepositories = actionRepositoryBindings(action)
+    const context = lifecycleRunObservationContext(ledger, { startup })
+    validateLifecycleRunAuthority(context.lifecycleAuthority, {
+        startup,
+        expectedRunId: context.runId,
+        expectedStateRoot: context.stateRoot
+    })
+    const observations = []
+    for (const expected of expectedRepositories) {
+        const binding = repositoryAuthorityFor(
+            context.lifecycleAuthority,
+            expected.repository
+        )
+        const observation = observeRepository(binding)
+        observations.push(observation)
+        if (observation.canonicalPath !==
+                path.resolve(binding.canonicalPath) ||
+            observation.origin !== binding.remoteUrl ||
+            observation.defaultBranch !== binding.defaultBranch ||
+            observation.repositoryBindingDigest !==
+                binding.bindingDigest) {
+            fail('lifecycle-active-base-repository-identity-drift', {
+                repository: expected.repository
+            })
+        }
+        if (observation.remoteDefaultBranchHead !== expected.baseSha) {
+            return Object.freeze({
+                schema:
+                    'issue-orchestration.lifecycle-active-base-observation.v1',
+                status: 'stale',
+                actionDigest: action.actionDigest,
+                repository: expected.repository,
+                expectedBaseSha: expected.baseSha,
+                currentBaseSha:
+                    observation.remoteDefaultBranchHead,
+                observations
+            })
+        }
+    }
+    return Object.freeze({
+        schema:
+            'issue-orchestration.lifecycle-active-base-observation.v1',
+        status: 'current',
+        actionDigest: action.actionDigest,
+        observations
+    })
+}
+
 export function lifecycleLiveRefreshSchemas() {
     return Object.freeze({
         remoteObservation: REMOTE_OBSERVATION_SCHEMA,
