@@ -1,0 +1,22 @@
+name: Delete merged issue 43 branch
+
+on:
+  push:
+    branches:
+      - agent/issue-43-quiescence-finalization
+    paths:
+      - .github/workflows/delete-issue43-branch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged branch
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --delete agent/issue-43-quiescence-finalization
