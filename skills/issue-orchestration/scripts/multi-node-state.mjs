@@ -717,13 +717,15 @@ export function replayControlLedger(ledger) {
                     event.payload.freezeId,
                     'control-delivery-freeze-id-invalid'
                 )
-                if (projection.deliveryFreezes[event.payload.freezeId]) {
+                if (projection.deliveryFreezes[event.payload.freezeId]
+                    ?.active) {
                     fail('control-delivery-freeze-duplicate')
                 }
-                projection.deliveryFreezes[event.payload.freezeId] = {
-                    active: true,
-                    groupId: event.payload.groupId ?? null
-                }
+                projection.deliveryFreezes[event.payload.freezeId] =
+                    normalize({
+                        ...event.payload,
+                        active: true
+                    })
                 break
             }
             case 'delivery.freeze-released': {
@@ -731,7 +733,12 @@ export function replayControlLedger(ledger) {
                     event.payload.freezeId
                 ]
                 if (!freeze?.active) fail('control-delivery-freeze-not-active')
+                if (event.payload.effectId && freeze.effectId &&
+                    event.payload.effectId !== freeze.effectId) {
+                    fail('control-delivery-freeze-owner-mismatch')
+                }
                 freeze.active = false
+                freeze.releasedAt = event.payload.releasedAt ?? null
                 break
             }
             case 'delivery.effect-recorded': {

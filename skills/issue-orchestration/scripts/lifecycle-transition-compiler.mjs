@@ -455,14 +455,23 @@ function makeAction(context) {
     return action
 }
 
+function activeGroupFreeze(aggregate, groupId) {
+    return Object.entries(aggregate.deliveryFreezes ?? {})
+        .find(([, freeze]) =>
+            freeze?.active === true && freeze.groupId === groupId) ?? null
+}
+
 function groupReady(groupId, members, aggregate, graphById) {
     if (aggregate.deliveryEffects?.[groupId]) return false
-    if (aggregate.deliveryFreezes?.[groupId]) return false
+    const pending = aggregate.pendingDeliveryEffects?.[groupId] ?? null
     return members.length > 0 && members.every((nodeId) => {
         const node = aggregate.nodes[nodeId]
         const graphNode = graphById.get(nodeId)
         if (!node || !graphNode || node.quarantine) return false
         if (node.blockedBy?.length) return false
+        if (pending && node.lifecycleState === 'cleaning') {
+            return node.deliveryCommit === pending.commits?.[nodeId]
+        }
         const action = stateAction(node, graphNode)
         return action === 'deliver-acceptance-group' ||
             node.lifecycleState === 'closed'
@@ -479,6 +488,8 @@ function makeGroupAction({
     members,
     policy
 }) {
+    const activeFreeze = activeGroupFreeze(aggregate, groupId)
+    const pendingEffect = aggregate.pendingDeliveryEffects?.[groupId] ?? null
     const nodes = members.map((nodeId) => {
         const node = aggregate.nodes[nodeId]
         const graphNode = graphById.get(nodeId)
@@ -499,7 +510,11 @@ function makeGroupAction({
         nodeId: null,
         acceptanceGroup: groupId,
         lifecycleState: 'group-ready',
-        recoveryMode: 'none',
+        recoveryMode: pendingEffect
+            ? 'remote-effect-reobservation'
+            : activeFreeze
+                ? 'delivery-freeze-reentry'
+                : 'none',
         bindings: {
             runId: aggregate.runId,
             selectorReceiptDigest: graph.selectorReceiptDigest,
@@ -527,6 +542,12 @@ function makeGroupAction({
             packageDigest: authority.binding.packageDigest,
             manifestDigest: authority.binding.manifestDigest,
             policySetDigest: authority.binding.policySetDigest,
+            activeDeliveryFreeze: activeFreeze
+                ? structuredClone(activeFreeze[1])
+                : null,
+            pendingDeliveryEffect: pendingEffect
+                ? structuredClone(pendingEffect)
+                : null,
             memberBindings: nodes
         }
     }

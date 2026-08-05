@@ -800,6 +800,7 @@ function currentCompatibilityState({
         pendingDeliveryEffects:
             clone(controlProjection.pendingDeliveryEffects),
         deliveryEffects: clone(controlProjection.deliveryEffects),
+        deliveryFreezes: clone(controlProjection.deliveryFreezes),
         cleanupFinalizations:
             clone(controlProjection.cleanupFinalizations),
         lastControlSequence: controlProjection.lastSequence
@@ -1063,6 +1064,95 @@ function appendCanonicalControlEvent({
     return event
 }
 
+function activeDeliveryFreeze(state, groupId) {
+    return Object.entries(state.deliveryFreezes ?? {})
+        .find(([, freeze]) =>
+            freeze?.active === true && freeze.groupId === groupId) ?? null
+}
+
+export function acquireLifecycleDeliveryFreeze({
+    ledger,
+    actionSet,
+    action,
+    effectId,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCurrentActionSet(authority, actionSet)
+    if (action?.type !== 'deliver-acceptance-group') {
+        fail('lifecycle-delivery-freeze-action-invalid')
+    }
+    const current = actionSet.actions.find((candidate) =>
+        candidate.actionDigest === action.actionDigest)
+    if (!current || !sameValue(current, action)) {
+        fail('lifecycle-delivery-freeze-action-stale')
+    }
+    const groupId = requireText(
+        action.acceptanceGroup,
+        'lifecycle-delivery-group-invalid'
+    )
+    requireText(effectId, 'lifecycle-delivery-effect-id-invalid')
+    const state = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    if (state.deliveryEffects[groupId]) {
+        fail('lifecycle-delivery-already-completed')
+    }
+    const active = activeDeliveryFreeze(state, groupId)
+    if (active) {
+        if (active[1].effectId !== effectId) {
+            fail('lifecycle-delivery-freeze-owner-mismatch')
+        }
+        return makeHandle(authority)
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'delivery.freeze-acquired',
+        payload: {
+            freezeId: groupId,
+            groupId,
+            effectId,
+            actionDigest: action.actionDigest,
+            actionSetDigest: actionSet.actionSetDigest,
+            acquiredAt: createdAt
+        },
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
+export function releaseLifecycleDeliveryFreeze({
+    ledger,
+    groupId,
+    effectId,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    requireText(groupId, 'lifecycle-delivery-group-invalid')
+    requireText(effectId, 'lifecycle-delivery-effect-id-invalid')
+    const state = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const active = activeDeliveryFreeze(state, groupId)
+    if (!active || active[1].effectId !== effectId) {
+        fail('lifecycle-delivery-freeze-owner-mismatch')
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'delivery.freeze-released',
+        payload: {
+            freezeId: active[0],
+            groupId,
+            effectId,
+            releasedAt: createdAt
+        },
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
 export function recordLifecycleActionResults({
     ledger,
     actionSet,
@@ -1114,24 +1204,70 @@ export function recordLifecycleActionResults({
                 admission.artifacts.remoteEffect.evidence.effectId,
                 'lifecycle-delivery-effect-id-invalid'
             )
-            const commits = clone(
-                admission.artifacts.remoteEffect.evidence.commits
-            )
+            const remoteEffectEvidence =
+                admission.artifacts.remoteEffect.evidence
+            const commits = clone(remoteEffectEvidence.commits)
+            const observedEffect = {
+                groupId,
+                effectId,
+                status: 'remote-effect-applied',
+                commits,
+                candidateMappingDigest:
+                    remoteEffectEvidence.candidateMappingDigest ?? null,
+                landingReceiptDigest:
+                    remoteEffectEvidence.landingReceiptDigest ?? null,
+                landingReceiptDigests: clone(
+                    remoteEffectEvidence.landingReceiptDigests ?? {}
+                ),
+                repositoryEffects: clone(
+                    remoteEffectEvidence.repositoryEffects ?? []
+                ),
+                remotePreStateDigest:
+                    admission.artifacts.remotePreSnapshot
+                        .evidence.remoteStateDigest,
+                remotePostStateDigest:
+                    admission.artifacts.remotePostSnapshot
+                        .evidence.remoteStateDigest,
+                remoteMutationReceiptDigest:
+                    admission.artifacts.remoteMutationAuthority
+                        .receiptDigest,
+                deliveryControlReceiptDigest:
+                    admission.artifacts.deliveryControl.receiptDigest
+            }
             const pending = state.pendingDeliveryEffects[groupId]
+            let freeze = activeDeliveryFreeze(state, groupId)
             if (admission.deliveryPhase === 'remote-effect-applied') {
-                if (pending && pending.effectId !== effectId) {
+                if (pending && !sameValue(pending, observedEffect)) {
                     fail('lifecycle-delivery-effect-conflict')
+                }
+                if (!freeze) {
+                    appendCanonicalControlEvent({
+                        authority,
+                        eventType: 'delivery.freeze-acquired',
+                        payload: {
+                            freezeId: groupId,
+                            groupId,
+                            effectId,
+                            actionDigest: action.actionDigest,
+                            actionSetDigest: actionSet.actionSetDigest,
+                            acquiredAt: createdAt
+                        },
+                        createdAt
+                    })
+                    freeze = [groupId, {
+                        freezeId: groupId,
+                        groupId,
+                        effectId,
+                        active: true
+                    }]
+                } else if (freeze[1].effectId !== effectId) {
+                    fail('lifecycle-delivery-freeze-owner-mismatch')
                 }
                 if (!pending) {
                     appendCanonicalControlEvent({
                         authority,
                         eventType: 'delivery.effect-recorded',
-                        payload: {
-                            groupId,
-                            effectId,
-                            status: 'remote-effect-applied',
-                            commits
-                        },
+                        payload: observedEffect,
                         createdAt
                     })
                 }
@@ -1143,11 +1279,41 @@ export function recordLifecycleActionResults({
             if (!pending || pending.effectId !== effectId) {
                 fail('lifecycle-delivery-effect-unobserved')
             }
+            const completionMatchesPending =
+                sameValue(commits, pending.commits) &&
+                remoteEffectEvidence.candidateMappingDigest ===
+                    pending.candidateMappingDigest &&
+                remoteEffectEvidence.landingReceiptDigest ===
+                    pending.landingReceiptDigest &&
+                sameValue(
+                    remoteEffectEvidence.landingReceiptDigests ?? {},
+                    pending.landingReceiptDigests ?? {}
+                ) &&
+                sameValue(
+                    remoteEffectEvidence.repositoryEffects ?? [],
+                    pending.repositoryEffects ?? []
+                ) &&
+                observedEffect.remotePreStateDigest ===
+                    pending.remotePreStateDigest &&
+                observedEffect.remotePostStateDigest ===
+                    pending.remotePostStateDigest
+            if (!completionMatchesPending) {
+                fail('lifecycle-delivery-completion-effect-stale')
+            }
+            if (!freeze || freeze[1].effectId !== effectId) {
+                fail('lifecycle-delivery-freeze-owner-mismatch')
+            }
             for (const { nodeId } of action.bindings.memberBindings) {
                 const current = replayLifecycleRunLedger(authority, {
-                startup: authority.startup
-            })
+                    startup: authority.startup
+                })
                 const node = current.nodes[nodeId]
+                if (node.lifecycleState === 'cleaning') {
+                    if (node.deliveryCommit !== commits[nodeId]) {
+                        fail('lifecycle-delivery-member-commit-conflict')
+                    }
+                    continue
+                }
                 appendCanonicalNodeResult({
                     authority,
                     actionSet,
@@ -1164,6 +1330,17 @@ export function recordLifecycleActionResults({
                     groupId,
                     effectId,
                     commits
+                },
+                createdAt
+            })
+            appendCanonicalControlEvent({
+                authority,
+                eventType: 'delivery.freeze-released',
+                payload: {
+                    freezeId: freeze[0],
+                    groupId,
+                    effectId,
+                    releasedAt: createdAt
                 },
                 createdAt
             })
