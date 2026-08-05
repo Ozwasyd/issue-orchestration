@@ -173,8 +173,8 @@ const EXACT_SUMMARY_FIELDS = Object.freeze({
 })
 
 const TERMINAL_STATES = Object.freeze({
-    issues: new Set(['closed']),
-    stages: new Set(['complete']),
+    issues: new Set(['closed', 'terminal']),
+    stages: new Set(['complete', 'terminal']),
     attempts: new Set(['completed', 'failed', 'cancelled', 'superseded']),
     groups: new Set(['completed', 'failed', 'cancelled', 'superseded']),
     actors: new Set(['completed', 'failed', 'cancelled', 'retired']),
@@ -348,7 +348,8 @@ function recordSubject(category, record) {
 }
 
 function terminalState(record) {
-    return record?.status ?? record?.state ?? record?.disposition
+    return record?.status ?? record?.terminalState ??
+        record?.state ?? record?.disposition
 }
 
 function inspectSummary(category, summary, violations) {
@@ -1144,10 +1145,39 @@ function inspectIssueAndStageEvidence({
     for (const target of targetIssueSet) {
         const issue = issueByTarget.get(target)
         const stage = stageByTarget.get(target)
+        const terminalDisposition = issue?.disposition === 'terminal'
         let complete = true
         if (!issue) {
             addViolation(violations, 'issues.target-missing', 'issues', target)
             complete = false
+        } else if (terminalDisposition) {
+            if (!['open', 'closed'].includes(issue.state)) {
+                addViolation(
+                    violations,
+                    'issues.terminal-remote-state-invalid',
+                    'issues',
+                    target
+                )
+                complete = false
+            }
+            for (const field of [
+                'terminalReceiptDigest',
+                'recoveryFingerprintDigest',
+                'retentionStateDigest'
+            ]) {
+                if (!requireHashField('issues', issue, field, violations, target)) {
+                    complete = false
+                }
+            }
+            if (!isText(issue.terminalCategory)) {
+                addViolation(
+                    violations,
+                    'issues.terminal-category-missing',
+                    'issues',
+                    target
+                )
+                complete = false
+            }
         } else if (issue.state !== 'closed') {
             addViolation(violations, 'issues.target-not-closed', 'issues', target)
             complete = false
@@ -1155,6 +1185,69 @@ function inspectIssueAndStageEvidence({
         if (!stage) {
             addViolation(violations, 'stages.target-missing', 'stages', target)
             complete = false
+        } else if (terminalDisposition) {
+            if (stage.status !== 'terminal') {
+                addViolation(
+                    violations,
+                    'stages.terminal-status-invalid',
+                    'stages',
+                    target
+                )
+                complete = false
+            }
+            for (const field of [
+                'terminalReceiptDigest',
+                'recoveryFingerprintDigest',
+                'retentionStateDigest',
+                'roleSkillReceiptDigest'
+            ]) {
+                if (!requireHashField('stages', stage, field, violations, target)) {
+                    complete = false
+                }
+            }
+            for (const field of [
+                'terminalReceiptDigest',
+                'recoveryFingerprintDigest',
+                'retentionStateDigest'
+            ]) {
+                if (issue?.[field] !== stage[field]) {
+                    addViolation(
+                        violations,
+                        `stages.${kebab(field)}-mismatch`,
+                        'stages',
+                        target
+                    )
+                    complete = false
+                }
+            }
+            if (issue?.terminalCategory !== stage.terminalCategory) {
+                addViolation(
+                    violations,
+                    'stages.terminal-category-mismatch',
+                    'stages',
+                    target
+                )
+                complete = false
+            }
+            if (stage.authorityValid !== true || stage.digestsConsistent !== true) {
+                addViolation(
+                    violations,
+                    'stages.authority-or-digest-invalid',
+                    'stages',
+                    target
+                )
+                complete = false
+            }
+            if (stage.roleSkillReceiptDigest
+                !== inventories.skills?.summary?.roleSkillReceiptDigest) {
+                addViolation(
+                    violations,
+                    'stages.role-skill-receipt-mismatch',
+                    'stages',
+                    target
+                )
+                complete = false
+            }
         } else {
             const required = [
                 'frozenTestContractDigest',
@@ -1204,7 +1297,12 @@ function inspectIssueAndStageEvidence({
                     )) complete = false
                 }
             }
-            if (!cleanupDigestsByTarget.get(target)
+            const canonicalChain = [
+                'canonicalDeliveryEffectDigest',
+                'canonicalCleanupFinalizationDigest',
+                'canonicalClosureEffectDigest'
+            ].every((field) => isHash(stage[field]))
+            if (!canonicalChain && !cleanupDigestsByTarget.get(target)
                 ?.has(stage.resourceCleanupReceiptDigest)) {
                 addViolation(
                     violations,
@@ -1215,7 +1313,7 @@ function inspectIssueAndStageEvidence({
                 complete = false
             }
         }
-        if (issue?.state === 'closed') {
+        if (issue && (issue.state === 'closed' || terminalDisposition)) {
             if (issue.remoteSnapshotDigest
                 !== inventories.dag?.summary?.remoteSnapshotDigest) {
                 addViolation(
@@ -1251,9 +1349,26 @@ function inspectIssueAndStageEvidence({
                 }
             }
         }
-        if (complete) {
+        if (complete && terminalDisposition) {
             const evidence = {
                 target,
+                disposition: 'terminal',
+                terminalCategory: issue.terminalCategory,
+                completionEvidenceDigest: issue.completionEvidenceDigest,
+                remoteSnapshotDigest: issue.remoteSnapshotDigest,
+                terminalReceiptDigest: issue.terminalReceiptDigest,
+                recoveryFingerprintDigest: issue.recoveryFingerprintDigest,
+                retentionStateDigest: issue.retentionStateDigest,
+                roleSkillReceiptDigest: stage.roleSkillReceiptDigest,
+                issueEvidenceDigest: computeQuiescenceDigest(issue),
+                stageEvidenceDigest: computeQuiescenceDigest(stage)
+            }
+            evidence.evidenceDigest = computeQuiescenceDigest(evidence)
+            completedIssueEvidence.push(evidence)
+        } else if (complete) {
+            const evidence = {
+                target,
+                disposition: 'closed',
                 uiNode: stage.uiNode === true,
                 completionEvidenceDigest: issue.completionEvidenceDigest,
                 remoteSnapshotDigest: issue.remoteSnapshotDigest,
@@ -1275,6 +1390,12 @@ function inspectIssueAndStageEvidence({
                     stage.resourceCleanupReceiptDigest,
                 candidateEpochDigest: stage.candidateEpochDigest,
                 roleSkillReceiptDigest: stage.roleSkillReceiptDigest,
+                canonicalDeliveryEffectDigest:
+                    stage.canonicalDeliveryEffectDigest ?? null,
+                canonicalCleanupFinalizationDigest:
+                    stage.canonicalCleanupFinalizationDigest ?? null,
+                canonicalClosureEffectDigest:
+                    stage.canonicalClosureEffectDigest ?? null,
                 issueEvidenceDigest: computeQuiescenceDigest(issue),
                 stageEvidenceDigest: computeQuiescenceDigest(stage)
             }

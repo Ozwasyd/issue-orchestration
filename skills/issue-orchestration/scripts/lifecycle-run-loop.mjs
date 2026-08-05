@@ -840,6 +840,10 @@ export function lifecycleRunObservationContext(
         selectorDefinition: clone(facts.genesis.selectorDefinition),
         selectorReceipt: clone(facts.selectorReceipt),
         remoteSnapshotReceipt: clone(facts.remoteSnapshotReceipt),
+        controlLedgerHeadDigest:
+            facts.controlProjection.lastEventDigest,
+        controlProjectionDigest:
+            facts.controlProjection.controlProjectionDigest,
         lifecycleAuthority: clone(facts.lifecycleAuthority),
         repositoryBases: clone(
             facts.controlProjection.repositoryBases
@@ -1531,6 +1535,82 @@ export function recordLifecycleTerminalizationResult({
         action,
         result,
         node,
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
+function exactIdleFinalizationAction(authority, actionSet, action) {
+    exactCurrentActionSet(authority, actionSet)
+    if (action?.type !== 'idle' ||
+        actionSet?.quiescent !== true ||
+        actionSet.actions?.length !== 1) {
+        fail('lifecycle-finalization-action-invalid')
+    }
+    const current = actionSet.actions[0]
+    if (!sameValue(current, action)) {
+        fail('lifecycle-finalization-action-stale')
+    }
+    return action
+}
+
+export function recordLifecycleRunTerminalization({
+    ledger,
+    actionSet,
+    action,
+    terminalization,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactIdleFinalizationAction(authority, actionSet, action)
+    const facts = currentControlFacts(authority)
+    if (facts.controlProjection.terminal) {
+        fail('lifecycle-finalization-already-terminal')
+    }
+    const payload = requireObject(
+        terminalization,
+        'lifecycle-finalization-payload-invalid'
+    )
+    if (payload.schema !==
+            'issue-orchestration.run-terminalization.v1' ||
+        payload.status !== 'quiescent' ||
+        !Array.isArray(payload.violations) ||
+        payload.violations.length !== 0) {
+        fail('lifecycle-finalization-status-invalid')
+    }
+    if (payload.actionDigest !== action.actionDigest ||
+        payload.actionSetDigest !== actionSet.actionSetDigest ||
+        payload.aggregateProjectionDigest !==
+            action.bindings.aggregateProjectionDigest ||
+        payload.preTerminalControlEventDigest !==
+            facts.controlProjection.lastEventDigest) {
+        fail('lifecycle-finalization-binding-stale')
+    }
+    for (const field of [
+        'receiptDigest',
+        'observationDigest',
+        'verifierIdentityDigest',
+        'completedIssueEvidenceDigest'
+    ]) requireDigest(
+        payload[field],
+        `lifecycle-finalization-${field}-invalid`
+    )
+    const receipt = requireObject(
+        payload.quiescenceReceipt,
+        'lifecycle-finalization-receipt-invalid'
+    )
+    if (receipt.receiptDigest !== payload.receiptDigest ||
+        receipt.observationDigest !== payload.observationDigest ||
+        receipt.status !== 'quiescent' ||
+        !Array.isArray(receipt.violations) ||
+        receipt.violations.length !== 0) {
+        fail('lifecycle-finalization-receipt-stale')
+    }
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'run.terminalized',
+        payload,
         createdAt
     })
     return makeHandle(authority)

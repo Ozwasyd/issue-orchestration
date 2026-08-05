@@ -34,6 +34,12 @@ import {
     recordLifecycleClosureEffect
 } from '../../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
+    executeLifecycleQuiescenceFinalization
+} from '../../../skills/issue-orchestration/scripts/lifecycle-quiescence-finalizer.mjs'
+import {
+    QUIESCENCE_INVENTORY_NAMES
+} from '../../../skills/issue-orchestration/scripts/quiescence-observation-collector.mjs'
+import {
     executeLifecycleScopeRefresh,
     observeLifecycleRepositoryBaseBeforeAction
 } from '../../../skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs'
@@ -528,10 +534,6 @@ function applyRemoteDelivery({
             repository.work
         )
     }
-    for (const nodeId of members) {
-        issues[nodeId].state = 'CLOSED'
-        issues[nodeId].stateReason = 'COMPLETED'
-    }
     const effect = {
         effectId: localDigest({ groupId, commits }),
         commits,
@@ -642,6 +644,7 @@ function prepareScriptedCleanupClosures({
     ledger,
     actionSet,
     resourceRoot,
+    issues,
     startup,
     createdAt
 }) {
@@ -792,6 +795,13 @@ function prepareScriptedCleanupClosures({
             createdAt,
             startup
         })
+        const remoteIssue = issues[nodeId]
+        if (!remoteIssue) {
+            fail('multi-repository-e2e-cleanup-remote-issue-missing')
+        }
+        remoteIssue.state = 'CLOSED'
+        remoteIssue.stateReason = 'COMPLETED'
+        remoteIssue.updatedAt = createdAt
         preparedByNode.set(nodeId, {
             cleanupReceipt,
             deliveryControlReceipt,
@@ -928,7 +938,7 @@ function persist(stateRoot, ledger, startup) {
     })
 }
 
-export function runMultiRepositoryLifecycleAcceptance({
+export async function runMultiRepositoryLifecycleAcceptance({
     scenarioRoot
 } = {}) {
     const stateRoot = fs.mkdtempSync(path.join(
@@ -1237,6 +1247,7 @@ export function runMultiRepositoryLifecycleAcceptance({
                 ledger,
                 actionSet,
                 resourceRoot,
+                issues,
                 startup,
                 createdAt:
                     `2026-08-04T01:${String(loopCount).padStart(2, '0')}:00.000Z`
@@ -1330,10 +1341,10 @@ export function runMultiRepositoryLifecycleAcceptance({
     }
 
     const finalActionSet = compileLifecycleRunActionSet(ledger, { startup })
-    const final = projectLifecycleRun(ledger, { startup })
+    const finalBeforeTermination = projectLifecycleRun(ledger, { startup })
     if (!finalActionSet.quiescent ||
         !dependencySelectedAfterClosure ||
-        Object.values(final.state.nodes).some(
+        Object.values(finalBeforeTermination.state.nodes).some(
             ({ lifecycleState }) => lifecycleState !== 'closed'
         )) {
         fail('multi-repository-e2e-not-quiescent')
@@ -1373,6 +1384,76 @@ export function runMultiRepositoryLifecycleAcceptance({
         }
     }
 
+    const inventoryRecords = Object.fromEntries(
+        QUIESCENCE_INVENTORY_NAMES.map((name) => [name, []])
+    )
+    const finalRemoteSnapshotDigest = digest(
+        Object.values(issues)
+            .sort((left, right) => issueId(left).localeCompare(issueId(right)))
+            .map((issue) => ({
+                target: issueId(issue),
+                state: issue.state,
+                stateReason: issue.stateReason,
+                updatedAt: issue.updatedAt
+            }))
+    )
+    const finalizationObserver = {
+        async observeFinalizationFacts({ action, targetIssueSet }) {
+            const observation = {
+                schema:
+                    'issue-orchestration.lifecycle-finalization-observation.v1',
+                producerAuthority:
+                    'independent-machine-inventory-verifier',
+                rootAuthored: false,
+                callerAuthored: false,
+                actionDigest: action.actionDigest,
+                runId: action.bindings.runId,
+                actorId: 'multi-repository-quiescence-verifier',
+                machineId: 'multi-repository-e2e-machine',
+                machineIdentityDigest:
+                    digest('multi-repository-e2e-machine'),
+                remoteSnapshotDigest: finalRemoteSnapshotDigest,
+                resolvedTargetIssueSet: [...targetIssueSet].sort(),
+                selectorObservationDigest: digest({
+                    targetIssueSet: [...targetIssueSet].sort(),
+                    remoteSnapshotDigest: finalRemoteSnapshotDigest
+                }),
+                remoteIssues: targetIssueSet.map((target) => {
+                    const issue = Object.values(issues).find(
+                        (candidate) => issueId(candidate) === target
+                    )
+                    if (!issue) fail('multi-repository-e2e-final-issue-missing')
+                    return {
+                        target,
+                        state: issue.state.toLowerCase(),
+                        stateReason: issue.stateReason?.toLowerCase() ?? null,
+                        remoteSnapshotDigest: finalRemoteSnapshotDigest
+                    }
+                }),
+                inventoryRecords: structuredClone(inventoryRecords)
+            }
+            observation.observationDigest = digest(observation)
+            return Object.freeze(observation)
+        }
+    }
+    const finalized = await executeLifecycleQuiescenceFinalization({
+        ledger,
+        actionSet: finalActionSet,
+        action: finalActionSet.actions[0],
+        observer: finalizationObserver,
+        createdAt: '2026-08-04T02:00:00.000Z',
+        startup,
+        stateRootPath: stateRoot,
+        runtimeTrustBinding: lifecycleAuthority.runtimeTrustBinding,
+        repositoryTargets: lifecycleAuthority.repositoryTargets
+    })
+    if (finalized.status !== 'terminalized') {
+        fail('multi-repository-e2e-finalization-rejected', {
+            violations: finalized.violations
+        })
+    }
+    ledger = finalized.ledger
+    const final = projectLifecycleRun(ledger, { startup })
     const finalNodes = final.state.nodes
     const receipt = {
         schema: RECEIPT_SCHEMA,
@@ -1433,14 +1514,16 @@ export function runMultiRepositoryLifecycleAcceptance({
             final.aggregateProjection.nodes
         ).filter(({ activeAttemptId }) =>
             activeAttemptId !== null).length,
-        activeLeaseCount: 0,
-        residualWorktreeCount: 0,
-        residualBranchCount: 0,
         residualTemporaryResourceCount:
             fs.readdirSync(resourceRoot).length,
         networkInvocationCount: 0,
         paidModelInvocationCount: 0,
-        quiescent: true
+        quiescenceReceiptDigest: finalized.receipt.receiptDigest,
+        quiescenceObservationDigest:
+            finalized.receipt.observationDigest,
+        runTerminalized:
+            final.aggregateProjection.terminal?.receiptDigest ===
+                finalized.receipt.receiptDigest
     }
     receipt.receiptDigest = digest(receipt)
     return Object.freeze(receipt)

@@ -2,8 +2,8 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "c6707e1cd79f2a27100577cebc513941cbf41f99",
-    "sourceTreeDigest": "f98acdfbe87225d4f39d765677e8e4faf5a776dbdd722d84bbef3cc4408d5398",
+    "sourceCommit": "61b12073e35ad8880525f0d206397bbfe5da0dc6",
+    "sourceTreeDigest": "d272f6a32160b033e3a3d79e7a942c7760937dd9fd52c6044ac93db1ac58a118",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
     "agentDigests": {
@@ -304,16 +304,17 @@
         "skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs": "146626af27ecb33d6d8bf21d2fb8d32504c05e9a115f14112d79f4d8fc91a012",
         "skills/issue-orchestration/scripts/lifecycle-observe-only-executor.mjs": "22cbd131f76bd5c8dc8f465600e5699dd19232f015613f6aaad15a129915e9ae",
         "skills/issue-orchestration/scripts/lifecycle-prewriter-executor.mjs": "199ab42b2a9af6c77013f6da5e6330a69614ff0d1db93fef3b9fb7379bf98861",
-        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "1ed3684a325e20db5e4703b99819ce1de8abaf9571f972b51b30c69bda8eae11",
+        "skills/issue-orchestration/scripts/lifecycle-quiescence-finalizer.mjs": "64286456626a2094fb381db4488dd8a056190e93ccd83bfd31de1e7938420a5d",
+        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "1f62da714ccf3c22bb485f8470febaff93f52d8f6333f49bcea62332970c6892",
         "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "3531b29ff9a92f0f4a342e9d510d0eede210a157b9752127329474c80603f7fa",
         "skills/issue-orchestration/scripts/lifecycle-state-machine.mjs": "a49215ff410e2eb474e6a7acf11e899b371c675348e4b5efa0819dad18c6066d",
         "skills/issue-orchestration/scripts/lifecycle-terminalization-executor.mjs": "c290676fe3bfdfa44c42ec098fefa2c9fe8fcebea784c9e2061b3894340b6c87",
         "skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs": "75e96ada62e332a55d7685d914ffd159681327b300d418b6ed684143a1b76439",
         "skills/issue-orchestration/scripts/lifecycle-writer-executor.mjs": "f8b703e31a562b936d5121ebf55dd520c0a6ef0b26fdbf59e5c790b7c89169bc",
-        "skills/issue-orchestration/scripts/multi-node-state.mjs": "2cf3ae568b46b0692fc25240098bcc4456947fc9e035a2e55cc880be95b51686",
+        "skills/issue-orchestration/scripts/multi-node-state.mjs": "31684fba7b58c5d2b1d7ecc4bd11eaf7c7fde0849bf756994ba3223816f9e858",
         "skills/issue-orchestration/scripts/permanent-e2e.mjs": "5da73b668273cbc713312d5556d97325e4a70fd49cccc39a654022e642eabbe8",
-        "skills/issue-orchestration/scripts/quiescence-observation-collector.mjs": "b3996fb1520ad195d23587839e02811d0ff67f297dae878884ee509cf658cede",
-        "skills/issue-orchestration/scripts/quiescence.mjs": "6e9fde13332c46c3e2556bf41e5214642323d8184b102c61d8bf7eb9bbb114aa",
+        "skills/issue-orchestration/scripts/quiescence-observation-collector.mjs": "f1647839037f9a09d34badb1fdb3dc6bda89d2634b2a3bbb97d254e2e87559cb",
+        "skills/issue-orchestration/scripts/quiescence.mjs": "e96b6b170328c5248e3d7a61551cdf293ae32d388c38aff9a9f707d226fac1ea",
         "skills/issue-orchestration/scripts/remote-mutation-authority.mjs": "9426e52a61198f412747dd891823924a02dd678c1fe0edb67d6ab8199d35064b",
         "skills/issue-orchestration/scripts/repository-landing-lane.mjs": "766d1525f5a3d414f2a28552ba4472a0af6700f46f2337eeb597f85a5ff5a027",
         "skills/issue-orchestration/scripts/resource-lifecycle.mjs": "099d5939984140770eec24521084ac956381a21bab28a2a1b6ecfe789f1febb2",
@@ -339,5 +340,5 @@
         "skills/issue-orchestration/SKILL.md": "e9f8030ef5ee3da378405fc7615b90c02ba43d847b5b68ac984672ecc17402e9",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "ec7ff94ee994ba8e9a417bbf7f755d52c0c56fe86c39b51d40883a767c9dd649"
+    "manifestDigest": "212842ae51d46372db734ea6b6b118aa6c7818adef4f0377f2200df92c953b38"
 }
