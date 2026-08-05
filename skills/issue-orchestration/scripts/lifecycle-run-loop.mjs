@@ -53,6 +53,16 @@ const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
 const AUTHORITY_CONTEXT = Symbol('lifecycle-authority-context')
 const CONTROL_FACTS_CACHE = Symbol('lifecycle-control-facts-cache')
+const DISPATCHABLE_ACTION_TYPES = new Set([
+    'request-semantic-proposal',
+    'request-test-contract-planning',
+    'dispatch-test-contract-writer',
+    'dispatch-implementation-writer',
+    'dispatch-behavior-verifier',
+    'request-ui-adjudication',
+    'dispatch-ux-acceptance-verifier',
+    'dispatch-documentation-writer'
+])
 
 export class LifecycleRunLoopError extends Error {
     constructor(code, message = code, details = {}) {
@@ -1614,6 +1624,282 @@ export function recordLifecycleRunTerminalization({
         createdAt
     })
     return makeHandle(authority)
+}
+
+export function recordLifecycleDispatchBatchStarted({
+    ledger,
+    actionSet,
+    dispatches,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCurrentActionSet(authority, actionSet)
+    if (!Array.isArray(dispatches) || dispatches.length === 0) {
+        fail('lifecycle-dispatch-batch-empty')
+    }
+    const actorActions = actionSet.actions.filter(({ type }) =>
+        DISPATCHABLE_ACTION_TYPES.has(type))
+    if (actorActions.length !== dispatches.length ||
+        actorActions.length === 0) {
+        fail('lifecycle-dispatch-batch-incomplete')
+    }
+    const metadataByDigest = new Map()
+    for (const metadata of dispatches) {
+        requireObject(metadata, 'lifecycle-dispatch-metadata-invalid')
+        const actionDigest = requireDigest(
+            metadata.actionDigest,
+            'lifecycle-dispatch-action-digest-invalid'
+        )
+        if (metadataByDigest.has(actionDigest)) {
+            fail('lifecycle-dispatch-metadata-duplicate')
+        }
+        metadataByDigest.set(actionDigest, metadata)
+    }
+    const receipts = actorActions.map((action) => {
+        const metadata = metadataByDigest.get(action.actionDigest)
+        if (!metadata) fail('lifecycle-dispatch-batch-incomplete')
+        for (const [field, code] of [
+            ['owner', 'lifecycle-dispatch-owner-invalid'],
+            ['attemptId', 'lifecycle-dispatch-attempt-invalid'],
+            ['slotId', 'lifecycle-dispatch-slot-invalid']
+        ]) requireText(metadata[field], code)
+        for (const [field, code] of [
+            ['runtimeBindingDigest', 'lifecycle-dispatch-runtime-invalid'],
+            ['leaseDigest', 'lifecycle-dispatch-lease-invalid'],
+            ['resourceDigest', 'lifecycle-dispatch-resource-invalid']
+        ]) requireDigest(metadata[field], code)
+        if (metadata.nodeId !== action.nodeId) {
+            fail('lifecycle-dispatch-node-mismatch')
+        }
+        const receipt = {
+            schema: 'issue-orchestration.lifecycle-dispatch-start.v1',
+            dispatchId: `dispatch:${digest({
+                runId: authority.runId,
+                actionDigest: action.actionDigest,
+                attemptId: metadata.attemptId,
+                slotId: metadata.slotId
+            })}`,
+            actionDigest: action.actionDigest,
+            actionSetDigest: actionSet.actionSetDigest,
+            actionBindingsDigest: digest(action.bindings),
+            actionType: action.type,
+            owner: metadata.owner,
+            executionClass: 'actor',
+            nodeId: action.nodeId,
+            attemptId: metadata.attemptId,
+            slotId: metadata.slotId,
+            runtimeBindingDigest: metadata.runtimeBindingDigest,
+            leaseDigest: metadata.leaseDigest,
+            resourceDigest: metadata.resourceDigest,
+            action: clone(action),
+            actionSet: clone(actionSet),
+            startedAt: createdAt
+        }
+        receipt.receiptDigest = digest(receipt)
+        return Object.freeze(receipt)
+    })
+    const batch = {
+        schema: 'issue-orchestration.lifecycle-dispatch-batch.v1',
+        actionSetDigest: actionSet.actionSetDigest,
+        actionDigests: receipts.map(({ actionDigest }) => actionDigest).sort(),
+        dispatchIds: receipts.map(({ dispatchId }) => dispatchId).sort(),
+        createdAt
+    }
+    batch.batchDigest = digest(batch)
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'dispatch-batch.recorded',
+        payload: batch,
+        createdAt
+    })
+    for (const receipt of receipts) {
+        appendCanonicalControlEvent({
+            authority,
+            eventType: 'dispatch.action-started',
+            payload: receipt,
+            createdAt
+        })
+    }
+    return Object.freeze({
+        ledger: makeHandle(authority),
+        batch: Object.freeze(batch),
+        dispatches: Object.freeze(receipts)
+    })
+}
+
+function currentNodeForDispatchedResult(authority, action) {
+    const facts = currentControlFacts(authority)
+    const recovered = recoverAggregateRunState(authority)
+    const registration = facts.controlProjection.nodes[action.nodeId]
+    const entry = recovered.nodeIndex.nodes[action.nodeId]
+    const nodeProjection = recovered.nodeProjections[action.nodeId]
+    const node = currentCompatibilityState({
+        ...facts,
+        recovered,
+        semanticGraph: currentSemanticGraph({
+            ...facts,
+            recovered
+        })
+    }).nodes[action.nodeId]
+    if (!registration || entry?.status !== 'verified' || !nodeProjection ||
+        !node) {
+        fail('lifecycle-dispatch-node-unavailable')
+    }
+    const binding = facts.lifecycleAuthority.binding
+    const expected = {
+        runId: authority.runId,
+        nodeId: registration.nodeId,
+        memberId: registration.memberId,
+        repository: registration.repository,
+        issueNumber: registration.issueNumber,
+        baseSha: registration.baseSha,
+        nodeEpoch: registration.nodeEpoch,
+        selectorReceiptDigest: facts.selectorReceipt.receiptDigest,
+        remoteSnapshotDigest: facts.remoteSnapshotReceipt.receiptDigest,
+        nodeProjectionDigest: entry.projectionDigest,
+        priorLedgerHeadDigest: entry.ledgerHeadDigest,
+        policyDigest: facts.genesis.installedPolicy.policyDigest,
+        runtimeCapabilityBindingDigest:
+            facts.lifecycleAuthority.runtimeCapabilityBinding.bindingDigest,
+        lifecycleAuthorityBindingDigest: binding.bindingDigest,
+        startupAttestationDigest: binding.startupAttestationDigest,
+        runtimeInvocationId: binding.runtimeInvocationId,
+        runtimeSessionId: binding.runtimeSessionId,
+        rootAuthorityEpoch: binding.rootAuthorityEpoch,
+        runtimeTrustBindingDigest: binding.runtimeTrustBindingDigest,
+        repositoryIdentitySetDigest: binding.repositoryIdentitySetDigest,
+        repositoryBindingSetDigest: binding.repositoryBindingSetDigest,
+        repositoryBindingDigest: registration.repositoryBindingDigest,
+        packageDigest: binding.packageDigest,
+        manifestDigest: binding.manifestDigest,
+        policySetDigest: binding.policySetDigest
+    }
+    for (const [field, value] of Object.entries(expected)) {
+        if (!sameValue(action.bindings[field], value)) {
+            fail('lifecycle-dispatch-result-stale', { field })
+        }
+    }
+    return { node, nodeProjection }
+}
+
+function existingDispatchedNodeEvent(authority, dispatch, result) {
+    const ledger = readCanonicalNodeLedger({
+        ...authority,
+        nodeId: dispatch.nodeId,
+        nodeEpoch: dispatch.action.bindings.nodeEpoch
+    })
+    return ledger.events.find((event) =>
+        event.payload?.action?.actionDigest === dispatch.actionDigest &&
+        event.payload?.stageResult?.resultDigest === result.resultDigest)
+        ?? null
+}
+
+export function recordLifecycleDispatchedActionResult({
+    ledger,
+    dispatchId,
+    result,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    requireText(dispatchId, 'lifecycle-dispatch-id-invalid')
+    requireObject(result, 'lifecycle-stage-result-invalid')
+    requireDigest(
+        result.resultDigest,
+        'lifecycle-dispatch-result-digest-invalid'
+    )
+    const facts = currentControlFacts(authority)
+    const dispatch = facts.controlProjection.activeDispatches[dispatchId]
+    if (!dispatch) fail('lifecycle-dispatch-not-active')
+    if (dispatch.actionDigest !== result.actionDigest ||
+        dispatch.attemptId !== result.attemptId) {
+        fail('lifecycle-dispatch-result-identity-mismatch')
+    }
+    const action = dispatch.action
+    const actionSet = dispatch.actionSet
+    let effect = null
+    const existing = existingDispatchedNodeEvent(
+        authority,
+        dispatch,
+        result
+    )
+    if (existing && !sameValue(existing.payload.stageResult, result)) {
+        fail('lifecycle-dispatch-result-replay-mismatch')
+    }
+    if (!existing) {
+        const { node } = currentNodeForDispatchedResult(authority, action)
+        validateLifecycleStageResult({ result, action, node })
+        effect = appendCanonicalNodeResult({
+            authority,
+            actionSet,
+            action,
+            result,
+            node,
+            createdAt
+        })
+    }
+    const settlement = {
+        schema: 'issue-orchestration.lifecycle-dispatch-settlement.v1',
+        dispatchId,
+        actionDigest: dispatch.actionDigest,
+        resultDigest: result.resultDigest,
+        outcome: 'completed',
+        settledAt: createdAt
+    }
+    settlement.settlementDigest = digest(settlement)
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'dispatch.action-settled',
+        payload: settlement,
+        createdAt
+    })
+    return Object.freeze({
+        ledger: makeHandle(authority),
+        effect,
+        replayedExistingResult: existing !== null
+    })
+}
+
+export function recordLifecycleCurrentActionResult({
+    ledger,
+    actionSet,
+    actionDigest,
+    result,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCurrentActionSet(authority, actionSet)
+    const action = actionSet.actions.find((candidate) =>
+        candidate.actionDigest === actionDigest)
+    if (!action) fail('lifecycle-current-action-missing')
+    if (DISPATCHABLE_ACTION_TYPES.has(action.type) ||
+        action.type !== 'compile-acceptance-contract') {
+        fail('lifecycle-current-action-recorder-forbidden')
+    }
+    requireObject(result, 'lifecycle-stage-result-invalid')
+    if (result.actionDigest !== action.actionDigest) {
+        fail('lifecycle-current-action-result-mismatch')
+    }
+    const projected = projectLifecycleRun(authority, {
+        startup: authority.startup
+    })
+    const node = projected.state.nodes[action.nodeId]
+    if (!node) fail('lifecycle-current-action-node-missing')
+    validateLifecycleStageResult({ result, action, node })
+    const effect = appendCanonicalNodeResult({
+        authority,
+        actionSet,
+        action,
+        result,
+        node,
+        createdAt
+    })
+    return Object.freeze({
+        ledger: makeHandle(authority),
+        effect
+    })
 }
 
 export function recordLifecycleActionResults({

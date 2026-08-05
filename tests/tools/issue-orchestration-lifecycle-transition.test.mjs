@@ -572,7 +572,7 @@ test('unverified projections and caller-authored stage state fail closed', () =>
 })
 
 
-test('root Skill cannot bypass the lifecycle compiler or hand-author actions', () => {
+test('root Skill invokes only the canonical production dispatcher', () => {
     const skill = fs.readFileSync(
         path.join(root, 'skills/issue-orchestration/SKILL.md'),
         'utf8'
@@ -584,11 +584,13 @@ test('root Skill cannot bypass the lifecycle compiler or hand-author actions', (
         ),
         'utf8'
     )
-    assert.match(skill, /compileLifecycleActionSet/u)
-    assert.match(skill, /Root 不得手选 stage、手写 action/u)
-    assert.match(skill, /直到它返回 canonical quiescent `idle`/u)
+    assert.match(skill, /runLifecycleProductionDispatcher/u)
+    assert.match(skill, /Root 不选择 action、stage、handler/u)
+    assert.match(skill, /普通 `idle` 只能交给 quiescence finalization owner/u)
     assert.match(reference, /lifecycle-action-set\.v1/u)
+    assert.match(reference, /唯一可执行桥梁/u)
     assert.match(reference, /纯函数/u)
+    assert.doesNotMatch(skill, /Root 逐项机械执行/u)
     assert.doesNotMatch(skill, /手工选择下一 stage/u)
 })
 

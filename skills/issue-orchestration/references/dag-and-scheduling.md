@@ -119,13 +119,13 @@ DAG 至少记录：
 
 compiler 返回 canonical `lifecycle-action-set.v1`。所有非 `idle` action 都必须绑定 run/node/repository/issue/base/epoch、selector/remote/graph/aggregate digest、node projection digest、prior ledger head、policy/capability digest，以及当前已验证的 route/plan/slice/prompt/resource/receipt digests。它是纯函数：不得 spawn agent、调用 Git/GitHub、修改文件、选择 canonical routing 之外的模型或充当 daemon。
 
-Root 主循环固定为：执行 action set → 写入 verified result → 重放 control/node ledgers → 重建 aggregate projection → 再次编译。active attempt 或 exclusive lease 抑制重复 dispatch；空闲槽位必须被独立 ready 节点填满；stale remote facts 只能先返回 `refresh-scope`；acceptance group 只有全部 required members green 且 exactly-once delivery 未完成时才能交付。只有 canonical `idle` 才表示 quiescence。
+`lifecycle-production-dispatcher.mjs` 是 action set 到 production owner 的唯一可执行桥梁。dispatcher 固定执行：复核 startup/trust authority → 重放 control/node ledgers → live scope/base freshness → 编译并逐字验证 action set → 按冻结穷尽映射执行 production owner → 通过专用 recorder 写入 verified event → 立即重放、重编译和补位。actor attempt 必须在等待结果前落盘 slot/lease/resource/runtime binding；active dispatch 抑制重复派发。Root 不得读取 action set 后自行选择 handler 或直接调用 action-family executor。canonical `idle` 只授权 quiescence finalizer，直到 `run.terminalized` 成功追加并重放才表示整轮终止。
 
 ## 工作守恒
 
-存在 `ready` writer stage、已验证的下一 executable slice 且有空闲槽位时，下一次调度动作必须派发该 slice；不得以等待、轮询或汇总代替派发。完整 issue、完整 stage 或手写 prompt 不是 dispatch unit。只在没有可执行 slice、没有空闲槽位或需要完成一次不可并行的根代理交付动作时等待。
+存在 `ready` writer stage、已验证的下一 executable slice 且有空闲槽位时，dispatcher 的下一次动作必须派发该 slice；不得以等待、轮询或汇总代替派发。完整 issue、完整 stage 或手写 prompt 不是 dispatch unit。只在没有可执行 slice、没有空闲槽位或需要完成一次不可并行的根代理交付动作时等待。
 
-预计超过 5 分钟的 build、Fresh、consumer、visual 或性能任务启动后，立即返回调度循环，为其他独立 `ready` 节点分配空闲槽位。长任务只占自己的槽位；不得让根线程只轮询它。
+预计超过 5 分钟的 build、Fresh、consumer、visual 或性能任务启动后，立即返回调度循环，为其他独立 `ready` 节点分配空闲槽位。长任务只占自己的 canonical dispatch 槽位；dispatcher 必须在任一独立结果到达后立即重放并补位，不得等待整批或让根线程只轮询它。
 
 `subagentSlotsEffective` 取运行时实际 V2 capacity、调用者显式上限和环境资源上限三者的最小值。每个 active slice writer、independent verifier/adjudicator 或仍运行的长任务各占一个 agent 槽位。槽位满时才等待最早能改变 DAG 的事件。
 
