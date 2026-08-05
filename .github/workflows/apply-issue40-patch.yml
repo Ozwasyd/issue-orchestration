@@ -6,12 +6,20 @@ on:
       - agent/issue-40-delivery-executor
     paths:
       - .github/workflows/apply-issue40-patch.yml
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.head_ref == 'agent/issue-40-delivery-executor' || github.ref_name == 'agent/issue-40-delivery-executor'
     runs-on: ubuntu-latest
     steps:
       - name: Check out patch branch
