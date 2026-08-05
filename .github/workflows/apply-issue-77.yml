@@ -1,0 +1,31 @@
+name: Apply issue 77 branch patch
+
+on:
+  push:
+    branches:
+      - issue-77-remove-luna-model-pool
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Apply verified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/issue-77.patch.part-* | base64 --decode | gzip --decompress > /tmp/issue-77.patch
+          git apply --binary --index /tmp/issue-77.patch
+          rm -f .github/issue-77.patch.part-* .github/workflows/apply-issue-77.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Remove Luna from production model routing (#77)"
+          git push origin HEAD:issue-77-remove-luna-model-pool
