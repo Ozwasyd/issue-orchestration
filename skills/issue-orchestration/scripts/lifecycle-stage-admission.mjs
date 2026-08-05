@@ -786,8 +786,41 @@ const DOCUMENTATION_CHANGE_ARTIFACTS = Object.freeze({
     mutationPostcondition: COMMON.mutationPostcondition
 })
 
+const DOCUMENTATION_INSPECTION_RUNTIME = artifact({
+    schema:
+        'issue-orchestration.runtime-inspection-binding.v1',
+    digestField: 'bindingDigest',
+    producerAuthority: 'runtime-inspection-binding-validator',
+    validator: 'validateRuntimeInspectionBinding',
+    evidence: (value) => {
+        commonEvidence(value, 'runtime-inspection-binding')
+        text(value.actorInvocationId,
+            'lifecycle-runtime-inspection-invocation-required')
+        text(value.actorSessionId,
+            'lifecycle-runtime-inspection-session-required')
+        text(value.runtimeId,
+            'lifecycle-runtime-inspection-runtime-required')
+        text(value.runtimeVersion,
+            'lifecycle-runtime-inspection-version-required')
+        text(value.effectiveBackend,
+            'lifecycle-runtime-inspection-backend-required')
+        text(value.effectivePermissionProfile,
+            'lifecycle-runtime-inspection-permission-required')
+        hash(value.executionObservationDigest,
+            'lifecycle-runtime-inspection-observation-required')
+        hash(value.repositoryInspectionDigest,
+            'lifecycle-runtime-inspection-repository-required')
+        if (value.inspectionKind !== 'documentation-no-change' ||
+            value.executionClass !== 'observe-only' ||
+            value.writerSpawned !== false ||
+            value.writeLeaseAcquired !== false) {
+            fail('lifecycle-runtime-inspection-authority-exceeded')
+        }
+    }
+})
+
 const DOCUMENTATION_NO_CHANGE_ARTIFACTS = Object.freeze({
-    runtimeBinding: COMMON.runtimeBinding,
+    runtimeBinding: DOCUMENTATION_INSPECTION_RUNTIME,
     documentation: artifact({
         schema: 'issue-orchestration.completion-evidence.v1',
         producerAuthority: 'documentation-terminal-validator',

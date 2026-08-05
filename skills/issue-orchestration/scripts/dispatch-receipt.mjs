@@ -283,7 +283,8 @@ function expectedV2Route(input) {
                 undefined,
             machineFrontierEvidence: input.machineFrontierEvidence ??
                 undefined,
-            frontierException: input.frontierException === true
+            frontierException: input.frontierException === true,
+            documentationClass: input.documentationClass ?? null
         })
         const shape = bundle.executionShapeClassification
         const requirement = bundle.stageCapabilityRequirement

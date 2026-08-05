@@ -134,6 +134,20 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
         effectivePermissionProfile: 'observe-or-stage-bounded',
         executionObservationDigest: h('runtime-observation')
     })
+    const runtimeInspection = () => put('runtimeBinding', {
+        actorInvocationId,
+        actorSessionId: `${attemptId ?? id}:session`,
+        runtimeId: 'codex',
+        runtimeVersion: 'codex-cli-2026.08',
+        effectiveBackend: 'v2',
+        effectivePermissionProfile: 'danger-full-access',
+        executionObservationDigest: h('runtime-inspection-observation'),
+        repositoryInspectionDigest: h('documentation-repository-inspection'),
+        inspectionKind: 'documentation-no-change',
+        executionClass: 'observe-only',
+        writerSpawned: false,
+        writeLeaseAcquired: false
+    })
     const mutation = () => put('mutationPostcondition', {
         status: 'verified',
         violations: [],
@@ -434,7 +448,7 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
             break
         }
         case 'documentation-no-change': {
-            runtime()
+            runtimeInspection()
             put('documentation', {
                 mode: 'no-change',
                 acceptanceContractDigest:
