@@ -45,6 +45,9 @@ import {
     executeLifecycleQuiescenceFinalization,
     lifecycleQuiescenceFinalizationActionTypes
 } from './lifecycle-quiescence-finalizer.mjs'
+import {
+    createDispatcherPerformanceCollector
+} from './dispatcher-performance-telemetry.mjs'
 
 const ACTOR_ACTION_TYPES = new Set([
     'request-semantic-proposal',
@@ -95,6 +98,54 @@ function timestamp(clock) {
         fail('dispatcher-clock-invalid')
     }
     return value
+}
+
+function performanceConfiguration(value, ledger) {
+    if (value === undefined || value === null || value === false) return null
+    const configuration = value === true ? {} : object(
+        value,
+        'dispatcher-performance-configuration-invalid'
+    )
+    if (configuration.clock !== undefined &&
+        typeof configuration.clock !== 'function') {
+        fail('dispatcher-performance-clock-invalid')
+    }
+    if (configuration.onReceipt !== undefined &&
+        typeof configuration.onReceipt !== 'function') {
+        fail('dispatcher-performance-sink-invalid')
+    }
+    return Object.freeze({
+        collector: createDispatcherPerformanceCollector({
+            runId: ledger.runId,
+            stateRoot: ledger.stateRoot,
+            clock: configuration.clock
+        }),
+        onReceipt: configuration.onReceipt ?? null
+    })
+}
+
+function measuredProjection(telemetry, ledger, startup, boundary) {
+    if (!telemetry) return projectLifecycleRun(ledger, { startup })
+    return telemetry.measureSync(
+        ['canonicalReplay', 'aggregateProjectionRebuild'],
+        { boundary },
+        () => projectLifecycleRun(ledger, { startup }),
+        { ledgerRead: true }
+    )
+}
+
+function measuredActionSet(telemetry, ledger, startup, boundary) {
+    if (!telemetry) return compileLifecycleRunActionSet(ledger, { startup })
+    return telemetry.measureSync(
+        [
+            'canonicalReplay',
+            'aggregateProjectionRebuild',
+            'actionSetCompilation'
+        ],
+        { boundary },
+        () => compileLifecycleRunActionSet(ledger, { startup }),
+        { ledgerRead: true }
+    )
 }
 
 function direct(owner, executionClass, execute) {
@@ -300,10 +351,16 @@ async function prepareAction({
     actionSet,
     ledger,
     startup,
-    createdAt
+    createdAt,
+    telemetry
 }) {
-    const projection = projectLifecycleRun(ledger, { startup })
-    const prepared = object(await contextProvider.prepare(Object.freeze({
+    const projection = measuredProjection(
+        telemetry,
+        ledger,
+        startup,
+        'context-preparation-projection'
+    )
+    const request = Object.freeze({
         schema: 'issue-orchestration.dispatch-context-request.v1',
         owner: entry.owner,
         executionClass: entry.executionClass,
@@ -313,7 +370,25 @@ async function prepareAction({
         projection,
         startup,
         createdAt
-    })), 'dispatcher-context-preparation-invalid')
+    })
+    const prepare = () => contextProvider.prepare(request)
+    const preparedValue = telemetry
+        ? await telemetry.measureAsync(
+            ['contextPreparation'],
+            {
+                boundary: 'context-provider-prepare',
+                actionDigest: action.actionDigest,
+                actionType: action.type,
+                nodeId: action.nodeId
+            },
+            prepare,
+            { context: request }
+        )
+        : await prepare()
+    const prepared = object(
+        preparedValue,
+        'dispatcher-context-preparation-invalid'
+    )
     return {
         context: canonicalContext({
             prepared,
@@ -329,14 +404,35 @@ async function prepareAction({
     }
 }
 
-async function observeBases({ ledger, actionSet, action, startup, createdAt }) {
-    const result = observeLifecycleRepositoryBaseBeforeAction({
+async function observeBases({
+    ledger,
+    actionSet,
+    action,
+    startup,
+    createdAt,
+    telemetry
+}) {
+    const observe = () => observeLifecycleRepositoryBaseBeforeAction({
         ledger,
         actionSet,
         actionDigest: action.actionDigest,
         startup,
         createdAt
     })
+    const metadata = {
+        boundary: 'repository-base-before-action',
+        actionDigest: action.actionDigest,
+        actionType: action.type,
+        nodeId: action.nodeId,
+        repositories: telemetry?.repositoriesForAction(action) ?? []
+    }
+    const result = telemetry
+        ? telemetry.measureSync(
+            ['repositoryBaseObservation'],
+            metadata,
+            observe
+        )
+        : observe()
     if (result.status === 'rebound') {
         return { rebound: true, ledger: result.ledger }
     }
@@ -346,18 +442,25 @@ async function observeBases({ ledger, actionSet, action, startup, createdAt }) {
     return { rebound: false, ledger }
 }
 
-function completion(promise, dispatchId, entry) {
+function completion(promise, dispatchId, entry, telemetry = null) {
     return Promise.resolve(promise).then(
-        (output) => ({
-            status: 'fulfilled',
-            dispatchId,
-            result: normalizeActorResult(entry, output)
-        }),
-        (error) => ({
-            status: 'rejected',
-            dispatchId,
-            error
-        })
+        (output) => {
+            const result = normalizeActorResult(entry, output)
+            telemetry?.recordActorCompletion(dispatchId, 'fulfilled')
+            return {
+                status: 'fulfilled',
+                dispatchId,
+                result
+            }
+        },
+        (error) => {
+            telemetry?.recordActorCompletion(dispatchId, 'rejected')
+            return {
+                status: 'rejected',
+                dispatchId,
+                error
+            }
+        }
     )
 }
 
@@ -368,7 +471,8 @@ async function startActorWave({
     contextProvider,
     startup,
     clock,
-    running
+    running,
+    telemetry
 }) {
     let currentLedger = ledger
     for (const action of actions) {
@@ -377,7 +481,8 @@ async function startActorWave({
             actionSet,
             action,
             startup,
-            createdAt: timestamp(clock)
+            createdAt: timestamp(clock),
+            telemetry
         })
         if (observed.rebound) {
             return { rebound: true, ledger: observed.ledger }
@@ -394,17 +499,26 @@ async function startActorWave({
             actionSet,
             ledger: currentLedger,
             startup,
-            createdAt
+            createdAt,
+            telemetry
         })
         prepared.push({ action, entry, ...value })
     }
-    const started = recordLifecycleDispatchBatchStarted({
+    const recordStarted = () => recordLifecycleDispatchBatchStarted({
         ledger: currentLedger,
         actionSet,
         dispatches: prepared.map(({ metadata }) => metadata),
         createdAt,
         startup
     })
+    const started = telemetry
+        ? telemetry.measureSync(
+            ['canonicalReplay', 'aggregateProjectionRebuild'],
+            { boundary: 'dispatch-batch-start-admission' },
+            recordStarted,
+            { ledgerRead: true }
+        )
+        : recordStarted()
     currentLedger = started.ledger
     const receiptByAction = new Map(started.dispatches.map((receipt) => [
         receipt.actionDigest,
@@ -412,10 +526,18 @@ async function startActorWave({
     ]))
     for (const item of prepared) {
         const receipt = receiptByAction.get(item.action.actionDigest)
+        telemetry?.recordActorStart({
+            dispatchId: receipt.dispatchId,
+            actionDigest: item.action.actionDigest,
+            actionType: item.action.type,
+            nodeId: item.action.nodeId,
+            activeSlots: running.size + 1
+        })
         const promise = completion(
             Promise.resolve().then(() => item.entry.execute(item.context)),
             receipt.dispatchId,
-            item.entry
+            item.entry,
+            telemetry
         )
         running.set(receipt.dispatchId, {
             dispatch: receipt,
@@ -430,12 +552,25 @@ async function recoverRunning({
     contextProvider,
     startup,
     clock,
-    running
+    running,
+    telemetry
 }) {
-    const projection = projectLifecycleRun(ledger, { startup })
+    const projection = measuredProjection(
+        telemetry,
+        ledger,
+        startup,
+        'recover-active-dispatches'
+    )
     const active = Object.values(
         projection.aggregateProjection.activeDispatches ?? {}
     )
+    const capacity = projection.aggregateProjection.slots?.capacity ?? 0
+    telemetry?.recordSlotSnapshot({
+        reason: 'recovery-observation',
+        capacity,
+        active: active.length,
+        available: Math.max(0, capacity - active.length)
+    })
     if (active.length === 0) return
     if (typeof contextProvider.recoverActiveDispatch !== 'function') {
         fail('dispatcher-active-recovery-required', {
@@ -461,18 +596,32 @@ async function recoverRunning({
                 dispatchId: dispatch.dispatchId
             })
         }
+        telemetry?.registerRecoveredDispatch({
+            dispatchId: dispatch.dispatchId,
+            actionDigest: dispatch.actionDigest,
+            actionType: dispatch.action.type,
+            nodeId: dispatch.nodeId,
+            activeSlots: active.length
+        })
         running.set(dispatch.dispatchId, {
             dispatch,
             promise: completion(
                 recovered.completion,
                 dispatch.dispatchId,
-                entry
+                entry,
+                telemetry
             )
         })
     }
 }
 
-async function settleFirst({ running, ledger, startup, clock }) {
+async function settleFirst({
+    running,
+    ledger,
+    startup,
+    clock,
+    telemetry
+}) {
     const settled = await Promise.race(
         [...running.values()].map(({ promise }) => promise)
     )
@@ -485,12 +634,28 @@ async function settleFirst({ running, ledger, startup, clock }) {
                 'unknown-executor-failure'
         })
     }
-    const baseObservation =
+    const observeBase = () =>
         observeLifecycleRepositoryBaseForActiveAction({
             ledger,
             action: active.dispatch.action,
             startup
         })
+    const baseMetadata = {
+        boundary: 'repository-base-before-result-admission',
+        actionDigest: active.dispatch.actionDigest,
+        actionType: active.dispatch.action.type,
+        nodeId: active.dispatch.nodeId,
+        dispatchId: settled.dispatchId,
+        repositories:
+            telemetry?.repositoriesForAction(active.dispatch.action) ?? []
+    }
+    const baseObservation = telemetry
+        ? telemetry.measureSync(
+            ['repositoryBaseObservation'],
+            baseMetadata,
+            observeBase
+        )
+        : observeBase()
     if (baseObservation.status !== 'current') {
         fail('dispatcher-active-result-base-stale', {
             dispatchId: settled.dispatchId,
@@ -499,14 +664,33 @@ async function settleFirst({ running, ledger, startup, clock }) {
             currentBaseSha: baseObservation.currentBaseSha
         })
     }
-    const recorded = recordLifecycleDispatchedActionResult({
+    const recordResult = () => recordLifecycleDispatchedActionResult({
         ledger,
         dispatchId: settled.dispatchId,
         result: settled.result,
         createdAt: timestamp(clock),
         startup
     })
+    const recorded = telemetry
+        ? telemetry.measureSync(
+            [
+                'canonicalReplay',
+                'aggregateProjectionRebuild',
+                'actorResultAdmission'
+            ],
+            {
+                boundary: 'actor-result-admission',
+                actionDigest: active.dispatch.actionDigest,
+                actionType: active.dispatch.action.type,
+                nodeId: active.dispatch.nodeId,
+                dispatchId: settled.dispatchId
+            },
+            recordResult,
+            { ledgerRead: true }
+        )
+        : recordResult()
     running.delete(settled.dispatchId)
+    telemetry?.recordActorAdmission(settled.dispatchId, running.size)
     return recorded.ledger
 }
 
@@ -516,7 +700,8 @@ async function executeImmediate({
     action,
     contextProvider,
     startup,
-    clock
+    clock,
+    telemetry
 }) {
     const entry = actionOwner(action)
     const createdAt = timestamp(clock)
@@ -526,7 +711,8 @@ async function executeImmediate({
             actionSet,
             action,
             startup,
-            createdAt
+            createdAt,
+            telemetry
         })
         if (observed.rebound) return observed.ledger
     }
@@ -537,18 +723,45 @@ async function executeImmediate({
         actionSet,
         ledger,
         startup,
-        createdAt
+        createdAt,
+        telemetry
     })
-    const output = await entry.execute(prepared.context)
+    const execute = () => entry.execute(prepared.context)
+    const output = entry.executionClass === 'machine' && telemetry
+        ? await telemetry.measureAsync(
+            ['machineActionExecution'],
+            {
+                boundary: 'machine-action-execution',
+                actionDigest: action.actionDigest,
+                actionType: action.type,
+                nodeId: action.nodeId
+            },
+            execute
+        )
+        : await execute()
     if (entry.executionClass === 'machine') {
-        return recordLifecycleCurrentActionResult({
+        const record = () => recordLifecycleCurrentActionResult({
             ledger,
             actionSet,
             actionDigest: action.actionDigest,
             result: normalizeActorResult(entry, output),
             createdAt,
             startup
-        }).ledger
+        })
+        const recorded = telemetry
+            ? telemetry.measureSync(
+                ['canonicalReplay', 'aggregateProjectionRebuild'],
+                {
+                    boundary: 'machine-result-admission',
+                    actionDigest: action.actionDigest,
+                    actionType: action.type,
+                    nodeId: action.nodeId
+                },
+                record,
+                { ledgerRead: true }
+            )
+            : record()
+        return recorded.ledger
     }
     return normalizeLedger(entry, output)
 }
@@ -558,64 +771,184 @@ export async function runLifecycleProductionDispatcher({
     startup,
     contextProvider: suppliedProvider,
     clock = () => new Date().toISOString(),
-    maxTransitions = 10_000
+    maxTransitions = 10_000,
+    performanceTelemetry = null
 } = {}) {
     let currentLedger = object(ledger, 'dispatcher-ledger-required')
     const contextProvider = provider(suppliedProvider)
     if (!Number.isInteger(maxTransitions) || maxTransitions < 1) {
         fail('dispatcher-transition-limit-invalid')
     }
-    const running = new Map()
-    await recoverRunning({
-        ledger: currentLedger,
-        contextProvider,
-        startup,
-        clock,
-        running
-    })
+    const performance = performanceConfiguration(
+        performanceTelemetry,
+        currentLedger
+    )
+    const telemetry = performance?.collector ?? null
+    let performanceReceipt = null
     let transitions = 0
-    while (transitions < maxTransitions) {
-        const projection = projectLifecycleRun(currentLedger, { startup })
-        if (projection.aggregateProjection.terminal) {
-            if (running.size > 0) {
-                fail('dispatcher-terminal-with-active-dispatch')
-            }
-            return Object.freeze({
-                status: 'terminalized',
-                ledger: currentLedger,
-                terminal: structuredClone(
-                    projection.aggregateProjection.terminal
-                ),
-                transitions
-            })
-        }
-        const beforeRefreshDigest =
-            projection.aggregateProjection.aggregateProjectionDigest
-        currentLedger = executeLifecycleScopeRefresh({
-            ledger: currentLedger,
-            observeRemoteIssues: contextProvider.observeRemoteIssues,
-            createdAt: timestamp(clock),
-            startup
-        })
-        const afterRefresh = projectLifecycleRun(currentLedger, { startup })
-        if (afterRefresh.aggregateProjection.aggregateProjectionDigest !==
-            beforeRefreshDigest) {
-            transitions += 1
-            continue
-        }
-        const actionSet = compileLifecycleRunActionSet(currentLedger, {
-            startup
-        })
-        validateLifecycleActionSet(actionSet)
-        const rootActions = actionSet.actions.filter(({ type }) =>
-            ROOT_SERIAL_ACTION_TYPES.has(type))
-        const actorActions = actionSet.actions.filter(({ type }) =>
-            ACTOR_ACTION_TYPES.has(type))
-        const machineActions = actionSet.actions.filter(({ type }) =>
-            actionOwner({ type }).executionClass === 'machine')
 
-        if (running.size > 0) {
-            if (rootActions.length === 0 && actorActions.length > 0) {
+    function finalizePerformance(status, failureCode = null) {
+        if (!telemetry || performanceReceipt) return performanceReceipt
+        performanceReceipt = telemetry.finalize({
+            status,
+            transitions,
+            failureCode
+        })
+        if (performance?.onReceipt) {
+            try {
+                performance.onReceipt(structuredClone(performanceReceipt))
+            } catch {
+                // A diagnostic sink cannot change lifecycle authority or state.
+            }
+        }
+        return performanceReceipt
+    }
+
+    const running = new Map()
+    try {
+        await recoverRunning({
+            ledger: currentLedger,
+            contextProvider,
+            startup,
+            clock,
+            running,
+            telemetry
+        })
+        while (transitions < maxTransitions) {
+            telemetry?.setTransition(transitions)
+            const projection = measuredProjection(
+                telemetry,
+                currentLedger,
+                startup,
+                'dispatcher-transition-projection'
+            )
+            const slots = projection.aggregateProjection.slots ?? {
+                capacity: 0,
+                active: []
+            }
+            telemetry?.recordSlotSnapshot({
+                reason: 'transition-projection',
+                capacity: slots.capacity,
+                active: slots.active.length,
+                available: Math.max(
+                    0,
+                    slots.capacity - slots.active.length
+                )
+            })
+            if (projection.aggregateProjection.terminal) {
+                if (running.size > 0) {
+                    fail('dispatcher-terminal-with-active-dispatch')
+                }
+                const receipt = finalizePerformance('terminalized')
+                return Object.freeze({
+                    status: 'terminalized',
+                    ledger: currentLedger,
+                    terminal: structuredClone(
+                        projection.aggregateProjection.terminal
+                    ),
+                    transitions,
+                    ...(receipt ? { performanceReceipt: receipt } : {})
+                })
+            }
+            const beforeRefreshDigest =
+                projection.aggregateProjection.aggregateProjectionDigest
+            const refresh = () => executeLifecycleScopeRefresh({
+                ledger: currentLedger,
+                observeRemoteIssues: contextProvider.observeRemoteIssues,
+                createdAt: timestamp(clock),
+                startup
+            })
+            currentLedger = telemetry
+                ? telemetry.measureSync(
+                    ['remoteScopeObservation'],
+                    {
+                        boundary: 'remote-scope-observation',
+                        transition: transitions
+                    },
+                    refresh
+                )
+                : refresh()
+            const afterRefresh = measuredProjection(
+                telemetry,
+                currentLedger,
+                startup,
+                'post-scope-refresh-projection'
+            )
+            if (afterRefresh.aggregateProjection.aggregateProjectionDigest !==
+                beforeRefreshDigest) {
+                transitions += 1
+                continue
+            }
+            const actionSet = measuredActionSet(
+                telemetry,
+                currentLedger,
+                startup,
+                'dispatcher-action-set-compilation'
+            )
+            validateLifecycleActionSet(actionSet)
+            const rootActions = actionSet.actions.filter(({ type }) =>
+                ROOT_SERIAL_ACTION_TYPES.has(type))
+            const actorActions = actionSet.actions.filter(({ type }) =>
+                ACTOR_ACTION_TYPES.has(type))
+            const machineActions = actionSet.actions.filter(({ type }) =>
+                actionOwner({ type }).executionClass === 'machine')
+
+            if (running.size > 0) {
+                if (rootActions.length === 0 && actorActions.length > 0) {
+                    const started = await startActorWave({
+                        ledger: currentLedger,
+                        actionSet,
+                        actions: actorActions,
+                        contextProvider,
+                        startup,
+                        clock,
+                        running,
+                        telemetry
+                    })
+                    currentLedger = started.ledger
+                    transitions += 1
+                    if (started.rebound) continue
+                }
+                currentLedger = await settleFirst({
+                    running,
+                    ledger: currentLedger,
+                    startup,
+                    clock,
+                    telemetry
+                })
+                transitions += 1
+                continue
+            }
+
+            if (rootActions.length > 0) {
+                const action = rootActions[0]
+                currentLedger = await executeImmediate({
+                    ledger: currentLedger,
+                    actionSet,
+                    action,
+                    contextProvider,
+                    startup,
+                    clock,
+                    telemetry
+                })
+                transitions += 1
+                continue
+            }
+            if (machineActions.length > 0) {
+                const action = machineActions[0]
+                currentLedger = await executeImmediate({
+                    ledger: currentLedger,
+                    actionSet,
+                    action,
+                    contextProvider,
+                    startup,
+                    clock,
+                    telemetry
+                })
+                transitions += 1
+                continue
+            }
+            if (actorActions.length > 0) {
                 const started = await startActorWave({
                     ledger: currentLedger,
                     actionSet,
@@ -623,68 +956,33 @@ export async function runLifecycleProductionDispatcher({
                     contextProvider,
                     startup,
                     clock,
-                    running
+                    running,
+                    telemetry
                 })
                 currentLedger = started.ledger
                 transitions += 1
-                if (started.rebound) continue
+                continue
             }
-            currentLedger = await settleFirst({
-                running,
-                ledger: currentLedger,
-                startup,
-                clock
+            fail('dispatcher-action-set-unexecutable', {
+                actionTypes: actionSet.actions.map(({ type }) => type)
             })
-            transitions += 1
-            continue
         }
-
-        if (rootActions.length > 0) {
-            const action = rootActions[0]
-            currentLedger = await executeImmediate({
-                ledger: currentLedger,
-                actionSet,
-                action,
-                contextProvider,
-                startup,
-                clock
-            })
-            transitions += 1
-            continue
-        }
-        if (machineActions.length > 0) {
-            const action = machineActions[0]
-            currentLedger = await executeImmediate({
-                ledger: currentLedger,
-                actionSet,
-                action,
-                contextProvider,
-                startup,
-                clock
-            })
-            transitions += 1
-            continue
-        }
-        if (actorActions.length > 0) {
-            const started = await startActorWave({
-                ledger: currentLedger,
-                actionSet,
-                actions: actorActions,
-                contextProvider,
-                startup,
-                clock,
-                running
-            })
-            currentLedger = started.ledger
-            transitions += 1
-            continue
-        }
-        fail('dispatcher-action-set-unexecutable', {
-            actionTypes: actionSet.actions.map(({ type }) => type)
+        fail('dispatcher-transition-limit-exceeded', {
+            maxTransitions,
+            activeDispatchIds: [...running.keys()].sort()
         })
+    } catch (error) {
+        const receipt = finalizePerformance(
+            'failed',
+            error?.code ?? error?.message ?? 'dispatcher-failed'
+        )
+        if (receipt && error && typeof error === 'object') {
+            Object.defineProperty(error, 'performanceReceipt', {
+                value: receipt,
+                enumerable: false,
+                configurable: true
+            })
+        }
+        throw error
     }
-    fail('dispatcher-transition-limit-exceeded', {
-        maxTransitions,
-        activeDispatchIds: [...running.keys()].sort()
-    })
 }

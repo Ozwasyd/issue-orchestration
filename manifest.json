@@ -2,10 +2,10 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "db51cff1eb8c5bb49ab485a7e464f5354e12b097",
-    "sourceTreeDigest": "5e149aadab3ee9c6d29480c161165873c36cac9ed588dde07ff011f8eb654d0c",
+    "sourceCommit": "894c612c6e1804f28c3289f9cbc54ce93c88ffd0",
+    "sourceTreeDigest": "36b9df6fd0f7adf5f4611aad4042c55ff8f5112d7f2bae60a64996128fb7f234",
     "skillIdentity": "issue-orchestration",
-    "skillDigest": "c1ff8d39940fdaedee2aa5819a9693bb8653d160ce18090ff88bbbe4156ab67e",
+    "skillDigest": "7e24bb69947c15a3bc9716d41f37349780a27fdb98d69855b40685d0595c758d",
     "agentDigests": {
         "code-implementer": "f3792f0771d3cc84c107a38ffeb9c4c217365c850f5b172bcd4dc96a0e0f3753",
         "dag-creator-updater": "92939e676b7e55efff670c389fee994f240371304e637187070e2bbebea8af31",
@@ -69,7 +69,8 @@
         "invocation-bound-downstream-authority",
         "caller-supplied-repository-identity",
         "stage-scoped-write-lease",
-        "typed-terminalization-authority"
+        "typed-terminalization-authority",
+        "deterministic-dispatcher-performance-telemetry"
     ],
     "installTargets": [
         {
@@ -155,6 +156,7 @@
         "contracts/dag-update-summary.schema.json": "ed4b2795e0a43ac55bf61303e869cc6ff70a5bd7e865b17f3686e9e2ce51dcef",
         "contracts/delivery-control-receipt.schema.json": "c60156ee94d71c3f4a46ca502d8d3118fb5b7ce937361c8349c1dc9715570e4f",
         "contracts/dispatch-investigation-projection.schema.json": "41930187213b8072c5156f183535ffb6844dec60ead7f3dd68f2a2f0bccbeb1b",
+        "contracts/dispatcher-performance-receipt.schema.json": "65af1f519000bd2a470cf6bc71f4847cb4595ad40b05a845dfdd182d35f0def1",
         "contracts/evidence-rebinding-receipt.schema.json": "16e0aa25e02c7fbbbea71e1a83a3f314b216154d73592476aa343cffc492b487",
         "contracts/executable-slice.schema.json": "d0debfb795a8787819a845a3bd70d2a2efa4d3dca73891733377cc8ec67f8b7d",
         "contracts/execution-route-decision.schema.json": "eaae61c92e380c8861497eefe6fb4c8a1cc9b2522396ca52a11da2b36e6453b6",
@@ -266,7 +268,7 @@
         "policy/stage-mutation-guard-policy.json": "4e398c35cbd0bea86d0111e9a5439cc3b989bc54a63c25869278cb024eee9053",
         "policy/stage-permissions.json": "c772f84bf0862d48f45d76cd8c012380de2d628f9486185b6ed36b9d40fc6043",
         "policy/terminal-policy.json": "762b859601e24da86fe936e1fa12b9bac42188876df9998197ac4aee4d11fac1",
-        "scripts/build-manifest.mjs": "e8195af825dd94f777cd75494bfa363870cbb4066b671b508ab3463f4828980a",
+        "scripts/build-manifest.mjs": "2b702b6a7523becc6a32e7b24cc8b3ec5ca4d34aebe798fd7fb9eec505eb11ce",
         "scripts/discover.mjs": "10d68bf4241e7d61fa02670654a1177005e74498c4306a73cb5def7160de8811",
         "scripts/install-workspace.mjs": "a05809343b3c001256768210293e5efa5e353e6db1d081693d6f88b9f0a6d914",
         "scripts/install.mjs": "6304fcdc44360269a04d2596fe57607e95e56bc85e32f706b735fac17d883fc9",
@@ -289,6 +291,7 @@
         "skills/issue-orchestration/scripts/delivery-epoch.mjs": "10943de4e22954de9939673bb0c77768530b11163b20e2ed9942669cbb00e9a4",
         "skills/issue-orchestration/scripts/dispatch-batch-selector.mjs": "a41e7efda3d70610e7062188bcee4a1595b1212e2cb22d0ab77f6541fab4f456",
         "skills/issue-orchestration/scripts/dispatch-receipt.mjs": "9b524f72e29de0410a87ee8aab39f5e0a064d1695892d233ed093f6d4f9842ed",
+        "skills/issue-orchestration/scripts/dispatcher-performance-telemetry.mjs": "96bbab681f00eaa5d8d80dcbe8ecf1eb6a6b0b669db1119e5c1339126010b093",
         "skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs": "6d96dd30bd8a34e4212537e95116ee76b5f039c3c037e40e7f4893311d8258cb",
         "skills/issue-orchestration/scripts/event-ledger.mjs": "22d5430e9586eb13446558c17b63b2f811826f74795233c6f6b727fb38813a0c",
         "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "a11c0db33e8cb64eb4ae2394ca6389778ed304ce9829a3864cdf3bde78b466a0",
@@ -304,7 +307,7 @@
         "skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs": "c5bdc8075e92c91514d69b79fb6ed3cb8d24223307e4b995fa437ff4393bf290",
         "skills/issue-orchestration/scripts/lifecycle-observe-only-executor.mjs": "22cbd131f76bd5c8dc8f465600e5699dd19232f015613f6aaad15a129915e9ae",
         "skills/issue-orchestration/scripts/lifecycle-prewriter-executor.mjs": "199ab42b2a9af6c77013f6da5e6330a69614ff0d1db93fef3b9fb7379bf98861",
-        "skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs": "850c4b686a7618a1bce6e3da735e62c2b6f4ce858d097eaa92d54555f66e5679",
+        "skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs": "40989b0a2a5b3544f1ac1d2ae4047f43790afe48494a59402dbf1b5f480f6120",
         "skills/issue-orchestration/scripts/lifecycle-quiescence-finalizer.mjs": "64286456626a2094fb381db4488dd8a056190e93ccd83bfd31de1e7938420a5d",
         "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "ec8a192782ca4bcd6283799b79aaebc77d7e2cd46b9d9507c2e3e14666afe575",
         "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "3531b29ff9a92f0f4a342e9d510d0eede210a157b9752127329474c80603f7fa",
@@ -338,8 +341,8 @@
         "skills/issue-orchestration/scripts/validate-state-root.mjs": "bf138d9705e50b931f2ab3419b87f71305a03401ac06308ac02f8099fdf0a00c",
         "skills/issue-orchestration/scripts/writer-runtime-watchdog.mjs": "ee4ff64bd5df649f48b3b397e89d50fcff3dc7df97250754993a6e608986da7d",
         "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447",
-        "skills/issue-orchestration/SKILL.md": "c1ff8d39940fdaedee2aa5819a9693bb8653d160ce18090ff88bbbe4156ab67e",
+        "skills/issue-orchestration/SKILL.md": "7e24bb69947c15a3bc9716d41f37349780a27fdb98d69855b40685d0595c758d",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "b04fde99da01ab0620dcd858d5b0bc9be43b71e6dca0336ddcbe5a34cfc58652"
+    "manifestDigest": "83526a33d24f7fe454df4c8a2cc142b85771dd10957925c78f81c1c9d6ca50a5"
 }

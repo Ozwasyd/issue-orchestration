@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/dispatcher-performance-receipt.schema.json",
+  "title": "Dispatcher performance receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "authority",
+    "runId",
+    "startedAt",
+    "completedAt",
+    "totalWallDurationMs",
+    "transitions",
+    "failureCode",
+    "operationSummary",
+    "repositoryBaseObservations",
+    "bytes",
+    "wallTime",
+    "spans",
+    "actorDispatches",
+    "slotSamples",
+    "slotRefills",
+    "idleSafeSlotDurationMs",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.dispatcher-performance-receipt.v1"
+    },
+    "status": {
+      "enum": ["terminalized", "failed"]
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "grants"],
+      "properties": {
+        "kind": { "const": "diagnostic-only" },
+        "grants": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "runId": { "type": "string", "minLength": 1 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "totalWallDurationMs": { "type": "number", "minimum": 0 },
+    "transitions": { "type": "integer", "minimum": 0 },
+    "failureCode": { "type": ["string", "null"] },
+    "operationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalReplay",
+        "aggregateProjectionRebuild",
+        "actionSetCompilation",
+        "remoteScopeObservation",
+        "repositoryBaseObservation",
+        "contextPreparation",
+        "machineActionExecution",
+        "actorResultAdmission"
+      ],
+      "properties": {
+        "canonicalReplay": { "$ref": "#/$defs/metric" },
+        "aggregateProjectionRebuild": { "$ref": "#/$defs/metric" },
+        "actionSetCompilation": { "$ref": "#/$defs/metric" },
+        "remoteScopeObservation": { "$ref": "#/$defs/metric" },
+        "repositoryBaseObservation": { "$ref": "#/$defs/metric" },
+        "contextPreparation": { "$ref": "#/$defs/metric" },
+        "machineActionExecution": { "$ref": "#/$defs/metric" },
+        "actorResultAdmission": { "$ref": "#/$defs/metric" }
+      }
+    },
+    "repositoryBaseObservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["repository", "count", "durationMs"],
+        "properties": {
+          "repository": { "type": "string", "minLength": 1 },
+          "count": { "type": "integer", "minimum": 0 },
+          "durationMs": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "bytes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonicalLedgersRead", "actorContextPrepared"],
+      "properties": {
+        "canonicalLedgersRead": { "type": "integer", "minimum": 0 },
+        "actorContextPrepared": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "wallTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rootControlPlaneObservedDurationMs",
+        "actorObservedWallDurationMs"
+      ],
+      "properties": {
+        "rootControlPlaneObservedDurationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "actorObservedWallDurationMs": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "spans": { "type": "array", "items": { "type": "object" } },
+    "actorDispatches": { "type": "array", "items": { "type": "object" } },
+    "slotSamples": { "type": "array", "items": { "type": "object" } },
+    "slotRefills": { "type": "array", "items": { "type": "object" } },
+    "idleSafeSlotDurationMs": { "type": "number", "minimum": 0 },
+    "receiptDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "durationMs"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

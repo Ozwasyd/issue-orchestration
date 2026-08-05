@@ -81,6 +81,7 @@ const requiredPackageFiles = [
     'graph/runtime-projection.schema.json',
     'graph/semantic-graph.schema.json',
     'contracts/aggregate-runtime-projection.schema.json',
+    'contracts/dispatcher-performance-receipt.schema.json',
     'contracts/node-index.schema.json',
     'contracts/node-ledger-header.schema.json',
     'contracts/node-ledger.schema.json',
@@ -97,6 +98,7 @@ const requiredPackageFiles = [
     ...agentIds.map((id) => `agents/${id}.toml`)
 ]
 const requiredRuntimeModules = [
+    'dispatcher-performance-telemetry.mjs',
     'delivery-epoch.mjs',
     'control-plane-advisor.mjs',
     'dispatch-batch-selector.mjs',
