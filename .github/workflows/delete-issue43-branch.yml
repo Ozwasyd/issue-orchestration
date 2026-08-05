@@ -4,6 +4,7 @@ on:
   pull_request:
     types:
       - opened
+      - synchronize
     branches:
       - main
     paths:
@@ -16,6 +17,11 @@ jobs:
   delete:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: agent/issue-43-quiescence-finalization
       - name: Delete merged branch
         shell: bash
         env:
