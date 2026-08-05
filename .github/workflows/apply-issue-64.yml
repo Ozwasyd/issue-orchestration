@@ -1,0 +1,34 @@
+name: Apply issue 64 branch patch
+
+on:
+  push:
+    branches:
+      - issue-64-dispatcher-performance-telemetry
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify and apply local patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .github/issue-64.patch.part-* > /tmp/issue-64.patch.gz.b64
+          test "$(sha256sum /tmp/issue-64.patch.gz.b64 | cut -d' ' -f1)" = "69b73eb7bb3b6d66162ac2d633dcd410f6d358cc6effd99d9945683d0652faa8"
+          base64 --decode /tmp/issue-64.patch.gz.b64 | gzip --decompress > /tmp/issue-64.patch
+          test "$(sha256sum /tmp/issue-64.patch | cut -d' ' -f1)" = "3d61a1479efe710bca9f18c2b5378a2609577881e961ce4283d690f7f66697bf"
+          git apply --binary --index /tmp/issue-64.patch
+          rm -f .github/issue-64.patch.part-* .github/workflows/apply-issue-64.yml
+          git add -A
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add deterministic dispatcher performance telemetry (#64)"
+          git push origin HEAD:issue-64-dispatcher-performance-telemetry
