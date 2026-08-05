@@ -42,7 +42,7 @@
     },
     {
       "id": "ROUTING-01",
-      "requirement": "The v2 request and receipt deterministically recompute selectedProfileId from frozen classification, stage role/phase and stage-model-pool.v3; root narration, balance, failure count and silent fallback have no routing authority.",
+      "requirement": "The v2 request and receipt deterministically recompute selectedProfileId from frozen classification, stage role/phase and stage-model-pool.v4; root narration, balance, failure count and silent fallback have no routing authority.",
       "tests": ["P05"],
       "mutations": [
         "N02-bounded-terra-without-reclassification",

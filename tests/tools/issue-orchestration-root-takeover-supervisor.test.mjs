@@ -53,7 +53,7 @@ function classification() {
         contractState: 'frozen',
         verificationClass: 'focused',
         modelRoutingEvidenceDigest: digest('route-evidence'),
-        routingPolicyVersion: 'stage-model-pool.v3'
+        routingPolicyVersion: 'stage-model-pool.v4'
     }
 }
 

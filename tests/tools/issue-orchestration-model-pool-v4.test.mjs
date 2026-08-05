@@ -18,11 +18,6 @@ const scriptsRoot = path.join(
     'skills/issue-orchestration/scripts'
 )
 const expectedProfiles = [
-    'luna-high',
-    'luna-low',
-    'luna-max',
-    'luna-medium',
-    'luna-xhigh',
     'sol-high',
     'sol-low',
     'sol-max',
@@ -55,7 +50,6 @@ const expectedStages = {
     'test-owner:test-contract-planning': {
         allowedProfiles: [
             'terra-high',
-            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -65,7 +59,6 @@ const expectedStages = {
         allowedProfiles: [
             'terra-medium',
             'terra-high',
-            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -74,7 +67,6 @@ const expectedStages = {
     'test-owner:behavior-verification': {
         allowedProfiles: [
             'terra-high',
-            'luna-max',
             'sol-high',
             'sol-xhigh'
         ],
@@ -85,7 +77,6 @@ const expectedStages = {
             'terra-low',
             'terra-medium',
             'terra-high',
-            'luna-max',
             'sol-medium',
             'sol-high',
             'sol-xhigh'
@@ -140,22 +131,21 @@ const importRuntime = (name) => import(pathToFileURL(
     path.join(scriptsRoot, name)
 ).href)
 
-test('V3-01 freezes the reviewed Terra/Luna/Sol production roster', () => {
+test('V4-01 freezes the reviewed Terra/Sol production roster', () => {
     const pool = loadJson('policy/model-pool.json')
     assert.equal(
         pool.schema,
-        'issue-orchestration.stage-model-pool-policy.v3'
+        'issue-orchestration.stage-model-pool-policy.v4'
     )
-    assert.equal(pool.version, 'stage-model-pool.v3')
+    assert.equal(pool.version, 'stage-model-pool.v4')
     assert.deepEqual(Object.keys(pool.profiles).sort(), expectedProfiles)
     assert.deepEqual(pool.productionRoster, [
-        'terra-low', 'terra-medium', 'terra-high', 'luna-max',
+        'terra-low', 'terra-medium', 'terra-high',
         'sol-low', 'sol-medium', 'sol-high', 'sol-xhigh'
     ])
     assert.deepEqual(pool.frontierOnlyProfiles, ['sol-max'])
     assert.deepEqual(pool.disabledProfiles, [
-        'terra-xhigh', 'terra-max', 'luna-low', 'luna-medium',
-        'luna-high', 'luna-xhigh'
+        'terra-xhigh', 'terra-max'
     ])
     for (const [profileId, profile] of Object.entries(pool.profiles)) {
         const [family, effort] = profileId.split('-')
@@ -167,14 +157,14 @@ test('V3-01 freezes the reviewed Terra/Luna/Sol production roster', () => {
     assert.deepEqual(pool.stages, expectedStages)
 })
 
-test('V3-02 upgrades deterministic execution routing to canonical v4 cells', () => {
+test('V4-02 upgrades deterministic execution routing to canonical v5 cells', () => {
     const pool = loadJson('policy/model-pool.json')
     const routing = loadJson('policy/execution-routing-policy.json')
     assert.equal(
         routing.schema,
-        'issue-orchestration.execution-routing-policy.v4'
+        'issue-orchestration.execution-routing-policy.v5'
     )
-    assert.equal(routing.version, 'execution-capability-routing.v4')
+    assert.equal(routing.version, 'execution-capability-routing.v5')
     assert.equal(routing.modelPoolPolicyVersion, pool.version)
     assert.equal(
         routing.routingAuthority,
@@ -188,9 +178,28 @@ test('V3-02 upgrades deterministic execution routing to canonical v4 cells', () 
         'selectedProfile',
         'profileOverride'
     ]) assert.ok(routing.forbiddenInputs.includes(forbidden))
+    assert.equal(
+        routing.routeCells['implementation.narrow-deep-cost-sensitive']
+            .requiredProfile,
+        'terra-high'
+    )
+    assert.equal(
+        routing.routeCells['verification.narrow-deep-cost-sensitive']
+            .requiredProfile,
+        'terra-high'
+    )
+    assert.deepEqual(routing.legacyProfileMigration, {
+        retiredProfiles: [
+            'luna-low', 'luna-medium', 'luna-high', 'luna-xhigh', 'luna-max'
+        ],
+        errorCode: 'stage-model-pool-luna-profile-retired',
+        aliasesForbidden: true,
+        fallbackForbidden: true
+    })
+    assert.equal(Object.hasOwn(routing, 'lunaAvailabilityFallback'), false)
 })
 
-test('V3-03 reviewed assumptions cover every registered profile exactly', async () => {
+test('V4-03 reviewed assumptions cover every registered profile exactly', async () => {
     const pool = loadJson('policy/model-pool.json')
     const assumptions = loadJson(
         'policy/reviewed-routing-assumptions.json'
@@ -218,7 +227,7 @@ test('V3-03 reviewed assumptions cover every registered profile exactly', async 
     )
 })
 
-test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async () => {
+test('V4-04 normal Root is terra-low and recovery Root is receipt-bound', async () => {
     const {
         compileCanonicalRoute
     } = await importRuntime('execution-route-compiler.mjs')
@@ -233,7 +242,7 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
         contractState: 'frozen',
         verificationClass: 'focused',
         modelRoutingEvidenceDigest: 'a'.repeat(64),
-        routingPolicyVersion: 'stage-model-pool.v3'
+        routingPolicyVersion: 'stage-model-pool.v4'
     }
     const normal = compileCanonicalRoute({
         ...classification,
@@ -276,7 +285,7 @@ test('V3-04 normal Root is terra-low and recovery Root is receipt-bound', async 
     }).status, 'verified')
 })
 
-test('V3-05 requested/effective runtime mismatches fail closed', async () => {
+test('V4-05 requested/effective runtime mismatches fail closed', async () => {
     const { verifyRuntimeProfileMetadata } = await importRuntime(
         'stage-profile-policy.mjs'
     )
@@ -302,39 +311,33 @@ test('V3-05 requested/effective runtime mismatches fail closed', async () => {
     }
 })
 
-test('V3-06 only Luna/max is dispatchable while disabled and unknown profiles reject', async () => {
+test('V4-06 rejects every legacy Luna profile with one migration code', async () => {
     const {
         splitProfile,
         verifyRuntimeProfileMetadata
     } = await importRuntime('stage-profile-policy.mjs')
-    assert.equal(splitProfile('luna-max').model, 'gpt-5.6-luna')
     for (const profile of [
-        'luna-low',
-        'luna-medium',
-        'luna-high',
-        'luna-xhigh',
-        'terra-xhigh',
-        'terra-max',
-        'sol-ultra',
-        'terra-ultra',
-        'gpt-5.6-terra/low',
-        'terra-bounded'
+        'luna-low', 'luna-medium', 'luna-high', 'luna-xhigh', 'luna-max'
     ]) {
         assert.throws(() => splitProfile(profile), {
-            code: 'routing-profile-id'
+            code: 'stage-model-pool-luna-profile-retired'
         })
         assert.throws(() => verifyRuntimeProfileMetadata({
             selectedProfile: profile,
-            requestedModel: 'gpt-5.6-terra',
-            effectiveModel: 'gpt-5.6-terra',
-            requestedEffort: 'low',
-            effectiveEffort: 'low',
+            requestedModel: 'gpt-5.6-luna',
+            effectiveModel: 'gpt-5.6-luna',
+            requestedEffort: profile.split('-')[1],
+            effectiveEffort: profile.split('-')[1],
             multiAgentBackend: 'v2'
-        }))
+        }), { code: 'stage-model-pool-luna-profile-retired' })
     }
+    for (const profile of [
+        'terra-xhigh', 'terra-max', 'sol-ultra', 'terra-ultra',
+        'gpt-5.6-terra/low', 'terra-bounded'
+    ]) assert.throws(() => splitProfile(profile), { code: 'routing-profile-id' })
 })
 
-test('V3-07 UI, documentation and cleanup boundaries match the frozen map', () => {
+test('V4-07 UI, documentation and cleanup boundaries match the frozen map', () => {
     const pool = loadJson('policy/model-pool.json')
     assert.deepEqual(
         pool.stages['ui-ux-implementer:ui-implementation']
@@ -358,7 +361,7 @@ test('V3-07 UI, documentation and cleanup boundaries match the frozen map', () =
     })
 })
 
-test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () => {
+test('V4-08 sol-max is restricted to a machine-proven DAG exception', async () => {
     const { compileCanonicalRoute } = await importRuntime(
         'execution-route-compiler.mjs'
     )
@@ -370,7 +373,7 @@ test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () =
         contractState: 'frozen',
         verificationClass: 'protocol',
         modelRoutingEvidenceDigest: 'c'.repeat(64),
-        routingPolicyVersion: 'stage-model-pool.v3',
+        routingPolicyVersion: 'stage-model-pool.v4',
         stageRole: 'dag-creator-updater',
         stagePhase: 'semantic-proposal'
     }
@@ -402,17 +405,17 @@ test('V3-08 sol-max is restricted to a machine-proven DAG exception', async () =
     }).executionRouteDecision.selectedProfile, 'sol-max')
 })
 
-test('V3-09 production agents consume v3 and never self-select a model', () => {
+test('V4-09 production agents consume v4 and never self-select a model', () => {
     const agentRoot = path.join(packageRoot, 'agents')
     for (const file of fs.readdirSync(agentRoot)) {
         const source = fs.readFileSync(path.join(agentRoot, file), 'utf8')
-        assert.match(source, /stage-model-pool\.v3/u)
-        assert.doesNotMatch(source, /stage-model-pool\.v2/u)
-        assert.doesNotMatch(source, /gpt-5\.6-luna|luna-(?:low|high|max)/u)
+        assert.match(source, /stage-model-pool\.v4/u)
+        assert.doesNotMatch(source, /stage-model-pool\.v[23]/u)
+        assert.doesNotMatch(source, /gpt-5\.6-luna|luna-(?:low|medium|high|xhigh|max)/u)
     }
 })
 
-test('V3-10 selector, frontier and gate do not own model selection', () => {
+test('V4-10 selector, frontier and gate do not own model selection', () => {
     for (const file of [
         'scope-selector.mjs',
         'frontier-compiler.mjs',
@@ -434,7 +437,7 @@ test('V3-10 selector, frontier and gate do not own model selection', () => {
     }
 })
 
-test('V3-11 disabled profiles have zero stage or ordinary-route authority', () => {
+test('V4-11 disabled profiles have zero stage or ordinary-route authority', () => {
     const pool = loadJson('policy/model-pool.json')
     const routing = loadJson('policy/execution-routing-policy.json')
     const selected = [
@@ -454,7 +457,7 @@ test('V3-11 disabled profiles have zero stage or ordinary-route authority', () =
     )
 })
 
-test('V3-12 one policy digest is bound by manifest and all five cwd installs', () => {
+test('V4-12 one policy digest is bound by manifest and all five cwd installs', () => {
     const manifest = loadJson('manifest.json')
     const pool = loadJson('policy/model-pool.json')
     assert.equal(manifest.modelPoolPolicyVersion, pool.version)

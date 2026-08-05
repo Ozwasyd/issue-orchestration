@@ -28,6 +28,7 @@ const routingRuntime = await import(
 const {
     compileProfileAvailabilityBinding,
     compileCanonicalRoute,
+    validateExecutionRouteDecision,
     verifyInstalledProductionPolicy,
     verifyReviewedRoutingAssumptions,
     verifyLiveCapabilityEvidence,
@@ -107,7 +108,7 @@ function classification(overrides = {}) {
         contractState: 'frozen',
         verificationClass: 'focused',
         modelRoutingEvidenceDigest: hash('routing-classification'),
-        routingPolicyVersion: 'stage-model-pool.v3',
+        routingPolicyVersion: 'stage-model-pool.v4',
         ...overrides
     }
 }
@@ -183,7 +184,6 @@ const authorizedProfiles = [
     'terra-low',
     'terra-medium',
     'terra-high',
-    'luna-max',
     'sol-low',
     'sol-medium',
     'sol-high',
@@ -192,11 +192,12 @@ const authorizedProfiles = [
 ]
 
 function availabilityBinding({
-    lunaAvailable = true,
-    lunaReason = lunaAvailable ? null : 'runtime-unavailable'
+    unavailableProfile = null,
+    unavailableReason = 'runtime-unavailable',
+    packageDigest = hash('package')
 } = {}) {
     return compileProfileAvailabilityBinding({
-        packageDigest: hash('package'),
+        packageDigest,
         runtimeInvocationId: 'runtime-invocation-routing-test',
         observedAt: '2026-08-03T08:30:00.000Z',
         catalogObservation: {
@@ -206,16 +207,15 @@ function availabilityBinding({
             paidInvocationCount: 0,
             profiles: authorizedProfiles.map((profileId) => ({
                 profileId,
-                available: profileId === 'luna-max'
-                    ? lunaAvailable
-                    : true,
-                reason: profileId === 'luna-max'
-                    ? lunaReason
+                available: profileId !== unavailableProfile,
+                reason: profileId === unavailableProfile
+                    ? unavailableReason
                     : null
             }))
         }
     })
 }
+
 
 test('C01 freezes the permanent #1875 contract and four public schemas', () => {
     assert.equal(
@@ -472,7 +472,7 @@ test('C10 requested/effective runtime metadata is part of route verification', (
         () => route({
             routeOverrides: {
                 runtimeCapabilityObservation: {
-                    requestedProfile: 'luna-max',
+                    requestedProfile: 'terra-medium',
                     effectiveProfile: null
                 }
             }
@@ -492,7 +492,7 @@ test('C11-C12 failure and rework expose no profile-advance API', () => {
     assert.equal(routeDecision.retryAuthorizationDigest, null)
 })
 
-test('C13 Luna/max requires the complete fresh narrow-context contract', () => {
+test('C13 cost-sensitive narrow implementation and verification route to terra-high', () => {
     const strictMetrics = {
         costSensitivity: 'cost-sensitive-deep',
         freshContext: true,
@@ -509,99 +509,72 @@ test('C13 Luna/max requires the complete fresh narrow-context contract', () => {
         selfContainedPrompt: true,
         bulkCrossScopeContext: false
     }
-    const selected = route({
+    const implementation = route({
         files: 1,
         sliceOverrides: { maxOwnedModules: 1 },
-        metricOverrides: strictMetrics,
-        routeOverrides: {
-            runtimeAvailabilityBinding: availabilityBinding()
-        }
+        metricOverrides: strictMetrics
     })
     assert.equal(
-        selected.executionShapeClassification.dominantWorkShape,
-        'luna-fresh-narrow-deep'
+        implementation.executionShapeClassification.dominantWorkShape,
+        'narrow-deep-cost-sensitive'
     )
     assert.equal(
-        selected.executionRouteDecision.selectedProfile,
-        'luna-max'
+        implementation.executionRouteDecision.routeCellId,
+        'implementation.narrow-deep-cost-sensitive'
     )
-    const mutations = [
-        { freshContext: false },
-        { contextBreadth: 'broad' },
-        { statefulContinuationRequired: true },
-        { checkpointSupportRequired: 'resumable' },
-        { ownedModuleCount: 2 },
-        { commandLoopCount: 3 },
-        { toolInteractionDepth: 5 },
-        { runtimeProbeDepth: 2 },
-        { compiledContextTokens: 32769 },
-        { exactTokenizerAvailable: false },
-        { selfContainedPrompt: false },
-        { bulkCrossScopeContext: true }
-    ]
-    for (const mutation of mutations) {
-        assert.throws(() => route({
-            files: mutation.ownedModuleCount === 2 ? 2 : 1,
-            sliceOverrides: {
-                maxOwnedModules:
-                    mutation.ownedModuleCount === 2 ? 2 : 1
-            },
-            metricOverrides: {
-                ...strictMetrics,
-                ...mutation
-            },
-            routeOverrides: {
-                runtimeAvailabilityBinding: availabilityBinding()
-            }
-        }), { code: 'execution-route-luna-contract' })
-    }
-})
-
-test('C14 Luna has only the trusted pre-dispatch terra-high fallback', () => {
-    const metricOverrides = {
-        costSensitivity: 'cost-sensitive-deep',
-        freshContext: true,
-        compiledContextTokens: 20000,
-        exactTokenizerAvailable: true,
-        selfContainedPrompt: true,
-        bulkCrossScopeContext: false
-    }
-    assert.throws(() => route({
-        sliceOverrides: { maxOwnedModules: 1 },
-        metricOverrides
-    }), {
-        code: 'execution-route-availability-binding-invalid'
-    })
-    const fallback = route({
-        sliceOverrides: { maxOwnedModules: 1 },
-        metricOverrides,
-        routeOverrides: {
-            runtimeAvailabilityBinding: availabilityBinding({
-                lunaAvailable: false,
-                lunaReason: 'runtime-unsupported'
-            })
-        }
-    })
     assert.equal(
-        fallback.executionRouteDecision.selectedProfile,
+        implementation.executionRouteDecision.selectedProfile,
         'terra-high'
     )
-    assert.equal(
-        fallback.executionRouteDecision.availabilityFallbackReason,
-        'runtime-unsupported'
-    )
-    const forged = structuredClone(availabilityBinding())
-    forged.profiles['luna-max'] = {
-        available: false,
-        reason: 'task-failed'
-    }
-    assert.throws(() => route({
-        sliceOverrides: { maxOwnedModules: 1 },
-        metricOverrides,
-        routeOverrides: { runtimeAvailabilityBinding: forged }
-    }), {
-        code: 'execution-route-availability-binding-invalid'
+    const verification = stageRoute({
+        stageRole: 'test-owner',
+        stagePhase: 'behavior-verification',
+        classificationOverrides: {
+            engineeringRiskClass: 'complex',
+            verificationClass: 'focused'
+        },
+        routeOverrides: {
+            executionMetrics: strictMetrics,
+            machineClassificationEvidence: {
+                schema: 'issue-orchestration.execution-shape-observation.v1',
+                source: 'machine-slice-and-runtime-observer',
+                observedAt: '2026-08-02T00:00:00+08:00',
+                evidenceDigest: hash('verification-cost-sensitive')
+            }
+        }
     })
+    assert.equal(
+        verification.executionRouteDecision.selectedProfile,
+        'terra-high'
+    )
+})
+
+test('C14 legacy Luna decisions reject explicitly and no availability fallback exists', () => {
+    const decision = structuredClone(route().executionRouteDecision)
+    decision.selectedProfile = 'luna-max'
+    decision.requiredProfile = 'luna-max'
+    decision.allowedProfiles = [...decision.allowedProfiles, 'luna-max']
+    assert.throws(
+        () => validateExecutionRouteDecision(decision),
+        { code: 'stage-model-pool-luna-profile-retired' }
+    )
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(
+        packageRoot,
+        'manifest.json'
+    ), 'utf8'))
+    const binding = availabilityBinding({
+        unavailableProfile: 'terra-high',
+        unavailableReason: 'runtime-unsupported',
+        packageDigest: manifest.manifestDigest
+    })
+    assert.throws(
+        () => verifyInstalledProductionPolicy({
+            manifest,
+            availabilityBinding: binding
+        }),
+        { code: 'execution-route-install-route-unreachable' }
+    )
 })
 
 test('C15 installation binds availability and reachability with zero paid rollouts', () => {
@@ -742,7 +715,7 @@ test('C19 route receipts bind one exact cell, all predicates and no search resul
     assert.equal(decision.routingAuthority,
         'canonical-route-cell-compiler')
     assert.equal(decision.policyVersion,
-        'execution-capability-routing.v4')
+        'execution-capability-routing.v5')
     assert.match(decision.routeCellId, /^implementation\./u)
     assert.match(decision.routeCellDigest, /^[a-f0-9]{64}$/u)
     assert.match(

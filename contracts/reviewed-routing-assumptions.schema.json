@@ -21,10 +21,10 @@
             "const": "issue-orchestration.reviewed-routing-assumptions.v1"
         },
         "policyVersion": {
-            "const": "execution-capability-routing.v4"
+            "const": "execution-capability-routing.v5"
         },
         "modelPoolPolicyVersion": {
-            "const": "stage-model-pool.v3"
+            "const": "stage-model-pool.v4"
         },
         "authority": {
             "const": "checked-in-reviewed-routing-assumptions"

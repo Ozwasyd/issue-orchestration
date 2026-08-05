@@ -1,8 +1,8 @@
 {
-  "schema": "issue-orchestration.routing-policy.v4",
-  "version": "stage-model-pool.v3",
+  "schema": "issue-orchestration.routing-policy.v5",
+  "version": "stage-model-pool.v4",
   "selectionAuthority": "none",
-  "canonicalRoutePolicyVersion": "execution-capability-routing.v4",
+  "canonicalRoutePolicyVersion": "execution-capability-routing.v5",
   "requiredClassificationFields": [
     "domain",
     "effectiveOwnerRepository",
@@ -21,7 +21,12 @@
       "orchestration-core",
       "deterministic-cleanup"
     ],
-    "engineeringRiskClass": ["bounded", "complex", "high-risk", "frontier"],
+    "engineeringRiskClass": [
+      "bounded",
+      "complex",
+      "high-risk",
+      "frontier"
+    ],
     "uiDecisionClass": [
       "none",
       "prescribed",

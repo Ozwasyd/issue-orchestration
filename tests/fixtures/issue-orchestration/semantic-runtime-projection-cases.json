@@ -39,7 +39,7 @@
         "state": "OPEN",
         "stateReason": null,
         "title": "model pool authority",
-        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v4",
         "labels": [
           "area:tooling",
           "delivery:active"
@@ -113,7 +113,7 @@
         "state": "CLOSED",
         "stateReason": "completed",
         "title": "model pool authority",
-        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v4",
         "labels": [
           "area:tooling",
           "delivery:complete"
@@ -197,7 +197,7 @@
         "state": "OPEN",
         "stateReason": null,
         "title": "model pool authority",
-        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v3",
+        "body": "Depends on: #1817\nOwner: orchestration\nContract: stage-model-pool.v4",
         "labels": [
           "area:tooling",
           "delivery:active"

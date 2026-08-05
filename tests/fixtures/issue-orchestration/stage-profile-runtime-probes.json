@@ -2,17 +2,77 @@
   "schema": "issue-orchestration.stage-profile-runtime-probes.v2",
   "issue": "ExampleOrg/RepositoryA#1819",
   "probes": [
-    {"id":"RP01","mutation":"N01-root-sol-rejected","observation":"requested/effective root is gpt-5.6-sol/low","expectedCode":"routing-root-profile"},
-    {"id":"RP02","mutation":"N02-bounded-terra-without-evidence","observation":"bounded code selects terra-max with no frozen blocker evidence","expectedCode":"routing-selected-profile"},
-    {"id":"RP03","mutation":"N03-high-risk-luna","observation":"high-risk code selects luna-max","expectedCode":"routing-selected-profile"},
-    {"id":"RP04","mutation":"N04-ui-forbidden-model","observation":"UI implementation selects luna-max, terra-max, or sol-high","expectedCode":"routing-ui-profile"},
-    {"id":"RP05","mutation":"N05-ui-dispute-bypasses-adjudicator","observation":"system-design-dispute enters UI implementation without adjudication","expectedCode":"routing-ui-adjudication-required"},
-    {"id":"RP06","mutation":"N06-verifier-context-inheritance","observation":"behavior verifier reuses implementer thread or full-history context","expectedCode":"routing-verifier-fresh-context"},
-    {"id":"RP07","mutation":"N07-frozen-test-modified","observation":"candidate-green has unequal before/after frozen test-tree digest","expectedCode":"routing-frozen-test-tree"},
-    {"id":"RP08","mutation":"N08-internal-red-escalates","observation":"internal red/fix cycle opens an attempt, semantic DAG update, or profile escalation","expectedCode":"routing-internal-cycle-authority"},
-    {"id":"RP09","mutation":"N09-silent-capability-fallback","observation":"requested profile is unavailable and effective profile silently differs","expectedCode":"runtime-capability-missing"},
-    {"id":"RP10","mutation":"N10-group-member-inherits-route","observation":"member B reuses member A routing input or receipt identity","expectedCode":"routing-member-independence"},
-    {"id":"RP11","mutation":"N11-telemetry-controls-policy","observation":"cost telemetry becomes routing authority and changes selected profile","expectedCode":"routing-authority"},
-    {"id":"RP12","mutation":"N12-legacy-fixed-sol-discoverable","observation":"shared installation still exposes stage-profiles.v1 or fixed-Sol agent authority","expectedCode":"routing-legacy-policy-discoverable"}
+    {
+      "id": "RP01",
+      "mutation": "N01-root-sol-rejected",
+      "observation": "requested/effective root is gpt-5.6-sol/low",
+      "expectedCode": "routing-root-profile"
+    },
+    {
+      "id": "RP02",
+      "mutation": "N02-bounded-terra-without-evidence",
+      "observation": "bounded code selects terra-max with no frozen blocker evidence",
+      "expectedCode": "routing-selected-profile"
+    },
+    {
+      "id": "RP03",
+      "mutation": "N03-high-risk-luna",
+      "observation": "legacy Luna profile is rejected before stage admission",
+      "expectedCode": "stage-model-pool-luna-profile-retired"
+    },
+    {
+      "id": "RP04",
+      "mutation": "N04-ui-forbidden-model",
+      "observation": "UI implementation selects terra-max or sol-high",
+      "expectedCode": "routing-ui-profile"
+    },
+    {
+      "id": "RP05",
+      "mutation": "N05-ui-dispute-bypasses-adjudicator",
+      "observation": "system-design-dispute enters UI implementation without adjudication",
+      "expectedCode": "routing-ui-adjudication-required"
+    },
+    {
+      "id": "RP06",
+      "mutation": "N06-verifier-context-inheritance",
+      "observation": "behavior verifier reuses implementer thread or full-history context",
+      "expectedCode": "routing-verifier-fresh-context"
+    },
+    {
+      "id": "RP07",
+      "mutation": "N07-frozen-test-modified",
+      "observation": "candidate-green has unequal before/after frozen test-tree digest",
+      "expectedCode": "routing-frozen-test-tree"
+    },
+    {
+      "id": "RP08",
+      "mutation": "N08-internal-red-escalates",
+      "observation": "internal red/fix cycle opens an attempt, semantic DAG update, or profile escalation",
+      "expectedCode": "routing-internal-cycle-authority"
+    },
+    {
+      "id": "RP09",
+      "mutation": "N09-silent-capability-fallback",
+      "observation": "requested profile is unavailable and effective profile silently differs",
+      "expectedCode": "runtime-capability-missing"
+    },
+    {
+      "id": "RP10",
+      "mutation": "N10-group-member-inherits-route",
+      "observation": "member B reuses member A routing input or receipt identity",
+      "expectedCode": "routing-member-independence"
+    },
+    {
+      "id": "RP11",
+      "mutation": "N11-telemetry-controls-policy",
+      "observation": "cost telemetry becomes routing authority and changes selected profile",
+      "expectedCode": "routing-authority"
+    },
+    {
+      "id": "RP12",
+      "mutation": "N12-legacy-fixed-sol-discoverable",
+      "observation": "shared installation still exposes stage-profiles.v1 or fixed-Sol agent authority",
+      "expectedCode": "routing-legacy-policy-discoverable"
+    }
   ]
 }

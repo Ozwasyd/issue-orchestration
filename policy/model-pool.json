@@ -1,26 +1,23 @@
 {
-  "schema": "issue-orchestration.stage-model-pool-policy.v3",
-  "version": "stage-model-pool.v3",
-  "policyRevision": "frozen-production-roster-2026-08-03",
+  "schema": "issue-orchestration.stage-model-pool-policy.v4",
+  "version": "stage-model-pool.v4",
+  "policyRevision": "luna-retired-exact-route-roster-2026-08-06",
   "routingAuthority": "canonical-route-cell-compiler",
   "productionRoster": [
     "terra-low",
     "terra-medium",
     "terra-high",
-    "luna-max",
     "sol-low",
     "sol-medium",
     "sol-high",
     "sol-xhigh"
   ],
-  "frontierOnlyProfiles": ["sol-max"],
+  "frontierOnlyProfiles": [
+    "sol-max"
+  ],
   "disabledProfiles": [
     "terra-xhigh",
-    "terra-max",
-    "luna-low",
-    "luna-medium",
-    "luna-high",
-    "luna-xhigh"
+    "terra-max"
   ],
   "profiles": {
     "terra-low": {
@@ -58,41 +55,6 @@
       "productionStatus": "disabled",
       "reviewedAssumptionDigest": "68c604c44a03fccc6bfcaf165a5056a0c68e6a59f6484ed1a3844f34a61a2609"
     },
-    "luna-low": {
-      "model": "gpt-5.6-luna",
-      "effort": "low",
-      "multiAgentBackend": "v2",
-      "productionStatus": "disabled",
-      "reviewedAssumptionDigest": "2b3a67dd605d93f7b33bd3bad65a4a9a1338141afdca5071ec1a467b87dae835"
-    },
-    "luna-medium": {
-      "model": "gpt-5.6-luna",
-      "effort": "medium",
-      "multiAgentBackend": "v2",
-      "productionStatus": "disabled",
-      "reviewedAssumptionDigest": "9c869abeb527eddf05f41a25d639c3c05e2098c90195ca0a7038b485ece0c772"
-    },
-    "luna-high": {
-      "model": "gpt-5.6-luna",
-      "effort": "high",
-      "multiAgentBackend": "v2",
-      "productionStatus": "disabled",
-      "reviewedAssumptionDigest": "04ac50892d240720bd2ce081845b71e6e6b932220a72868302c94bea7156f497"
-    },
-    "luna-xhigh": {
-      "model": "gpt-5.6-luna",
-      "effort": "xhigh",
-      "multiAgentBackend": "v2",
-      "productionStatus": "disabled",
-      "reviewedAssumptionDigest": "bc8015781aa41cf2f9719330eaa2627cf76cf49353da10e372d40917faaf0e84"
-    },
-    "luna-max": {
-      "model": "gpt-5.6-luna",
-      "effort": "max",
-      "multiAgentBackend": "v2",
-      "productionStatus": "normal",
-      "reviewedAssumptionDigest": "2b2565bfda7783706530076afdda1cf321b4694d44e4e0f38834ee6ed7f96236"
-    },
     "sol-low": {
       "model": "gpt-5.6-sol",
       "effort": "low",
@@ -129,86 +91,122 @@
       "reviewedAssumptionDigest": "eadd89e892b472fc56827d455fc0d1b5f21fc4ad4dfc6a399c84e91c37082681"
     }
   },
-  "lunaMaxContract": {
-    "freshContext": true,
-    "contextBreadth": "narrow",
-    "statefulContinuationRequired": false,
-    "checkpointSupportRequired": "simple",
-    "maxOwnedModuleCount": 1,
-    "maxCommandLoopCount": 2,
-    "maxToolInteractionDepth": 4,
-    "maxRuntimeProbeDepth": 1,
-    "firstActionDeterministic": true,
-    "maxCompiledContextTokens": 32768,
-    "exactTokenizerRequired": true,
-    "selfContainedPromptRequired": true,
-    "bulkCrossScopeContextForbidden": true
-  },
-  "availabilityFallback": {
-    "primary": "luna-max",
-    "fallback": "terra-high",
-    "phase": "pre-dispatch-only",
-    "allowedReasons": ["runtime-unsupported", "runtime-unavailable"],
-    "failureFallbackForbidden": true
-  },
   "stages": {
     "root-scheduler:scheduling": {
-      "allowedProfiles": ["terra-low"],
+      "allowedProfiles": [
+        "terra-low"
+      ],
       "defaultProfile": "terra-low"
     },
     "root-scheduler:recovery-takeover": {
-      "allowedProfiles": ["terra-medium"],
+      "allowedProfiles": [
+        "terra-medium"
+      ],
       "defaultProfile": "terra-medium"
     },
     "dag-creator-updater:semantic-proposal": {
-      "allowedProfiles": ["terra-high", "sol-high", "sol-xhigh", "sol-max"],
+      "allowedProfiles": [
+        "terra-high",
+        "sol-high",
+        "sol-xhigh",
+        "sol-max"
+      ],
       "defaultProfile": "terra-high"
     },
     "test-owner:test-contract-planning": {
-      "allowedProfiles": ["terra-high", "luna-max", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-high",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-high"
     },
     "test-owner:test-contract": {
-      "allowedProfiles": ["terra-medium", "terra-high", "luna-max", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-medium",
+        "terra-high",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-medium"
     },
     "test-owner:behavior-verification": {
-      "allowedProfiles": ["terra-high", "luna-max", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-high",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-high"
     },
     "code-implementer:implementation": {
-      "allowedProfiles": ["terra-low", "terra-medium", "terra-high", "luna-max", "sol-medium", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-low",
+        "terra-medium",
+        "terra-high",
+        "sol-medium",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-medium"
     },
     "code-implementer:landing-conflict-resolution": {
-      "allowedProfiles": ["terra-medium", "terra-high", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-medium",
+        "terra-high",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-medium"
     },
     "ui-ux-implementer:ui-implementation": {
-      "allowedProfiles": ["sol-low", "sol-medium"],
+      "allowedProfiles": [
+        "sol-low",
+        "sol-medium"
+      ],
       "defaultProfile": "sol-low"
     },
     "ui-ux-implementer:landing-conflict-resolution": {
-      "allowedProfiles": ["terra-medium", "terra-high", "sol-medium", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "terra-medium",
+        "terra-high",
+        "sol-medium",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "terra-medium"
     },
     "ui-system-adjudicator:adjudication": {
-      "allowedProfiles": ["sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "sol-high"
     },
     "ux-acceptance-verifier:ux-acceptance": {
-      "allowedProfiles": ["sol-medium", "sol-high", "sol-xhigh"],
+      "allowedProfiles": [
+        "sol-medium",
+        "sol-high",
+        "sol-xhigh"
+      ],
       "defaultProfile": "sol-medium"
     },
     "documentation-writer:documentation": {
-      "allowedProfiles": ["terra-low", "terra-medium", "sol-medium", "sol-high"],
+      "allowedProfiles": [
+        "terra-low",
+        "terra-medium",
+        "sol-medium",
+        "sol-high"
+      ],
       "defaultProfile": "terra-medium"
     }
   },
   "cleanup": {
     "greenAuthority": "machine-resource-verifier",
     "llmProfile": null,
-    "diagnosticProfiles": ["terra-low", "terra-medium"]
+    "diagnosticProfiles": [
+      "terra-low",
+      "terra-medium"
+    ]
   },
   "installation": {
     "allowedActions": [
@@ -216,7 +214,7 @@
       "inspect-runtime-catalog",
       "bind-profile-availability",
       "compile-available-route-table",
-      "validate-reachability-and-fixed-fallback"
+      "validate-exact-route-reachability"
     ],
     "paidModelInvocationCount": 0,
     "comparativeQualificationForbidden": true

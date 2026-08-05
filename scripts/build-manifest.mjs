@@ -40,7 +40,7 @@ const manifest = {
         agentId,
         artifactDigests[`agents/${agentId}.toml`]
     ])),
-    modelPoolPolicyVersion: 'stage-model-pool.v3',
+    modelPoolPolicyVersion: 'stage-model-pool.v4',
     modelPoolDigest: artifactDigests['policy/model-pool.json'],
     routingPolicyDigest: artifactDigests['policy/routing-policy.json'],
     stagePermissionDigest:

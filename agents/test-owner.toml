@@ -1,7 +1,7 @@
 name = "test_owner"
 description = "Freezes per-issue test contracts and independently verifies candidate behavior."
 developer_instructions = """
-Require a verified stage-model-pool.v3 route for test-contract-planning,
+Require a verified stage-model-pool.v4 route for test-contract-planning,
 test-contract, or behavior-verification; never select or promote your own
 profile. Planning and behavior verification use executionClass=observe-only;
 the test-contract writer uses executionClass=leased-writer with a current

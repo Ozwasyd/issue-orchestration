@@ -1,7 +1,7 @@
 {
   "schema": "issue-orchestration.reviewed-routing-assumptions.v1",
-  "policyVersion": "execution-capability-routing.v4",
-  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "policyVersion": "execution-capability-routing.v5",
+  "modelPoolPolicyVersion": "stage-model-pool.v4",
   "authority": "checked-in-reviewed-routing-assumptions",
   "evidenceClass": "maintained-policy-not-runtime-observation",
   "runtimeObservationClaim": false,
@@ -49,46 +49,6 @@
       "policyStatus": "disabled",
       "routeValidation": "exact-required-profile-only",
       "assumptionDigest": "68c604c44a03fccc6bfcaf165a5056a0c68e6a59f6484ed1a3844f34a61a2609"
-    },
-    "luna-low": {
-      "model": "gpt-5.6-luna",
-      "effort": "low",
-      "multiAgentBackend": "v2",
-      "policyStatus": "disabled",
-      "routeValidation": "exact-required-profile-only",
-      "assumptionDigest": "2b3a67dd605d93f7b33bd3bad65a4a9a1338141afdca5071ec1a467b87dae835"
-    },
-    "luna-medium": {
-      "model": "gpt-5.6-luna",
-      "effort": "medium",
-      "multiAgentBackend": "v2",
-      "policyStatus": "disabled",
-      "routeValidation": "exact-required-profile-only",
-      "assumptionDigest": "9c869abeb527eddf05f41a25d639c3c05e2098c90195ca0a7038b485ece0c772"
-    },
-    "luna-high": {
-      "model": "gpt-5.6-luna",
-      "effort": "high",
-      "multiAgentBackend": "v2",
-      "policyStatus": "disabled",
-      "routeValidation": "exact-required-profile-only",
-      "assumptionDigest": "04ac50892d240720bd2ce081845b71e6e6b932220a72868302c94bea7156f497"
-    },
-    "luna-xhigh": {
-      "model": "gpt-5.6-luna",
-      "effort": "xhigh",
-      "multiAgentBackend": "v2",
-      "policyStatus": "disabled",
-      "routeValidation": "exact-required-profile-only",
-      "assumptionDigest": "bc8015781aa41cf2f9719330eaa2627cf76cf49353da10e372d40917faaf0e84"
-    },
-    "luna-max": {
-      "model": "gpt-5.6-luna",
-      "effort": "max",
-      "multiAgentBackend": "v2",
-      "policyStatus": "normal",
-      "routeValidation": "exact-required-profile-only",
-      "assumptionDigest": "2b2565bfda7783706530076afdda1cf321b4694d44e4e0f38834ee6ed7f96236"
     },
     "sol-low": {
       "model": "gpt-5.6-sol",

@@ -337,7 +337,7 @@ test('P02 requires one complete authoring package and a self-consistent manifest
         'caller-supplied-operator-owned-remote-identity'
     )
     assert.deepEqual(manifest.sourceRepositoryDependencies, [])
-    assert.equal(manifest.modelPoolPolicyVersion, 'stage-model-pool.v3')
+    assert.equal(manifest.modelPoolPolicyVersion, 'stage-model-pool.v4')
     for (const field of [
         'sourceTreeDigest',
         'skillDigest',
@@ -689,7 +689,7 @@ test('P08 installed runtime carries routing, graph and receipt authority', async
         'writer-stage-progress.mjs'
     )
     assert.equal(stage.STAGE_MODEL_POOL_POLICY.version,
-        'stage-model-pool.v3')
+        'stage-model-pool.v4')
     assert.equal(stage.STAGE_MODEL_POOL_POLICY.stages[
         'root-scheduler:scheduling'
     ].defaultProfile, 'terra-low')

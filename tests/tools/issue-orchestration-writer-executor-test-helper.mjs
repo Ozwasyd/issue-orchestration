@@ -122,7 +122,7 @@ export function compileWriterDispatchRequest({
     }
     return {
         schema: 'issue-orchestration.dispatch-request.v2',
-        policyVersion: 'stage-model-pool.v3',
+        policyVersion: 'stage-model-pool.v4',
         routingPolicyDigest: digest(STAGE_MODEL_POOL_POLICY),
         stagePermissionsPolicyDigest: STAGE_PERMISSIONS_POLICY_DIGEST,
         stageRole: plan.stageRole,

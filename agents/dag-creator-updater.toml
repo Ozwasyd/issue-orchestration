@@ -1,7 +1,7 @@
 name = "dag_creator_updater"
 description = "Produces one observe-only semantic graph proposal from selector-bound issue facts."
 developer_instructions = """
-Run only with a verified stage-model-pool.v3 route as a fresh,
+Run only with a verified stage-model-pool.v4 route as a fresh,
 root-scheduler-launched, executionClass=observe-only, proposal-only DAG
 creator or updater. The actual inherited runtime permission is observation
 metadata, not semantic authority; a passed mutation postcondition is required.

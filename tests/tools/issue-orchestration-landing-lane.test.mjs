@@ -164,7 +164,7 @@ function routeInput(index, metricOverrides = {}) {
             contractState: 'frozen',
             verificationClass: 'focused',
             modelRoutingEvidenceDigest: hash(`routing-${index}`),
-            routingPolicyVersion: 'stage-model-pool.v3'
+            routingPolicyVersion: 'stage-model-pool.v4'
         },
         executionMetrics: {
             expectedChangedFileCount: 1,

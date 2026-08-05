@@ -4,6 +4,13 @@ import path from 'node:path'
 // Shared issue-orchestration package runtime.
 
 const HASH = /^[a-f0-9]{64}$/u
+const RETIRED_LUNA_PROFILES = new Set([
+    'luna-low',
+    'luna-medium',
+    'luna-high',
+    'luna-xhigh',
+    'luna-max'
+])
 
 function loadPolicy(name) {
     const file = path.resolve(import.meta.dirname, '../../../policy', name)
@@ -15,8 +22,8 @@ const ROUTING_POLICY = loadPolicy('routing-policy.json')
 const STAGE_PERMISSIONS = loadPolicy('stage-permissions.json')
 
 if (MODEL_POOL.schema
-        !== 'issue-orchestration.stage-model-pool-policy.v3'
-    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v4'
+        !== 'issue-orchestration.stage-model-pool-policy.v4'
+    || ROUTING_POLICY.schema !== 'issue-orchestration.routing-policy.v5'
     || STAGE_PERMISSIONS.schema
         !== 'issue-orchestration.stage-permissions.v2'
     || MODEL_POOL.version !== ROUTING_POLICY.version) {
@@ -27,7 +34,6 @@ const EXPECTED_PRODUCTION_ROSTER = Object.freeze([
     'terra-low',
     'terra-medium',
     'terra-high',
-    'luna-max',
     'sol-low',
     'sol-medium',
     'sol-high',
@@ -36,11 +42,7 @@ const EXPECTED_PRODUCTION_ROSTER = Object.freeze([
 const EXPECTED_FRONTIER_ONLY = Object.freeze(['sol-max'])
 const EXPECTED_DISABLED = Object.freeze([
     'terra-xhigh',
-    'terra-max',
-    'luna-low',
-    'luna-medium',
-    'luna-high',
-    'luna-xhigh'
+    'terra-max'
 ])
 const PRODUCTION_PROFILES = new Set(MODEL_POOL.productionRoster ?? [])
 const FRONTIER_ONLY_PROFILES =
@@ -200,10 +202,6 @@ export const STAGE_MODEL_POOL_POLICY = Object.freeze({
     frontierOnlyProfiles:
         Object.freeze([...MODEL_POOL.frontierOnlyProfiles]),
     disabledProfiles: Object.freeze([...MODEL_POOL.disabledProfiles]),
-    lunaMaxContract:
-        Object.freeze(structuredClone(MODEL_POOL.lunaMaxContract)),
-    availabilityFallback:
-        Object.freeze(structuredClone(MODEL_POOL.availabilityFallback)),
     installation:
         Object.freeze(structuredClone(MODEL_POOL.installation)),
     stages: STAGES,
@@ -250,6 +248,9 @@ export function stageDefinitionsForRole(stageRole) {
 }
 
 export function splitProfile(profileId) {
+    if (RETIRED_LUNA_PROFILES.has(profileId)) {
+        fail('stage-model-pool-luna-profile-retired')
+    }
     const profile = MODEL_POOL.profiles[profileId]
     if (!profile || DISABLED_PROFILES.has(profileId)) {
         fail('routing-profile-id')
@@ -265,6 +266,9 @@ export function verifyRuntimeProfileMetadata(
     value,
     { allowNonProductionCatalog = false } = {}
 ) {
+    if (RETIRED_LUNA_PROFILES.has(value?.selectedProfile)) {
+        fail('stage-model-pool-luna-profile-retired')
+    }
     const profile = MODEL_POOL.profiles[value?.selectedProfile]
     if (!profile ||
         !allowNonProductionCatalog &&
@@ -445,6 +449,15 @@ function validateCandidate(value) {
 }
 
 export function validateStageAssignment(value) {
+    const routeProfiles = [
+        value?.selectedProfile,
+        value?.requiredProfile,
+        ...(Array.isArray(value?.allowedProfiles) ? value.allowedProfiles : [])
+    ]
+    if (routeProfiles.some((profile) =>
+        RETIRED_LUNA_PROFILES.has(profile))) {
+        fail('stage-model-pool-luna-profile-retired')
+    }
     assertNoLegacyAuthority(value)
     if (value?.schema !== 'issue-orchestration.stage-assignment.v3') {
         fail('routing-assignment-schema')
@@ -496,7 +509,7 @@ export function validateStageAssignment(value) {
     if (decision?.schema !==
             'issue-orchestration.execution-route-decision.v2' ||
         decision.policyVersion !==
-            'execution-capability-routing.v4' ||
+            'execution-capability-routing.v5' ||
         decision.routingAuthority !==
             'canonical-route-cell-compiler' ||
         decision.stageRole !== value.stageRole ||

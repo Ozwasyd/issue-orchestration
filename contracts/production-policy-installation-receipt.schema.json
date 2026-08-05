@@ -28,7 +28,7 @@
       "$ref": "#/$defs/digest"
     },
     "modelPoolPolicyVersion": {
-      "const": "stage-model-pool.v3"
+      "const": "stage-model-pool.v4"
     },
     "policyDigest": {
       "$ref": "#/$defs/digest"
@@ -51,11 +51,13 @@
     },
     "disabledProfiles": {
       "type": "array",
-      "minItems": 6,
+      "minItems": 2,
       "uniqueItems": true
     },
     "frontierOnlyProfiles": {
-      "const": ["sol-max"]
+      "const": [
+        "sol-max"
+      ]
     },
     "receiptDigest": {
       "$ref": "#/$defs/digest"

@@ -72,7 +72,7 @@ Writer stage 与永久输出合同如下：
 | `documentation` | `documentation-writer` | diff 或 verified no-change evidence、checkpoint |
 | `landing-conflict-resolution` | `code-implementer` 或 `ui-ux-implementer` | conflict mapping、diff、checkpoint |
 
-Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v3` 或永久 routing policy。
+Landing 不定义 `landing-owner`；共享 package 永久角色总数仍为七个。某次修复批次直接授权 Sol Ultra 实现永久能力，不会改变上述 writer role、`stage-model-pool.v4` 或永久 routing policy。
 
 首次 test-contract writer 不允许依赖虚构历史或空白 attempt。固定冷启动顺序
 是：selector/remote freshness → accepted semantic proposal → deterministic

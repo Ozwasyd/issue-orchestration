@@ -1052,7 +1052,7 @@ async function assertLayerAuthorityRuntimePolicy(expectedCode) {
 
     const semanticDriftValues = {
         role: 'dag-creator',
-        model: 'gpt-5.6-luna',
+        model: 'gpt-5.6-terra',
         effort: 'low',
         executionClass: 'leased-writer',
         freshContext: false
@@ -1073,7 +1073,7 @@ async function assertLayerAuthorityRuntimePolicy(expectedCode) {
     const testOwnerDriftValues = {
         role: 'root-scheduler',
         actorId: 'different-test-owner',
-        model: 'gpt-5.6-luna',
+        model: 'gpt-5.6-terra',
         effort: 'low',
         executionClass: 'observe-only',
         mutationContract: 'no-protected-mutation',

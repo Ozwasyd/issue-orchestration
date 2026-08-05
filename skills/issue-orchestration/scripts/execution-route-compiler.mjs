@@ -18,6 +18,13 @@ import {
 } from './runtime-execution-binding.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
+const RETIRED_LUNA_PROFILES = new Set([
+    'luna-low',
+    'luna-medium',
+    'luna-high',
+    'luna-xhigh',
+    'luna-max'
+])
 const POLICY_ROOT = path.resolve(import.meta.dirname, '../../../policy')
 
 function readPolicy(name) {
@@ -54,6 +61,17 @@ function fail(code, message = code) {
     throw new ExecutionRouteError(code, message)
 }
 
+function rejectRetiredLunaAuthority(value) {
+    const profiles = [
+        value?.selectedProfile,
+        value?.requiredProfile,
+        ...(Array.isArray(value?.allowedProfiles) ? value.allowedProfiles : [])
+    ]
+    if (profiles.some((profile) => RETIRED_LUNA_PROFILES.has(profile))) {
+        fail('stage-model-pool-luna-profile-retired')
+    }
+}
+
 function canonical(value) {
     if (Array.isArray(value)) return value.map(canonical)
     if (!value || typeof value !== 'object') return value
@@ -72,6 +90,22 @@ function digest(value) {
         .digest('hex')
 }
 
+const LEGACY_PROFILE_MIGRATION = ROUTING_POLICY.legacyProfileMigration
+if (!sameValue(
+        [...(LEGACY_PROFILE_MIGRATION?.retiredProfiles ?? [])].sort(),
+        [...RETIRED_LUNA_PROFILES].sort()
+    ) ||
+    LEGACY_PROFILE_MIGRATION?.errorCode !==
+        'stage-model-pool-luna-profile-retired' ||
+    LEGACY_PROFILE_MIGRATION?.aliasesForbidden !== true ||
+    LEGACY_PROFILE_MIGRATION?.fallbackForbidden !== true ||
+    Object.values(ROUTING_POLICY.routeCells ?? {}).some((cell) =>
+        RETIRED_LUNA_PROFILES.has(cell?.requiredProfile)) ||
+    Object.keys(REVIEWED_ASSUMPTIONS.profiles ?? {}).some((profile) =>
+        RETIRED_LUNA_PROFILES.has(profile))) {
+    fail('execution-routing-policy-luna-migration-invalid')
+}
+
 function seal(value, digestField) {
     const sealed = structuredClone(value)
     sealed[digestField] = digest(sealed)
@@ -88,6 +122,7 @@ export function validateExecutionRouteDecision(value, {
     stagePhase,
     requireRuntimeBinding = true
 } = {}) {
+    rejectRetiredLunaAuthority(value)
     if (value?.schema !==
             'issue-orchestration.execution-route-decision.v2' ||
         value.policyVersion !== EXECUTION_ROUTING_POLICY_VERSION ||
@@ -145,23 +180,11 @@ export function validateExecutionRouteDecision(value, {
         !HASH.test(value.routeDecisionDigest ?? '')) {
         fail('execution-route-decision-binding')
     }
-    if (value.selectedProfile === value.requiredProfile) {
-        if (!['not-required', 'primary-available'].includes(
-            value.availabilityHandling
-        ) || value.availabilityFallbackReason !== null) {
-            fail('execution-route-decision-availability')
-        }
-    } else {
-        const fallback = STAGE_MODEL_POOL_POLICY.availabilityFallback
-        if (value.requiredProfile !== fallback.primary ||
-            value.selectedProfile !== fallback.fallback ||
-            value.availabilityHandling !== 'fixed-fallback' ||
-            !fallback.allowedReasons.includes(
-                value.availabilityFallbackReason
-            ) ||
-            !HASH.test(value.availabilityBindingDigest ?? '')) {
-            fail('execution-route-decision-availability')
-        }
+    if (value.selectedProfile !== value.requiredProfile ||
+        value.availabilityHandling !== 'not-required' ||
+        value.availabilityBindingDigest !== null ||
+        value.availabilityFallbackReason !== null) {
+        fail('execution-route-decision-availability')
     }
     const unsigned = structuredClone(value)
     delete unsigned.routeDecisionDigest
@@ -331,9 +354,7 @@ export function verifyInstalledProductionPolicy({
         ([routeCellId, cell]) => [
             routeCellId,
             availabilityBinding.profiles[cell.requiredProfile]?.available ===
-                true ||
-            cell.requiredProfile === 'luna-max' &&
-                availabilityBinding.profiles['terra-high']?.available === true
+                true
         ]))
     if (Object.values(reachability).some((reachable) =>
         reachable !== true)) {
@@ -368,9 +389,9 @@ export function verifyReviewedRoutingAssumptions(
     assumptions = REVIEWED_ASSUMPTIONS
 ) {
     if (ROUTING_POLICY.schema !==
-            'issue-orchestration.execution-routing-policy.v4' ||
+            'issue-orchestration.execution-routing-policy.v5' ||
         ROUTING_POLICY.version !==
-            'execution-capability-routing.v4' ||
+            'execution-capability-routing.v5' ||
         ROUTING_POLICY.routingAuthority !==
             'canonical-route-cell-compiler' ||
         ROUTING_POLICY.selectionMode !==
@@ -618,40 +639,10 @@ function validatedMetrics(input, slice) {
     return metrics
 }
 
-function lunaContractSatisfied(metrics, slice, stageDefinition) {
-    const contract = STAGE_MODEL_POOL_POLICY.lunaMaxContract
-    return stageDefinition.allowedProfiles.includes('luna-max') &&
-        metrics.freshContext === contract.freshContext &&
-        metrics.contextBreadth === contract.contextBreadth &&
-        metrics.statefulContinuationRequired ===
-            contract.statefulContinuationRequired &&
-        metrics.checkpointSupportRequired ===
-            contract.checkpointSupportRequired &&
-        metrics.ownedModuleCount <= contract.maxOwnedModuleCount &&
-        metrics.commandLoopCount <= contract.maxCommandLoopCount &&
-        metrics.toolInteractionDepth <=
-            contract.maxToolInteractionDepth &&
-        metrics.runtimeProbeDepth <= contract.maxRuntimeProbeDepth &&
-        metrics.firstActionDeterministic ===
-            contract.firstActionDeterministic &&
-        Number.isInteger(metrics.compiledContextTokens) &&
-        metrics.compiledContextTokens <=
-            contract.maxCompiledContextTokens &&
-        metrics.exactTokenizerAvailable ===
-            contract.exactTokenizerRequired &&
-        metrics.selfContainedPrompt ===
-            contract.selfContainedPromptRequired &&
-        metrics.bulkCrossScopeContext === false &&
-        slice.maxOwnedModules <= contract.maxOwnedModuleCount
-}
-
 function shapeCandidates(metrics, slice, stageDefinition) {
     const shapes = []
     if (metrics.costSensitivity === 'cost-sensitive-deep') {
-        if (!lunaContractSatisfied(metrics, slice, stageDefinition)) {
-            fail('execution-route-luna-contract')
-        }
-        shapes.push('luna-fresh-narrow-deep')
+        shapes.push('narrow-deep-cost-sensitive')
     }
     const longHorizon =
         metrics.toolInteractionDepth >= 16 ||
@@ -906,7 +897,7 @@ function canonicalRouteCell({
             return cell('implementation.iterative-runtime-broad')
         }
         if (shape.dominantWorkShape ===
-                'luna-fresh-narrow-deep') {
+                'narrow-deep-cost-sensitive') {
             return cell('implementation.narrow-deep-cost-sensitive')
         }
         if (shape.costSensitivity === 'latency-sensitive' &&
@@ -948,7 +939,7 @@ function canonicalRouteCell({
             return cell('verification.runtime-lifecycle-cross-module')
         }
         if (shape.dominantWorkShape ===
-                'luna-fresh-narrow-deep') {
+                'narrow-deep-cost-sensitive') {
             return cell('verification.narrow-deep-cost-sensitive')
         }
         if (stageKey !== 'test-owner:test-contract' ||
@@ -1066,7 +1057,6 @@ function compileCapabilityRequirement(
 }
 
 function validateExactRouteProfile({
-    input,
     selectedRouteCell,
     requirement,
     stageDefinition
@@ -1087,15 +1077,6 @@ function validateExactRouteProfile({
         selectedRouteCell.advisorOnly !== true) {
         fail('execution-route-frontier-exception-invalid')
     }
-    if (requiredProfile === 'luna-max') {
-        return resolveLunaAvailability({
-            input,
-            requiredProfile,
-            stageDefinition,
-            selectedProfileReason:
-                `${selectedRouteCell.routeCellId}-strict-contract`
-        })
-    }
     return {
         allowedProfiles: [requiredProfile],
         requiredProfile,
@@ -1104,7 +1085,9 @@ function validateExactRouteProfile({
             `${selectedRouteCell.routeCellId}-exact-route-cell`,
         capabilityValidationResult: 'accepted',
         reviewedAssumptionDigest: assumption.assumptionDigest,
-        availabilityHandling: 'not-required'
+        availabilityHandling: 'not-required',
+        availabilityBindingDigest: null,
+        availabilityFallbackReason: null
     }
 }
 
@@ -1125,58 +1108,25 @@ function validateAvailabilityBinding(binding) {
         )) {
         fail('execution-route-availability-binding-invalid')
     }
-    const luna = binding.profiles?.['luna-max']
-    if (!luna || typeof luna.available !== 'boolean' ||
-        luna.available && luna.reason !== null ||
-        !luna.available &&
-            !ROUTING_POLICY.lunaAvailabilityFallback.allowedReasons
-                .includes(luna.reason)) {
-        fail('execution-route-luna-availability-unproven')
+    const authorized = [
+        ...STAGE_MODEL_POOL_POLICY.productionRoster,
+        ...STAGE_MODEL_POOL_POLICY.frontierOnlyProfiles
+    ].sort()
+    const observed = Object.keys(binding.profiles ?? {}).sort()
+    if (!sameValue(authorized, observed)) {
+        fail('execution-route-availability-binding-invalid')
     }
-    return binding
-}
-
-function resolveLunaAvailability({
-    input,
-    requiredProfile,
-    stageDefinition,
-    selectedProfileReason
-}) {
-    const binding = validateAvailabilityBinding(
-        input.runtimeAvailabilityBinding
-    )
-    const luna = binding.profiles['luna-max']
-    if (luna.available) {
-        return {
-            allowedProfiles: ['luna-max'],
-            requiredProfile,
-            selectedProfile: 'luna-max',
-            selectedProfileReason,
-            capabilityValidationResult: 'accepted',
-            reviewedAssumptionDigest:
-                REVIEWED_ASSUMPTIONS.profiles['luna-max']
-                    .assumptionDigest,
-            availabilityHandling: 'primary-available',
-            availabilityBindingDigest: binding.bindingDigest,
-            availabilityFallbackReason: null
+    for (const profile of authorized) {
+        const availability = binding.profiles[profile]
+        if (typeof availability?.available !== 'boolean' ||
+            availability.available && availability.reason !== null ||
+            !availability.available &&
+                !['runtime-unsupported', 'runtime-unavailable']
+                    .includes(availability.reason)) {
+            fail('execution-route-availability-binding-invalid')
         }
     }
-    if (!stageDefinition.allowedProfiles.includes('terra-high')) {
-        fail('execution-route-luna-fallback-unreachable')
-    }
-    return {
-        allowedProfiles: ['luna-max', 'terra-high'],
-        requiredProfile,
-        selectedProfile: 'terra-high',
-        selectedProfileReason: 'luna-pre-dispatch-unavailable-fixed-fallback',
-        capabilityValidationResult: 'accepted',
-        reviewedAssumptionDigest:
-            REVIEWED_ASSUMPTIONS.profiles['luna-max']
-                .assumptionDigest,
-        availabilityHandling: 'fixed-fallback',
-        availabilityBindingDigest: binding.bindingDigest,
-        availabilityFallbackReason: luna.reason
-    }
+    return binding
 }
 
 function validateRuntimeObservation(observation, selectedProfile) {
@@ -1237,7 +1187,6 @@ function compileDecision({
     selectedRouteCell
 }) {
     const selected = validateExactRouteProfile({
-        input,
         selectedRouteCell,
         requirement,
         stageDefinition

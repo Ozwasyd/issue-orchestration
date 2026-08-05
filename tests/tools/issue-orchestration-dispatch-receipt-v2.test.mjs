@@ -174,7 +174,7 @@ async function frozenRoute(changes = {}) {
         contractState: 'frozen',
         verificationClass: 'runtime',
         modelRoutingEvidenceDigest: hash('a'),
-        routingPolicyVersion: 'stage-model-pool.v3',
+        routingPolicyVersion: 'stage-model-pool.v4',
         ...changes.classification
     }
     const stageRole = changes.stageRole ?? 'code-implementer'
@@ -295,7 +295,7 @@ async function requestInput(overrides = {}) {
     }
     return {
         schema: 'issue-orchestration.dispatch-request.v2',
-        policyVersion: 'stage-model-pool.v3',
+        policyVersion: 'stage-model-pool.v4',
         routingPolicyDigest: digest(routeInput.module.STAGE_MODEL_POOL_POLICY),
         stagePermissionsPolicyDigest,
         stageRole: routeInput.stageRole,
@@ -688,7 +688,7 @@ function verifiedV2DispatchReceipt(request = {}) {
         epochId: request.epochId ?? 'epoch-1832-001',
         baseSha: request.baseSha ?? baseSha,
         candidateSha: request.candidateSha ?? baseSha,
-        policyVersion: 'stage-model-pool.v3',
+        policyVersion: 'stage-model-pool.v4',
         routingPolicyDigest: request.routingPolicyDigest ?? hash('6'),
         routingInputDigest: request.routingInputDigest ?? hash('7'),
         verificationStatus: 'verified',

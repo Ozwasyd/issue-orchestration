@@ -83,7 +83,7 @@ function executionObservation({
     const model = profile.startsWith('sol-')
         ? 'gpt-5.6-sol'
         : profile.startsWith('luna-')
-            ? 'gpt-5.6-luna'
+            ? 'gpt-5.6-terra'
         : 'gpt-5.6-terra'
     const value = {
         schema:
