@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           cat .issue40-patch/part-* | base64 --decode | gzip --decompress > /tmp/issue40.patch
-          test "$(sha256sum /tmp/issue40.patch | cut -d' ' -f1)" = "c4888ebd4547d42a882020bf6086b80a620e349cb3cc7e3709856fc0acd967eb"
+          test "$(sha256sum /tmp/issue40.patch | cut -d' ' -f1)" = "a3fe51e578d22dd87b0cdd998910b767a95a52091a55a899ebed66fb38dc26bb"
           git apply --check /tmp/issue40.patch
           git apply --index /tmp/issue40.patch
 
