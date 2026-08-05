@@ -6,6 +6,13 @@ import {
     digest,
     unsignedDigest
 } from '../../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
+import {
+    compileTerminalRecoveryFingerprint,
+    terminalCategorySpec,
+    TERMINAL_POLICY_VERSION,
+    validateTerminalEvidenceSet,
+    validateTerminalRecoveryExhaustion
+} from '../../../skills/issue-orchestration/scripts/terminal-policy.mjs'
 
 function clone(value) {
     return structuredClone(value)
@@ -573,19 +580,113 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
             break
         }
         case 'terminalization': {
+            const category = facts.category ?? 'externally_blocked'
+            const directEvidence = [
+                ...terminalCategorySpec(category).requiredEvidenceKinds
+            ].map((kind) => ({
+                kind,
+                evidenceDigest: h(`terminal-${category}-${kind}`)
+            })).sort((left, right) =>
+                left.kind.localeCompare(right.kind))
+            const recoveryExhaustion = facts.recoveryExhaustion ?? {
+                advisor: 'inapplicable',
+                continuation: 'inapplicable',
+                deterministicHandlers: 'exhausted',
+                humanDecision: 'inapplicable',
+                revalidation: 'exhausted',
+                retry: 'exhausted'
+            }
+            const evidence = validateTerminalEvidenceSet({
+                policyVersion: TERMINAL_POLICY_VERSION,
+                category,
+                directEvidence
+            })
+            const recovery = validateTerminalRecoveryExhaustion(
+                recoveryExhaustion
+            )
+            const firstFailure = action.bindings.firstFailure ??
+                action.bindings.quarantine
+            if (!firstFailure) {
+                throw new Error('scripted terminal first failure required')
+            }
+            const retainedResources = [
+                ...(facts.retainedResources ?? [])
+            ].sort((left, right) =>
+                `${left.resourceType}:${left.resourceId}`.localeCompare(
+                    `${right.resourceType}:${right.resourceId}`
+                ))
+            const retentionInventoryDigest = digest(retainedResources)
+            const domainDigests = facts.domainDigests ?? {
+                dependency: h('terminal-domain-dependency'),
+                evidence: h('terminal-domain-evidence'),
+                humanDecision: h('terminal-domain-human'),
+                remote: h('terminal-domain-remote'),
+                repository: h('terminal-domain-repository'),
+                runtime: h('terminal-domain-runtime')
+            }
+            const observableFingerprint =
+                compileTerminalRecoveryFingerprint({
+                    runId: action.bindings.runId,
+                    nodeId: action.nodeId,
+                    repository: action.bindings.repository,
+                    issueNumber: action.bindings.issueNumber,
+                    baseSha: action.bindings.baseSha,
+                    nodeEpoch: action.bindings.nodeEpoch,
+                    selectorReceiptDigest:
+                        action.bindings.selectorReceiptDigest,
+                    remoteSnapshotDigest:
+                        action.bindings.remoteSnapshotDigest,
+                    policyDigest: action.bindings.policyDigest,
+                    policySetDigest: action.bindings.policySetDigest,
+                    runtimeTrustBindingDigest:
+                        action.bindings.runtimeTrustBindingDigest,
+                    repositoryBindingDigest:
+                        action.bindings.repositoryBindingDigest,
+                    category,
+                    firstFailureDigest: digest(firstFailure),
+                    directEvidenceDigest:
+                        evidence.directEvidenceDigest,
+                    recoveryExhaustionDigest:
+                        recovery.recoveryExhaustionDigest,
+                    domainDigests,
+                    retentionInventoryDigest
+                })
             put('terminal', {
-                category: facts.category ?? 'externally_blocked',
-                firstFailureDigest: facts.firstFailureDigest ??
-                    h('terminal-first-failure'),
-                directEvidenceDigests: [h('terminal-direct-evidence')]
+                policyVersion: TERMINAL_POLICY_VERSION,
+                category,
+                firstFailureDigest: digest(firstFailure),
+                directEvidence: evidence.directEvidence,
+                directEvidenceDigest: evidence.directEvidenceDigest,
+                directEvidenceDigests: evidence.directEvidence.map(
+                    ({ evidenceDigest }) => evidenceDigest
+                ),
+                recoveryExhaustion: recovery.recoveryExhaustion,
+                recoveryExhaustionDigest:
+                    recovery.recoveryExhaustionDigest,
+                terminalObservationDigest:
+                    h('terminal-observation'),
+                recoveryObservationDigest:
+                    h('terminal-recovery-observation'),
+                retentionInventoryDigest,
+                priorLedgerHeadDigest:
+                    action.bindings.priorLedgerHeadDigest,
+                nodeProjectionDigest:
+                    action.bindings.nodeProjectionDigest
             })
             put('recoveryFingerprint', {
-                observableFingerprint: h('recovery-fingerprint'),
-                terminalReceiptDigest: d('terminal')
+                observableFingerprint,
+                terminalReceiptDigest: d('terminal'),
+                recoveryObservationDigest:
+                    h('terminal-recovery-observation'),
+                retentionInventoryDigest,
+                domainDigests
             })
             put('retentionState', {
-                inventoryDigest: h('terminal-retention-inventory'),
-                retainedResources: []
+                inventoryDigest: retentionInventoryDigest,
+                retainedResources,
+                retentionObservationDigest:
+                    h('terminal-retention-observation'),
+                terminalReceiptDigest: d('terminal')
             })
             break
         }

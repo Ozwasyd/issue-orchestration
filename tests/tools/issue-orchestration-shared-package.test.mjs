@@ -76,6 +76,7 @@ const requiredPackageFiles = [
     'policy/runtime-startup-policy.json',
     'policy/stage-mutation-guard-policy.json',
     'policy/stage-permissions.json',
+    'policy/terminal-policy.json',
     'graph/graph-patch.schema.json',
     'graph/runtime-projection.schema.json',
     'graph/semantic-graph.schema.json',
@@ -86,6 +87,7 @@ const requiredPackageFiles = [
     'contracts/node-projection.schema.json',
     'contracts/run-control-ledger.schema.json',
     'contracts/run-control-projection.schema.json',
+    'contracts/terminal-policy.schema.json',
     'scripts/discover.mjs',
     'scripts/install.mjs',
     'scripts/uninstall.mjs',
@@ -104,6 +106,7 @@ const requiredRuntimeModules = [
     'frontier-compiler.mjs',
     'git-resource-cleanup.mjs',
     'human-decision.mjs',
+    'lifecycle-terminalization-executor.mjs',
     'multi-node-state.mjs',
     'remote-mutation-authority.mjs',
     'resource-lifecycle.mjs',
@@ -115,6 +118,7 @@ const requiredRuntimeModules = [
     'semantic-runtime-projection.mjs',
     'stage-profile-policy.mjs',
     'stage-runtime-guard.mjs',
+    'terminal-policy.mjs',
     'validate-state-root.mjs',
     'writer-stage-progress.mjs'
 ]
@@ -757,6 +761,7 @@ test('P10 package carries orchestration facts, not product design facts', () => 
         'scope-selector',
         'semantic-graph',
         'stage-dispatch',
+        'terminalization',
         'test-contract-cold-start'
     ])
     assert.deepEqual(manifest.excludedAuthorities.toSorted(), [

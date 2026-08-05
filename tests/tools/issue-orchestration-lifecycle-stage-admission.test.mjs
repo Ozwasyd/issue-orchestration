@@ -49,6 +49,11 @@ function node({
 }
 
 function memberBindings(target) {
+    const firstFailure = {
+        classification: 'externally_blocked',
+        evidenceRef: 'evidence://fixture-terminal',
+        signature: 'fixture-terminal-signature'
+    }
     return {
         runId: 'fixture-run',
         nodeId: target.id,
@@ -64,7 +69,29 @@ function memberBindings(target) {
         nodeProjectionDigest: HASH,
         priorLedgerHeadDigest: HASH,
         policyDigest: HASH,
+        policySetDigest: HASH,
         runtimeCapabilityBindingDigest: HASH,
+        lifecycleAuthorityBindingDigest: HASH,
+        startupAttestationDigest: HASH,
+        runtimeInvocationId: 'fixture-runtime-invocation',
+        runtimeSessionId: 'fixture-runtime-session',
+        rootAuthorityEpoch: 1,
+        runtimeTrustBindingDigest: HASH,
+        repositoryIdentitySetDigest: HASH,
+        repositoryBindingSetDigest: HASH,
+        repositoryBindingDigest: HASH,
+        packageDigest: HASH,
+        manifestDigest: HASH,
+        firstFailure,
+        recoveryState: {
+            expectedNextSliceId: null,
+            expectedNextSliceDigest: null,
+            latestContinuationReceiptDigest: null,
+            writerStageRetryAuthorizationDigest: null,
+            reworkCount: 0
+        },
+        quarantine: null,
+        terminalCandidate: null,
         receiptDigests: {}
     }
 }

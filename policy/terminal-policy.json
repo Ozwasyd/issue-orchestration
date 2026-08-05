@@ -1,0 +1,61 @@
+{
+  "schema": "issue-orchestration.terminal-policy.v1",
+  "version": "terminal-policy-v1",
+  "categories": {
+    "impossible": {
+      "requiredEvidenceKinds": [
+        "allowed-environment-exhaustion",
+        "implementation-impossibility-proof",
+        "repository-capability-observation"
+      ]
+    },
+    "externally_blocked": {
+      "requiredEvidenceKinds": [
+        "external-blocker-observation",
+        "local-recovery-exhaustion",
+        "recovery-condition-observation"
+      ]
+    },
+    "not_applicable": {
+      "requiredEvidenceKinds": [
+        "applicability-rule-evaluation",
+        "current-fact-observation"
+      ]
+    }
+  },
+  "recoveryDomains": [
+    "dependency",
+    "evidence",
+    "humanDecision",
+    "remote",
+    "repository",
+    "runtime"
+  ],
+  "recoveryPaths": [
+    "advisor",
+    "continuation",
+    "deterministicHandlers",
+    "humanDecision",
+    "revalidation",
+    "retry"
+  ],
+  "recoveryTerminalStates": [
+    "completed",
+    "exhausted",
+    "inapplicable"
+  ],
+  "humanDecisionTerminalStates": [
+    "completed",
+    "inapplicable"
+  ],
+  "forbiddenTerminalSources": [
+    "caller-authored-category",
+    "root-authored-terminal-object",
+    "narration-only",
+    "prompt-or-actor-identity-change",
+    "recoverable-writer-failure",
+    "human-decision-pending",
+    "ordinary-cleanup-failure",
+    "root-liveness-failure"
+  ]
+}

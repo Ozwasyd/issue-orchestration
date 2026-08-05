@@ -29,6 +29,11 @@ import {
 import {
     validateLifecycleAuthorityBinding
 } from './lifecycle-genesis-authority.mjs'
+import {
+    TERMINAL_POLICY_VERSION,
+    validateTerminalEvidenceSet,
+    validateTerminalRecoveryExhaustion
+} from './terminal-policy.mjs'
 
 const GENESIS = '0'.repeat(64)
 const EVENT_FIELDS = [
@@ -1936,7 +1941,66 @@ function resetWriterAttemptProjection(node, {
     node.expectedNextCompiledPromptDigest = null
 }
 
+function validateTerminalCandidatePayload(event) {
+    const { eventType: type, payload = {} } = event
+    if (type !== 'node.terminal-entered' &&
+        type !== 'implementation.external-blocked') return
+    let evidence
+    let recovery
+    try {
+        evidence = validateTerminalEvidenceSet({
+            policyVersion: payload.policyVersion,
+            category: payload.category,
+            directEvidence: payload.directEvidence
+        })
+        recovery = validateTerminalRecoveryExhaustion(
+            payload.recoveryExhaustion
+        )
+    } catch (error) {
+        if (error?.code === 'terminal-category-invalid') {
+            fail('terminal-category', error.code)
+        }
+        fail('terminal-evidence', error?.code ?? error?.message)
+    }
+    if (payload.policyVersion !== TERMINAL_POLICY_VERSION ||
+        typeof payload.firstFailureDigest !== 'string' ||
+        payload.firstFailureDigest !== digest(payload.firstFailure) ||
+        payload.directEvidenceDigest !==
+            evidence.directEvidenceDigest ||
+        payload.recoveryExhaustionDigest !==
+            recovery.recoveryExhaustionDigest ||
+        !/^[a-f0-9]{64}$/u.test(
+            payload.recoveryFingerprint ?? '')) {
+        fail('terminal-evidence')
+    }
+}
+
 function validateSpecial(event, node, context) {
+    validateTerminalCandidatePayload(event)
+    if (event.eventType === 'node.terminal-recovered') {
+        const previous = event.payload?.previousRecoveryFingerprint
+        const current = event.payload?.recoveryFingerprint
+        if (!/^[a-f0-9]{64}$/u.test(previous ?? '') ||
+            !/^[a-f0-9]{64}$/u.test(current ?? '')) {
+            fail('terminal-recovery-fingerprint-invalid')
+        }
+        if (current === previous) {
+            fail('terminal-recovery-unchanged')
+        }
+        if (usesV2Semantics(event, context)) {
+            const receipt = node.lifecycleReceipts
+                ?.recoveryFingerprint
+            const terminal = node.lifecycleReceipts?.terminal
+            const retention = node.lifecycleReceipts?.retentionState
+            if (!receipt || !terminal || !retention) {
+                fail('terminal-recovery-receipt-required')
+            }
+            if (receipt.evidence?.observableFingerprint !== previous ||
+                node.terminal?.recoveryFingerprint !== previous) {
+                fail('terminal-recovery-fingerprint-stale')
+            }
+        }
+    }
     if (event.eventType.startsWith('writer-stage.') &&
         !usesV2Semantics(event, context)) {
         fail('receipt-v1-historical-only')
@@ -2039,18 +2103,6 @@ function validateSpecial(event, node, context) {
     if (type === 'ledger.correction-recorded') {
         const target = context.eventsById.get(payload.targetEventId)
         if (!target || target.eventDigest !== payload.targetEventDigest) fail('correction-target-missing')
-    }
-    if (type === 'node.terminal-entered') {
-        if (!['externally_blocked', 'resource_failed', 'contract_disputed'].includes(payload.category)) {
-            fail('terminal-category')
-        }
-        if (!Array.isArray(payload.directEvidence) || payload.directEvidence.length === 0) {
-            fail('terminal-evidence')
-        }
-    }
-    if (type === 'node.terminal-recovered' &&
-        payload.recoveryFingerprint === payload.previousRecoveryFingerprint) {
-        fail('terminal-recovery-unchanged')
     }
     if (type === 'dag.proposal-accepted') {
         if (event.actorRole !== 'dag-creator-updater') fail('dag-proposal-authority')
@@ -2202,11 +2254,16 @@ function reduceNode(node, event, context) {
         node.writerStageSemanticFailureDigest =
             failure.semanticFailureDigest ?? null
         node.activeAttemptId = null
-        node.terminal = {
-            category: 'writer_stage_failure',
-            directEvidence: [failure.receiptDigest],
-            recoveryFingerprint: failure.semanticFailureDigest
+        // A writer-stage failure is typed failure evidence, not terminal
+        // authority. Preserve its first machine-observed failure identity,
+        // then let the retry/continuation policy or the dedicated
+        // terminalization executor decide the next state.
+        node.firstFailure ??= {
+            classification: failure.eventType,
+            evidenceRef: failure.receiptDigest,
+            signature: failure.semanticFailureDigest
         }
+        node.terminal = null
     }
     if (type === 'writer-stage.retry-authorized') {
         node.terminal = null
@@ -2277,14 +2334,52 @@ function reduceNode(node, event, context) {
     }
     if (type === 'delivery.completed') node.deliveryCompleted = true
     if (type === 'cleanup.completed') node.cleanupCompleted = true
-    if (type === 'node.terminal-entered' || type === 'implementation.external-blocked') {
+    if (type === 'node.terminal-entered' ||
+        type === 'implementation.external-blocked') {
         node.terminal = {
-            category: payload.category ?? 'externally_blocked',
-            directEvidence: payload.directEvidence ?? event.evidenceRefs,
+            policyVersion: payload.policyVersion,
+            category: payload.category,
+            firstFailureDigest: payload.firstFailureDigest,
+            directEvidence: structuredClone(payload.directEvidence),
+            directEvidenceDigest: payload.directEvidenceDigest,
+            recoveryExhaustion:
+                structuredClone(payload.recoveryExhaustion),
+            recoveryExhaustionDigest:
+                payload.recoveryExhaustionDigest,
             recoveryFingerprint: payload.recoveryFingerprint
         }
     }
-    if (type === 'node.terminal-recovered') node.terminal = null
+    if (type === 'lifecycle.terminal-recorded') {
+        const terminal = payload.stageResult.artifacts.terminal
+        const recovery =
+            payload.stageResult.artifacts.recoveryFingerprint
+        const retention = payload.stageResult.artifacts.retentionState
+        node.terminal = {
+            policyVersion: terminal.evidence.policyVersion,
+            category: terminal.evidence.category,
+            firstFailureDigest:
+                terminal.evidence.firstFailureDigest,
+            directEvidence:
+                structuredClone(terminal.evidence.directEvidence),
+            directEvidenceDigest:
+                terminal.evidence.directEvidenceDigest,
+            recoveryExhaustion:
+                structuredClone(terminal.evidence.recoveryExhaustion),
+            recoveryExhaustionDigest:
+                terminal.evidence.recoveryExhaustionDigest,
+            recoveryFingerprint:
+                recovery.evidence.observableFingerprint,
+            retainedResources:
+                structuredClone(retention.evidence.retainedResources),
+            inventoryDigest: retention.evidence.inventoryDigest
+        }
+    }
+    if (type === 'node.terminal-recovered') {
+        node.terminal = null
+        delete node.lifecycleReceipts.terminal
+        delete node.lifecycleReceipts.recoveryFingerprint
+        delete node.lifecycleReceipts.retentionState
+    }
     if (type === 'issue.reopened') {
         node.deliveryAuthorized = false
         node.semanticDagRecomputeRequired = true

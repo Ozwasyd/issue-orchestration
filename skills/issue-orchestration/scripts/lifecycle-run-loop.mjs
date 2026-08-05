@@ -777,7 +777,23 @@ function currentCompatibilityState({
                 ] ?? null,
             deliveryCommit: nodeProjection?.deliveryCommit ?? null,
             closedAtSequence:
-                nodeProjection?.closedAtSequence ?? null
+                nodeProjection?.closedAtSequence ?? null,
+            activeAttemptId:
+                nodeProjection?.activeAttemptId ?? null,
+            firstFailure: clone(nodeProjection?.firstFailure ?? null),
+            terminalCandidate:
+                clone(nodeProjection?.terminal ?? null),
+            recoveryState: {
+                expectedNextSliceId:
+                    nodeProjection?.expectedNextSliceId ?? null,
+                expectedNextSliceDigest:
+                    nodeProjection?.expectedNextSliceDigest ?? null,
+                latestContinuationReceiptDigest:
+                    nodeProjection?.latestContinuationReceiptDigest ?? null,
+                writerStageRetryAuthorizationDigest:
+                    nodeProjection?.writerStageRetryAuthorizationDigest ?? null,
+                reworkCount: nodeProjection?.reworkCount ?? 0
+            }
         }]
     }))
     return Object.freeze({
@@ -1443,6 +1459,83 @@ export function recordLifecycleCleanupClosureResult({
     return makeHandle(authority)
 }
 
+function exactTerminalAction(authority, actionSet, action) {
+    exactCurrentActionSet(authority, actionSet)
+    if (action?.type !== 'terminalize-node') {
+        fail('lifecycle-terminal-action-invalid')
+    }
+    const current = actionSet.actions.find((candidate) =>
+        candidate.actionDigest === action.actionDigest)
+    if (!current || !sameValue(current, action)) {
+        fail('lifecycle-terminal-action-stale')
+    }
+    return action
+}
+
+export function recordLifecycleTerminalizationResult({
+    ledger,
+    actionSet,
+    action,
+    result,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactTerminalAction(authority, actionSet, action)
+    const current = replayLifecycleRunLedger(authority, {
+        startup: authority.startup
+    })
+    const node = current.nodes[action.nodeId]
+    if (!node || node.receipts?.terminal ||
+        node.receipts?.recoveryFingerprint ||
+        node.receipts?.retentionState) {
+        fail('lifecycle-terminal-state-invalid')
+    }
+    const admission = validateLifecycleStageResult({
+        result,
+        action,
+        node
+    })
+    if (admission.contractId !== 'terminalization') {
+        fail('lifecycle-terminal-result-invalid')
+    }
+    const terminal = admission.artifacts.terminal.evidence
+    const retention = admission.artifacts.retentionState.evidence
+    const candidate = action.bindings.terminalCandidate
+    if (candidate) {
+        if (terminal.policyVersion !== candidate.policyVersion ||
+            terminal.category !== candidate.category ||
+            terminal.firstFailureDigest !==
+                candidate.firstFailureDigest ||
+            terminal.directEvidenceDigest !==
+                candidate.directEvidenceDigest ||
+            terminal.recoveryExhaustionDigest !==
+                candidate.recoveryExhaustionDigest) {
+            fail('lifecycle-terminal-result-stale')
+        }
+    } else {
+        const firstFailure = action.bindings.firstFailure ??
+            action.bindings.quarantine
+        if (!firstFailure || terminal.firstFailureDigest !==
+                digest(firstFailure)) {
+            fail('lifecycle-terminal-result-stale')
+        }
+    }
+    if (retention.retainedResources.some((resource) =>
+        resource.ownerNodeId !== action.nodeId)) {
+        fail('lifecycle-terminal-retention-owner-invalid')
+    }
+    appendCanonicalNodeResult({
+        authority,
+        actionSet,
+        action,
+        result,
+        node,
+        createdAt
+    })
+    return makeHandle(authority)
+}
+
 export function recordLifecycleActionResults({
     ledger,
     actionSet,
@@ -1456,6 +1549,10 @@ export function recordLifecycleActionResults({
     }
     const authority = resolveAuthority(ledger, startup)
     exactCurrentActionSet(authority, actionSet)
+    if (actionSet.actions.some(({ type }) =>
+        type === 'terminalize-node')) {
+        fail('lifecycle-terminal-direct-recording-forbidden')
+    }
     if (!Array.isArray(stageResults) ||
         stageResults.length !== actionSet.actions.length ||
         actionSet.actions.some(({ type }) => type === 'idle' ||

@@ -301,6 +301,30 @@ test('table-driven lifecycle states emit only their canonical action', () => {
     }
 })
 
+test('raw terminal failure binds first failure without minting a category', () => {
+    const node = graphNode({
+        id: 'RepositoryA#20',
+        state: 'terminal'
+    })
+    const request = input([node])
+    const firstFailure = {
+        classification: 'writer-stage.output-missing',
+        evidenceRef: sha('writer-failure-receipt'),
+        signature: sha('writer-failure-signature')
+    }
+    request.aggregateProjection.nodes[node.memberId].firstFailure =
+        firstFailure
+    request.aggregateProjection.nodes[node.memberId].terminalCandidate =
+        null
+    const unsigned = { ...request.aggregateProjection }
+    delete unsigned.aggregateProjectionDigest
+    request.aggregateProjection.aggregateProjectionDigest = digest(unsigned)
+    const result = compileLifecycleActionSet(request)
+    assert.equal(result.actions[0].type, 'terminalize-node')
+    assert.deepEqual(result.actions[0].bindings.firstFailure, firstFailure)
+    assert.equal(result.actions[0].bindings.terminalCandidate, null)
+})
+
 test('same verified input is byte-for-byte deterministic across reload', () => {
     const nodes = [
         graphNode({ id: 'RepositoryA#20', state: 'none' }),

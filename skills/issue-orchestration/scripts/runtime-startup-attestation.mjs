@@ -105,7 +105,8 @@ export function currentRuntimeStartupAuthority() {
             rootTakeover:
                 policyDigest('root-takeover-policy.json'),
             controlPlaneAdvisor:
-                policyDigest('control-plane-advisor-policy.json')
+                policyDigest('control-plane-advisor-policy.json'),
+            terminal: policyDigest('terminal-policy.json')
         }
     })
 }
@@ -609,7 +610,8 @@ export function attestRuntimeStartup({
                 rootTakeover:
                     digest('unobservable:root-takeover'),
                 controlPlaneAdvisor:
-                    digest('unobservable:control-plane-advisor')
+                    digest('unobservable:control-plane-advisor'),
+                terminal: digest('unobservable:terminal-policy')
             }),
         recoveryAuthorizationDigest:
             takeoverContext?.authorization

@@ -8,6 +8,13 @@ import {
     compileIssueAcceptanceContract,
     compileRequirementInventory
 } from './issue-requirement-authority.mjs'
+import {
+    TERMINAL_POLICY_VERSION,
+    compileTerminalRecoveryFingerprint,
+    validateTerminalEvidenceSet,
+    validateTerminalRecoveryDomains,
+    validateTerminalRecoveryExhaustion
+} from './terminal-policy.mjs'
 
 export const LIFECYCLE_STAGE_RESULT_SCHEMA =
     'issue-orchestration.lifecycle-stage-result.v1'
@@ -1086,21 +1093,48 @@ const TERMINAL_ARTIFACTS = Object.freeze({
         validator: 'evaluateQuiescence',
         evidence: (value) => {
             commonEvidence(value, 'terminal')
-            if (![
-                'externally_blocked',
-                'resource_failed',
-                'contract_disputed'
-            ].includes(value.category)) {
-                fail('lifecycle-terminal-category-invalid')
+            if (value.policyVersion !== TERMINAL_POLICY_VERSION) {
+                fail('lifecycle-terminal-policy-version-invalid')
             }
             hash(value.firstFailureDigest,
                 'lifecycle-terminal-first-failure-required')
-            if (!Array.isArray(value.directEvidenceDigests) ||
-                value.directEvidenceDigests.length === 0 ||
-                value.directEvidenceDigests.some((item) =>
-                    !HASH.test(item ?? ''))) {
+            let validatedEvidence
+            let validatedRecovery
+            try {
+                validatedEvidence = validateTerminalEvidenceSet({
+                    policyVersion: value.policyVersion,
+                    category: value.category,
+                    directEvidence: value.directEvidence
+                })
+                validatedRecovery = validateTerminalRecoveryExhaustion(
+                    value.recoveryExhaustion
+                )
+            } catch (error) {
+                fail('lifecycle-terminal-evidence-invalid', {
+                    cause: error?.code ?? error?.message
+                })
+            }
+            if (value.directEvidenceDigest !==
+                    validatedEvidence.directEvidenceDigest ||
+                value.recoveryExhaustionDigest !==
+                    validatedRecovery.recoveryExhaustionDigest ||
+                !Array.isArray(value.directEvidenceDigests) ||
+                JSON.stringify(value.directEvidenceDigests) !==
+                    JSON.stringify(validatedEvidence.directEvidence.map(
+                        ({ evidenceDigest }) => evidenceDigest
+                    ))) {
                 fail('lifecycle-terminal-direct-evidence-required')
             }
+            hash(value.terminalObservationDigest,
+                'lifecycle-terminal-observation-required')
+            hash(value.recoveryObservationDigest,
+                'lifecycle-terminal-recovery-observation-required')
+            hash(value.retentionInventoryDigest,
+                'lifecycle-terminal-retention-inventory-required')
+            hash(value.priorLedgerHeadDigest,
+                'lifecycle-terminal-ledger-head-required')
+            hash(value.nodeProjectionDigest,
+                'lifecycle-terminal-node-projection-required')
         }
     }),
     recoveryFingerprint: artifact({
@@ -1113,6 +1147,17 @@ const TERMINAL_ARTIFACTS = Object.freeze({
                 'lifecycle-terminal-recovery-fingerprint-required')
             hash(value.terminalReceiptDigest,
                 'lifecycle-terminal-receipt-required')
+            hash(value.recoveryObservationDigest,
+                'lifecycle-terminal-recovery-observation-required')
+            hash(value.retentionInventoryDigest,
+                'lifecycle-terminal-recovery-retention-required')
+            try {
+                validateTerminalRecoveryDomains(value.domainDigests)
+            } catch (error) {
+                fail('lifecycle-terminal-recovery-domains-required', {
+                    cause: error?.code ?? error?.message
+                })
+            }
         }
     }),
     retentionState: artifact({
@@ -1124,9 +1169,37 @@ const TERMINAL_ARTIFACTS = Object.freeze({
             commonEvidence(value, 'retention-state')
             hash(value.inventoryDigest,
                 'lifecycle-terminal-retention-inventory-required')
-            if (!Array.isArray(value.retainedResources)) {
+            if (!Array.isArray(value.retainedResources) ||
+                value.retainedResources.some((resource) =>
+                    !resource || typeof resource !== 'object' ||
+                    Array.isArray(resource) ||
+                    typeof resource.resourceType !== 'string' ||
+                    resource.resourceType.length === 0 ||
+                    typeof resource.resourceId !== 'string' ||
+                    resource.resourceId.length === 0 ||
+                    typeof resource.ownerNodeId !== 'string' ||
+                    resource.ownerNodeId.length === 0 ||
+                    typeof resource.status !== 'string' ||
+                    resource.status.length === 0 ||
+                    !HASH.test(resource.resourceDigest ?? ''))) {
                 fail('lifecycle-terminal-retained-resources-required')
             }
+            const resources = [...value.retainedResources].sort(
+                (left, right) =>
+                    `${left.resourceType}:${left.resourceId}`.localeCompare(
+                        `${right.resourceType}:${right.resourceId}`
+                    )
+            )
+            if (new Set(resources.map((resource) =>
+                `${resource.resourceType}:${resource.resourceId}`
+            )).size !== resources.length ||
+                value.inventoryDigest !== digest(resources)) {
+                fail('lifecycle-terminal-retention-inventory-invalid')
+            }
+            hash(value.retentionObservationDigest,
+                'lifecycle-terminal-retention-observation-required')
+            hash(value.terminalReceiptDigest,
+                'lifecycle-terminal-retention-receipt-required')
         }
     })
 })
@@ -1425,7 +1498,7 @@ function digestOf(value, field = null) {
     return null
 }
 
-function validateCrossArtifactBindings(contract_, artifacts, node) {
+function validateCrossArtifactBindings(contract_, artifacts, node, action) {
     const d = (key) => digestOf(
         artifacts[key],
         contract_.artifacts[key]?.digestField
@@ -1617,12 +1690,79 @@ function validateCrossArtifactBindings(contract_, artifacts, node) {
                 fail('lifecycle-cleanup-artifact-chain-stale')
             }
             break
-        case 'terminalization':
-            if (artifacts.recoveryFingerprint.evidence
-                .terminalReceiptDigest !== d('terminal')) {
+        case 'terminalization': {
+            const terminal = artifacts.terminal.evidence
+            const recovery = artifacts.recoveryFingerprint.evidence
+            const retention = artifacts.retentionState.evidence
+            const firstFailure = action.bindings.firstFailure ??
+                action.bindings.quarantine
+            if (recovery.terminalReceiptDigest !== d('terminal') ||
+                retention.terminalReceiptDigest !== d('terminal') ||
+                recovery.retentionInventoryDigest !==
+                    retention.inventoryDigest ||
+                terminal.priorLedgerHeadDigest !==
+                    action.bindings.priorLedgerHeadDigest ||
+                terminal.nodeProjectionDigest !==
+                    action.bindings.nodeProjectionDigest ||
+                !firstFailure ||
+                terminal.firstFailureDigest !== digest(firstFailure) ||
+                retention.retainedResources.some((resource) =>
+                    resource.ownerNodeId !== action.nodeId)) {
                 fail('lifecycle-terminal-artifact-chain-stale')
             }
+            let expectedFingerprint
+            try {
+                expectedFingerprint = compileTerminalRecoveryFingerprint({
+                    runId: action.bindings.runId,
+                    nodeId: action.nodeId,
+                    repository: action.bindings.repository,
+                    issueNumber: action.bindings.issueNumber,
+                    baseSha: action.bindings.baseSha,
+                    nodeEpoch: action.bindings.nodeEpoch,
+                    selectorReceiptDigest:
+                        action.bindings.selectorReceiptDigest,
+                    remoteSnapshotDigest:
+                        action.bindings.remoteSnapshotDigest,
+                    policyDigest: action.bindings.policyDigest,
+                    policySetDigest: action.bindings.policySetDigest,
+                    runtimeTrustBindingDigest:
+                        action.bindings.runtimeTrustBindingDigest,
+                    repositoryBindingDigest:
+                        action.bindings.repositoryBindingDigest,
+                    category: terminal.category,
+                    firstFailureDigest: terminal.firstFailureDigest,
+                    directEvidenceDigest:
+                        terminal.directEvidenceDigest,
+                    recoveryExhaustionDigest:
+                        terminal.recoveryExhaustionDigest,
+                    domainDigests: recovery.domainDigests,
+                    retentionInventoryDigest:
+                        retention.inventoryDigest
+                })
+            } catch (error) {
+                fail('lifecycle-terminal-fingerprint-input-invalid', {
+                    cause: error?.code ?? error?.message
+                })
+            }
+            if (recovery.observableFingerprint !== expectedFingerprint) {
+                fail('lifecycle-terminal-recovery-fingerprint-stale')
+            }
+            const candidate = action.bindings.terminalCandidate
+            if (candidate &&
+                (candidate.policyVersion !== terminal.policyVersion ||
+                    candidate.category !== terminal.category ||
+                    candidate.firstFailureDigest !==
+                        terminal.firstFailureDigest ||
+                    candidate.directEvidenceDigest !==
+                        terminal.directEvidenceDigest ||
+                    candidate.recoveryExhaustionDigest !==
+                        terminal.recoveryExhaustionDigest ||
+                    candidate.recoveryFingerprint !==
+                        recovery.observableFingerprint)) {
+                fail('lifecycle-terminal-candidate-stale')
+            }
             break
+        }
         default:
             break
     }
@@ -1985,7 +2125,7 @@ export function validateLifecycleStageResult({
     for (const [key, spec] of Object.entries(contract_.artifacts)) {
         validateArtifact(result.artifacts[key], key, spec, action)
     }
-    validateCrossArtifactBindings(contract_, result.artifacts, node)
+    validateCrossArtifactBindings(contract_, result.artifacts, node, action)
     validatePreWriterPayloads(
         contract_, result.artifacts, node, action
     )

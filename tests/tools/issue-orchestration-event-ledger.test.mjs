@@ -88,6 +88,57 @@ function fileDigest(relativePath) {
         .digest('hex')
 }
 
+function typedTerminalPayload({
+    category = 'externally_blocked',
+    firstFailure = {
+        classification: category,
+        evidenceRef: `evidence://${category}`,
+        signature: `${category}-signature`
+    },
+    recoveryFingerprint = digest(`terminal-${category}`)
+} = {}) {
+    const evidenceKinds = {
+        impossible: [
+            'allowed-environment-exhaustion',
+            'implementation-impossibility-proof',
+            'repository-capability-observation'
+        ],
+        externally_blocked: [
+            'external-blocker-observation',
+            'local-recovery-exhaustion',
+            'recovery-condition-observation'
+        ],
+        not_applicable: [
+            'applicability-rule-evaluation',
+            'current-fact-observation'
+        ]
+    }
+    const directEvidence = (evidenceKinds[category] ??
+        evidenceKinds.externally_blocked).map((kind) => ({
+        kind,
+        evidenceDigest: digest(`${category}:${kind}`)
+    })).sort((left, right) => left.kind.localeCompare(right.kind))
+    const recoveryExhaustion = {
+        advisor: 'inapplicable',
+        continuation: 'inapplicable',
+        deterministicHandlers: 'exhausted',
+        humanDecision: 'inapplicable',
+        revalidation: 'exhausted',
+        retry: 'exhausted'
+    }
+    return {
+        policyVersion: 'terminal-policy-v1',
+        category,
+        firstFailure,
+        firstFailureDigest: digest(firstFailure),
+        directEvidence,
+        directEvidenceDigest: digest(directEvidence),
+        recoveryExhaustion,
+        recoveryExhaustionDigest: digest(recoveryExhaustion),
+        recoveryFingerprint
+    }
+}
+
 function verifiedDispatchReceipt({
     actorRole = 'code-implementer',
     attemptId = 'attempt-1817-001',
@@ -1314,7 +1365,7 @@ test('contract fixtures are exact, internally linked, and bind the latest author
     const expectedImplementationFiles = [
         {
             path: 'skills/issue-orchestration/scripts/event-ledger.mjs',
-            sha256: 'e39883005546726a44f5bbb435a25cdac0c60b53f563b69e468e2fba138612ea',
+            sha256: '22d5430e9586eb13446558c17b63b2f811826f74795233c6f6b727fb38813a0c',
             gitMode: '100644'
         }
     ]
@@ -1539,10 +1590,15 @@ test('P06 failure categories are distinct and retain first-failure authority', a
             attemptId: 'attempt-1817-001',
             eventType,
             fromState: 'implementing-self-testing',
-            payload: {
-                firstFailure,
-                recoveryFingerprint: digest(eventType)
-            },
+            payload: eventType === 'implementation.external-blocked'
+                ? typedTerminalPayload({
+                    firstFailure,
+                    recoveryFingerprint: digest(eventType)
+                })
+                : {
+                    firstFailure,
+                    recoveryFingerprint: digest(eventType)
+                },
             toState: eventType === 'implementation.external-blocked'
                 ? 'terminal'
                 : 'test-contract-frozen'
@@ -1576,11 +1632,9 @@ test('P08 terminal recovery requires a changed observable fingerprint', async ()
     sealEvent(ledger, {
         eventType: 'node.terminal-entered',
         fromState: 'test-contract-frozen',
-        payload: {
-            category: 'externally_blocked',
-            directEvidence: ['evidence://permission-denied'],
+        payload: typedTerminalPayload({
             recoveryFingerprint: oldFingerprint
-        },
+        }),
         toState: 'terminal'
     })
     sealEvent(ledger, {
@@ -1727,7 +1781,12 @@ test('#1874 writer terminal failure opens the breaker and substantive retry clos
     assert.equal(failure.countsAsImplementationRework, false)
     assert.equal(failure.reworkCountDelta, 0)
     assert.equal(failedNode.status, 'terminal')
-    assert.equal(failedNode.terminal.category, 'writer_stage_failure')
+    assert.equal(failedNode.terminal, null)
+    assert.deepEqual(failedNode.firstFailure, {
+        classification: failure.eventType,
+        evidenceRef: failure.failureReceipt.receiptDigest,
+        signature: failure.failureReceipt.semanticFailureDigest
+    })
     assert.equal(
         failedNode.writerStageFailureReceiptDigest,
         failure.failureReceipt.receiptDigest
@@ -2502,9 +2561,9 @@ async function terminalMutation(patch, code) {
         eventType: 'node.terminal-entered',
         fromState: 'test-contract-frozen',
         payload: {
-            category: 'externally_blocked',
-            directEvidence: ['evidence://external'],
-            recoveryFingerprint: digest('terminal'),
+            ...typedTerminalPayload({
+                recoveryFingerprint: digest('terminal')
+            }),
             ...patch
         },
         toState: 'terminal'
@@ -2518,11 +2577,9 @@ async function terminalRecoveryUnchanged(code) {
     sealEvent(ledger, {
         eventType: 'node.terminal-entered',
         fromState: 'test-contract-frozen',
-        payload: {
-            category: 'externally_blocked',
-            directEvidence: ['evidence://external'],
+        payload: typedTerminalPayload({
             recoveryFingerprint: fingerprint
-        },
+        }),
         toState: 'terminal'
     })
     sealEvent(ledger, {

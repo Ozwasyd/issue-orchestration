@@ -166,6 +166,10 @@ Telemetry 能报告 whole-issue dispatch、prompt/slice 缺口、continuation �
 
 把恢复条件规范化为指纹。后续刷新时条件与指纹未变化，不得重派；发生可观察变化后才移出 terminal，重新调查并重算图。静态推测、subagent 自述或“暂时看起来不能”不是 terminal 证据。
 
+机器词表只来自 `policy/terminal-policy.json`，并由 `contracts/terminal-policy.schema.json` 与 `scripts/terminal-policy.mjs` 共同验证。`terminalize-node` 只能经 `scripts/lifecycle-terminalization-executor.mjs` 执行：它重放 canonical ledgers，绑定第一项失败，重新观察 direct evidence、所有恢复路径和 remote/repository/runtime/dependency/human-decision/evidence 域，记录仍需保留的资源，然后通过专用 recorder 追加一次 terminal receipt chain。普通 batch recorder、Root 自写 category、caller 提供的 fingerprint 或 narration 不能产生 terminal authority。terminalization 不关闭远端 issue，不删除资源，不释放 lease/slot，也不生成 cleanup、delivery 或 quiescence evidence。
+
+恢复事件必须引用当前 terminal receipt 的 observable fingerprint。指纹未变化时拒绝恢复；发生真实可观察变化时，append-only history 保留，但当前 terminal receipt chain 从 projection 中被 supersede，节点回到重新调查与重算图的 canonical 路径。
+
 “未取得 CI evidence”不是 terminal 类别。CI 未执行、实际失败和不可替代的 CI 专属门禁按 [`group-delivery.md`](group-delivery.md) 的唯一关闭规则处理；计费或额度导致 job 未启动本身不得自动产生 `externally_blocked`。
 
 ## 60 分钟恢复

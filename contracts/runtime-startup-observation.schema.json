@@ -114,7 +114,8 @@
         "stageMutationGuard",
         "remoteMutation",
         "rootTakeover",
-        "controlPlaneAdvisor"
+        "controlPlaneAdvisor",
+        "terminal"
       ],
       "properties": {
         "modelPool": {"$ref": "#/$defs/digest"},
@@ -127,7 +128,8 @@
         "stageMutationGuard": {"$ref": "#/$defs/digest"},
         "remoteMutation": {"$ref": "#/$defs/digest"},
         "rootTakeover": {"$ref": "#/$defs/digest"},
-        "controlPlaneAdvisor": {"$ref": "#/$defs/digest"}
+        "controlPlaneAdvisor": {"$ref": "#/$defs/digest"},
+        "terminal": {"$ref": "#/$defs/digest"}
       },
       "additionalProperties": false
     },
