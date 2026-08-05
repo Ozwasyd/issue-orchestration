@@ -484,3 +484,33 @@ test('terra-medium cannot create normal genesis and a supervisor takeover fences
         fixture.cleanup()
     }
 })
+
+test('mutable worktree inventory is re-proved without invalidating lifecycle authority', () => {
+    const fixture = makeFixture()
+    const worktree = path.join(fixture.root, 'mutable-attempt-worktree')
+    try {
+        git([
+            'worktree', 'add', '-b', 'attempt/mutable-authority',
+            worktree, 'main'
+        ], fixture.repository.work)
+        assert.equal(
+            validateLifecycleRunAuthority(fixture.authority, {
+                startup: fixture.startup,
+                expectedRunId: fixture.authority.runId,
+                expectedStateRoot: fixture.stateRoot
+            }).authorityDigest,
+            fixture.authority.authorityDigest
+        )
+        git(['worktree', 'remove', '--force', worktree], fixture.repository.work)
+        git(['branch', '-D', 'attempt/mutable-authority'], fixture.repository.work)
+        assert.equal(
+            compileLifecycleRunActionSet(fixture.ledger, {
+                startup: fixture.startup
+            }).lifecycleAuthorityBindingDigest,
+            fixture.authority.binding.bindingDigest
+        )
+    } finally {
+        fs.rmSync(worktree, { recursive: true, force: true })
+        fixture.cleanup()
+    }
+})
