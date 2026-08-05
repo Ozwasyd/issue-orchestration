@@ -54,12 +54,12 @@ test('canonical route authority accepts policy profiles used by downstream write
     }
 })
 
-test('root, semantic, planning, implementation, and Luna routes are accepted', () => {
+test('root, semantic, planning, and implementation routes are accepted', () => {
     const cases = [
         ['root-scheduler', 'scheduling', 'terra-low'],
         ['dag-creator-updater', 'semantic-proposal', 'terra-high'],
-        ['test-owner', 'test-contract-planning', 'luna-max'],
-        ['code-implementer', 'implementation', 'luna-max']
+        ['test-owner', 'test-contract-planning', 'terra-high'],
+        ['code-implementer', 'implementation', 'terra-medium']
     ]
     for (const [stageRole, stagePhase, selectedProfile] of cases) {
         assert.doesNotThrow(() => validateRouteBoundActor({
@@ -73,6 +73,20 @@ test('root, semantic, planning, implementation, and Luna routes are accepted', (
             })
         }))
     }
+})
+
+test('legacy Luna route decisions fail with the migration code', () => {
+    const decision = routeDecisionFor({
+        stageRole: 'code-implementer',
+        stagePhase: 'implementation'
+    })
+    decision.selectedProfile = 'luna-max'
+    decision.requiredProfile = 'luna-max'
+    decision.allowedProfiles.push('luna-max')
+    expectCode(
+        () => validateExecutionRouteDecision(decision),
+        'stage-model-pool-luna-profile-retired'
+    )
 })
 
 test('obsolete role aliases and non-policy profiles fail closed', () => {

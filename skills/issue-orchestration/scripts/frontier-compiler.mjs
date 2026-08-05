@@ -122,7 +122,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             writeScope: 'tests-only',
             allowedPaths: node.allowedTestPaths,
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     if (stage === 'implementation-ready') {
@@ -139,7 +139,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             allowedPaths: node.allowedImplementationPaths,
             designAuthorityRequired: node.surface === 'ui-ux',
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     if (stage === 'landing-conflict-resolution-ready') {
@@ -153,7 +153,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             allowedPaths: node.allowedImplementationPaths,
             designAuthorityRequired: role === 'ui-ux-implementer',
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     if (stage === 'behavior-verification-ready') {
@@ -165,7 +165,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             writeScope: 'none',
             allowedPaths: [],
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     if (stage === 'ux-acceptance-ready') {
@@ -178,7 +178,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             allowedPaths: [],
             designAuthorityRequired: true,
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     if (stage === 'documentation-ready') {
@@ -190,7 +190,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
             writeScope: 'documentation-only',
             allowedPaths: [`docs/frontier-${node.issueNumber}.md`],
             routeRequired: true,
-            stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+            stageModelPoolPolicyVersion: 'stage-model-pool.v4'
         }
     }
     return {
@@ -201,7 +201,7 @@ function expectedCandidate(node, stage, landingConflict = null) {
         writeScope: 'orchestration-control-only',
         allowedPaths: [],
         routeRequired: true,
-        stageModelPoolPolicyVersion: 'stage-model-pool.v3'
+        stageModelPoolPolicyVersion: 'stage-model-pool.v4'
     }
 }
 

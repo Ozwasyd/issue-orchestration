@@ -47,16 +47,16 @@ const EXPECTED_POOLS = {
         [['terra-high', 'sol-high', 'sol-xhigh', 'sol-max'],
             'terra-high'],
     'test-owner:test-contract-planning':
-        [['terra-high', 'luna-max', 'sol-high', 'sol-xhigh'],
+        [['terra-high', 'sol-high', 'sol-xhigh'],
             'terra-high'],
     'test-owner:test-contract':
-        [['terra-medium', 'terra-high', 'luna-max',
+        [['terra-medium', 'terra-high',
             'sol-high', 'sol-xhigh'], 'terra-medium'],
     'test-owner:behavior-verification':
-        [['terra-high', 'luna-max', 'sol-high', 'sol-xhigh'],
+        [['terra-high', 'sol-high', 'sol-xhigh'],
             'terra-high'],
     'code-implementer:implementation':
-        [['terra-low', 'terra-medium', 'terra-high', 'luna-max',
+        [['terra-low', 'terra-medium', 'terra-high',
             'sol-medium', 'sol-high', 'sol-xhigh'], 'terra-medium'],
     'code-implementer:landing-conflict-resolution':
         [['terra-medium', 'terra-high', 'sol-high', 'sol-xhigh'],
@@ -105,7 +105,7 @@ function classification(overrides = {}) {
         contractState: 'frozen',
         verificationClass: 'focused',
         modelRoutingEvidenceDigest: hash('a'),
-        routingPolicyVersion: 'stage-model-pool.v3',
+        routingPolicyVersion: 'stage-model-pool.v4',
         ...overrides
     }
 }
@@ -113,11 +113,11 @@ function classification(overrides = {}) {
 function assignment(overrides = {}) {
     return {
         schema: 'issue-orchestration.stage-assignment.v3',
-        stageProfilePolicyVersion: 'stage-model-pool.v3',
+        stageProfilePolicyVersion: 'stage-model-pool.v4',
         stageRole: 'code-implementer',
         stagePhase: 'implementation',
         allowedProfiles: [
-            'terra-low', 'terra-medium', 'terra-high', 'luna-max',
+            'terra-low', 'terra-medium', 'terra-high',
             'sol-medium', 'sol-high', 'sol-xhigh'
         ],
         defaultProfile: 'terra-medium',
@@ -157,7 +157,7 @@ function assignment(overrides = {}) {
         },
         executionRouteDecision: {
             schema: 'issue-orchestration.execution-route-decision.v2',
-            policyVersion: 'execution-capability-routing.v4',
+            policyVersion: 'execution-capability-routing.v5',
             routingAuthority: 'canonical-route-cell-compiler',
             stageRole: 'code-implementer',
             stagePhase: 'implementation',
@@ -186,7 +186,7 @@ function assertCode(error, expectedCode) {
 
 function requireFunction(module, name) {
     assert.equal(typeof module[name], 'function',
-        `stage-model-pool.v3 must export ${name}()`)
+        `stage-model-pool.v4 must export ${name}()`)
     return module[name]
 }
 
@@ -210,16 +210,17 @@ function legacyDiscoveries() {
 }
 
 test('contract assets are frozen against the merged issue body', () => {
-    assert.equal(contract.schema, 'issue-orchestration.stage-profile-test-contract.v3')
-    assert.equal(contract.baseSha, 'd01f7269fb9819446f106806d96ea12269d0797b')
+    assert.equal(contract.schema, 'issue-orchestration.stage-profile-test-contract.v4')
+    assert.equal(contract.baseSha, '3b2f76362ec09f8267f2fb0a21dbe3a775cb000b')
     assert.deepEqual(contract.authority, {
         kind: 'superseding-package-issues',
         issueIds: [
             'Ozwasyd/issue-orchestration#5',
             'Ozwasyd/issue-orchestration#11',
-            'Ozwasyd/issue-orchestration#16'
+            'Ozwasyd/issue-orchestration#16',
+            'Ozwasyd/issue-orchestration#77'
         ],
-        updatedAt: '2026-08-03T08:16:44Z'
+        updatedAt: '2026-08-06T00:44:00+08:00'
     })
     assert.deepEqual(
         acceptance.acceptance.flatMap(({ mutations }) => mutations).sort(),
@@ -238,7 +239,7 @@ test('contract assets are frozen against the merged issue body', () => {
 test('P01 mandatory classification fields and enums are versioned', async () => {
     const module = await policy()
     assert.deepEqual(module.REQUIRED_ROUTING_FIELDS, REQUIRED_CLASSIFICATION_FIELDS)
-    assert.equal(module.ROUTING_POLICY_VERSION, 'stage-model-pool.v3')
+    assert.equal(module.ROUTING_POLICY_VERSION, 'stage-model-pool.v4')
     assert.deepEqual(module.ROUTING_ENUMS, {
         domain: [
             'generic-code', 'ui-ux', 'documentation', 'orchestration-core',
@@ -274,8 +275,8 @@ test('P02 classification validation rejects missing or invalid authority evidenc
 test('P03 one manifest owns every allowed pool and the full stage schema', async () => {
     const module = await policy()
     const manifest = module.STAGE_MODEL_POOL_POLICY
-    assert.equal(manifest?.schema, 'issue-orchestration.stage-model-pool-policy.v3')
-    assert.equal(manifest?.version, 'stage-model-pool.v3')
+    assert.equal(manifest?.schema, 'issue-orchestration.stage-model-pool-policy.v4')
+    assert.equal(manifest?.version, 'stage-model-pool.v4')
     assert.deepEqual(Object.keys(manifest?.stages ?? {}).sort(),
         Object.keys(EXPECTED_POOLS).sort())
     for (const [key, [allowedProfiles, defaultProfile]] of Object.entries(EXPECTED_POOLS)) {
@@ -345,7 +346,7 @@ const negativeCases = {
         classification: classification({ engineeringRiskClass: 'high-risk' }),
         selectedProfile: 'luna-max'
     }),
-    'N04-ui-forbidden-model': () => ['luna-max', 'terra-max', 'sol-high'].map(
+    'N04-ui-forbidden-model': () => ['terra-max', 'sol-high'].map(
         (selectedProfile) => assignment({
             stageRole: 'ui-ux-implementer',
             stagePhase: 'ui-implementation',
@@ -386,12 +387,12 @@ const negativeCases = {
     }),
     'N08-internal-red-escalates': () => ({
         schema: 'issue-orchestration.route-reclassification.v1',
-        previousProfile: 'luna-max',
+        previousProfile: 'terra-medium',
         blockerClass: 'implementer-internal-red',
         blockerReceiptDigest: hash('1'),
         newRiskOrVerificationClass: 'complex',
         newProfile: 'sol-high',
-        policyVersion: 'stage-model-pool.v3',
+        policyVersion: 'stage-model-pool.v4',
         sourceRole: 'code-implementer',
         sourcePhase: 'self-test',
         opensNewAttempt: true,
@@ -399,7 +400,7 @@ const negativeCases = {
     }),
     'N09-silent-capability-fallback': () => assignment({
         runtimeCapability: {
-            requestedProfile: 'luna-max',
+            requestedProfile: 'terra-medium',
             effectiveProfile: 'sol-high',
             available: false
         },

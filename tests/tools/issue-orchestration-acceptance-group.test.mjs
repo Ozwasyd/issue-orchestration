@@ -69,7 +69,7 @@ function member(issueId, index, overrides = {}) {
             testOwner: index === 0 ? 'sol-xhigh' : 'terra-max',
             implementer: index === 0 ? 'sol-high' : 'terra-max',
             behaviorVerifier: index === 0 ? 'terra-high' : 'sol-high',
-            documentationWriter: index === 0 ? 'luna-high' : 'terra-high'
+            documentationWriter: index === 0 ? 'terra-high' : 'terra-high'
         },
         testContractDigest: hash(String(index + 7)),
         allowedPaths: [`tools/member-${index + 1}.mjs`],

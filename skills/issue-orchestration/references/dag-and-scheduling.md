@@ -26,7 +26,7 @@ node .agents/skills/issue-orchestration/scripts/validate-state-root.mjs \
 
 守卫会按输入遍历顺序解析相对路径和 `..`，拒绝 symlink 组件，以最近存在祖先推导不存在尾部的规范路径，并同时核验 Linux mount coordinate、device/inode identity 和实际 Git worktree。对无法证明 backing path 的 FUSE/overlay alias mount 直接拒绝。它不以字符串前缀作为充分证据；无法读取 mount 或 worktree 身份时 fail closed。第一次校验通过后，只能使用输出的 `candidate.canonical` 以 `0700` 权限创建状态根；创建后必须用同一参数复验，复验通过前不得写 DAG。
 
-根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v3` semantic-proposal route 的 fresh-context、observe-only DAG updater 提议，经 mutation postcondition 和机器门禁校验后纳入 v2 DAG。
+根代理是完整运行态（ledger、锁、槽位和事件）的唯一写入者。各 stage agent 只接收当前闭环任务、局部 diff 与所需 evidence 投影，不得读取或修改完整 DAG、ledger、锁、槽位或状态根。根代理可以追加已验证的阶段事件，但不得自行生成、删除或修补 completed-prerequisite tombstone；tombstone 只能由 root scheduler 拉起、绑定 `stage-model-pool.v4` semantic-proposal route 的 fresh-context、observe-only DAG updater 提议，经 mutation postcondition 和机器门禁校验后纳入 v2 DAG。
 
 
 ### 两级运行态账本
@@ -131,11 +131,11 @@ compiler 返回 canonical `lifecycle-action-set.v1`。所有非 `idle` action �
 
 ## 根调度模型
 
-根调度进程（root scheduler）固定使用 `terra-low`。进入调度循环前先从本轮运行时元数据核验 requested/effective model、reasoning effort 与 multi-agent backend V2；不匹配时分类为调用问题，停止本次父调用并以 recovery receipt 接管 checkpoint。Root 只执行有界投影上的机械动作并调用唯一 canonical route-cell compiler；`stage-model-pool.v3` 只提供 stage identity 与权限，不选择 profile。Root 不读取完整 issue/DAG/state，不执行语义调查，也不得自行判断风险、UI 分类、模型或 fallback。
+根调度进程（root scheduler）固定使用 `terra-low`。进入调度循环前先从本轮运行时元数据核验 requested/effective model、reasoning effort 与 multi-agent backend V2；不匹配时分类为调用问题，停止本次父调用并以 recovery receipt 接管 checkpoint。Root 只执行有界投影上的机械动作并调用唯一 canonical route-cell compiler；`stage-model-pool.v4` 只提供 stage identity 与权限，不选择 profile。Root 不读取完整 issue/DAG/state，不执行语义调查，也不得自行判断风险、UI 分类、模型或 fallback。
 
 ## Stage model pool 与重分类
 
-永久 routing 的唯一 authority 是 `execution-capability-routing.v4` 的 `canonical-route-cell-compiler`：它把 stage semantics、verified executable slice 与 observed execution shape 一次性编译为一个 route cell 和一个 exact production profile。不存在之后的全局 ladder 或 profile search。普通 roster 固定为 `terra-low/medium/high`、`luna-max`、`sol-low/medium/high/xhigh`，`sol-max` 只允许 Advisor 或机器证明的 frontier exception；`terra-xhigh/max` 与 `luna-low/medium/high/xhigh` 只有 catalog 可见性，没有 dispatch、retry、fallback 或 override authority。`luna-max` 还必须通过 fresh、narrow、single-module、短工具链、精确 tokenizer 与 32K token 上限合同，并在 dispatch 前绑定 trusted availability；唯一 availability fallback 是 `terra-high`。安装只验证完整性、availability、reachability 与 fallback，不运行付费比较。UI、长链和 frontier 仍必须由机器 evidence 决定，不能由节点字段或 Root 偏好决定。logical model capability 不含 sandbox/permission label；checked-in reviewed assumptions 只校验 exact profile，不是 runtime observation 或 selector。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
+永久 routing 的唯一 authority 是 `execution-capability-routing.v5` 的 `canonical-route-cell-compiler`：它把 stage semantics、verified executable slice 与 observed execution shape 一次性编译为一个 route cell 和一个 exact production profile。不存在之后的全局 ladder、profile search、availability fallback 或 failure escalation。普通 roster 固定为 `terra-low/medium/high` 与 `sol-low/medium/high/xhigh`，`sol-max` 只允许 Advisor 或机器证明的 frontier exception；`terra-xhigh/max` 仅保留为 disabled catalog 项。所有 `luna-*` profile 已在 `stage-model-pool.v4` 一次性退役，旧 route decision、receipt 或 runtime metadata 在 actor spawn 前以 `stage-model-pool-luna-profile-retired` 失败，不存在 alias 或兼容 fallback。两个 narrow-deep-cost-sensitive route cell 均精确选择 `terra-high`。安装只验证完整性、availability 与 exact-route reachability，不运行付费比较。UI、长链和 frontier 仍必须由机器 evidence 决定，不能由节点字段或 Root 偏好决定。logical model capability 不含 sandbox/permission label；checked-in reviewed assumptions 只校验 exact profile，不是 runtime observation 或 selector。Cleanup/quiescence 不进入 LLM pool，绿色 authority 是 machine collector/verifier。
 
 `reworkCount`、失败次数、余额、token、成本、telemetry、当前 root profile 和人工偏好不是 routing input。`writer-stage.output-missing`、failure、retry、rework 或 `profile-capability-mismatch` 都不能推进 profile。只有 independently revised semantic classification 或 executable slice 才能作为新 dispatch 输入调用 canonical compiler，并绑定旧 failure receipt、breaker reset/retry authorization 和可观察 requested/effective metadata。Acceptance-group 的每个 member 与 landing/reverification slice 都独立编译 route，不能继承上一 member 的 profile、candidate receipt 或 verifier context。不可用或不可观察 profile 必须 fail closed，不得静默 fallback。
 

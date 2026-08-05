@@ -50,7 +50,7 @@
     },
     {
       "id": "RUNTIME-01",
-      "requirement": "The shared artifact carries stage-model-pool.v3 routing, root Luna/low, separated semantic graph/runtime projection, dispatch/self-test receipt authority and deterministic runtime modules without semantic compatibility fallback.",
+      "requirement": "The shared artifact carries stage-model-pool.v4 routing, root Luna/low, separated semantic graph/runtime projection, dispatch/self-test receipt authority and deterministic runtime modules without semantic compatibility fallback.",
       "tests": ["P08"],
       "mutations": [
         "N09-root-or-ui-forbidden-profile",

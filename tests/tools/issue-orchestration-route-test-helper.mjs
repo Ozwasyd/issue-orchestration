@@ -41,20 +41,17 @@ const ROUTE_CELL_BY_STAGE_PROFILE = Object.freeze({
     },
     'test-owner:test-contract-planning': {
         'terra-high': 'verification.narrow-complex',
-        'luna-max': 'verification.narrow-deep-cost-sensitive',
         'sol-high': 'verification.runtime-lifecycle-cross-module',
         'sol-xhigh': 'verification.protocol-security-authority'
     },
     'test-owner:test-contract': {
         'terra-medium': 'verification.focused-authoring',
         'terra-high': 'verification.narrow-complex',
-        'luna-max': 'verification.narrow-deep-cost-sensitive',
         'sol-high': 'verification.runtime-lifecycle-cross-module',
         'sol-xhigh': 'verification.protocol-security-authority'
     },
     'test-owner:behavior-verification': {
         'terra-high': 'verification.narrow-complex',
-        'luna-max': 'verification.narrow-deep-cost-sensitive',
         'sol-high': 'verification.runtime-lifecycle-cross-module',
         'sol-xhigh': 'verification.protocol-security-authority'
     },
@@ -62,7 +59,6 @@ const ROUTE_CELL_BY_STAGE_PROFILE = Object.freeze({
         'terra-low': 'implementation.atomic-mechanical',
         'terra-medium': 'implementation.ordinary-bounded-single-module',
         'terra-high': 'implementation.narrow-deep-latency-sensitive',
-        'luna-max': 'implementation.narrow-deep-cost-sensitive',
         'sol-medium': 'implementation.bounded-stateful-multifile',
         'sol-high': 'implementation.high-risk',
         'sol-xhigh': 'implementation.high-tool-durable-cross-module'

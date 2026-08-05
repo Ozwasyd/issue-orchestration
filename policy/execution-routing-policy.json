@@ -1,7 +1,7 @@
 {
-  "schema": "issue-orchestration.execution-routing-policy.v4",
-  "version": "execution-capability-routing.v4",
-  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "schema": "issue-orchestration.execution-routing-policy.v5",
+  "version": "execution-capability-routing.v5",
+  "modelPoolPolicyVersion": "stage-model-pool.v4",
   "runtimeExecutionBindingPolicyVersion": "runtime-execution-binding.v1",
   "routingAuthority": "canonical-route-cell-compiler",
   "assumptionAuthority": "reviewed-routing-assumptions.json",
@@ -36,62 +36,150 @@
     "high-tool-depth",
     "long-horizon-cross-module",
     "focused-observe-only",
-    "luna-fresh-narrow-deep"
+    "narrow-deep-cost-sensitive"
   ],
-  "contextBreadthOrder": ["narrow", "moderate", "broad", "very-broad"],
+  "contextBreadthOrder": [
+    "narrow",
+    "moderate",
+    "broad",
+    "very-broad"
+  ],
   "routeCells": {
-    "control.normal": {"requiredProfile": "terra-low"},
-    "control.recovery-takeover": {"requiredProfile": "terra-medium"},
-    "control.unknown-complex-advisor": {"requiredProfile": "sol-max", "advisorOnly": true},
-
-    "implementation.atomic-mechanical": {"requiredProfile": "terra-low"},
-    "implementation.ordinary-bounded-single-module": {"requiredProfile": "terra-medium"},
-    "implementation.narrow-deep-latency-sensitive": {"requiredProfile": "terra-high"},
-    "implementation.narrow-deep-cost-sensitive": {"requiredProfile": "luna-max"},
-    "implementation.bounded-stateful-multifile": {"requiredProfile": "sol-medium"},
-    "implementation.iterative-runtime-broad": {"requiredProfile": "sol-high"},
-    "implementation.high-risk": {"requiredProfile": "sol-high"},
-    "implementation.high-tool-durable-cross-module": {"requiredProfile": "sol-xhigh"},
-
-    "verification.focused-authoring": {"requiredProfile": "terra-medium"},
-    "verification.narrow-complex": {"requiredProfile": "terra-high"},
-    "verification.narrow-deep-cost-sensitive": {"requiredProfile": "luna-max"},
-    "verification.runtime-lifecycle-cross-module": {"requiredProfile": "sol-high"},
-    "verification.protocol-security-authority": {"requiredProfile": "sol-xhigh"},
-
-    "dag.semantic-default": {"requiredProfile": "terra-high"},
-    "dag.full-reconstruction": {"requiredProfile": "sol-high"},
-    "dag.authority-topology-conflict": {"requiredProfile": "sol-xhigh"},
-    "dag.frontier-advisor": {"requiredProfile": "sol-max", "advisorOnly": true},
-
-    "code-landing.bounded": {"requiredProfile": "terra-medium"},
-    "code-landing.complex": {"requiredProfile": "terra-high"},
-    "code-landing.high-risk": {"requiredProfile": "sol-high"},
-    "code-landing.frontier": {"requiredProfile": "sol-xhigh"},
-
-    "ui-implementation.prescribed": {"requiredProfile": "sol-low"},
-    "ui-implementation.judgment": {"requiredProfile": "sol-medium"},
-    "ui-landing.prescribed": {"requiredProfile": "terra-medium"},
-    "ui-landing.composition-judgment": {"requiredProfile": "sol-medium"},
-    "ui-landing.cross-module": {"requiredProfile": "sol-high"},
-    "ui-landing.protocol-security": {"requiredProfile": "sol-xhigh"},
-    "ui-adjudication.system-dispute": {"requiredProfile": "sol-high"},
-    "ui-adjudication.authority-conflict": {"requiredProfile": "sol-xhigh"},
-    "ux.local": {"requiredProfile": "sol-medium"},
-    "ux.path": {"requiredProfile": "sol-high"},
-    "ux.system": {"requiredProfile": "sol-xhigh"},
-
-    "documentation.mechanical": {"requiredProfile": "terra-low"},
-    "documentation.current-sync": {"requiredProfile": "terra-medium"},
-    "documentation.cross-module": {"requiredProfile": "sol-medium"},
-    "documentation.architecture-public-contract": {"requiredProfile": "sol-high"}
+    "control.normal": {
+      "requiredProfile": "terra-low"
+    },
+    "control.recovery-takeover": {
+      "requiredProfile": "terra-medium"
+    },
+    "control.unknown-complex-advisor": {
+      "requiredProfile": "sol-max",
+      "advisorOnly": true
+    },
+    "implementation.atomic-mechanical": {
+      "requiredProfile": "terra-low"
+    },
+    "implementation.ordinary-bounded-single-module": {
+      "requiredProfile": "terra-medium"
+    },
+    "implementation.narrow-deep-latency-sensitive": {
+      "requiredProfile": "terra-high"
+    },
+    "implementation.narrow-deep-cost-sensitive": {
+      "requiredProfile": "terra-high"
+    },
+    "implementation.bounded-stateful-multifile": {
+      "requiredProfile": "sol-medium"
+    },
+    "implementation.iterative-runtime-broad": {
+      "requiredProfile": "sol-high"
+    },
+    "implementation.high-risk": {
+      "requiredProfile": "sol-high"
+    },
+    "implementation.high-tool-durable-cross-module": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "verification.focused-authoring": {
+      "requiredProfile": "terra-medium"
+    },
+    "verification.narrow-complex": {
+      "requiredProfile": "terra-high"
+    },
+    "verification.narrow-deep-cost-sensitive": {
+      "requiredProfile": "terra-high"
+    },
+    "verification.runtime-lifecycle-cross-module": {
+      "requiredProfile": "sol-high"
+    },
+    "verification.protocol-security-authority": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "dag.semantic-default": {
+      "requiredProfile": "terra-high"
+    },
+    "dag.full-reconstruction": {
+      "requiredProfile": "sol-high"
+    },
+    "dag.authority-topology-conflict": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "dag.frontier-advisor": {
+      "requiredProfile": "sol-max",
+      "advisorOnly": true
+    },
+    "code-landing.bounded": {
+      "requiredProfile": "terra-medium"
+    },
+    "code-landing.complex": {
+      "requiredProfile": "terra-high"
+    },
+    "code-landing.high-risk": {
+      "requiredProfile": "sol-high"
+    },
+    "code-landing.frontier": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "ui-implementation.prescribed": {
+      "requiredProfile": "sol-low"
+    },
+    "ui-implementation.judgment": {
+      "requiredProfile": "sol-medium"
+    },
+    "ui-landing.prescribed": {
+      "requiredProfile": "terra-medium"
+    },
+    "ui-landing.composition-judgment": {
+      "requiredProfile": "sol-medium"
+    },
+    "ui-landing.cross-module": {
+      "requiredProfile": "sol-high"
+    },
+    "ui-landing.protocol-security": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "ui-adjudication.system-dispute": {
+      "requiredProfile": "sol-high"
+    },
+    "ui-adjudication.authority-conflict": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "ux.local": {
+      "requiredProfile": "sol-medium"
+    },
+    "ux.path": {
+      "requiredProfile": "sol-high"
+    },
+    "ux.system": {
+      "requiredProfile": "sol-xhigh"
+    },
+    "documentation.mechanical": {
+      "requiredProfile": "terra-low"
+    },
+    "documentation.current-sync": {
+      "requiredProfile": "terra-medium"
+    },
+    "documentation.cross-module": {
+      "requiredProfile": "sol-medium"
+    },
+    "documentation.architecture-public-contract": {
+      "requiredProfile": "sol-high"
+    }
   },
-  "uiImplementationProfiles": ["sol-low", "sol-medium"],
+  "uiImplementationProfiles": [
+    "sol-low",
+    "sol-medium"
+  ],
   "solMaxRule": "advisor-or-machine-proven-frontier-exception-only",
-  "lunaAvailabilityFallback": {
-    "primary": "luna-max",
-    "fallback": "terra-high",
-    "allowedReasons": ["runtime-unsupported", "runtime-unavailable"],
-    "phase": "pre-dispatch-only"
+  "legacyProfileMigration": {
+    "retiredProfiles": [
+      "luna-low",
+      "luna-medium",
+      "luna-high",
+      "luna-xhigh",
+      "luna-max"
+    ],
+    "errorCode": "stage-model-pool-luna-profile-retired",
+    "aliasesForbidden": true,
+    "fallbackForbidden": true
   }
 }

@@ -1,7 +1,7 @@
 name = "code_implementer"
 description = "Implements one frozen non-UI issue contract and self-tests in the same attempt."
 developer_instructions = """
-Consume only a verified stage-model-pool.v3 member route with
+Consume only a verified stage-model-pool.v4 member route with
 executionClass=leased-writer, a current stage write lease, a passed mutation
 postcondition, and a verified
 issue-orchestration.stage-work-plan.v1, its verified

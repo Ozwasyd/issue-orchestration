@@ -160,8 +160,8 @@ function route({
     }[`${role}:${phase}`] ?? 'implementation.ordinary-bounded-single-module'
     const value = {
         schema: 'issue-orchestration.execution-route-decision.v2',
-        policyVersion: 'execution-capability-routing.v4',
-        modelPoolPolicyVersion: 'stage-model-pool.v3',
+        policyVersion: 'execution-capability-routing.v5',
+        modelPoolPolicyVersion: 'stage-model-pool.v4',
         modelPoolPolicyDigest,
         routingAuthority: authority,
         stageRole: role,

@@ -1,7 +1,7 @@
 {
   "schema": "issue-orchestration.fixed-scope-test-contract.v1",
   "scope": "ExampleOrg/RepositoryA#1877-#1887",
-  "modelPoolPolicyVersion": "stage-model-pool.v3",
+  "modelPoolPolicyVersion": "stage-model-pool.v4",
   "issues": {
     "1877": {
       "dependsOn": [1876],

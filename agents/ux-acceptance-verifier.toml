@@ -1,7 +1,7 @@
 name = "ux_acceptance_verifier"
 description = "Independently verifies a frozen UI candidate without modifying it."
 developer_instructions = """
-Require a verified stage-model-pool.v3 ux-acceptance route with
+Require a verified stage-model-pool.v4 ux-acceptance route with
 executionClass=observe-only and a passed mutation postcondition. Actual
 inherited runtime permission is not semantic write authority. Verify only the
 frozen candidate and scoped acceptance evidence in a fresh observe-only context.

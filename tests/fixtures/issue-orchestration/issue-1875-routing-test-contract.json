@@ -26,7 +26,7 @@
         "runtime-verifier-sol-high",
         "bounded-stateful-sol-medium",
         "latency-sensitive-terra-high",
-        "cost-sensitive-luna-max",
+        "cost-sensitive-terra-high",
         "luna-unavailable-terra-high",
         "ux-local-path-system",
         "dag-full-reconstruction",

@@ -540,7 +540,7 @@ function verifyChildEvidence({
     if (receipt.selectedProfile !== profile
         || receipt.effectiveModel !== receipt.requestedModel
         || receipt.effectiveEffort !== receipt.requestedEffort
-        || !/^(?:terra|luna|sol)-(?:low|medium|high|xhigh|max)$/u.test(
+        || !/^(?:terra|sol)-(?:low|medium|high|xhigh|max)$/u.test(
             receipt.selectedProfile
         )) {
         fail('permanent-e2e-child-profile-invalid', key)
@@ -554,11 +554,6 @@ function requireEvidence(value, code) {
 
 function exactRegisteredProfiles(receipt) {
     const expected = [
-        'luna-high',
-        'luna-low',
-        'luna-max',
-        'luna-medium',
-        'luna-xhigh',
         'sol-high',
         'sol-low',
         'sol-max',
@@ -581,14 +576,14 @@ function verifyEvidenceSemantics(receipts) {
     const pool = receipts['model-pool-consistency']
     requireEvidence(
         pool.policySchema ===
-                'issue-orchestration.stage-model-pool-policy.v3'
-            && pool.policyVersion === 'stage-model-pool.v3'
+                'issue-orchestration.stage-model-pool-policy.v4'
+            && pool.policyVersion === 'stage-model-pool.v4'
             && pool.routingSchema ===
-                'issue-orchestration.execution-routing-policy.v3'
+                'issue-orchestration.execution-routing-policy.v5'
             && exactRegisteredProfiles(pool)
-            && pool.productionProfileCount === 8
+            && pool.productionProfileCount === 7
             && pool.frontierProfileCount === 1
-            && pool.disabledProfileCount === 6
+            && pool.disabledProfileCount === 2
             && pool.parallelModelTableCount === 0,
         'permanent-e2e-model-pool-invalid'
     )
@@ -990,20 +985,18 @@ function semanticExtras(key) {
     return {
         'model-pool-consistency': {
             policySchema:
-                'issue-orchestration.stage-model-pool-policy.v3',
-            policyVersion: 'stage-model-pool.v3',
+                'issue-orchestration.stage-model-pool-policy.v4',
+            policyVersion: 'stage-model-pool.v4',
             routingSchema:
-                'issue-orchestration.execution-routing-policy.v3',
+                'issue-orchestration.execution-routing-policy.v5',
             registeredProfiles: [
-                'luna-low', 'luna-medium', 'luna-high',
-                'luna-xhigh', 'luna-max',
                 'terra-low', 'terra-medium', 'terra-high',
                 'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',
                 'sol-high', 'sol-xhigh', 'sol-max'
             ],
-            productionProfileCount: 8,
+            productionProfileCount: 7,
             frontierProfileCount: 1,
-            disabledProfileCount: 6,
+            disabledProfileCount: 2,
             parallelModelTableCount: 0
         },
         'root-mechanical-control': {

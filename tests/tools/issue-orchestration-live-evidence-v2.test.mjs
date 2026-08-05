@@ -649,16 +649,11 @@ function childReceipt(key, mode = 'live') {
     }
     if (key === 'model-pool-consistency') {
         common.policySchema =
-            'issue-orchestration.stage-model-pool-policy.v3'
-        common.policyVersion = 'stage-model-pool.v3'
+            'issue-orchestration.stage-model-pool-policy.v4'
+        common.policyVersion = 'stage-model-pool.v4'
         common.routingSchema =
-            'issue-orchestration.execution-routing-policy.v3'
+            'issue-orchestration.execution-routing-policy.v5'
         common.registeredProfiles = [
-            'luna-low',
-            'luna-medium',
-            'luna-high',
-            'luna-xhigh',
-            'luna-max',
             'terra-low',
             'terra-medium',
             'terra-high',
@@ -670,9 +665,9 @@ function childReceipt(key, mode = 'live') {
             'sol-xhigh',
             'sol-max'
         ]
-        common.productionProfileCount = 8
+        common.productionProfileCount = 7
         common.frontierProfileCount = 1
-        common.disabledProfileCount = 6
+        common.disabledProfileCount = 2
         common.parallelModelTableCount = 0
     }
     if (key === 'root-runtime-canary') {

@@ -1,7 +1,7 @@
 name = "documentation_writer"
 description = "Writes scoped current documentation after behavior and UX prerequisites pass."
 developer_instructions = """
-Require a verified stage-model-pool.v3 documentation route with
+Require a verified stage-model-pool.v4 documentation route with
 executionClass=leased-writer, a current stage write lease and a passed
 mutation postcondition, behavior-green and,
 for UI work, UX-accepted receipts. Consume only a verified

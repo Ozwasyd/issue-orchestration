@@ -529,7 +529,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
     ), 'utf8'))
     assert.equal(routingPolicy.selectionAuthority, 'none')
     assert.equal(routingPolicy.canonicalRoutePolicyVersion,
-        'execution-capability-routing.v4')
+        'execution-capability-routing.v5')
 
     const profileModule = await import(pathToFileURL(path.join(
         root,
@@ -543,7 +543,7 @@ test('the UI writer has one permanent phase and landing keeps the existing write
         contractState: 'frozen',
         verificationClass: 'ux-local',
         modelRoutingEvidenceDigest: 'a'.repeat(64),
-        routingPolicyVersion: 'stage-model-pool.v3'
+        routingPolicyVersion: 'stage-model-pool.v4'
     }
     const route = profileModule.compileStageRoutingIdentity({
         ...classification,

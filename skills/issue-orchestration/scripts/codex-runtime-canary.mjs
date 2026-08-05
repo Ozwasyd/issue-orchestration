@@ -21,7 +21,6 @@ const RECEIPT_SCHEMA =
     'issue-orchestration.codex-runtime-canary-receipt.v2'
 const MODELS = new Map([
     ['gpt-5.6-terra', 'terra'],
-    ['gpt-5.6-luna', 'luna'],
     ['gpt-5.6-sol', 'sol']
 ])
 const EFFORTS = new Set(['low', 'medium', 'high', 'xhigh', 'max'])

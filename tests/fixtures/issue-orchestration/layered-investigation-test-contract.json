@@ -1,10 +1,10 @@
 {
   "schema": "issue-orchestration.layered-investigation-test-contract.v8",
   "issue": "ExampleOrg/RepositoryA#1822",
-  "revision": 7,
+  "revision": 8,
   "phase": "test-contract",
-  "status": "frozen-green-delivery-epoch-revision-7",
-  "supersedesContractDigest": "a2d739e8f8b121bb35ba4385eaba4d727acaf79e9ab73c4506adc1d1a5798787",
+  "status": "frozen-green-model-pool-v4-migration",
+  "supersedesContractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
   "testContractHistory": [
     {
       "revision": 0,
@@ -110,6 +110,21 @@
         "failed": 0,
         "exitCode": 0
       }
+    },
+    {
+      "revision": 7,
+      "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
+      "contractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
+      "frozenTreeDigest": "f3772dfc23e070cb487f0c055658c6ca252ad5d6ba727419f68c61e626804519",
+      "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
+      "candidateDigest": "3ecb08c2f431b86e80ef279600f4792501e6b0192a979078dd2a0719f4d10fc9",
+      "greenSummary": {
+        "tests": 62,
+        "passed": 62,
+        "failed": 0,
+        "exitCode": 0
+      },
+      "supersededReason": "stage-model-pool.v4 removes Luna production routing"
     }
   ],
   "testOwnerId": "test-owner-1822",
@@ -152,19 +167,19 @@
   "runtimeProbes": "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json",
   "mutations": "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json",
   "fileHashes": {
-    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "a7228f0a7d44042e1687e5f5a818d9bebf20f8b232b3319f98b738ea2b16a097",
-    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "99cf5f110f1d2afbe46b326833551a4db27f7983fae06db2bcfed0b970f75202",
+    "tests/tools/issue-orchestration-layered-investigation.test.mjs": "71a7f115fa2699e835228aae7f5b552c1d985c7d8277ae44463995ecfa33b4a8",
+    "tests/fixtures/issue-orchestration/layered-investigation-cases.json": "1dbf4dfa983fa7a83e8c67e85420d6a2e2a59761071880485717af528724b66b",
     "tests/fixtures/issue-orchestration/layered-investigation-acceptance-map.json": "a853d33a06c7e162cc637ffe3dbbf046de5c32bc54bd26332ce4be8944cb50ca",
     "tests/fixtures/issue-orchestration/layered-investigation-expected-initial-failures.json": "d7d61bb36c16cbc3266bd2e12c0d5fc79df1f646a9fcb1e25b10a47ea72674ed",
     "tests/fixtures/issue-orchestration/layered-investigation-runtime-probes.json": "56147e26aea3e7d5800eb5410698d368fdc3f498bea7595b83452a700d390794",
     "tests/fixtures/issue-orchestration/layered-investigation-mutation-controls.json": "d4ef682b931650668f1f44ab3d02f7619d9911d69eb9aa36493f38e45ec3e583"
   },
-  "frozenTreeDigest": "f3772dfc23e070cb487f0c055658c6ca252ad5d6ba727419f68c61e626804519",
+  "frozenTreeDigest": "642e75e7ba4df03165103131258e6eaecbfb76ca69be2093d9ede470792547ac",
   "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
   "baseDependencyFiles": [
     {
       "path": "skills/issue-orchestration/scripts/dispatch-receipt.mjs",
-      "sha256": "5d0bf9e8a853f2febca23ee7ca94414e0b2b476db903b17078c05add66934243",
+      "sha256": "9b524f72e29de0410a87ee8aab39f5e0a064d1695892d233ed093f6d4f9842ed",
       "gitMode": "100644",
       "ownerIssue": "ExampleOrg/RepositoryA#1818",
       "disposition": "base-dependency-not-candidate"
@@ -172,12 +187,12 @@
   ],
   "hashAlgorithm": "sha256-raw-file-bytes",
   "selfHashPolicy": "stage 1: fileHashes covers raw bytes for every allowedTestPath except this manifest, frozenTreeDigest covers canonical fileHashes, and contractDigest covers the canonical manifest with contractDigest and candidateIdentity omitted; stage 2: candidateDigest covers baseSha, stage-1 contractDigest, matrixIdentityDigest, and path-ordered exact records for all six allowed implementation paths; tests require live hash and gitMode equality",
-  "contractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
+  "contractDigest": "ccbbde8940a66a9321ecc2150e054eb289d830bc9ff9952293cdfc05c35da222",
   "candidateIdentity": {
     "schema": "issue-orchestration.candidate-identity.v1",
     "algorithm": "sha256-canonical-json-v1",
     "baseSha": "c1867af759f3fba319185c6a692eecc3b8980af3",
-    "contractDigest": "ab42a921bac877d0fe84b3eb3dcfb12ce0298ce6b4acb8b26baaa895be63c673",
+    "contractDigest": "ccbbde8940a66a9321ecc2150e054eb289d830bc9ff9952293cdfc05c35da222",
     "matrixIdentityDigest": "14dd62311c03ae15aa7d992bad1c21aeecaa6378cd53368a47d4372ca5c529c6",
     "implementationFiles": [
       {
@@ -189,7 +204,7 @@
       {
         "path": "skills/issue-orchestration/scripts/frontier-compiler.mjs",
         "presence": "present",
-        "sha256": "ddeb77546ec2f854754e0bb6dc6c8c2e62457806486eb0dca9a5cd59b73244d0",
+        "sha256": "0b52bac6dec4ac3095f33f329b372c1029d057c5165e88bd8e7b81067500c252",
         "gitMode": "100644"
       },
       {
@@ -201,22 +216,22 @@
       {
         "path": "agents/dag-creator-updater.toml",
         "presence": "present",
-        "sha256": "7d2e63071b37a9d7fe9b9f51a4021b35827e5fa3114f2d8f2d02e783836cc420",
+        "sha256": "92939e676b7e55efff670c389fee994f240371304e637187070e2bbebea8af31",
         "gitMode": "100644"
       },
       {
         "path": "agents/test-owner.toml",
         "presence": "present",
-        "sha256": "ed9eae875ff8562d523bf6e9447eececf5dfc665a34403ac0d0b6ed29c00f970",
+        "sha256": "efee7348182214b7f355100ac88ca8ee9d5cc7e59d12e719514b6b4e5bdaabe9",
         "gitMode": "100644"
       },
       {
         "path": "agents/code-implementer.toml",
         "presence": "present",
-        "sha256": "b46dc4da3a0c4932b59758e469a8801daeafcc1771adafa69a060bae304b1b76",
+        "sha256": "f3792f0771d3cc84c107a38ffeb9c4c217365c850f5b172bcd4dc96a0e0f3753",
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "3ecb08c2f431b86e80ef279600f4792501e6b0192a979078dd2a0719f4d10fc9"
+    "candidateDigest": "965c6e65344d9bc52051712d5e2234de782c5da7cb3061a8b6aadbf44a71186b"
   }
 }

@@ -84,20 +84,18 @@ function fixtureChildReceipt(key) {
     Object.assign(value, {
         ...(key === 'model-pool-consistency' && {
             policySchema:
-                'issue-orchestration.stage-model-pool-policy.v3',
-            policyVersion: 'stage-model-pool.v3',
+                'issue-orchestration.stage-model-pool-policy.v4',
+            policyVersion: 'stage-model-pool.v4',
             routingSchema:
-                'issue-orchestration.execution-routing-policy.v3',
+                'issue-orchestration.execution-routing-policy.v5',
             registeredProfiles: [
-                'luna-low', 'luna-medium', 'luna-high',
-                'luna-xhigh', 'luna-max',
                 'terra-low', 'terra-medium', 'terra-high',
                 'terra-xhigh', 'terra-max', 'sol-low', 'sol-medium',
                 'sol-high', 'sol-xhigh', 'sol-max'
             ],
-            productionProfileCount: 8,
+            productionProfileCount: 7,
             frontierProfileCount: 1,
-            disabledProfileCount: 6,
+            disabledProfileCount: 2,
             parallelModelTableCount: 0
         }),
         ...(key === 'root-runtime-canary' && {

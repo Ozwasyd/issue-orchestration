@@ -111,7 +111,7 @@ function baseFacts(overrides = {}) {
         routingInputDigest: digest('routing-input'),
         executionRouteDecisionDigest: digest('route-decision'),
         selectedProfile: 'luna-bounded',
-        requestedModel: 'gpt-5.6-luna',
+        requestedModel: 'gpt-5.6-terra',
         requestedEffort: 'high',
         requestedSandbox: 'workspace-write',
         candidateDigest: digest('candidate-1'),
@@ -153,7 +153,7 @@ async function happySources() {
             authority: 'dispatch-receipt',
             facts: baseFacts({
                 effectiveMetadataObserved: true,
-                effectiveModel: 'gpt-5.6-luna',
+                effectiveModel: 'gpt-5.6-terra',
                 effectiveEffort: 'high',
                 effectiveSandbox: 'workspace-write',
                 runtimeMetadataDigest: digest('runtime-metadata'),
@@ -430,7 +430,7 @@ test('#1826 separates requested metadata from runtime-observed effective metadat
         const requestedEvent = compileTelemetryBundle({
             sources: [requestedOnly]
         }).events[0]
-        assert.equal(requestedEvent.requestedModel, 'gpt-5.6-luna')
+        assert.equal(requestedEvent.requestedModel, 'gpt-5.6-terra')
         assert.equal(requestedEvent.effectiveModel, NOT_OBSERVED)
         assert.equal(requestedEvent.effectiveEffort, NOT_OBSERVED)
         assert.equal(requestedEvent.effectiveSandbox, NOT_OBSERVED)
@@ -442,7 +442,7 @@ test('#1826 separates requested metadata from runtime-observed effective metadat
             sourceDigest: digest('copied-effective'),
             verificationEvidenceDigest: digest('copied-effective-proof'),
             facts: baseFacts({
-                effectiveModel: 'gpt-5.6-luna',
+                effectiveModel: 'gpt-5.6-terra',
                 runtimeMetadataDigest: digest('unobserved-runtime')
             })
         }), 'telemetry-effective-metadata-unverified')
@@ -700,8 +700,8 @@ test('#1826 all mutation controls fail closed with their pinned code',
                     verificationEvidenceDigest:
                         digest(`mutation-proof:${control.id}`),
                     facts: baseFacts({
-                        requestedModel: 'gpt-5.6-luna',
-                        effectiveModel: 'gpt-5.6-luna',
+                        requestedModel: 'gpt-5.6-terra',
+                        effectiveModel: 'gpt-5.6-terra',
                         runtimeMetadataDigest:
                             digest(`mutation-runtime:${control.id}`)
                     })

@@ -49,7 +49,7 @@
       "test": "P08",
       "kind": "real-node-import",
       "observation": "load the shared stage policy, semantic/runtime projector and dispatch receipt modules",
-      "expected": "stage-model-pool.v3 with Terra/low root and required graph/receipt exports"
+      "expected": "stage-model-pool.v4 with Terra/low root and required graph/receipt exports"
     },
     {
       "id": "RP08-external-runtime-state",

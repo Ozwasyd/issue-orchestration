@@ -572,8 +572,8 @@ function validateV2DispatchRequest(input) {
         }
     }
     if (input.schema !== 'issue-orchestration.dispatch-request.v2' ||
-        input.policyVersion !== 'stage-model-pool.v3' ||
-        input.routingClassification?.routingPolicyVersion !== 'stage-model-pool.v3' ||
+        input.policyVersion !== 'stage-model-pool.v4' ||
+        input.routingClassification?.routingPolicyVersion !== 'stage-model-pool.v4' ||
         !SHA.test(input.baseSha ?? '') || !SHA.test(input.candidateSha ?? '')) {
         fail('dispatch-request-field-missing')
     }

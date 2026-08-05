@@ -418,7 +418,7 @@ function deliveryAdapter(f) {
                 contractState: 'frozen',
                 verificationClass: 'focused',
                 modelRoutingEvidenceDigest: digest({ repository, index }),
-                routingPolicyVersion: 'stage-model-pool.v3'
+                routingPolicyVersion: 'stage-model-pool.v4'
             },
             executionMetrics: {
                 expectedChangedFileCount: 1,

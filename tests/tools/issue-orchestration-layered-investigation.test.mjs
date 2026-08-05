@@ -1109,7 +1109,7 @@ test('[R02] operational agent policies freeze authority and dispute behavior', a
     assert.match(dagPolicy, /executionClass=observe-only/u)
     assert.match(dagPolicy, /semantic graph/iu)
     assert.match(dagPolicy, /dispatchInvestigation/iu)
-    assert.match(ownerPolicy, /stage-model-pool\.v3/iu)
+    assert.match(ownerPolicy, /stage-model-pool\.v4/iu)
     assert.match(ownerPolicy, /never select|never.*profile/iu)
     assert.doesNotMatch(ownerPolicy, /^\s*(?:model|effort)\s*=/mu)
     assert.match(ownerPolicy, /tests\/fixtures\/probes\/contract|tests.*fixtures.*probes/iu)
@@ -1131,9 +1131,9 @@ test('[R03] root cannot author discovery or classification facts', async () => {
     }
 })
 
-test('[R04] test-owner transition requires exact Sol/max runtime identity', async () => {
+test('[R04] test-owner transition requires exact Terra/medium runtime identity', async () => {
     for (const changedActor of [
-        actor('test-owner', { model: 'gpt-5.6-luna' }),
+        actor('test-owner', { model: 'gpt-5.6-sol' }),
         actor('test-owner', { effort: 'low' })
     ]) {
         const input = await scenario({ deepIndices: [0] })

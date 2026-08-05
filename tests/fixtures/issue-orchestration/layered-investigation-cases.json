@@ -140,7 +140,7 @@
   "legacyFixtureMigration": {
     "ownerIssue": "ExampleOrg/RepositoryA#1816",
     "correctedLayeredTestPath": "tests/tools/issue-orchestration-ready-frontier.test.mjs",
-    "correctedLayeredTestSha256": "fe42d061d035b2050135b7b9019b71f652ddbfd8741f2e0f00375612c93df7aa",
+    "correctedLayeredTestSha256": "fd8ee74bbe5d7d9d16b73ef4d45653fb76388d57328a8e49666e483c3dbff1f9",
     "correctedFixtureUsesValidatedProjection": true,
     "historicalReasonCodeMayRemain": "investigation-incomplete",
     "runtimeLegacyPropertyReadsAllowed": false,

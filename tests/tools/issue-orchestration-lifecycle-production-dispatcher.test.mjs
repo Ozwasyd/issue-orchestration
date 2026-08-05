@@ -123,16 +123,13 @@ function classification(repository) {
         contractState: 'frozen',
         verificationClass: 'focused',
         modelRoutingEvidenceDigest: digest('dispatcher-routing-evidence'),
-        routingPolicyVersion: 'stage-model-pool.v3'
+        routingPolicyVersion: 'stage-model-pool.v4'
     }
 }
 
 function profileMetadata(profile) {
     if (profile.startsWith('sol-')) {
         return { model: 'gpt-5.6-sol', effort: profile.slice(4) }
-    }
-    if (profile.startsWith('luna-')) {
-        return { model: 'gpt-5.6-luna', effort: profile.slice(5) }
     }
     return { model: 'gpt-5.6-terra', effort: profile.slice(6) }
 }

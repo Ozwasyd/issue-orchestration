@@ -138,14 +138,14 @@
     "skipped": 0
   },
   "fileHashes": {
-    "tests/tools/issue-orchestration-shared-package.test.mjs": "0cfc2314b697699acccb8f128d7a2c7a5b5b6ad162544416c8dd6a32d7b45576",
-    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json": "9a51c606a3b8e68b11206341693571e3fed3164bbf007b6986ab6e96010fbedc",
+    "tests/tools/issue-orchestration-shared-package.test.mjs": "3392e33c03e5ffbdc675ebfda824e2451b50f0f903056594fc8ac48712a8d623",
+    "tests/fixtures/issue-orchestration/shared-package-acceptance-map.json": "fbd0612c27392e3277cbdae846fe32b7c6c82e1287f5da16dc10fa5324591b45",
     "tests/fixtures/issue-orchestration/shared-package-expected-initial-failures.json": "6581033b4b940d3e16a4b3a90e6990bc7c0f591b7d8de85bcc5915e567b2516f",
-    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json": "79ebbdf6d70e12c951e02d6f55c15b5e76b9a5434a50685d5f59c2ac4fe7c73d",
+    "tests/fixtures/issue-orchestration/shared-package-runtime-probes.json": "92cd52ba1385ec3a499eafda3a791e9d861d6392506b6405706e6e355ff0d2ad",
     "tests/fixtures/issue-orchestration/shared-package-mutation-controls.json": "a700f77157ed9b3031314113ae91a4e682efde4013fb246b2f6c937b91f0dcd9"
   },
-  "frozenTreeDigest": "ad9e8fed38ff9406599b5c034af2820af3a918c9f8e330b6ec5b90c3f8fa2948",
+  "frozenTreeDigest": "e2a5e2e4744dd694772277a52c4dc428ecdc75b75913b221298e5ef0b7473ef6",
   "hashAlgorithm": "sha256-raw-files-canonical-tree-and-canonical-json-v1",
   "selfHashPolicy": "fileHashes binds raw bytes for every allowed path except this manifest; frozenTreeDigest binds canonical fileHashes; testContractDigest binds canonical JSON with only testContractDigest omitted",
-  "testContractDigest": "30913b1b41b09d6a73abe836a35f2a9c5159a61b8a680bb1a1d26849c5b3bbcc"
+  "testContractDigest": "e4ce45a7dac635f85b742ede63612a7565198cd89ae0da070efc6425ccd54a57"
 }

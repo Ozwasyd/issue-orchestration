@@ -16,13 +16,13 @@
     },
     {
       "id": "N03-high-risk-luna",
-      "requirement": "high-risk node使用Luna/max：失败",
+      "requirement": "legacy Luna profile在任何stage assignment中：以迁移码失败",
       "surface": "assignment",
-      "expectedCode": "routing-selected-profile"
+      "expectedCode": "stage-model-pool-luna-profile-retired"
     },
     {
       "id": "N04-ui-forbidden-model",
-      "requirement": "UI节点使用Luna、Terra或Sol/high实现：失败",
+      "requirement": "UI节点使用Terra/max或Sol/high实现：失败",
       "surface": "assignment",
       "expectedCode": "routing-ui-profile"
     },
