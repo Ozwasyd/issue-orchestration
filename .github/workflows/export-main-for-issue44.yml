@@ -18,10 +18,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Build source snapshot
+      - name: Build exact main snapshot
         shell: bash
         run: |
-          tar --exclude=.git --exclude=.github/workflows/export-main-for-issue44.yml -czf issue-orchestration-main-3b2f763.tar.gz .
+          git archive --format=tar.gz --output=issue-orchestration-main-3b2f763.tar.gz origin/main
       - name: Upload source snapshot
         uses: actions/upload-artifact@v4
         with:
