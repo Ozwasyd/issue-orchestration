@@ -1166,6 +1166,23 @@ export function projectAggregateRun({
             nodeProjectionDigest: entry?.projectionDigest ?? null,
             lifecycleState,
             activeAttemptId: nodeProjection?.activeAttemptId ?? null,
+            firstFailure: structuredClone(
+                nodeProjection?.firstFailure ?? null
+            ),
+            terminalCandidate: structuredClone(
+                nodeProjection?.terminal ?? null
+            ),
+            recoveryState: {
+                expectedNextSliceId:
+                    nodeProjection?.expectedNextSliceId ?? null,
+                expectedNextSliceDigest:
+                    nodeProjection?.expectedNextSliceDigest ?? null,
+                latestContinuationReceiptDigest:
+                    nodeProjection?.latestContinuationReceiptDigest ?? null,
+                writerStageRetryAuthorizationDigest:
+                    nodeProjection?.writerStageRetryAuthorizationDigest ?? null,
+                reworkCount: nodeProjection?.reworkCount ?? 0
+            },
             candidateGreen: statusAtOrAfter(
                 lifecycleState,
                 'candidate-green'

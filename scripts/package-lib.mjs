@@ -321,6 +321,8 @@ export function readManifest(sourceRoot) {
             manifest.artifactDigests['policy/routing-policy.json'],
         stagePermissionDigest:
             manifest.artifactDigests['policy/stage-permissions.json'],
+        terminalPolicyDigest:
+            manifest.artifactDigests['policy/terminal-policy.json'],
         remoteMutationPolicyDigest:
             manifest.artifactDigests['policy/remote-mutation-policy.json'],
         runtimeTrustPolicyDigest:

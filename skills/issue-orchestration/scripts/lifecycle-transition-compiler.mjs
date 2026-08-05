@@ -17,6 +17,11 @@ import {
     repositoryAuthorityFor,
     validateLifecycleAuthorityBinding
 } from './lifecycle-genesis-authority.mjs'
+import {
+    TERMINAL_POLICY_VERSION,
+    validateTerminalEvidenceSet,
+    validateTerminalRecoveryExhaustion
+} from './terminal-policy.mjs'
 
 const HASH = /^[a-f0-9]{64}$/u
 
@@ -296,11 +301,51 @@ function validateInputs(input) {
 function stateAction(node, graphNode) {
     const receipts = graphNode.receipts ?? {}
     const state = node.lifecycleState
+    const terminalReceipts = [
+        receipts.terminal,
+        receipts.recoveryFingerprint,
+        receipts.retentionState
+    ]
+    if (terminalReceipts.some(Boolean)) {
+        if (!terminalReceipts.every(Boolean)) {
+            fail('lifecycle-terminal-receipt-chain-incomplete', {
+                nodeId: node.nodeId ?? graphNode.memberId
+            })
+        }
+        return null
+    }
+    if (node.terminalCandidate) {
+        try {
+            validateTerminalEvidenceSet({
+                policyVersion:
+                    node.terminalCandidate.policyVersion,
+                category: node.terminalCandidate.category,
+                directEvidence:
+                    node.terminalCandidate.directEvidence
+            })
+            validateTerminalRecoveryExhaustion(
+                node.terminalCandidate.recoveryExhaustion
+            )
+        } catch (error) {
+            fail('lifecycle-terminal-candidate-invalid', {
+                nodeId: node.nodeId ?? graphNode.memberId,
+                cause: error?.code ?? error?.message
+            })
+        }
+        if (node.terminalCandidate.policyVersion !==
+                TERMINAL_POLICY_VERSION ||
+            !HASH.test(node.terminalCandidate.firstFailureDigest ?? '') ||
+            !HASH.test(node.terminalCandidate.recoveryFingerprint ?? '')) {
+            fail('lifecycle-terminal-candidate-invalid', {
+                nodeId: node.nodeId ?? graphNode.memberId
+            })
+        }
+        return 'terminalize-node'
+    }
     if (node.quarantine || node.status === 'quarantined' ||
         state === 'quarantined') {
         return 'terminalize-node'
     }
-    if (receipts.terminal) return 'terminalize-node'
     if (receipts.writerFailure && receipts.retryAuthorization) {
         if (['test-contracting', 'test-contract-planning'].includes(state)) {
             return 'dispatch-test-contract-writer'
@@ -403,6 +448,18 @@ function actionBindings({
             ? structuredClone(
                 aggregate.pendingClosureEffects?.[node.nodeId ?? graphNode.memberId] ?? null
             )
+            : null,
+        terminalCandidate: actionType === 'terminalize-node'
+            ? structuredClone(node.terminalCandidate ?? null)
+            : null,
+        firstFailure: actionType === 'terminalize-node'
+            ? structuredClone(node.firstFailure ?? null)
+            : null,
+        recoveryState: actionType === 'terminalize-node'
+            ? structuredClone(node.recoveryState ?? null)
+            : null,
+        quarantine: actionType === 'terminalize-node'
+            ? structuredClone(node.quarantine ?? null)
             : null
     }
     for (const [field, code] of [

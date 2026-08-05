@@ -45,6 +45,8 @@ const manifest = {
     routingPolicyDigest: artifactDigests['policy/routing-policy.json'],
     stagePermissionDigest:
         artifactDigests['policy/stage-permissions.json'],
+    terminalPolicyDigest:
+        artifactDigests['policy/terminal-policy.json'],
     remoteMutationPolicyDigest:
         artifactDigests['policy/remote-mutation-policy.json'],
     runtimeTrustPolicyDigest:
@@ -98,7 +100,8 @@ const manifest = {
         'root-recovery-takeover',
         'invocation-bound-downstream-authority',
         'caller-supplied-repository-identity',
-        'stage-scoped-write-lease'
+        'stage-scoped-write-lease',
+        'typed-terminalization-authority'
     ],
     installTargets: [
         {
@@ -143,7 +146,8 @@ const manifest = {
         'stage-dispatch',
         'control-plane-advisor',
         'test-contract-cold-start',
-        'lifecycle-action-compilation'
+        'lifecycle-action-compilation',
+        'terminalization'
     ],
     excludedAuthorities: [
         'product-api',
