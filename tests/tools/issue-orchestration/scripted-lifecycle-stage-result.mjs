@@ -467,12 +467,24 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
         case 'delivery-completed': {
             const effectId = facts.effectId
             const commits = clone(facts.commits)
+            const candidateMappingDigest =
+                facts.candidateMappingDigest ?? h('candidate-mapping')
+            const landingReceiptDigest =
+                facts.landingReceiptDigest ?? h('landing-receipt')
+            const landingReceiptDigests = clone(
+                facts.landingReceiptDigests ?? {}
+            )
+            const repositoryEffects = clone(
+                facts.repositoryEffects ?? []
+            )
             put('remotePreSnapshot', {
-                remoteStateDigest: h('delivery-pre-state'),
+                remoteStateDigest:
+                    facts.remotePreStateDigest ?? h('delivery-pre-state'),
                 snapshotKind: 'pre-mutation'
             })
             put('remotePostSnapshot', {
-                remoteStateDigest: h('delivery-post-state'),
+                remoteStateDigest:
+                    facts.remotePostStateDigest ?? h('delivery-post-state'),
                 snapshotKind: 'post-mutation'
             })
             put('deliveryControl', {
@@ -493,13 +505,18 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
                 effectId,
                 commits,
                 preRemoteSnapshotDigest: d('remotePreSnapshot'),
-                postRemoteSnapshotDigest: d('remotePostSnapshot')
+                postRemoteSnapshotDigest: d('remotePostSnapshot'),
+                candidateMappingDigest,
+                landingReceiptDigest,
+                landingReceiptDigests,
+                repositoryEffects
             })
             if (id === 'delivery-completed') {
                 put('deliveryAttempt', {
                     effectId,
-                    candidateMappingDigest: h('candidate-mapping'),
-                    landingReceiptDigest: h('landing-receipt')
+                    candidateMappingDigest,
+                    landingReceiptDigest,
+                    landingReceiptDigests
                 })
                 put('delivery', {
                     effectId,

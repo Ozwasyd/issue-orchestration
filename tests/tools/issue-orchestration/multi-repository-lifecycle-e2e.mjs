@@ -524,7 +524,29 @@ function applyRemoteDelivery({
     }
     const effect = {
         effectId: localDigest({ groupId, commits }),
-        commits
+        commits,
+        candidateMappingDigest: localDigest({
+            groupId,
+            commits,
+            kind: 'candidate-mapping'
+        }),
+        landingReceiptDigest: localDigest({
+            groupId,
+            commits,
+            kind: 'landing-receipt'
+        }),
+        landingReceiptDigests: {},
+        repositoryEffects: [],
+        remotePreStateDigest: localDigest({
+            groupId,
+            commits,
+            kind: 'remote-pre-state'
+        }),
+        remotePostStateDigest: localDigest({
+            groupId,
+            commits,
+            kind: 'remote-post-state'
+        })
     }
     deliveryEffects[groupId] = effect
     return effect
