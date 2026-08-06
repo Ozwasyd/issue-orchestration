@@ -1656,19 +1656,23 @@ export async function runLifecycleProductionDispatcher({
             }
             const beforeRefreshDigest =
                 projection.aggregateProjection.aggregateProjectionDigest
+            const refreshMetadata = {
+                boundary: 'remote-scope-observation',
+                transition: transitions
+            }
             const refresh = () => executeLifecycleScopeRefresh({
                 ledger: currentLedger,
                 observeRemoteIssues: contextProvider.observeRemoteIssues,
+                observeRemoteIssueDelta:
+                    contextProvider.observeRemoteIssueDelta ?? null,
+                diagnostics: refreshMetadata,
                 createdAt: timestamp(clock),
                 startup
             })
             currentLedger = telemetry
                 ? telemetry.measureSync(
                     ['remoteScopeObservation'],
-                    {
-                        boundary: 'remote-scope-observation',
-                        transition: transitions
-                    },
+                    refreshMetadata,
                     refresh
                 )
                 : refresh()

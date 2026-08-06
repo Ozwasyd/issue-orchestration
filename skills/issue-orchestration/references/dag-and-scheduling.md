@@ -95,7 +95,9 @@ DAG 至少记录：
 
 ## 刷新与重算
 
-每轮调度先重新读取所选范围的 open issues 及相关评论，再吸收：
+每轮调度必须先通过 trusted remote observation boundary 证明 scope freshness。adapter 可选实现 `observeRemoteIssueDelta`：只有绑定 prior verified snapshot、selector、lifecycle authority 与 adapter-owned cursor/conditional identity 的 strict `unchanged` 才能跳过 selector rebuild；`changed` 必须交付完整 current identity set、每个 changed/new member 的完整 authoritative facts 与精确 removed set，runtime 从 canonical selector receipt 重建完整 facts 后仍调用同一个 selector resolver。无能力、无 cursor 或显式 unsupported 回退全量观察；partial、stale、contradictory、wrong-selector 或 wrong-authority delta 必须 fail closed，不能按时间或本地 cache 猜 unchanged。
+
+每轮调度先重新读取或增量验证所选范围的 open issues 及相关评论，再吸收：
 
 1. 远端新出现且属于本次范围的 issue；
 2. 执行中由直接证据确认的真实实现缺陷；

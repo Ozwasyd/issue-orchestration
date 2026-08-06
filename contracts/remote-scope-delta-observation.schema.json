@@ -1,0 +1,365 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/remote-scope-delta-observation.schema.json",
+  "title": "Remote scope delta observation",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/unsupported"
+    },
+    {
+      "$ref": "#/$defs/unchanged"
+    },
+    {
+      "$ref": "#/$defs/changed"
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "nullableText": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "identitySet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[^#\\s]+/[^#\\s]+#[1-9][0-9]*$"
+      }
+    },
+    "comment": {
+      "type": "object",
+      "required": [
+        "id",
+        "body",
+        "updatedAt",
+        "relevant"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body": {
+          "type": "string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "relevant": {
+          "type": "boolean"
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "required": [
+        "repository",
+        "number",
+        "state",
+        "updatedAt",
+        "title",
+        "body"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stateReason": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "comments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/comment"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "milestone": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "number",
+                "title"
+              ],
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dependsOn": {
+          "$ref": "#/$defs/identitySet"
+        },
+        "trackedIssueIds": {
+          "$ref": "#/$defs/identitySet"
+        }
+      }
+    },
+    "unsupported": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "producerAuthority",
+        "rootAuthored",
+        "status",
+        "selectorDigest",
+        "remoteQueryIdentity",
+        "repositories",
+        "previousRemoteSnapshotDigest",
+        "previousObservationCursor",
+        "previousConditionalIdentity",
+        "observedAt",
+        "observationDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.lifecycle-remote-scope-delta-observation.v1"
+        },
+        "producerAuthority": {
+          "const": "trusted-remote-observation-adapter"
+        },
+        "rootAuthored": {
+          "const": false
+        },
+        "selectorDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteQueryIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositories": {
+          "$ref": "#/$defs/repositories"
+        },
+        "previousRemoteSnapshotDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "previousObservationCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previousConditionalIdentity": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "observedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "status": {
+          "const": "unsupported"
+        }
+      }
+    },
+    "unchanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "producerAuthority",
+        "rootAuthored",
+        "status",
+        "selectorDigest",
+        "remoteQueryIdentity",
+        "repositories",
+        "previousRemoteSnapshotDigest",
+        "previousObservationCursor",
+        "previousConditionalIdentity",
+        "observedAt",
+        "observationDigest",
+        "observationCursor",
+        "conditionalIdentity"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.lifecycle-remote-scope-delta-observation.v1"
+        },
+        "producerAuthority": {
+          "const": "trusted-remote-observation-adapter"
+        },
+        "rootAuthored": {
+          "const": false
+        },
+        "status": {
+          "const": "unchanged"
+        },
+        "selectorDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteQueryIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositories": {
+          "$ref": "#/$defs/repositories"
+        },
+        "previousRemoteSnapshotDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "previousObservationCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previousConditionalIdentity": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "observedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "observationCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditionalIdentity": {
+          "$ref": "#/$defs/nullableText"
+        }
+      }
+    },
+    "changed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "producerAuthority",
+        "rootAuthored",
+        "status",
+        "selectorDigest",
+        "remoteQueryIdentity",
+        "repositories",
+        "previousRemoteSnapshotDigest",
+        "previousObservationCursor",
+        "previousConditionalIdentity",
+        "observedAt",
+        "observationDigest",
+        "observationCursor",
+        "conditionalIdentity",
+        "currentIssueIds",
+        "changedIssues",
+        "removedIssueIds"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.lifecycle-remote-scope-delta-observation.v1"
+        },
+        "producerAuthority": {
+          "const": "trusted-remote-observation-adapter"
+        },
+        "rootAuthored": {
+          "const": false
+        },
+        "status": {
+          "const": "changed"
+        },
+        "selectorDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteQueryIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repositories": {
+          "$ref": "#/$defs/repositories"
+        },
+        "previousRemoteSnapshotDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "previousObservationCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "previousConditionalIdentity": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "observedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observationDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "observationCursor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "conditionalIdentity": {
+          "$ref": "#/$defs/nullableText"
+        },
+        "currentIssueIds": {
+          "$ref": "#/$defs/identitySet"
+        },
+        "changedIssues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/issue"
+          }
+        },
+        "removedIssueIds": {
+          "$ref": "#/$defs/identitySet"
+        }
+      }
+    }
+  }
+}

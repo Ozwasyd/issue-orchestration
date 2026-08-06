@@ -19,11 +19,17 @@ import {
     validateLifecycleRunAuthority
 } from './lifecycle-genesis-authority.mjs'
 import {
+    normalizeRemoteIssueFact,
+    remoteIssueFromFact,
     verifySelectorDefinition
 } from './scope-selector.mjs'
 
 const REMOTE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-remote-scope-observation.v1'
+const REMOTE_DELTA_REQUEST_SCHEMA =
+    'issue-orchestration.lifecycle-remote-scope-delta-request.v1'
+const REMOTE_DELTA_OBSERVATION_SCHEMA =
+    'issue-orchestration.lifecycle-remote-scope-delta-observation.v1'
 const BASE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-repository-base-observation.v1'
 const BASE_OBSERVATION_EPOCH_SCHEMA =
@@ -66,6 +72,199 @@ function requireRefreshActionSet(actionSet) {
     return actionSet
 }
 
+
+function exactKeys(value, expected, code) {
+    const actual = Object.keys(value ?? {}).sort()
+    const wanted = [...expected].sort()
+    if (!sameValue(actual, wanted)) fail(code, { actual, expected: wanted })
+}
+
+function issueIdentity(issue) {
+    return `${issue.repository}#${issue.number}`
+}
+
+function validateRemoteIssueFact(issue, repositories) {
+    if (!issue || typeof issue !== 'object' ||
+        Array.isArray(issue) ||
+        !repositories.has(issue.repository) ||
+        !Number.isInteger(issue.number) || issue.number <= 0 ||
+        typeof issue.state !== 'string' ||
+        typeof issue.updatedAt !== 'string' ||
+        typeof issue.title !== 'string' ||
+        typeof issue.body !== 'string') {
+        fail('lifecycle-remote-issue-fact-invalid')
+    }
+    const identity = issueIdentity(issue)
+    for (const forbidden of [
+        'selectorReceipt', 'remoteSnapshotReceipt', 'actionSet',
+        'ledger', 'projection', 'lifecycleAuthority'
+    ]) {
+        if (Object.hasOwn(issue, forbidden)) {
+            fail('lifecycle-remote-observation-authority-forbidden', {
+                identity,
+                field: forbidden
+            })
+        }
+    }
+    normalizeRemoteIssueFact(issue)
+    return identity
+}
+
+function requireObservationIdentity(value, code) {
+    if (typeof value !== 'string' || value.length === 0) fail(code)
+    return value
+}
+
+function commonDeltaObservationChecks(observation, request) {
+    if (observation?.schema !== REMOTE_DELTA_OBSERVATION_SCHEMA ||
+        observation.producerAuthority !==
+            'trusted-remote-observation-adapter' ||
+        observation.rootAuthored !== false ||
+        observation.selectorDigest !== request.selectorDigest ||
+        observation.remoteQueryIdentity !== request.remoteQueryIdentity ||
+        observation.previousRemoteSnapshotDigest !==
+            request.previousRemoteSnapshotDigest ||
+        observation.previousObservationCursor !==
+            request.previousObservationCursor ||
+        observation.previousConditionalIdentity !==
+            request.previousConditionalIdentity ||
+        !sameValue(
+            [...(observation.repositories ?? [])].sort(),
+            request.repositories
+        ) ||
+        typeof observation.observedAt !== 'string' ||
+        observation.observedAt.length === 0 ||
+        observation.observationDigest !==
+            unsignedDigest(observation, 'observationDigest')) {
+        fail('lifecycle-remote-scope-delta-invalid')
+    }
+}
+
+function validateRemoteDeltaObservation(observation, request) {
+    commonDeltaObservationChecks(observation, request)
+    const common = [
+        'schema', 'producerAuthority', 'rootAuthored', 'status',
+        'selectorDigest', 'remoteQueryIdentity', 'repositories',
+        'previousRemoteSnapshotDigest', 'previousObservationCursor',
+        'previousConditionalIdentity', 'observedAt', 'observationDigest'
+    ]
+    if (observation.status === 'unsupported') {
+        exactKeys(
+            observation,
+            common,
+            'lifecycle-remote-scope-delta-invalid'
+        )
+        return observation
+    }
+    if (observation.status === 'unchanged') {
+        exactKeys(
+            observation,
+            [...common, 'observationCursor', 'conditionalIdentity'],
+            'lifecycle-remote-scope-delta-invalid'
+        )
+        if (observation.observationCursor !==
+                request.previousObservationCursor ||
+            observation.conditionalIdentity !==
+                request.previousConditionalIdentity) {
+            fail('lifecycle-remote-scope-delta-unchanged-binding')
+        }
+        return observation
+    }
+    if (observation.status !== 'changed') {
+        fail('lifecycle-remote-scope-delta-status-invalid')
+    }
+    exactKeys(
+        observation,
+        [
+            ...common,
+            'observationCursor', 'conditionalIdentity',
+            'currentIssueIds', 'changedIssues', 'removedIssueIds'
+        ],
+        'lifecycle-remote-scope-delta-invalid'
+    )
+    requireObservationIdentity(
+        observation.observationCursor,
+        'lifecycle-remote-scope-delta-cursor-invalid'
+    )
+    if (observation.conditionalIdentity !== null) {
+        requireObservationIdentity(
+            observation.conditionalIdentity,
+            'lifecycle-remote-scope-delta-conditional-invalid'
+        )
+    }
+    if (!Array.isArray(observation.currentIssueIds) ||
+        !Array.isArray(observation.changedIssues) ||
+        !Array.isArray(observation.removedIssueIds)) {
+        fail('lifecycle-remote-scope-delta-invalid')
+    }
+    const currentIssueIds = [...observation.currentIssueIds].sort()
+    const removedIssueIds = [...observation.removedIssueIds].sort()
+    if (new Set(currentIssueIds).size !== currentIssueIds.length ||
+        new Set(removedIssueIds).size !== removedIssueIds.length ||
+        !sameValue(currentIssueIds, observation.currentIssueIds) ||
+        !sameValue(removedIssueIds, observation.removedIssueIds)) {
+        fail('lifecycle-remote-scope-delta-identity-set-invalid')
+    }
+    const repositories = new Set(request.repositories)
+    const changedIds = new Set()
+    for (const issue of observation.changedIssues) {
+        const identity = validateRemoteIssueFact(issue, repositories)
+        if (changedIds.has(identity)) {
+            fail('lifecycle-remote-issue-fact-duplicate', { identity })
+        }
+        changedIds.add(identity)
+        if (!currentIssueIds.includes(identity)) {
+            fail('lifecycle-remote-scope-delta-changed-outside-current', {
+                identity
+            })
+        }
+    }
+    for (const identity of [...currentIssueIds, ...removedIssueIds]) {
+        const split = identity.lastIndexOf('#')
+        if (split <= 0 || !repositories.has(identity.slice(0, split)) ||
+            !/^[1-9][0-9]*$/u.test(identity.slice(split + 1))) {
+            fail('lifecycle-remote-scope-delta-identity-set-invalid')
+        }
+    }
+    return observation
+}
+
+function reconstructDeltaIssues(previousReceipt, observation) {
+    const previousFacts = previousReceipt?.remoteIssueFacts
+    if (!previousFacts || typeof previousFacts !== 'object' ||
+        Array.isArray(previousFacts)) {
+        fail('lifecycle-remote-scope-delta-baseline-unavailable')
+    }
+    const previousIds = Object.keys(previousFacts).sort()
+    const currentIds = [...observation.currentIssueIds]
+    const currentSet = new Set(currentIds)
+    const expectedRemoved = previousIds.filter((id) => !currentSet.has(id))
+    if (!sameValue(expectedRemoved, observation.removedIssueIds)) {
+        fail('lifecycle-remote-scope-delta-removal-mismatch')
+    }
+    const facts = new Map(Object.entries(previousFacts).map(([id, fact]) => [
+        id,
+        clone(fact)
+    ]))
+    for (const id of observation.removedIssueIds) facts.delete(id)
+    for (const issue of observation.changedIssues) {
+        facts.set(issueIdentity(issue), normalizeRemoteIssueFact(issue))
+    }
+    const missing = currentIds.filter((id) => !facts.has(id))
+    if (missing.length > 0 || facts.size !== currentIds.length) {
+        fail('lifecycle-remote-scope-delta-partial', { missing })
+    }
+    return currentIds.map((id) => remoteIssueFromFact(facts.get(id)))
+}
+
+function recordRefreshDiagnostics(target, values) {
+    if (target === undefined || target === null) return
+    if (!target || typeof target !== 'object' || Array.isArray(target)) {
+        fail('lifecycle-remote-scope-diagnostics-invalid')
+    }
+    Object.assign(target, values)
+}
+
 function validateRemoteObservation(observation, request) {
     if (observation?.schema !== REMOTE_OBSERVATION_SCHEMA ||
         observation.producerAuthority !==
@@ -85,35 +284,28 @@ function validateRemoteObservation(observation, request) {
             unsignedDigest(observation, 'observationDigest')) {
         fail('lifecycle-remote-scope-observation-invalid')
     }
+    if (observation.observationCursor !== undefined &&
+        observation.observationCursor !== null) {
+        requireObservationIdentity(
+            observation.observationCursor,
+            'lifecycle-remote-scope-observation-cursor-invalid'
+        )
+    }
+    if (observation.conditionalIdentity !== undefined &&
+        observation.conditionalIdentity !== null) {
+        requireObservationIdentity(
+            observation.conditionalIdentity,
+            'lifecycle-remote-scope-observation-conditional-invalid'
+        )
+    }
     const repositories = new Set(request.repositories)
     const identities = new Set()
     for (const issue of observation.issues) {
-        if (!issue || typeof issue !== 'object' ||
-            Array.isArray(issue) ||
-            !repositories.has(issue.repository) ||
-            !Number.isInteger(issue.number) || issue.number <= 0 ||
-            typeof issue.state !== 'string' ||
-            typeof issue.updatedAt !== 'string' ||
-            typeof issue.title !== 'string' ||
-            typeof issue.body !== 'string') {
-            fail('lifecycle-remote-issue-fact-invalid')
-        }
-        const identity = `${issue.repository}#${issue.number}`
+        const identity = validateRemoteIssueFact(issue, repositories)
         if (identities.has(identity)) {
             fail('lifecycle-remote-issue-fact-duplicate', { identity })
         }
         identities.add(identity)
-        for (const forbidden of [
-            'selectorReceipt', 'remoteSnapshotReceipt', 'actionSet',
-            'ledger', 'projection', 'lifecycleAuthority'
-        ]) {
-            if (Object.hasOwn(issue, forbidden)) {
-                fail('lifecycle-remote-observation-authority-forbidden', {
-                    identity,
-                    field: forbidden
-                })
-            }
-        }
     }
     return observation
 }
@@ -122,6 +314,8 @@ export function executeLifecycleScopeRefresh({
     ledger,
     actionSet,
     observeRemoteIssues,
+    observeRemoteIssueDelta = null,
+    diagnostics = null,
     createdAt,
     startup
 } = {}) {
@@ -130,6 +324,10 @@ export function executeLifecycleScopeRefresh({
     }
     if (typeof observeRemoteIssues !== 'function') {
         fail('lifecycle-remote-observer-required')
+    }
+    if (observeRemoteIssueDelta !== null &&
+        typeof observeRemoteIssueDelta !== 'function') {
+        fail('lifecycle-remote-delta-observer-invalid')
     }
     const context = lifecycleRunObservationContext(ledger, { startup })
     validateLifecycleRunAuthority(context.lifecycleAuthority, {
@@ -141,9 +339,7 @@ export function executeLifecycleScopeRefresh({
         context.selectorDefinition,
         context.selectorReceipt
     )
-    const request = Object.freeze({
-        schema:
-            'issue-orchestration.lifecycle-remote-scope-request.v1',
+    const commonRequest = {
         runId: context.runId,
         repositories: [...selector.repositories].sort(),
         selector: clone(selector),
@@ -155,18 +351,91 @@ export function executeLifecycleScopeRefresh({
             context.selectorReceipt.remoteSnapshotDigest,
         lifecycleAuthorityBindingDigest:
             context.lifecycleAuthority.binding.bindingDigest
-    })
-    const observation = validateRemoteObservation(
-        observeRemoteIssues(request),
-        request
-    )
+    }
+
+    let remoteIssues
+    let resolvedAt
+    let remoteObservationCursor = null
+    let remoteConditionalIdentity = null
+    let mode = 'full'
+    let fallbackReason = null
+    let remoteFactsTransferred = 0
+    let selectorRebuildCount = 0
+
+    if (observeRemoteIssueDelta &&
+        context.selectorReceipt.remoteObservationCursor !== null) {
+        const deltaRequest = Object.freeze({
+            schema: REMOTE_DELTA_REQUEST_SCHEMA,
+            ...commonRequest,
+            previousObservationCursor:
+                context.selectorReceipt.remoteObservationCursor,
+            previousConditionalIdentity:
+                context.selectorReceipt.remoteConditionalIdentity
+        })
+        const delta = validateRemoteDeltaObservation(
+            observeRemoteIssueDelta(deltaRequest),
+            deltaRequest
+        )
+        if (delta.status === 'unchanged') {
+            recordRefreshDiagnostics(diagnostics, {
+                mode: 'unchanged',
+                fallbackReason: null,
+                remoteFactsTransferred: 0,
+                selectorRebuildCount: 0
+            })
+            return ledger
+        }
+        if (delta.status === 'changed') {
+            remoteIssues = reconstructDeltaIssues(
+                context.selectorReceipt,
+                delta
+            )
+            resolvedAt = delta.observedAt
+            remoteObservationCursor = delta.observationCursor
+            remoteConditionalIdentity = delta.conditionalIdentity
+            mode = 'delta'
+            remoteFactsTransferred = delta.changedIssues.length
+        } else {
+            fallbackReason = 'adapter-unsupported'
+        }
+    } else if (observeRemoteIssueDelta) {
+        fallbackReason = 'baseline-cursor-unavailable'
+    }
+
+    if (!remoteIssues) {
+        const request = Object.freeze({
+            schema:
+                'issue-orchestration.lifecycle-remote-scope-request.v1',
+            ...commonRequest
+        })
+        const observation = validateRemoteObservation(
+            observeRemoteIssues(request),
+            request
+        )
+        remoteIssues = clone(observation.issues)
+        resolvedAt = observation.observedAt
+        remoteObservationCursor = observation.observationCursor ?? null
+        remoteConditionalIdentity = observation.conditionalIdentity ?? null
+        mode = fallbackReason ? 'full-fallback' : 'full'
+        remoteFactsTransferred = observation.issues.length
+    }
+
+    selectorRebuildCount = 1
     const selectorReceipt = resolveLifecycleSelector({
         lifecycleAuthority: context.lifecycleAuthority,
         startup,
         selector,
-        remoteIssues: clone(observation.issues),
+        remoteIssues,
         previousReceipt: context.selectorReceipt,
-        resolvedAt: observation.observedAt
+        resolvedAt,
+        remoteObservationCursor,
+        remoteConditionalIdentity
+    })
+    recordRefreshDiagnostics(diagnostics, {
+        mode,
+        fallbackReason,
+        remoteFactsTransferred,
+        selectorRebuildCount
     })
     if (selectorReceipt.remoteSnapshotDigest ===
             context.selectorReceipt.remoteSnapshotDigest) {
@@ -188,7 +457,7 @@ export function executeLifecycleScopeRefresh({
         ledger,
         actionSet: current,
         selectorReceipt,
-        createdAt: createdAt ?? observation.observedAt,
+        createdAt: createdAt ?? resolvedAt,
         startup
     })
 }

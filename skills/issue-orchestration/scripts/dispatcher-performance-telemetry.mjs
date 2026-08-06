@@ -131,7 +131,8 @@ function stableMetadata(value = {}) {
     const metadata = {}
     for (const field of [
         'boundary', 'transition', 'actionDigest', 'actionType', 'nodeId',
-        'dispatchId', 'phase', 'status'
+        'dispatchId', 'phase', 'status', 'mode', 'fallbackReason',
+        'remoteFactsTransferred', 'selectorRebuildCount'
     ]) {
         if (value[field] !== undefined && value[field] !== null) {
             metadata[field] = value[field]

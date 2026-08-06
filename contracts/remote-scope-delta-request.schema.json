@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/remote-scope-delta-request.schema.json",
+  "title": "Remote scope delta request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "runId",
+    "repositories",
+    "selector",
+    "selectorDigest",
+    "remoteQueryIdentity",
+    "previousSelectorReceiptDigest",
+    "previousRemoteSnapshotDigest",
+    "lifecycleAuthorityBindingDigest",
+    "previousObservationCursor",
+    "previousConditionalIdentity"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.lifecycle-remote-scope-delta-request.v1"
+    },
+    "runId": { "type": "string", "minLength": 1 },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "selector": { "type": "object" },
+    "selectorDigest": { "$ref": "#/$defs/digest" },
+    "remoteQueryIdentity": { "type": "string", "minLength": 1 },
+    "previousSelectorReceiptDigest": { "$ref": "#/$defs/digest" },
+    "previousRemoteSnapshotDigest": { "$ref": "#/$defs/digest" },
+    "lifecycleAuthorityBindingDigest": { "$ref": "#/$defs/digest" },
+    "previousObservationCursor": { "type": "string", "minLength": 1 },
+    "previousConditionalIdentity": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

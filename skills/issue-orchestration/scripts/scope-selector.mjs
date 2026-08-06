@@ -28,6 +28,10 @@ function digest(value) {
     return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex')
 }
 
+function sameValue(left, right) {
+    return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
+}
+
 
 function normalizeSelectorDefinition(selector) {
     if (selector?.schema !== 'issue-orchestration.scope-selector.v1' ||
@@ -88,6 +92,15 @@ function issueId(issue) {
     return `${issue.repository}#${issue.number}`
 }
 
+function requireObservationIdentity(value) {
+    if (typeof value !== 'string' || !/^[^#\s]+\/[^#\s]+#[1-9][0-9]*$/u.test(value)) {
+        throw Object.assign(new Error('invalid remote issue identity'), {
+            code: 'remote-issue-identity-invalid'
+        })
+    }
+    return value
+}
+
 function remoteFact(issue) {
     return {
         identity: issueId(issue),
@@ -108,8 +121,66 @@ function remoteFact(issue) {
     }
 }
 
+export function normalizeRemoteIssueFact(issue) {
+    const fact = remoteFact(issue)
+    requireObservationIdentity(fact.identity)
+    return Object.freeze(structuredClone(canonical(fact)))
+}
+
 export function remoteIssueFactDigest(issue) {
-    return digest(remoteFact(issue))
+    return digest(normalizeRemoteIssueFact(issue))
+}
+
+export function remoteIssueFromFact(value) {
+    const fact = canonical(value)
+    const identity = requireObservationIdentity(fact?.identity)
+    const split = identity.lastIndexOf('#')
+    const repository = identity.slice(0, split)
+    const number = Number.parseInt(identity.slice(split + 1), 10)
+    if (typeof fact.state !== 'string' ||
+        typeof fact.updatedAt !== 'string' ||
+        typeof fact.title !== 'string' ||
+        typeof fact.body !== 'string' ||
+        !Array.isArray(fact.relevantComments) ||
+        !Array.isArray(fact.labels) ||
+        !Array.isArray(fact.declaredDependencies) ||
+        !Array.isArray(fact.trackedIssueIds)) {
+        throw Object.assign(new Error('invalid normalized remote issue fact'), {
+            code: 'remote-issue-fact-invalid'
+        })
+    }
+    return Object.freeze({
+        repository,
+        number,
+        state: fact.state,
+        stateReason: fact.stateReason ?? null,
+        updatedAt: fact.updatedAt,
+        title: fact.title,
+        body: fact.body,
+        comments: fact.relevantComments.map((comment) => ({
+            ...comment,
+            relevant: true
+        })),
+        labels: [...fact.labels],
+        milestone: fact.milestone ? { ...fact.milestone } : null,
+        dependsOn: [...fact.declaredDependencies],
+        trackedIssueIds: [...fact.trackedIssueIds]
+    })
+}
+
+export function remoteIssuesFromSelectorReceipt(receipt) {
+    verifySelectorReceipt(receipt)
+    return Object.freeze(
+        Object.keys(receipt.remoteIssueFacts).sort().map((identity) => {
+            const fact = receipt.remoteIssueFacts[identity]
+            if (fact?.identity !== identity) {
+                throw Object.assign(new Error('remote issue fact identity mismatch'), {
+                    code: 'selector-remote-issue-fact-invalid'
+                })
+            }
+            return remoteIssueFromFact(fact)
+        })
+    )
 }
 
 function selectedIds(selector, issuesById) {
@@ -169,6 +240,8 @@ export function resolveSelector({
     remoteIssues,
     previousReceipt = null,
     resolvedAt,
+    remoteObservationCursor = null,
+    remoteConditionalIdentity = null,
     startup
 }) {
     const startupAuthorization = authorizeRuntimeStartupActivity({
@@ -201,7 +274,22 @@ export function resolveSelector({
         )
     }
 
+    if ((remoteObservationCursor !== null &&
+            (typeof remoteObservationCursor !== 'string' ||
+                remoteObservationCursor.length === 0)) ||
+        (remoteConditionalIdentity !== null &&
+            (typeof remoteConditionalIdentity !== 'string' ||
+                remoteConditionalIdentity.length === 0))) {
+        throw Object.assign(new Error('invalid remote observation identity'), {
+            code: 'selector-remote-observation-identity-invalid'
+        })
+    }
     const issuesById = new Map(remoteIssues.map((issue) => [issueId(issue), issue]))
+    const remoteIssueFacts = Object.fromEntries(
+        [...issuesById.entries()]
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([identity, issue]) => [identity, normalizeRemoteIssueFact(issue)])
+    )
     const selected = selectedIds(selector, issuesById)
     const resolvedIssueSet = [...selected].filter((id) => issuesById.has(id)).sort()
     const exclusionReasons = Object.fromEntries(
@@ -259,6 +347,9 @@ export function resolveSelector({
         resolvedIssueSet,
         exclusionReasons,
         remoteQueryIdentity: selector.remoteQueryIdentity,
+        remoteObservationCursor,
+        remoteConditionalIdentity,
+        remoteIssueFacts,
         previousRemoteSnapshotDigest: previousReceipt?.remoteSnapshotDigest ?? null,
         remoteSnapshotDigest,
         remoteFactDigests,
@@ -289,8 +380,60 @@ export function verifySelectorReceipt(receipt) {
         typeof receipt.remoteSnapshotDigest !== 'string' ||
         !Array.isArray(receipt.resolvedIssueSet) ||
         !receipt.remoteFactDigests ||
-        typeof receipt.remoteFactDigests !== 'object') {
+        typeof receipt.remoteFactDigests !== 'object' ||
+        Array.isArray(receipt.remoteFactDigests) ||
+        !receipt.remoteIssueFacts ||
+        typeof receipt.remoteIssueFacts !== 'object' ||
+        Array.isArray(receipt.remoteIssueFacts) ||
+        !receipt.exclusionReasons ||
+        typeof receipt.exclusionReasons !== 'object' ||
+        Array.isArray(receipt.exclusionReasons) ||
+        (receipt.remoteObservationCursor !== null &&
+            (typeof receipt.remoteObservationCursor !== 'string' ||
+                receipt.remoteObservationCursor.length === 0)) ||
+        (receipt.remoteConditionalIdentity !== null &&
+            (typeof receipt.remoteConditionalIdentity !== 'string' ||
+                receipt.remoteConditionalIdentity.length === 0))) {
         throw Object.assign(new Error('selector receipt digest mismatch'), {
+            code: 'selector-receipt-invalid'
+        })
+    }
+    const factIds = Object.keys(receipt.remoteIssueFacts).sort()
+    const selectedIds = [...receipt.resolvedIssueSet].sort()
+    const excludedIds = Object.keys(receipt.exclusionReasons).sort()
+    if (!sameValue(receipt.resolvedIssueSet, selectedIds) ||
+        new Set(selectedIds).size !== selectedIds.length ||
+        !sameValue(
+            [...new Set([...selectedIds, ...excludedIds])].sort(),
+            factIds
+        )) {
+        throw Object.assign(new Error('selector remote issue set mismatch'), {
+            code: 'selector-receipt-invalid'
+        })
+    }
+    for (const identity of factIds) {
+        const fact = receipt.remoteIssueFacts[identity]
+        if (fact?.identity !== identity ||
+            !sameValue(
+                fact,
+                normalizeRemoteIssueFact(remoteIssueFromFact(fact))
+            )) {
+            throw Object.assign(new Error('selector remote issue fact invalid'), {
+                code: 'selector-receipt-invalid'
+            })
+        }
+    }
+    const expectedFactDigests = Object.fromEntries(selectedIds.map((identity) => [
+        identity,
+        digest(receipt.remoteIssueFacts[identity])
+    ]))
+    if (!sameValue(receipt.remoteFactDigests, expectedFactDigests) ||
+        receipt.remoteSnapshotDigest !== digest({
+            selectorDigest: receipt.selectorDigest,
+            resolvedIssueSet: selectedIds,
+            remoteFactDigests: expectedFactDigests
+        })) {
+        throw Object.assign(new Error('selector remote snapshot mismatch'), {
             code: 'selector-receipt-invalid'
         })
     }

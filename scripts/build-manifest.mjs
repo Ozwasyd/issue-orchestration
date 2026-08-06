@@ -110,6 +110,7 @@ const manifest = {
         'typed-actor-stage-failure-isolation',
         'shared-projection-batch-actor-preparation',
         'canonical-deterministic-machine-action-batch',
+        'delta-aware-canonical-scope-refresh',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',

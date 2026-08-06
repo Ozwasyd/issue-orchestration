@@ -337,7 +337,14 @@ function actorAdapter(fixture, nodeId) {
     }
 }
 
-function fixture(numbers = [41, 42, 43], { slotCapacity = 2 } = {}) {
+function fixture(
+    numbers = [41, 42, 43],
+    {
+        slotCapacity = 2,
+        remoteObservationCursor = null,
+        remoteConditionalIdentity = null
+    } = {}
+) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dispatcher-root-'))
     const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dispatcher-state-'))
     const repository = repositoryFixture(root)
@@ -372,7 +379,9 @@ function fixture(numbers = [41, 42, 43], { slotCapacity = 2 } = {}) {
         selector: selectorDefinition,
         remoteIssues: issues,
         previousReceipt: null,
-        resolvedAt: CREATED_AT
+        resolvedAt: CREATED_AT,
+        remoteObservationCursor,
+        remoteConditionalIdentity
     })
     const policyDigest = digest('dispatcher-policy')
     const semanticGraph = createSemanticGraph({
@@ -2887,6 +2896,105 @@ test('independent actors settling in reverse wall-clock order preserve the same 
     assert.equal(reverse.activeDispatchCount, 0)
     assert.deepEqual(forward.settlementOrder, [first, second])
     assert.deepEqual(reverse.settlementOrder, [second, first])
+})
+
+
+test('delta unchanged transfers zero facts and skips selector rebuild telemetry', async (t) => {
+    async function run(mode) {
+        const value = fixture([41, 42], {
+            remoteObservationCursor: 'cursor-1',
+            remoteConditionalIdentity: 'etag-1'
+        })
+        t.after(() => {
+            fs.rmSync(value.root, { recursive: true, force: true })
+            fs.rmSync(value.stateRoot, { recursive: true, force: true })
+        })
+        const base = semanticContextProvider(value)
+        let fullCalls = 0
+        const provider = mode === 'delta'
+            ? {
+                ...base,
+                observeRemoteIssueDelta(request) {
+                    const response = {
+                        schema:
+                            'issue-orchestration.lifecycle-remote-scope-delta-observation.v1',
+                        producerAuthority:
+                            'trusted-remote-observation-adapter',
+                        rootAuthored: false,
+                        status: 'unchanged',
+                        selectorDigest: request.selectorDigest,
+                        remoteQueryIdentity: request.remoteQueryIdentity,
+                        repositories: [...request.repositories],
+                        previousRemoteSnapshotDigest:
+                            request.previousRemoteSnapshotDigest,
+                        previousObservationCursor:
+                            request.previousObservationCursor,
+                        previousConditionalIdentity:
+                            request.previousConditionalIdentity,
+                        observedAt: CREATED_AT,
+                        observationCursor: 'cursor-1',
+                        conditionalIdentity: 'etag-1'
+                    }
+                    response.observationDigest = digest(response)
+                    return response
+                },
+                observeRemoteIssues(request) {
+                    fullCalls += 1
+                    return base.observeRemoteIssues(request)
+                }
+            }
+            : {
+                ...base,
+                observeRemoteIssues(request) {
+                    fullCalls += 1
+                    return base.observeRemoteIssues(request)
+                }
+            }
+        let receipt = null
+        await assert.rejects(
+            runLifecycleProductionDispatcher({
+                ledger: value.ledger,
+                startup: value.startup,
+                contextProvider: provider,
+                clock: clock(),
+                maxTransitions: 1,
+                performanceTelemetry: {
+                    clock: performanceClock(),
+                    onReceipt(value) {
+                        receipt = value
+                    }
+                }
+            }),
+            (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+        )
+        const span = receipt.spans.find(({ metrics }) =>
+            metrics.includes('remoteScopeObservation'))
+        const projection = projectLifecycleRun(value.ledger, {
+            startup: value.startup
+        })
+        return {
+            receipt,
+            span,
+            fullCalls,
+            lifecycleStates: Object.fromEntries(
+                Object.entries(projection.state.nodes).map(([id, node]) => [
+                    id,
+                    node.lifecycleState
+                ])
+            )
+        }
+    }
+    const delta = await run('delta')
+    const full = await run('full')
+    assert.equal(delta.fullCalls, 0)
+    assert.equal(delta.span.mode, 'unchanged')
+    assert.equal(delta.span.remoteFactsTransferred, 0)
+    assert.equal(delta.span.selectorRebuildCount, 0)
+    assert.equal(full.fullCalls, 1)
+    assert.equal(full.span.mode, 'full')
+    assert.equal(full.span.remoteFactsTransferred, 2)
+    assert.equal(full.span.selectorRebuildCount, 1)
+    assert.deepEqual(delta.lifecycleStates, full.lifecycleStates)
 })
 
 test('performance telemetry is deterministic after timestamp normalization', () => {

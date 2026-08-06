@@ -300,6 +300,36 @@ test('[A04][M03] only enumerated live remote facts participate in the snapshot d
     })
 })
 
+
+test('re-signed remote issue fact baseline cannot authorize delta reconstruction', async () => {
+    const { verifySelectorReceipt } = await implementation()
+    const receipt = await resolveFixture('explicitIssues')
+    const forged = clone(receipt)
+    forged.remoteIssueFacts['ExampleOrg/RepositoryA#101'].body = 'forged baseline'
+    delete forged.receiptDigest
+    const { createHash } = await import('node:crypto')
+    function canonicalValue(value) {
+        if (Array.isArray(value)) {
+            return value.map(canonicalValue).sort((left, right) =>
+                JSON.stringify(left).localeCompare(JSON.stringify(right)))
+        }
+        if (value && typeof value === 'object') {
+            return Object.fromEntries(Object.keys(value).sort().map((key) => [
+                key,
+                canonicalValue(value[key])
+            ]))
+        }
+        return value
+    }
+    forged.receiptDigest = createHash('sha256')
+        .update(JSON.stringify(canonicalValue(forged)))
+        .digest('hex')
+    assert.throws(
+        () => verifySelectorReceipt(forged),
+        ({ code }) => code === 'selector-receipt-invalid'
+    )
+})
+
 test('[A05][N07][M04] a selector version cannot be reused for changed canonical parameters', async () => {
     const previous = await resolveFixture('explicitIssues')
     const forged = clone(fixture.selectors.explicitIssues)

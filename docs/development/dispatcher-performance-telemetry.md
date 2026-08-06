@@ -49,3 +49,4 @@ Performance fields are forbidden inputs to route selection, retry,
 terminalization, mutation authority, and correctness gates. Disabling the
 configuration must remove instrumentation overhead without changing action
 ordering, canonical events, ledger heads, projections, or quiescence.
+Remote-scope spans additionally expose diagnostic-only `mode`, `fallbackReason`, `remoteFactsTransferred`, and `selectorRebuildCount`. Delta `unchanged` therefore reports zero transferred facts and zero selector rebuilds; full and changed-delta paths report the actual bounded fact count and one canonical rebuild. These fields never enter lifecycle authority inputs.
