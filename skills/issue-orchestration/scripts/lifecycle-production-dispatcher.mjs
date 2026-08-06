@@ -351,7 +351,9 @@ function canonicalContext({
     startup,
     createdAt,
     actorContextEnvelope,
-    actorContextProgressiveReader
+    actorContextProgressiveReader,
+    actorPromptOptions,
+    recordActorPromptCacheMetadata
 }) {
     const context = object(
         prepared.context,
@@ -367,6 +369,10 @@ function canonicalContext({
         ...(actorContextEnvelope ? { actorContextEnvelope } : {}),
         ...(actorContextProgressiveReader ? {
             actorContextProgressiveReader
+        } : {}),
+        ...(actorPromptOptions ? { actorPromptOptions } : {}),
+        ...(recordActorPromptCacheMetadata ? {
+            recordActorPromptCacheMetadata
         } : {})
     })
 }
@@ -471,6 +477,26 @@ async function prepareAction({
     const actorContextProgressiveReader = actorContextBundle
         ? createActorContextProgressiveReader(actorContextBundle)
         : null
+    const actorPromptOptions = actorContextEnvelope
+        ? Object.freeze({
+            tokenizerIdentity:
+                prepared.actorContext?.tokenizerIdentity ?? null,
+            runtimeIdentity:
+                prepared.actorContext?.runtimeIdentity ?? null
+        })
+        : null
+    const recordActorPromptCacheMetadata = actorContextEnvelope && telemetry
+        ? ({ promptBundle, providerMetadata }) =>
+            telemetry.recordPromptCacheObservation({
+                actionDigest: action.actionDigest,
+                actionType: action.type,
+                nodeId: action.nodeId ?? null,
+                role: promptBundle.stablePrefix.role,
+                phase: promptBundle.stablePrefix.phase,
+                cacheIdentity: promptBundle.cacheIdentity,
+                providerMetadata
+            })
+        : null
     return {
         context: canonicalContext({
             prepared,
@@ -480,7 +506,9 @@ async function prepareAction({
             startup,
             createdAt,
             actorContextEnvelope,
-            actorContextProgressiveReader
+            actorContextProgressiveReader,
+            actorPromptOptions,
+            recordActorPromptCacheMetadata
         }),
         metadata: entry.executionClass === 'actor'
             ? actorMetadata({ prepared, entry, action })

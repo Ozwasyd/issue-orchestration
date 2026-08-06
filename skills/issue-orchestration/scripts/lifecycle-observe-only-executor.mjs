@@ -6,6 +6,10 @@ import {
     validateActorContextEnvelopeBinding
 } from './actor-context-envelope.mjs'
 import {
+    compileActorPromptBundle,
+    sanitizeProviderPromptCacheMetadata
+} from './actor-prompt-cache-identity.mjs'
+import {
     LIFECYCLE_STAGE_ADMISSION_MAP,
     LIFECYCLE_STAGE_RESULT_SCHEMA,
     validateLifecycleStageResult
@@ -548,6 +552,8 @@ export async function executeLifecycleObserveOnlyAction({
     evaluateMutation,
     actorContextEnvelope,
     actorContextProgressiveReader,
+    actorPromptOptions,
+    recordActorPromptCacheMetadata,
     observedAt = new Date(0).toISOString()
 } = {}) {
     const stage = stageFor(action)
@@ -571,6 +577,14 @@ export async function executeLifecycleObserveOnlyAction({
         stage,
         action
     )
+    const promptBundle = envelope
+        ? compileActorPromptBundle({
+            actorContextEnvelope: envelope,
+            routeDecision: route,
+            tokenizerIdentity: actorPromptOptions?.tokenizerIdentity ?? null,
+            runtimeIdentity: actorPromptOptions?.runtimeIdentity ?? null
+        })
+        : null
     const prepared = object(adapter.prepare({
         action: clone(action),
         node: clone(node),
@@ -580,8 +594,22 @@ export async function executeLifecycleObserveOnlyAction({
         ...(envelope ? { actorContextEnvelope: clone(envelope) } : {}),
         ...(actorContextProgressiveReader ? {
             resolveActorContextReference: actorContextProgressiveReader
+        } : {}),
+        ...(promptBundle ? {
+            actorPrompt: promptBundle.completePrompt,
+            actorPromptStablePrefix: clone(promptBundle.stablePrefix),
+            actorPromptVolatileSuffix: clone(promptBundle.volatileSuffix),
+            actorPromptCacheIdentity: clone(promptBundle.cacheIdentity)
         } : {})
     }), 'observe-only-preparation-invalid')
+    if (promptBundle && typeof recordActorPromptCacheMetadata === 'function') {
+        recordActorPromptCacheMetadata({
+            promptBundle,
+            providerMetadata: sanitizeProviderPromptCacheMetadata(
+                prepared.promptCacheMetadata ?? null
+            )
+        })
+    }
     if (prepared.writerConversationInherited === true ||
         prepared.writeLeaseAcquired === true ||
         prepared.candidateVisible !== true) {
@@ -624,6 +652,12 @@ export async function executeLifecycleObserveOnlyAction({
             ...(envelope ? { actorContextEnvelope: clone(envelope) } : {}),
             ...(actorContextProgressiveReader ? {
                 resolveActorContextReference: actorContextProgressiveReader
+            } : {}),
+            ...(promptBundle ? {
+                actorPrompt: promptBundle.completePrompt,
+                actorPromptCacheIdentity: clone(
+                    promptBundle.cacheIdentity
+                )
             } : {})
         }),
         stage,

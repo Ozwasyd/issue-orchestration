@@ -82,6 +82,7 @@ const requiredPackageFiles = [
     'graph/semantic-graph.schema.json',
     'contracts/aggregate-runtime-projection.schema.json',
     'contracts/actor-context-envelope.schema.json',
+    'contracts/actor-prompt-cache-identity.schema.json',
     'contracts/dispatcher-performance-receipt.schema.json',
     'contracts/repository-base-observation-epoch.schema.json',
     'contracts/repository-evidence-pack.schema.json',
@@ -102,6 +103,7 @@ const requiredPackageFiles = [
 ]
 const requiredRuntimeModules = [
     'actor-context-envelope.mjs',
+    'actor-prompt-cache-identity.mjs',
     'repository-evidence-pack.mjs',
     'dispatcher-performance-telemetry.mjs',
     'delivery-epoch.mjs',

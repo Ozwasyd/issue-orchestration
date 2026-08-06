@@ -63,6 +63,10 @@ import {
 import {
     validateActorContextEnvelopeBinding
 } from './actor-context-envelope.mjs'
+import {
+    compileActorPromptBundle,
+    sanitizeProviderPromptCacheMetadata
+} from './actor-prompt-cache-identity.mjs'
 
 const SUPPORTED = new Set([
     'dispatch-test-contract-writer',
@@ -361,6 +365,16 @@ function compileWriterRoute(context, stage, authority) {
     }
     const pending = compileCanonicalRoute(routeBase)
     const pendingDecision = pending.executionRouteDecision
+    const promptBundle = envelope
+        ? compileActorPromptBundle({
+            actorContextEnvelope: envelope,
+            routeDecision: pendingDecision,
+            tokenizerIdentity:
+                context.actorPromptOptions?.tokenizerIdentity ?? null,
+            runtimeIdentity:
+                context.actorPromptOptions?.runtimeIdentity ?? null
+        })
+        : null
     const prepared = object(context.actorAdapter.prepare({
         action: structuredClone(context.action),
         node: structuredClone(context.node),
@@ -375,8 +389,29 @@ function compileWriterRoute(context, stage, authority) {
         ...(context.actorContextProgressiveReader ? {
             resolveActorContextReference:
                 context.actorContextProgressiveReader
+        } : {}),
+        ...(promptBundle ? {
+            actorPrompt: promptBundle.completePrompt,
+            actorPromptStablePrefix: structuredClone(
+                promptBundle.stablePrefix
+            ),
+            actorPromptVolatileSuffix: structuredClone(
+                promptBundle.volatileSuffix
+            ),
+            actorPromptCacheIdentity: structuredClone(
+                promptBundle.cacheIdentity
+            )
         } : {})
     }), 'writer-actor-preparation-invalid')
+    if (promptBundle &&
+        typeof context.recordActorPromptCacheMetadata === 'function') {
+        context.recordActorPromptCacheMetadata({
+            promptBundle,
+            providerMetadata: sanitizeProviderPromptCacheMetadata(
+                prepared.promptCacheMetadata ?? null
+            )
+        })
+    }
     const runtimeBinding = compileRuntimeExecutionBinding({
         stageRole: stage.role,
         stagePhase: stage.phase,
@@ -420,6 +455,7 @@ function compileWriterRoute(context, stage, authority) {
     }
     return {
         prepared,
+        promptBundle,
         runtimeBinding,
         pendingRouteBundle: pending,
         pendingRouteDecision: pendingDecision,
@@ -896,6 +932,12 @@ async function executeLeasedWriter(context, stage, authority) {
             ...(context.actorContextProgressiveReader ? {
                 resolveActorContextReference:
                     context.actorContextProgressiveReader
+            } : {}),
+            ...(route.promptBundle ? {
+                actorPrompt: route.promptBundle.completePrompt,
+                actorPromptCacheIdentity: structuredClone(
+                    route.promptBundle.cacheIdentity
+                )
             } : {})
         }), 'writer-actor-output-invalid')
     } catch (error) {

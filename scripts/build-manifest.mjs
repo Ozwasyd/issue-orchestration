@@ -108,7 +108,8 @@ const manifest = {
         'verified-lifecycle-action-set-cache',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
-        'deterministic-repository-evidence-pack'
+        'deterministic-repository-evidence-pack',
+        'content-addressed-actor-prompt-prefix'
     ],
     installTargets: [
         {

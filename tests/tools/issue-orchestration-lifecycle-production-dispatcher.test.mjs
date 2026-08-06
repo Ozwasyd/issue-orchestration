@@ -210,7 +210,11 @@ function actorAdapter(fixture, nodeId) {
             stageRole,
             stagePhase,
             routeDecision,
-            actorContextEnvelope
+            actorContextEnvelope,
+            actorPrompt,
+            actorPromptStablePrefix,
+            actorPromptVolatileSuffix,
+            actorPromptCacheIdentity
         }) {
             if (actorContextEnvelope) {
                 assert.equal(
@@ -223,6 +227,35 @@ function actorAdapter(fixture, nodeId) {
                 fixture.actorContextEnvelopes.push(
                     structuredClone(actorContextEnvelope)
                 )
+            }
+            if (actorContextEnvelope) {
+                assert.equal(typeof actorPrompt, 'string')
+                assert.equal(
+                    actorPromptStablePrefix.role,
+                    stageRole
+                )
+                assert.equal(
+                    actorPromptStablePrefix.phase,
+                    stagePhase
+                )
+                assert.deepEqual(
+                    actorPromptVolatileSuffix.actorContextEnvelope,
+                    actorContextEnvelope
+                )
+                assert.equal(
+                    actorPromptCacheIdentity.schema,
+                    'issue-orchestration.actor-prompt-cache-identity.v1'
+                )
+                assert.equal(
+                    actorPromptCacheIdentity.authority.kind,
+                    'diagnostic-only'
+                )
+                fixture.actorPromptBundles.push({
+                    prompt: actorPrompt,
+                    stablePrefix: structuredClone(actorPromptStablePrefix),
+                    volatileSuffix: structuredClone(actorPromptVolatileSuffix),
+                    cacheIdentity: structuredClone(actorPromptCacheIdentity)
+                })
             }
             sequence += 1
             const actorId = `${nodeId}:${stagePhase}:${sequence}`
@@ -238,14 +271,24 @@ function actorAdapter(fixture, nodeId) {
                 runtimeCapabilityObservation: capabilityObservation({
                     route: routeDecision,
                     actorId
-                })
+                }),
+                promptCacheMetadata: {
+                    provider: 'fixture-runtime',
+                    supported: true,
+                    hit: sequence > 1,
+                    cachedInputTokens: sequence > 1 ? 64 : 0,
+                    inputTokens: 128,
+                    ignoredAuthority: 'not-recorded'
+                }
             }
         },
         invoke({
             preparation,
             routeDecision,
             request,
-            actorContextEnvelope
+            actorContextEnvelope,
+            actorPrompt,
+            actorPromptCacheIdentity
         }) {
             if (actorContextEnvelope) {
                 assert.equal(actorContextEnvelope.envelopeDigest.length, 64)
@@ -256,6 +299,11 @@ function actorAdapter(fixture, nodeId) {
                 assert.equal(
                     actorContextEnvelope.phase,
                     routeDecision.stagePhase
+                )
+                assert.equal(typeof actorPrompt, 'string')
+                assert.equal(
+                    actorPromptCacheIdentity.completePromptDigest.length,
+                    64
                 )
             }
             const result = spawnSync(process.execPath, [actorScript], {
@@ -372,7 +420,8 @@ function fixture(numbers = [41, 42, 43]) {
         issues,
         ledger,
         runId,
-        actorContextEnvelopes: []
+        actorContextEnvelopes: [],
+        actorPromptBundles: []
     }
 }
 
@@ -789,6 +838,13 @@ test('two actors start together and the free slot refills before the other settl
             'issue-orchestration.actor-context-envelope.v1' &&
         envelope.authority.kind === 'actor-input-only' &&
         envelope.authority.grants.length === 0))
+    assert.ok(value.actorPromptBundles.length >= 2)
+    const semanticPrefixes = value.actorPromptBundles
+        .filter(({ stablePrefix }) =>
+            stablePrefix.phase === 'semantic-proposal')
+        .map(({ cacheIdentity }) => cacheIdentity.stablePrefixDigest)
+    assert.ok(semanticPrefixes.length >= 2)
+    assert.equal(new Set(semanticPrefixes).size, 1)
 })
 
 
@@ -1277,6 +1333,11 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
         actorResultAdmission: { count: 2, durationMs: 10 }
     })
     assert.equal(receipt.actorDispatches.length, 3)
+    assert.equal(receipt.promptCacheObservations.length, 3)
+    assert.ok(receipt.promptCacheObservations.every((observation) =>
+        observation.providerMetadata.provider === 'fixture-runtime' &&
+        observation.providerMetadata.ignoredAuthority === undefined &&
+        observation.cacheIdentityDigest.length === 64))
     assert.equal(
         receipt.actorDispatches.filter(({ admittedAt }) => admittedAt)
             .length,
@@ -1357,7 +1418,7 @@ test('dispatcher performance metrics are absent from authority inputs', () => {
         const source = fs.readFileSync(path.join(scripts, file), 'utf8')
         assert.doesNotMatch(
             source,
-            /dispatcher-performance|performanceTelemetry|performanceReceipt/u,
+            /dispatcher-performance|performanceTelemetry|performanceReceipt|promptCacheMetadata|cacheIdentityDigest|stablePrefixDigest/u,
             file
         )
     }
@@ -1367,6 +1428,6 @@ test('dispatcher performance metrics are absent from authority inputs', () => {
     )
     assert.doesNotMatch(
         dispatcher,
-        /(?:routeDecision|retry|terminal|mutation)[^\n]{0,120}(?:performanceTelemetry|performanceReceipt)/u
+        /(?:routeDecision|retry|terminal|mutation)[^\n]{0,120}(?:performanceTelemetry|performanceReceipt|promptCacheMetadata|cacheIdentityDigest)/u
     )
 })

@@ -8,6 +8,9 @@ import {
 import {
     canonicalRunStateLocation
 } from './multi-node-state.mjs'
+import {
+    sanitizeProviderPromptCacheMetadata
+} from './actor-prompt-cache-identity.mjs'
 
 const SCHEMA =
     'issue-orchestration.dispatcher-performance-receipt.v1'
@@ -164,6 +167,7 @@ export function createDispatcherPerformanceCollector({
     const dispatches = new Map()
     const slotSamples = []
     const slotRefills = []
+    const promptCacheObservations = []
     const unrefilled = []
     const summary = emptySummary()
     const repositorySummary = new Map()
@@ -424,6 +428,51 @@ export function createDispatcherPerformanceCollector({
         }
     }
 
+    function recordPromptCacheObservation({
+        actionDigest,
+        actionType,
+        nodeId = null,
+        role,
+        phase,
+        cacheIdentity,
+        providerMetadata = null
+    } = {}) {
+        if (finalized) fail('dispatcher-performance-finalized')
+        requireText(actionDigest,
+            'dispatcher-performance-action-digest-required')
+        requireText(actionType,
+            'dispatcher-performance-action-type-required')
+        requireText(role, 'dispatcher-performance-role-required')
+        requireText(phase, 'dispatcher-performance-phase-required')
+        const identity = requireObject(
+            cacheIdentity,
+            'dispatcher-performance-prompt-cache-identity-required'
+        )
+        if (identity.schema !==
+                'issue-orchestration.actor-prompt-cache-identity.v1' ||
+            !HASH.test(identity.cacheIdentityDigest ?? '')) {
+            fail('dispatcher-performance-prompt-cache-identity-invalid')
+        }
+        sequence += 1
+        promptCacheObservations.push(Object.freeze({
+            sequence,
+            transition,
+            observedAt: now(),
+            actionDigest,
+            actionType,
+            nodeId,
+            role,
+            phase,
+            cacheIdentityDigest: identity.cacheIdentityDigest,
+            stablePrefixDigest: identity.stablePrefixDigest,
+            suffixDigest: identity.suffixDigest,
+            completePromptDigest: identity.completePromptDigest,
+            providerMetadata: sanitizeProviderPromptCacheMetadata(
+                providerMetadata
+            )
+        }))
+    }
+
     function registerRecoveredDispatch({
         dispatchId,
         actionDigest,
@@ -500,6 +549,7 @@ export function createDispatcherPerformanceCollector({
             },
             spans,
             actorDispatches,
+            promptCacheObservations,
             slotSamples,
             slotRefills,
             idleSafeSlotDurationMs: slotRefills.reduce(
@@ -520,6 +570,7 @@ export function createDispatcherPerformanceCollector({
         recordActorCompletion,
         recordActorAdmission,
         registerRecoveredDispatch,
+        recordPromptCacheObservation,
         repositoriesForAction,
         finalize
     })
@@ -551,6 +602,7 @@ export function verifyDispatcherPerformanceReceipt(value) {
     }
     if (!Array.isArray(receipt.spans) ||
         !Array.isArray(receipt.actorDispatches) ||
+        !Array.isArray(receipt.promptCacheObservations) ||
         !Array.isArray(receipt.slotSamples) ||
         !Array.isArray(receipt.slotRefills) ||
         !Array.isArray(receipt.repositoryBaseObservations)) {
@@ -582,6 +634,11 @@ export function normalizeDispatcherPerformanceReceipt(value) {
         completedAt: offset(origin, dispatch.completedAt),
         admittedAt: offset(origin, dispatch.admittedAt)
     }))
+    normalized.promptCacheObservations =
+        receipt.promptCacheObservations.map((observation) => ({
+            ...observation,
+            observedAt: offset(origin, observation.observedAt)
+        }))
     normalized.slotSamples = receipt.slotSamples.map((sample) => ({
         ...sample,
         timestamp: offset(origin, sample.timestamp)
