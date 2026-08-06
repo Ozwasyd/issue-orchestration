@@ -19,10 +19,14 @@ import {
     resolveLifecycleSelector
 } from '../../skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs'
 import {
+    clearLifecycleActionSetCache,
     compileLifecycleRunActionSet,
+    lifecycleActionSetCacheObservation,
+    lifecycleActionSetCacheStats,
     createLifecycleRunLedger,
     projectLifecycleRun,
     readLifecycleRunLedger,
+    recordLifecycleDispatchBatchStarted,
     recordLifecycleDispatchedActionResult
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
@@ -477,6 +481,212 @@ test('production dispatcher map is exhaustive, immutable, and has no fallback', 
     assert.match(skill, /runLifecycleProductionDispatcher/u)
     assert.doesNotMatch(skill, /Root 逐项机械执行/u)
     assert.doesNotMatch(skill, /Root 主循环固定为：执行 action set/u)
+})
+
+test('action-set cache key uses only the seven verified compiler digests', () => {
+    const source = fs.readFileSync(new URL(
+        '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs',
+        import.meta.url
+    ), 'utf8')
+    const start = source.indexOf('function actionSetCacheIdentity')
+    const end = source.indexOf('function actionSetCacheStatsRecord', start)
+    assert.ok(start >= 0 && end > start)
+    const keySource = source.slice(start, end)
+    for (const field of [
+        'selectorReceiptDigest',
+        'remoteSnapshotReceiptDigest',
+        'semanticGraphDigest',
+        'aggregateProjectionDigest',
+        'policyDigest',
+        'runtimeCapabilityBindingDigest',
+        'lifecycleAuthorityBindingDigest'
+    ]) assert.match(keySource, new RegExp(field, 'u'))
+    assert.doesNotMatch(
+        keySource,
+        /Date|timestamp|mtime|objectIdentity|actionCount|nodeSummary/u
+    )
+})
+
+test('verified action-set cache compiles once and returns isolated byte-identical values', (t) => {
+    const value = fixture()
+    t.after(() => {
+        clearLifecycleActionSetCache({
+            stateRoot: value.stateRoot,
+            runId: value.runId
+        })
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const first = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    const second = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    assert.deepEqual(second, first)
+    assert.deepEqual(lifecycleActionSetCacheObservation(first), {
+        schema:
+            'issue-orchestration.lifecycle-action-set-cache-observation.v1',
+        status: 'compiled',
+        keyDigest: lifecycleActionSetCacheObservation(first).keyDigest
+    })
+    assert.equal(
+        lifecycleActionSetCacheObservation(second).status,
+        'cache-hit'
+    )
+    assert.deepEqual(lifecycleActionSetCacheStats({
+        stateRoot: value.stateRoot,
+        runId: value.runId
+    }), {
+        compilerInvocations: 1,
+        cacheHits: 1,
+        cacheMisses: 1,
+        forcedRecompilations: 0
+    })
+    assert.doesNotMatch(JSON.stringify(second), /cache/u)
+    second.actions[0].type = 'idle'
+    const third = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    assert.deepEqual(third, first)
+})
+
+test('performance telemetry counts only real action-set compiler invocations', (t) => {
+    const value = fixture()
+    t.after(() => {
+        clearLifecycleActionSetCache({
+            stateRoot: value.stateRoot,
+            runId: value.runId
+        })
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const collector = createDispatcherPerformanceCollector({
+        runId: value.runId,
+        stateRoot: value.stateRoot,
+        clock: performanceClock()
+    })
+    const measuredCompile = () => {
+        const before = lifecycleActionSetCacheStats({
+            stateRoot: value.stateRoot,
+            runId: value.runId
+        })
+        return collector.measureSync(
+            ['actionSetCompilation'],
+            { boundary: 'action-set-cache-proof' },
+            () => compileLifecycleRunActionSet(value.ledger, {
+                startup: value.startup
+            }),
+            {
+                resolveMetrics() {
+                    const after = lifecycleActionSetCacheStats({
+                        stateRoot: value.stateRoot,
+                        runId: value.runId
+                    })
+                    return after.compilerInvocations >
+                        before.compilerInvocations
+                        ? ['actionSetCompilation']
+                        : []
+                }
+            }
+        )
+    }
+    assert.deepEqual(measuredCompile(), measuredCompile())
+    const receipt = collector.finalize({
+        status: 'completed',
+        transitions: 0
+    })
+    assert.deepEqual(receipt.operationSummary.actionSetCompilation, {
+        count: 1,
+        durationMs: 5
+    })
+})
+
+test('forced recompilation is byte-identical and canonical append changes the cache key', (t) => {
+    const value = fixture()
+    t.after(() => {
+        clearLifecycleActionSetCache({
+            stateRoot: value.stateRoot,
+            runId: value.runId
+        })
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const first = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    const forced = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup,
+        forceRecompile: true
+    })
+    assert.deepEqual(forced, first)
+    assert.equal(
+        lifecycleActionSetCacheObservation(forced).status,
+        'forced-recompile'
+    )
+    const actorActions = first.actions.filter(({ type }) =>
+        type === 'request-semantic-proposal')
+    recordLifecycleDispatchBatchStarted({
+        ledger: value.ledger,
+        actionSet: first,
+        dispatches: actorActions.map((action, index) => ({
+            actionDigest: action.actionDigest,
+            nodeId: action.nodeId,
+            owner: 'dag-creator-updater',
+            attemptId: `attempt-${index + 1}`,
+            slotId: `slot-${index + 1}`,
+            runtimeBindingDigest: digest(['runtime', index]),
+            leaseDigest: digest(['lease', index]),
+            resourceDigest: digest(['resource', index])
+        })),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const afterAppend = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    assert.notEqual(
+        lifecycleActionSetCacheObservation(afterAppend).keyDigest,
+        lifecycleActionSetCacheObservation(first).keyDigest
+    )
+    assert.deepEqual(lifecycleActionSetCacheStats({
+        stateRoot: value.stateRoot,
+        runId: value.runId
+    }), {
+        compilerInvocations: 3,
+        cacheHits: 1,
+        cacheMisses: 3,
+        forcedRecompilations: 1
+    })
+})
+
+test('caller-edited action set cannot reuse a copied cache identity', (t) => {
+    const value = fixture()
+    t.after(() => {
+        clearLifecycleActionSetCache({
+            stateRoot: value.stateRoot,
+            runId: value.runId
+        })
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const actionSet = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    const edited = structuredClone(actionSet)
+    edited.actions.reverse()
+    edited.copiedCacheKeyDigest =
+        lifecycleActionSetCacheObservation(actionSet).keyDigest
+    assert.throws(
+        () => recordLifecycleDispatchBatchStarted({
+            ledger: value.ledger,
+            actionSet: edited,
+            dispatches: [],
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }),
+        (error) => error?.code === 'lifecycle-action-set-stale'
+    )
 })
 
 test('two actors start together and the free slot refills before the other settles', async (t) => {

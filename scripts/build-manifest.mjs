@@ -104,7 +104,8 @@ const manifest = {
         'typed-terminalization-authority',
         'deterministic-dispatcher-performance-telemetry',
         'wave-scoped-repository-base-observation',
-        'verified-replay-projection-cache'
+        'verified-replay-projection-cache',
+        'verified-lifecycle-action-set-cache'
     ],
     installTargets: [
         {

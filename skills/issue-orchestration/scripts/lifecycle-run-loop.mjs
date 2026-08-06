@@ -54,6 +54,11 @@ const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
 const AUTHORITY_CONTEXT = Symbol('lifecycle-authority-context')
 const CONTROL_FACTS_CACHE = Symbol('lifecycle-control-facts-cache')
+const ACTION_SET_CACHE_OBSERVATION = Symbol(
+    'lifecycle-action-set-cache-observation'
+)
+const LIFECYCLE_ACTION_SET_CACHE = new Map()
+const LIFECYCLE_ACTION_SET_CACHE_STATS = new Map()
 const REPLAY_CACHE_AUTHORITY_DIGEST = Symbol(
     'lifecycle-replay-cache-authority-digest'
 )
@@ -940,9 +945,10 @@ export function projectLifecycleRun(
 function lifecycleCompilerInput(
     value,
     observedSelectorReceipt = null,
-    startup = null
+    startup = null,
+    resolvedAuthority = null
 ) {
-    const authority = resolveAuthority(value, startup)
+    const authority = resolvedAuthority ?? resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
     const recovered = facts.recovered
     const semanticGraph = currentSemanticGraph({
@@ -968,19 +974,160 @@ function lifecycleCompilerInput(
     }
 }
 
+function actionSetCacheLocator(authority) {
+    return `${authority.stateRoot}\u0000${authority.runId}`
+}
+
+function actionSetCacheIdentity(input) {
+    const identity = {
+        schema: 'issue-orchestration.lifecycle-action-set-cache-key.v1',
+        selectorReceiptDigest: input.selectorReceipt.receiptDigest,
+        remoteSnapshotReceiptDigest:
+            input.remoteSnapshotReceipt.receiptDigest,
+        semanticGraphDigest: input.semanticGraph.semanticGraphDigest,
+        aggregateProjectionDigest:
+            input.aggregateProjection.aggregateProjectionDigest,
+        policyDigest: input.installedPolicy.policyDigest,
+        runtimeCapabilityBindingDigest:
+            input.runtimeCapabilityBinding.bindingDigest,
+        lifecycleAuthorityBindingDigest:
+            input.lifecycleAuthority.binding.bindingDigest
+    }
+    return Object.freeze({
+        identity: Object.freeze(identity),
+        keyDigest: digest(identity)
+    })
+}
+
+function actionSetCacheStatsRecord(authority) {
+    const locator = actionSetCacheLocator(authority)
+    if (!LIFECYCLE_ACTION_SET_CACHE_STATS.has(locator)) {
+        LIFECYCLE_ACTION_SET_CACHE_STATS.set(locator, {
+            compilerInvocations: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            forcedRecompilations: 0
+        })
+    }
+    return LIFECYCLE_ACTION_SET_CACHE_STATS.get(locator)
+}
+
+function actionSetMatchesCacheIdentity(actionSet, identity) {
+    return actionSet.semanticGraphDigest === identity.semanticGraphDigest &&
+        actionSet.aggregateProjectionDigest ===
+            identity.aggregateProjectionDigest &&
+        actionSet.policyDigest === identity.policyDigest &&
+        actionSet.runtimeCapabilityBindingDigest ===
+            identity.runtimeCapabilityBindingDigest &&
+        actionSet.lifecycleAuthorityBindingDigest ===
+            identity.lifecycleAuthorityBindingDigest
+}
+
+function observedActionSet(actionSet, observation) {
+    const result = clone(actionSet)
+    Object.defineProperty(result, ACTION_SET_CACHE_OBSERVATION, {
+        value: Object.freeze(clone(observation))
+    })
+    return Object.freeze(result)
+}
+
+export function lifecycleActionSetCacheObservation(value) {
+    return value?.[ACTION_SET_CACHE_OBSERVATION]
+        ? Object.freeze(clone(value[ACTION_SET_CACHE_OBSERVATION]))
+        : null
+}
+
+export function lifecycleActionSetCacheStats({ stateRoot, runId } = {}) {
+    if (!stateRoot || !runId) {
+        return Object.freeze({
+            compilerInvocations: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            forcedRecompilations: 0
+        })
+    }
+    const locator = `${path.resolve(stateRoot)}\u0000${runId}`
+    return Object.freeze(clone(
+        LIFECYCLE_ACTION_SET_CACHE_STATS.get(locator) ?? {
+            compilerInvocations: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            forcedRecompilations: 0
+        }
+    ))
+}
+
+export function clearLifecycleActionSetCache({ stateRoot, runId } = {}) {
+    if (stateRoot === undefined && runId === undefined) {
+        LIFECYCLE_ACTION_SET_CACHE.clear()
+        LIFECYCLE_ACTION_SET_CACHE_STATS.clear()
+        return
+    }
+    if (!stateRoot || !runId) {
+        fail('lifecycle-action-set-cache-location-required')
+    }
+    const locator = `${path.resolve(stateRoot)}\u0000${runId}`
+    LIFECYCLE_ACTION_SET_CACHE.delete(locator)
+    LIFECYCLE_ACTION_SET_CACHE_STATS.delete(locator)
+}
+
 export function compileLifecycleRunActionSet(
     value,
-    { observedSelectorReceipt = null, startup = null } = {}
+    {
+        observedSelectorReceipt = null,
+        startup = null,
+        forceRecompile = false
+    } = {}
 ) {
-    const actionSet = compileLifecycleActionSet(
-        lifecycleCompilerInput(
-            value,
-            observedSelectorReceipt,
-            startup
-        )
+    const authority = resolveAuthority(value, startup)
+    const input = lifecycleCompilerInput(
+        authority,
+        observedSelectorReceipt,
+        authority.startup,
+        authority
     )
+    const cacheKey = actionSetCacheIdentity(input)
+    const locator = actionSetCacheLocator(authority)
+    const stats = actionSetCacheStatsRecord(authority)
+    const cached = LIFECYCLE_ACTION_SET_CACHE.get(locator)
+    if (!forceRecompile &&
+        cached?.keyDigest === cacheKey.keyDigest &&
+        sameValue(cached.identity, cacheKey.identity)) {
+        validateLifecycleActionSet(cached.actionSet)
+        if (!actionSetMatchesCacheIdentity(
+            cached.actionSet,
+            cacheKey.identity
+        )) {
+            fail('lifecycle-action-set-cache-binding-mismatch')
+        }
+        stats.cacheHits += 1
+        return observedActionSet(cached.actionSet, {
+            schema:
+                'issue-orchestration.lifecycle-action-set-cache-observation.v1',
+            status: 'cache-hit',
+            keyDigest: cacheKey.keyDigest
+        })
+    }
+    stats.cacheMisses += 1
+    if (forceRecompile) stats.forcedRecompilations += 1
+    const actionSet = compileLifecycleActionSet(input)
+    stats.compilerInvocations += 1
     validateLifecycleActionSet(actionSet)
-    return actionSet
+    if (!actionSetMatchesCacheIdentity(actionSet, cacheKey.identity)) {
+        fail('lifecycle-action-set-cache-binding-mismatch')
+    }
+    const stored = clone(actionSet)
+    LIFECYCLE_ACTION_SET_CACHE.set(locator, Object.freeze({
+        keyDigest: cacheKey.keyDigest,
+        identity: cacheKey.identity,
+        actionSet: stored
+    }))
+    return observedActionSet(stored, {
+        schema:
+            'issue-orchestration.lifecycle-action-set-cache-observation.v1',
+        status: forceRecompile ? 'forced-recompile' : 'compiled',
+        keyDigest: cacheKey.keyDigest
+    })
 }
 
 function exactCurrentActionSet(value, actionSet) {
