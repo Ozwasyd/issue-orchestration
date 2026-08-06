@@ -56,6 +56,12 @@ attestation verified 后才确认 caller 本轮明确提供的目标仓库路径
 
 某次修复 issue 对 Sol Ultra 或其它实现者的直接授权只适用于该次实现批次，不能写入永久 `stage-model-pool.v4`、routing、dispatch 或 fallback policy。临时 bootstrap runner、旧 run id、receipt、breaker 和 failure evidence只能作为冻结测试保管、恢复、审计 fixture 与最终退役对象；它们不是永久 dispatcher，也不能阻止当前获授权实现者修改永久源码或成为兼容入口。
 
+## 本地付费模型池资格诊断
+
+`node scripts/model-pool-qualification.mjs` 只是在仓库外输出诊断收据的显式本地工具。它要求 live flag、精确 profile/scenario allowlist、invocation cap、token cap、美元预算、operator-supplied pricing file 与仓库外 output path 全部存在；CI、GitHub Actions、安装、构建、普通测试、永久 E2E 和 live target canary 永远不得引用或启动它。每个 profile 只能在无 remote 的一次性本地仓库上消费字节相同的冻结场景，Codex 必须使用 `workspace-write`、关闭网络，并回报可验证的 effective runtime、token、tool、elapsed time、checkpoint、accepted/rejected、recovery 与 cost。缺失 accounting、越界 mutation、remote/network/tool 调用、部分矩阵或任一 cap 超限都只能生成 failure evidence，不能生成 complete receipt。
+
+该命令及 `issue-orchestration.model-qualification-receipt.v1` 永久为 `diagnosticAuthority=none`、`automaticPolicyMutation=false`；不得自动写 model pool、routing/fallback、issue、PR、仓库或 lifecycle authority。详细合同见 [`references/model-pool-qualification.md`](references/model-pool-qualification.md)。
+
 ## 永久组合 E2E
 
 `scripts/permanent-e2e.mjs` 是永久 package 的组合验收 owner；它不是

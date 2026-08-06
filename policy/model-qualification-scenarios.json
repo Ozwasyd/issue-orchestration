@@ -1,0 +1,157 @@
+{
+  "schema": "issue-orchestration.model-qualification-scenarios.v1",
+  "version": "model-qualification-scenarios.v1",
+  "scenarios": {
+    "atomic-mechanical": {
+      "tokenReservation": 3000,
+      "timeoutMs": 120000,
+      "allowedWriteRoots": ["src", "tests", ".qualification"],
+      "initialFiles": {
+        "src/constants.mjs": "export const RETRY_LIMIT = 2\n",
+        "tests/constants.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { RETRY_LIMIT } from '../src/constants.mjs'\ntest('retry limit is four', () => assert.equal(RETRY_LIMIT, 4))\n"
+      },
+      "phases": [
+        {
+          "prompt": "Change only src/constants.mjs so the existing test passes. Run the test. Do not add dependencies, use network access, or change policy files."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/constants.test.mjs"],
+        "requiredIncludes": {"src/constants.mjs": ["RETRY_LIMIT = 4"]}
+      }
+    },
+    "bounded-single-module": {
+      "tokenReservation": 5000,
+      "timeoutMs": 180000,
+      "allowedWriteRoots": ["src", "tests", ".qualification"],
+      "initialFiles": {
+        "src/dedupe.mjs": "export function dedupe(values) { return values }\n",
+        "tests/dedupe.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { dedupe } from '../src/dedupe.mjs'\ntest('preserves first occurrence order', () => assert.deepEqual(dedupe(['b','a','b','c','a']), ['b','a','c']))\n"
+      },
+      "phases": [
+        {
+          "prompt": "Implement dedupe in src/dedupe.mjs without modifying any other source module. Preserve first occurrence order and run the test. No network or dependencies."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/dedupe.test.mjs"],
+        "requiredIncludes": {"src/dedupe.mjs": ["export function dedupe"]}
+      }
+    },
+    "stateful-multi-file-checkpoint": {
+      "tokenReservation": 9000,
+      "timeoutMs": 240000,
+      "allowedWriteRoots": ["src", "tests", ".qualification"],
+      "checkpointAfterPhase": 0,
+      "initialFiles": {
+        "src/parse.mjs": "export function parsePair(text) { return text.split('=') }\n",
+        "src/format.mjs": "export function formatPair(pair) { return pair.join(':') }\n",
+        "tests/pair.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { parsePair } from '../src/parse.mjs'\nimport { formatPair } from '../src/format.mjs'\ntest('trims and round-trips', () => assert.equal(formatPair(parsePair(' a = b ')), 'a=b'))\n"
+      },
+      "phases": [
+        {
+          "prompt": "Inspect the two-module pair pipeline. Make only the parse-side change needed, then write .qualification/checkpoint.json containing JSON fields schema='qualification-checkpoint.v1', completed=['parse'], next='format'. Do not finish format.mjs yet."
+        },
+        {
+          "prompt": "Start from the serialized checkpoint in .qualification/checkpoint.json, verify the prior change, finish format.mjs, run the test, and update the checkpoint with completed=['parse','format'] and next=null. Do not rely on prior conversation memory."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/pair.test.mjs"],
+        "checkpoint": {"schema": "qualification-checkpoint.v1", "next": null}
+      }
+    },
+    "runtime-probe-recovery": {
+      "tokenReservation": 7000,
+      "timeoutMs": 240000,
+      "allowedWriteRoots": ["src", "tests", "tools", ".qualification"],
+      "initialFiles": {
+        "src/value.mjs": "export const value = 6\n",
+        "tests/value.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { value } from '../src/value.mjs'\ntest('value is seven', () => assert.equal(value, 7))\n",
+        "tools/transient-check.mjs": "import fs from 'node:fs'\nfs.mkdirSync('.qualification', { recursive: true })\nconst marker = '.qualification/transient-seen'\nif (!fs.existsSync(marker)) { fs.writeFileSync(marker, 'seen\\n'); console.error('injected transient failure'); process.exit(23) }\nfs.writeFileSync('.qualification/transient-recovered', 'recovered\\n')\n"
+      },
+      "phases": [
+        {
+          "prompt": "Debug the failing value test. During diagnosis run node tools/transient-check.mjs; its first failure is intentionally recoverable, so rerun it and record recovery, then fix src/value.mjs and run the test. No network or dependencies."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/value.test.mjs"],
+        "requiredPaths": [".qualification/transient-seen", ".qualification/transient-recovered"]
+      }
+    },
+    "fresh-verification-after-replacement": {
+      "tokenReservation": 8500,
+      "timeoutMs": 240000,
+      "allowedWriteRoots": ["src", "tests", ".qualification"],
+      "replacementAfterPhase": 0,
+      "initialFiles": {
+        "src/candidate.mjs": "export function candidate() { return 'initial' }\n",
+        "tests/candidate.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { candidate } from '../src/candidate.mjs'\ntest('candidate B is current', () => assert.equal(candidate(), 'candidate-b'))\n"
+      },
+      "replacementFiles": {
+        "src/candidate.mjs": "export function candidate() { return 'candidate-b' }\n"
+      },
+      "phases": [
+        {
+          "prompt": "Produce candidate A in src/candidate.mjs returning 'candidate-a'. Do not modify the test."
+        },
+        {
+          "freshContext": true,
+          "prompt": "Independently verify the current candidate, which may have been replaced after another actor finished. Run the test and write .qualification/verification.json with schema='qualification-verification.v1', accepted=true, and candidateDigest='{{CANDIDATE_DIGEST}}'. Do not edit src/candidate.mjs."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/candidate.test.mjs"],
+        "verificationDigestPath": "src/candidate.mjs"
+      }
+    },
+    "prescribed-ui-judgment": {
+      "tokenReservation": 7000,
+      "timeoutMs": 240000,
+      "allowedWriteRoots": ["ui", ".qualification"],
+      "initialFiles": {
+        "ui/card.html": "<article class=\"card\"><button>Continue</button></article>\n",
+        "ui/card.css": ".card { padding: 8px; } button { min-height: 24px; }\n",
+        "ui/design-contract.json": "{\"schema\":\"ui-contract.v1\",\"paddingPx\":16,\"radiusPx\":12,\"buttonMinHeightPx\":40,\"accent\":\"#2563EB\"}\n"
+      },
+      "phases": [
+        {
+          "prompt": "Implement the exact local UI contract in ui/design-contract.json in ui/card.css. Then write .qualification/ux-assessment.json with schema='qualification-ux-assessment.v1', accepted=true, and an evidence array naming all four contract fields. Do not invent extra visual tokens or access the network."
+        }
+      ],
+      "evaluator": {
+        "requiredIncludes": {
+          "ui/card.css": ["16px", "12px", "40px", "#2563EB"]
+        },
+        "jsonAssertions": {
+          ".qualification/ux-assessment.json": {"schema": "qualification-ux-assessment.v1", "accepted": true}
+        }
+      }
+    },
+    "long-context-checkpoint-reload": {
+      "tokenReservation": 12000,
+      "timeoutMs": 300000,
+      "allowedWriteRoots": ["evidence", "src", "tests", ".qualification"],
+      "checkpointAfterPhase": 0,
+      "generatedEvidenceLines": 1200,
+      "initialFiles": {
+        "src/answer.mjs": "export const answer = { key: null, checksum: null }\n",
+        "tests/answer.test.mjs": "import assert from 'node:assert/strict'\nimport test from 'node:test'\nimport { answer } from '../src/answer.mjs'\ntest('uses the final evidence directive', () => { assert.equal(answer.key, 'omega-1199'); assert.equal(typeof answer.checksum, 'string'); assert.equal(answer.checksum.length, 64) })\n"
+      },
+      "phases": [
+        {
+          "prompt": "Read evidence/context.txt completely. Write .qualification/checkpoint.json with schema='qualification-checkpoint.v1', completed=['evidence-read'], next='implement', key equal to the final directive key, and checksum equal to the sha256 of evidence/context.txt. Do not edit src/answer.mjs yet."
+        },
+        {
+          "freshContext": true,
+          "prompt": "Use only the serialized checkpoint plus local files, verify its checksum against evidence/context.txt, implement src/answer.mjs from the checkpoint, run the test, and update next to null. Do not rely on prior conversation memory."
+        }
+      ],
+      "evaluator": {
+        "testCommand": ["node", "--test", "tests/answer.test.mjs"],
+        "checkpoint": {"schema": "qualification-checkpoint.v1", "next": null, "key": "omega-1199"}
+      }
+    }
+  }
+}

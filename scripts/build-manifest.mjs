@@ -114,7 +114,8 @@ const manifest = {
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',
-        'content-addressed-actor-prompt-prefix'
+        'content-addressed-actor-prompt-prefix',
+        'opt-in-paid-model-pool-qualification'
     ],
     installTargets: [
         {
