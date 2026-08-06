@@ -109,6 +109,7 @@ const manifest = {
         'canonical-ready-result-batch-admission',
         'typed-actor-stage-failure-isolation',
         'shared-projection-batch-actor-preparation',
+        'canonical-deterministic-machine-action-batch',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',

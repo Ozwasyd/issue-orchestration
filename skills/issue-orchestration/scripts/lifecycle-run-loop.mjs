@@ -76,6 +76,14 @@ const DISPATCHABLE_ACTION_TYPES = new Set([
     'dispatch-ux-acceptance-verifier',
     'dispatch-documentation-writer'
 ])
+const BATCHABLE_MACHINE_ACTION_TYPES = new Set([
+    'compile-acceptance-contract'
+])
+const ISOLATABLE_MACHINE_RESULT_CODES = new Set([
+    'lifecycle-stage-result-invalid',
+    'lifecycle-machine-result-action-mismatch',
+    'lifecycle-stage-result-node-event-forbidden'
+])
 
 export class LifecycleRunLoopError extends Error {
     constructor(code, message = code, details = {}) {
@@ -2337,6 +2345,135 @@ export function recordLifecycleDispatchedActionResult({
         ledger: makeHandle(authority),
         effect: recorded.effect,
         replayedExistingResult: recorded.replayedExistingResult
+    })
+}
+
+function isolatableMachineResultError(error) {
+    return error instanceof LifecycleStageAdmissionError ||
+        (error instanceof LifecycleRunLoopError &&
+            ISOLATABLE_MACHINE_RESULT_CODES.has(error.code))
+}
+
+export function recordLifecycleCurrentMachineActionResultBatch({
+    ledger,
+    actionSet,
+    entries,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    exactCurrentActionSet(authority, actionSet)
+    const actions = actionSet.actions.filter(({ type }) =>
+        BATCHABLE_MACHINE_ACTION_TYPES.has(type))
+        .sort((left, right) =>
+            left.actionDigest.localeCompare(right.actionDigest))
+    if (actions.length === 0) {
+        fail('lifecycle-machine-result-batch-empty')
+    }
+    if (!Array.isArray(entries) || entries.length !== actions.length) {
+        fail('lifecycle-machine-result-batch-incomplete')
+    }
+    const actionByDigest = new Map(actions.map((action) => [
+        action.actionDigest,
+        action
+    ]))
+    const entryByDigest = new Map()
+    for (const entry of entries) {
+        requireObject(entry, 'lifecycle-machine-result-entry-invalid')
+        if (!sameValue(Object.keys(entry).sort(), [
+            'actionDigest', 'result'
+        ])) {
+            fail('lifecycle-machine-result-entry-invalid')
+        }
+        const actionDigest = requireDigest(
+            entry.actionDigest,
+            'lifecycle-machine-result-action-digest-invalid'
+        )
+        if (!actionByDigest.has(actionDigest)) {
+            fail('lifecycle-machine-result-action-unknown')
+        }
+        if (entryByDigest.has(actionDigest)) {
+            fail('lifecycle-machine-result-duplicate')
+        }
+        entryByDigest.set(actionDigest, entry.result)
+    }
+    if (entryByDigest.size !== actionByDigest.size) {
+        fail('lifecycle-machine-result-batch-incomplete')
+    }
+    const projected = projectLifecycleRun(authority, {
+        startup: authority.startup
+    })
+    const nodeIds = actions.map(({ nodeId }) => nodeId)
+    if (new Set(nodeIds).size !== nodeIds.length) {
+        fail('lifecycle-machine-result-node-duplicate')
+    }
+    const compiled = []
+    const excluded = []
+    for (const action of actions) {
+        const result = entryByDigest.get(action.actionDigest)
+        if (!result || typeof result !== 'object' || Array.isArray(result)) {
+            excluded.push(Object.freeze({
+                actionDigest: action.actionDigest,
+                nodeId: action.nodeId,
+                exclusionCode: 'lifecycle-stage-result-invalid'
+            }))
+            continue
+        }
+        if (result.actionDigest !== action.actionDigest) {
+            excluded.push(Object.freeze({
+                actionDigest: action.actionDigest,
+                nodeId: action.nodeId,
+                exclusionCode:
+                    'lifecycle-machine-result-action-mismatch'
+            }))
+            continue
+        }
+        const node = projected.state.nodes[action.nodeId]
+        if (!node) fail('lifecycle-current-action-node-missing')
+        try {
+            compiled.push({
+                action,
+                node,
+                ...compileCanonicalNodeEvent({
+                    authority,
+                    actionSet,
+                    action,
+                    result,
+                    node,
+                    createdAt
+                })
+            })
+        } catch (error) {
+            if (!isolatableMachineResultError(error)) throw error
+            excluded.push(Object.freeze({
+                actionDigest: action.actionDigest,
+                nodeId: action.nodeId,
+                exclusionCode: error.code ??
+                    'lifecycle-stage-result-invalid'
+            }))
+        }
+    }
+    const admitted = []
+    for (const item of compiled.sort((left, right) =>
+        left.action.actionDigest.localeCompare(
+            right.action.actionDigest))) {
+        appendNodeEventAtomicSync({
+            ...authority,
+            nodeId: item.node.id,
+            event: item.event,
+            writerRole: 'root-scheduler'
+        })
+        admitted.push(Object.freeze({
+            actionDigest: item.action.actionDigest,
+            nodeId: item.node.id,
+            effect: item.effect
+        }))
+    }
+    if (compiled.length > 0) clearControlFactsCache(authority)
+    return Object.freeze({
+        ledger: makeHandle(authority),
+        admitted: Object.freeze(admitted),
+        excluded: Object.freeze(excluded)
     })
 }
 

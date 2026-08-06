@@ -28,6 +28,7 @@ import {
     readLifecycleRunLedger,
     recordLifecycleDispatchBatchStarted,
     recordLifecycleCurrentActionResult,
+    recordLifecycleCurrentMachineActionResultBatch,
     recordLifecycleDispatchedActionResult,
     recordLifecycleDispatchedActionResultBatch
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
@@ -492,8 +493,20 @@ function semanticContextProvider(value) {
         },
         async prepare(request) {
             assert.equal(request.owner, 'pre-writer')
-            assert.equal(request.executionClass, 'actor')
             const nodeId = request.action.nodeId
+            if (request.executionClass === 'machine') {
+                assert.equal(
+                    request.action.type,
+                    'compile-acceptance-contract'
+                )
+                return {
+                    context: contextFor(
+                        request.action,
+                        request.projection
+                    )
+                }
+            }
+            assert.equal(request.executionClass, 'actor')
             return {
                 context: contextFor(request.action, request.projection),
                 dispatch: {
@@ -739,6 +752,44 @@ function stateTree(root) {
     return entries
 }
 
+async function advanceToMachineActions(value) {
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 2
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const actionSet = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    assert.ok(actionSet.actions.length > 0)
+    assert.equal(actionSet.actions.every(({ type }) =>
+        type === 'compile-acceptance-contract'), true)
+    return { ledger, actionSet }
+}
+
+function scriptedMachineResults(value, ledger, actionSet) {
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    return actionSet.actions.map((action) =>
+        compileScriptedLifecycleStageResult({
+            action,
+            node: projection.state.nodes[action.nodeId],
+            actorRole: 'acceptance-contract-compiler'
+        }))
+}
+
 test('production dispatcher map is exhaustive, immutable, and has no fallback', () => {
     assert.deepEqual(
         Object.keys(LIFECYCLE_PRODUCTION_DISPATCH_MAP).sort(),
@@ -778,9 +829,360 @@ test('ready queue is process-local and production uses canonical batch admission
     assert.match(dispatcher, /createSettlementQueue/u)
     assert.match(dispatcher, /waitAndDrain/u)
     assert.match(dispatcher, /recordLifecycleDispatchedActionResultBatch/u)
+    assert.match(dispatcher, /executeMachineBatch/u)
+    assert.match(dispatcher, /BATCHABLE_MACHINE_ACTION_TYPES/u)
+    const runLoop = fs.readFileSync(new URL(
+        '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs',
+        import.meta.url
+    ), 'utf8')
+    assert.match(
+        runLoop,
+        /recordLifecycleCurrentMachineActionResultBatch/u
+    )
     assert.doesNotMatch(state, /settlementQueue|readyResultQueue/u)
 })
 
+
+test('four independent machine actions execute in one canonical batch', async (t) => {
+    const value = fixture([101, 102, 103, 104], { slotCapacity: 4 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const ready = await advanceToMachineActions(value)
+    let receipt = null
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: ready.ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 1,
+            deterministicMachineWorkerLimit: 2,
+            performanceTelemetry: {
+                clock: performanceClock(),
+                onReceipt(value_) { receipt = value_ }
+            }
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    assert.equal(Object.values(projection.state.nodes).every((node) =>
+        node.receipts.acceptanceContract?.status === 'verified'), true)
+    const next = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    assert.equal(next.actions.every(({ type }) =>
+        type === 'request-test-contract-planning'), true)
+    assert.equal(receipt.operationSummary.machineActionExecution.count, 1)
+    assert.equal(receipt.operationSummary.contextPreparation.count, 1)
+    assert.equal(receipt.transitions, 1)
+})
+
+test('machine preparation uses the observed bounded worker pool', async (t) => {
+    const value = fixture([123, 124, 125, 126], { slotCapacity: 4 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const { ledger } = await advanceToMachineActions(value)
+    const base = semanticContextProvider(value)
+    let active = 0
+    let maximumActive = 0
+    let entered = 0
+    let release
+    const gate = new Promise((resolve) => { release = resolve })
+    const timer = setTimeout(release, 250)
+    t.after(() => clearTimeout(timer))
+    const contextProvider = {
+        ...base,
+        async prepare(request) {
+            active += 1
+            maximumActive = Math.max(maximumActive, active)
+            entered += 1
+            if (entered === 2) release()
+            await gate
+            const prepared = await base.prepare(request)
+            active -= 1
+            return prepared
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1,
+            deterministicMachineWorkerLimit: 2
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    assert.equal(maximumActive, 2)
+    assert.equal(entered, 4)
+})
+
+test('machine batch recorder sorts outputs and isolates one malformed result', async (t) => {
+    const value = fixture([105, 106, 107, 108], { slotCapacity: 4 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const { ledger, actionSet } = await advanceToMachineActions(value)
+    const results = scriptedMachineResults(value, ledger, actionSet)
+    const malformedDigest = actionSet.actions[1].actionDigest
+    const entries = actionSet.actions.map((action, index) => ({
+        actionDigest: action.actionDigest,
+        result: index === 1 ? {
+            ...results[index],
+            resultDigest: digest('malformed-machine-result')
+        } : results[index]
+    })).reverse()
+    const recorded = recordLifecycleCurrentMachineActionResultBatch({
+        ledger,
+        actionSet,
+        entries,
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    assert.deepEqual(recorded.admitted.map(({ actionDigest }) =>
+        actionDigest), actionSet.actions
+        .map(({ actionDigest }) => actionDigest)
+        .filter((actionDigest) => actionDigest !== malformedDigest)
+        .sort())
+    assert.deepEqual(recorded.excluded.map(({ actionDigest }) =>
+        actionDigest), [malformedDigest])
+    const projection = projectLifecycleRun(recorded.ledger, {
+        startup: value.startup
+    })
+    assert.equal(projection.state.nodes[
+        actionSet.actions[1].nodeId
+    ].receipts.acceptanceContract, undefined)
+    assert.equal(Object.values(projection.state.nodes).filter((node) =>
+        node.receipts.acceptanceContract?.status === 'verified').length, 3)
+})
+
+test('machine batch does not consume actor slots or mutate repositories', async (t) => {
+    const value = fixture([109, 110, 111, 112], { slotCapacity: 4 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const { ledger } = await advanceToMachineActions(value)
+    const beforeStatus = git(['status', '--porcelain=v1'], value.repository.work)
+    const beforeHead = git(['rev-parse', 'HEAD'], value.repository.work)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 1,
+            deterministicMachineWorkerLimit: 2
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    const current = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(current, {
+        startup: value.startup
+    }).aggregateProjection
+    assert.deepEqual(projection.slots.active, [])
+    assert.equal(git(['status', '--porcelain=v1'], value.repository.work),
+        beforeStatus)
+    assert.equal(git(['rev-parse', 'HEAD'], value.repository.work),
+        beforeHead)
+})
+
+test('one machine execution failure preserves unrelated valid node progress', async (t) => {
+    const value = fixture([115, 116, 117, 118], { slotCapacity: 4 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const { ledger, actionSet } = await advanceToMachineActions(value)
+    const failedNodeId = actionSet.actions[1].nodeId
+    const base = semanticContextProvider(value)
+    const contextProvider = {
+        ...base,
+        async prepare(request) {
+            const prepared = await base.prepare(request)
+            if (request.action.nodeId !== failedNodeId) return prepared
+            return {
+                context: {
+                    ...prepared.context,
+                    node: null
+                }
+            }
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1,
+            deterministicMachineWorkerLimit: 4
+        }),
+        (error) => error?.code ===
+            'dispatcher-machine-result-invalid' &&
+            error.details.admittedActionDigests.length === 3 &&
+            error.details.excluded.length === 1
+    )
+    const current = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(current, {
+        startup: value.startup
+    })
+    assert.equal(Object.values(projection.state.nodes).filter((node) =>
+        node.receipts.acceptanceContract?.status === 'verified').length, 3)
+    assert.equal(
+        projection.state.nodes[failedNodeId]
+            .receipts.acceptanceContract,
+        undefined
+    )
+})
+
+test('machine batch and one-at-a-time reference converge to the same projection', async (t) => {
+    const value = fixture([119, 120, 121, 122], { slotCapacity: 4 })
+    const backup = fs.mkdtempSync(path.join(
+        os.tmpdir(),
+        'dispatcher-machine-reference-'
+    ))
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+        fs.rmSync(backup, { recursive: true, force: true })
+    })
+    const { ledger, actionSet } = await advanceToMachineActions(value)
+    fs.cpSync(value.stateRoot, path.join(backup, 'state'), {
+        recursive: true
+    })
+    const batchResults = scriptedMachineResults(value, ledger, actionSet)
+    const batch = recordLifecycleCurrentMachineActionResultBatch({
+        ledger,
+        actionSet,
+        entries: actionSet.actions.map((action, index) => ({
+            actionDigest: action.actionDigest,
+            result: batchResults[index]
+        })).reverse(),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const batchProjection = projectLifecycleRun(batch.ledger, {
+        startup: value.startup
+    })
+    const batchNext = compileLifecycleRunActionSet(batch.ledger, {
+        startup: value.startup
+    })
+    fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    fs.cpSync(path.join(backup, 'state'), value.stateRoot, {
+        recursive: true
+    })
+    clearDerivedCaches(value)
+    let serialLedger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    for (let index = 0; index < actionSet.actions.length; index += 1) {
+        const currentSet = compileLifecycleRunActionSet(serialLedger, {
+            startup: value.startup
+        })
+        const action = currentSet.actions.find(({ type }) =>
+            type === 'compile-acceptance-contract')
+        assert.ok(action)
+        const projection = projectLifecycleRun(serialLedger, {
+            startup: value.startup
+        })
+        const result = compileScriptedLifecycleStageResult({
+            action,
+            node: projection.state.nodes[action.nodeId],
+            actorRole: 'acceptance-contract-compiler'
+        })
+        serialLedger = recordLifecycleCurrentActionResult({
+            ledger: serialLedger,
+            actionSet: currentSet,
+            actionDigest: action.actionDigest,
+            result,
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }).ledger
+    }
+    const serialProjection = projectLifecycleRun(serialLedger, {
+        startup: value.startup
+    })
+    const serialNext = compileLifecycleRunActionSet(serialLedger, {
+        startup: value.startup
+    })
+    function stableProjection(projection) {
+        return Object.fromEntries(Object.entries(projection.state.nodes)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([nodeId, node]) => [nodeId, {
+                lifecycleState: node.lifecycleState,
+                status: node.status,
+                chainVersion: node.chainVersion,
+                receiptKinds: Object.keys(node.receipts).sort()
+            }]))
+    }
+    assert.deepEqual(
+        stableProjection(batchProjection),
+        stableProjection(serialProjection)
+    )
+    assert.deepEqual(
+        batchNext.actions.map(({ type, nodeId }) => ({ type, nodeId })),
+        serialNext.actions.map(({ type, nodeId }) => ({ type, nodeId }))
+    )
+})
+
+test('machine worker limit cannot exceed observed local capacity', async (t) => {
+    const value = fixture([113, 114], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const { ledger } = await advanceToMachineActions(value)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 1,
+            deterministicMachineWorkerLimit: 17
+        }),
+        (error) => error?.code ===
+            'dispatcher-machine-worker-limit-invalid'
+    )
+    const current = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    assert.deepEqual(
+        compileLifecycleRunActionSet(current, {
+            startup: value.startup
+        }).actions.map(({ type }) => type),
+        ['compile-acceptance-contract', 'compile-acceptance-contract']
+    )
+})
 
 function pendingActorPreparation(prepared, events, nodeId) {
     const adapter = prepared.context.actorAdapter
