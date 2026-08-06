@@ -1,0 +1,50 @@
+name: apply issue 71 patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-71-deterministic-machine-batch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-71-deterministic-machine-batch
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '024aa8a811ae2e15cb0b7f1aa3c5e366562855dedb4b480f64c36b11e7c2482b  .github/issue-71-patch/part-00.b64' | sha256sum -c -
+          echo 'cf32f20be836bd0c285abc2d340f000e3f9d5330106966716dea2b0c6a43e3a7  .github/issue-71-patch/part-01.b64' | sha256sum -c -
+          echo '56266d321903827034658d9c57bbd6470e25a754e883b4c23129457b5334085d  .github/issue-71-patch/part-02.b64' | sha256sum -c -
+          echo 'd35028915b3c3ac68e090f5c60ef5e0cb3afbd8723d74985d9fa0abc78023dc9  .github/issue-71-patch/part-03.b64' | sha256sum -c -
+          echo '20ce816ee1edee4bb5489812f97ac3a82e49f65b8d2a5888a0f67d5e60779863  .github/issue-71-patch/part-04.b64' | sha256sum -c -
+          echo '9a68f5eefcd928a2811890be5557c141126b4542749cc961f5bf994bd94e3556  .github/issue-71-patch/part-05.b64' | sha256sum -c -
+          echo '969563603f6546e8c25720e4760ead5f5c64bc15881a1668c167e518032f400e  .github/issue-71-patch/part-06.b64' | sha256sum -c -
+          cat .github/issue-71-patch/part-*.b64 > /tmp/issue71.patch.gz.b64
+          echo '467f044d5765cea7cc59dca2d759b5314e8f843ebb4fe606215bb5bda8422f94  /tmp/issue71.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue71.patch.gz.b64 > /tmp/issue71.patch.gz
+          echo '50789a85622edb8e30263884cfac89fd3083210b30eea54abbe121bcab060e9a  /tmp/issue71.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue71.patch.gz > /tmp/issue71.patch
+          echo '31089e68ffff1f13744c2b2c25291d124f68767137bff1c4bf1191f54f379703  /tmp/issue71.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue71.patch
+          git apply --binary /tmp/issue71.patch
+          rm -rf .github/issue-71-patch
+          rm -f .github/workflows/apply-issue-71-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Batch deterministic machine actions (#71)'
+          git push origin HEAD:issue-71-deterministic-machine-batch
