@@ -1,0 +1,27 @@
+name: export issue 65 source
+
+on:
+  push:
+    branches:
+      - issue-65-repository-base-wave
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Create source archive
+        run: |
+          git archive --format=zip --output=issue-65-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: issue-65-source
+          path: issue-65-source.zip
+          if-no-files-found: error
+          retention-days: 1
