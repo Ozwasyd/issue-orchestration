@@ -25,11 +25,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '596366c66a28e5cd2493b686d5f4e6b22a4cc95b1459077cb18357373c7b19a0  .github/issue-66-completeness/patch.gz.b64' | sha256sum -c -
+          echo '6c5d73e1089598ab5beef2d6be0226e5128fc7cb530128ed347ac4e974bf5e33  .github/issue-66-completeness/patch.gz.b64' | sha256sum -c -
           base64 -d .github/issue-66-completeness/patch.gz.b64 > /tmp/issue66-completeness.patch.gz
-          echo '4c4755c4fb53ebebc0b2ed8c00a5b099f9df50e7d7c29d19c5cef4206624391b  /tmp/issue66-completeness.patch.gz' | sha256sum -c -
+          echo '65eeb2dcab268371a3d0a2be184c7b69ea05c93877613f9458a5bc5e1c764a53  /tmp/issue66-completeness.patch.gz' | sha256sum -c -
           gzip -dc /tmp/issue66-completeness.patch.gz > /tmp/issue66-completeness.patch
-          echo '391fccc08bfb5a2c8c282b8bfed8396933c852633f149e62ffa175c04d87e543  /tmp/issue66-completeness.patch' | sha256sum -c -
+          echo '8beb53844b10e007913f24362a5ef06de1f785979667f2937bc08258752069aa  /tmp/issue66-completeness.patch' | sha256sum -c -
           git apply --check /tmp/issue66-completeness.patch
           git apply /tmp/issue66-completeness.patch
           rm -rf .github/issue-66-completeness
