@@ -1,0 +1,56 @@
+name: apply issue 75 patch
+
+on:
+  push:
+    branches:
+      - issue-75-repository-evidence-pack
+    paths:
+      - .github/issue-75-patch/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-75-repository-evidence-pack
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'f35a94b15e30994879d00d73b9ea3d666faa5ada0bb204a111db73659a9a2821  .github/issue-75-patch/part-00.b64' | sha256sum -c -
+          echo '8221df84aa1254f8334c903c081f72ba6ffde00f9b59f286bb8ad1d464df3887  .github/issue-75-patch/part-01.b64' | sha256sum -c -
+          echo 'afad63b19065f478dd85ed7701e382e7944bb993527eb5cda1b6e3d7abe84820  .github/issue-75-patch/part-02.b64' | sha256sum -c -
+          echo 'fa65938316cbf317dcc4c83e1cb61b124a01a6cde9b9da79b2b3cc6baed4e55d  .github/issue-75-patch/part-03.b64' | sha256sum -c -
+          echo 'e633a77e90266c66d3d883414e95d47a4428f79f680c85559d7a6ebbfde2ea7a  .github/issue-75-patch/part-04.b64' | sha256sum -c -
+          echo '731b2aaf8fc99c55f89f4b955a15081a2e4edd912d97f2779e985673d1a5a90d  .github/issue-75-patch/part-05.b64' | sha256sum -c -
+          echo '2d08841278b54374057583281de92eaa3060b99cd8bdc6b4f9a318f90291e748  .github/issue-75-patch/part-06.b64' | sha256sum -c -
+          echo '43d53d9df4fea128209e8c3af411b45da2e8f9e57e02535da76a7b29bfbd73a8  .github/issue-75-patch/part-07.b64' | sha256sum -c -
+          echo 'b763b906add980a0223b6bb6c9e0ed86cc053c1e2f3868e9d8dcd7ea16db8340  .github/issue-75-patch/part-08.b64' | sha256sum -c -
+          echo '49a28198103cf7229128dd25a8915d6ce23d0c91921c8d33a86c8ed0d2ada62b  .github/issue-75-patch/part-09.b64' | sha256sum -c -
+          echo 'ca5f9126aa52647bc6b853728135dfd6a7af88d1e180b1e6eef03bb32f2ee34a  .github/issue-75-patch/part-10.b64' | sha256sum -c -
+          echo 'c4ad49b104c9a86ff90ed6eeb1989b6ff2d1496975fa0b52008569296f11c0f6  .github/issue-75-patch/part-11.b64' | sha256sum -c -
+          cat .github/issue-75-patch/part-*.b64 > /tmp/issue75.patch.gz.b64
+          echo '73af3c4671cf2494b41fbba9d5505588d250ed93240732b57c8ed31a50758747  /tmp/issue75.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue75.patch.gz.b64 > /tmp/issue75.patch.gz
+          echo 'd54eb51c37467f12157e5f789a875d232500a4fa55f5e7f5bc18d65ef605679d  /tmp/issue75.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue75.patch.gz > /tmp/issue75.patch
+          echo 'efbdf229e9a7af490cdbd87f863b87fe22f68b57d3434ae24587e2abad6c3cdd  /tmp/issue75.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue75.patch
+          git apply --binary /tmp/issue75.patch
+          rm -rf .github/issue-75-patch
+          rm -f .github/workflows/apply-issue-75-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Precompute deterministic repository evidence packs (#75)'
+          git push origin HEAD:issue-75-repository-evidence-pack
