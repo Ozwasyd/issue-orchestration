@@ -1,11 +1,9 @@
 name: apply issue 72 patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - issue-72-typed-actor-failure-isolation
-    paths:
-      - .github/issue-72-patch/READY
+      - main
 
 permissions:
   contents: write
