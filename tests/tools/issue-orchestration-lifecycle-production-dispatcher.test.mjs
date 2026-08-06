@@ -206,7 +206,24 @@ function capabilityObservation({ route, actorId }) {
 function actorAdapter(fixture, nodeId) {
     let sequence = 0
     return {
-        prepare({ stageRole, stagePhase, routeDecision }) {
+        prepare({
+            stageRole,
+            stagePhase,
+            routeDecision,
+            actorContextEnvelope
+        }) {
+            if (actorContextEnvelope) {
+                assert.equal(
+                    actorContextEnvelope.schema,
+                    'issue-orchestration.actor-context-envelope.v1'
+                )
+                assert.equal(actorContextEnvelope.role, stageRole)
+                assert.equal(actorContextEnvelope.phase, stagePhase)
+                assert.equal(actorContextEnvelope.identities.nodeId, nodeId)
+                fixture.actorContextEnvelopes.push(
+                    structuredClone(actorContextEnvelope)
+                )
+            }
             sequence += 1
             const actorId = `${nodeId}:${stagePhase}:${sequence}`
             return {
@@ -224,7 +241,23 @@ function actorAdapter(fixture, nodeId) {
                 })
             }
         },
-        invoke({ preparation, routeDecision, request }) {
+        invoke({
+            preparation,
+            routeDecision,
+            request,
+            actorContextEnvelope
+        }) {
+            if (actorContextEnvelope) {
+                assert.equal(actorContextEnvelope.envelopeDigest.length, 64)
+                assert.equal(
+                    actorContextEnvelope.role,
+                    routeDecision.stageRole
+                )
+                assert.equal(
+                    actorContextEnvelope.phase,
+                    routeDecision.stagePhase
+                )
+            }
             const result = spawnSync(process.execPath, [actorScript], {
                 encoding: 'utf8',
                 input: JSON.stringify({
@@ -338,7 +371,8 @@ function fixture(numbers = [41, 42, 43]) {
         selectorReceipt,
         issues,
         ledger,
-        runId
+        runId,
+        actorContextEnvelopes: []
     }
 }
 
@@ -749,6 +783,12 @@ test('two actors start together and the free slot refills before the other settl
     assert.match(order[3], /^start:/u)
     assert.match(order[4], /^settle:/u)
     assert.notEqual(order[3].slice(6), order[4].slice(7))
+    assert.ok(value.actorContextEnvelopes.length >= 2)
+    assert.ok(value.actorContextEnvelopes.every((envelope) =>
+        envelope.schema ===
+            'issue-orchestration.actor-context-envelope.v1' &&
+        envelope.authority.kind === 'actor-input-only' &&
+        envelope.authority.grants.length === 0))
 })
 
 

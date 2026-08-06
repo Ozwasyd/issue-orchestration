@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/actor-context-envelope.schema.json",
+  "title": "Actor context envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "authority",
+    "role",
+    "phase",
+    "actionType",
+    "identities",
+    "acceptanceItemIds",
+    "stageContext",
+    "instructions",
+    "sources",
+    "outputInterface",
+    "measurement",
+    "envelopeDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.actor-context-envelope.v1"
+    },
+    "status": { "const": "compiled" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "grants"],
+      "properties": {
+        "kind": { "const": "actor-input-only" },
+        "grants": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "role": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "minLength": 1 },
+    "actionType": {
+      "enum": [
+        "request-semantic-proposal",
+        "request-test-contract-planning",
+        "dispatch-test-contract-writer",
+        "dispatch-implementation-writer",
+        "dispatch-behavior-verifier",
+        "request-ui-adjudication",
+        "dispatch-ux-acceptance-verifier",
+        "dispatch-documentation-writer"
+      ]
+    },
+    "identities": {
+      "type": "object",
+      "required": [
+        "actionDigest",
+        "actionSetDigest",
+        "nodeId",
+        "runId",
+        "repository",
+        "issueNumber",
+        "baseSha",
+        "selectorReceiptDigest",
+        "remoteSnapshotDigest",
+        "semanticGraphDigest",
+        "aggregateProjectionDigest",
+        "policyDigest",
+        "runtimeCapabilityBindingDigest",
+        "lifecycleAuthorityBindingDigest",
+        "startupAttestationDigest"
+      ],
+      "properties": {
+        "actionDigest": { "$ref": "#/$defs/digest" },
+        "actionSetDigest": { "$ref": "#/$defs/digest" },
+        "nodeId": { "type": "string", "minLength": 1 },
+        "runId": { "type": "string", "minLength": 1 },
+        "repository": { "type": "string", "minLength": 1 },
+        "issueNumber": { "type": "integer", "minimum": 1 },
+        "baseSha": { "$ref": "#/$defs/sha" },
+        "selectorReceiptDigest": { "$ref": "#/$defs/digest" },
+        "remoteSnapshotDigest": { "$ref": "#/$defs/digest" },
+        "semanticGraphDigest": { "$ref": "#/$defs/digest" },
+        "aggregateProjectionDigest": { "$ref": "#/$defs/digest" },
+        "policyDigest": { "$ref": "#/$defs/digest" },
+        "runtimeCapabilityBindingDigest": { "$ref": "#/$defs/digest" },
+        "lifecycleAuthorityBindingDigest": { "$ref": "#/$defs/digest" },
+        "startupAttestationDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "acceptanceItemIds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "stageContext": { "type": "object" },
+    "instructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "entries"],
+      "properties": {
+        "status": { "enum": ["resolved", "none-applicable"] },
+        "entries": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/instruction" }
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inline", "progressive", "totalSourceBytes"],
+      "properties": {
+        "inline": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inlineSource" }
+        },
+        "progressive": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/progressiveSource" }
+        },
+        "totalSourceBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "outputInterface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "requiredFields", "failureVocabulary"],
+      "properties": {
+        "schema": { "type": "string", "minLength": 1 },
+        "requiredFields": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "failureVocabulary": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "envelopeBytes",
+        "estimatedTokens",
+        "inlineSourceBytes",
+        "progressiveSourceBytes",
+        "instructionBytes"
+      ],
+      "properties": {
+        "envelopeBytes": { "type": "integer", "minimum": 0 },
+        "estimatedTokens": { "type": "integer", "minimum": 0 },
+        "inlineSourceBytes": { "type": "integer", "minimum": 0 },
+        "progressiveSourceBytes": { "type": "integer", "minimum": 0 },
+        "instructionBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "envelopeDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "instruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "text", "appliesToPaths"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "text": { "type": "string" },
+        "appliesToPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "sourceBase": {
+      "type": "object",
+      "required": [
+        "sourceId",
+        "kind",
+        "path",
+        "digest",
+        "bytes",
+        "role",
+        "phase",
+        "nodeId"
+      ],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "role": { "type": "string", "minLength": 1 },
+        "phase": { "type": "string", "minLength": 1 },
+        "nodeId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "inlineSource": {
+      "allOf": [
+        { "$ref": "#/$defs/sourceBase" },
+        {
+          "type": "object",
+          "required": ["text"],
+          "properties": { "text": { "type": "string" } }
+        }
+      ]
+    },
+    "progressiveSource": {
+      "allOf": [
+        { "$ref": "#/$defs/sourceBase" },
+        {
+          "type": "object",
+          "required": ["referenceId"],
+          "properties": {
+            "referenceId": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    }
+  }
+}

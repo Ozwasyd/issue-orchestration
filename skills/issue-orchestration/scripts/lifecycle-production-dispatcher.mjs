@@ -51,6 +51,10 @@ import {
 import {
     verifiedReplayProjectionCacheStats
 } from './multi-node-state.mjs'
+import {
+    compileActorContextBundle,
+    createActorContextProgressiveReader
+} from './actor-context-envelope.mjs'
 
 const ACTOR_ACTION_TYPES = new Set([
     'request-semantic-proposal',
@@ -345,7 +349,9 @@ function canonicalContext({
     actionSet,
     action,
     startup,
-    createdAt
+    createdAt,
+    actorContextEnvelope,
+    actorContextProgressiveReader
 }) {
     const context = object(
         prepared.context,
@@ -357,7 +363,11 @@ function canonicalContext({
         actionSet,
         action,
         startup,
-        createdAt
+        createdAt,
+        ...(actorContextEnvelope ? { actorContextEnvelope } : {}),
+        ...(actorContextProgressiveReader ? {
+            actorContextProgressiveReader
+        } : {})
     })
 }
 
@@ -447,6 +457,20 @@ async function prepareAction({
         preparedValue,
         'dispatcher-context-preparation-invalid'
     )
+    const actorContextBundle = entry.executionClass === 'actor'
+        ? compileActorContextBundle({
+            action,
+            actionSet,
+            projection,
+            preparedContext: prepared.context,
+            actorContext: prepared.actorContext ?? {},
+            repositoryPath: prepared.context?.repositoryPath ?? null
+        })
+        : null
+    const actorContextEnvelope = actorContextBundle?.envelope ?? null
+    const actorContextProgressiveReader = actorContextBundle
+        ? createActorContextProgressiveReader(actorContextBundle)
+        : null
     return {
         context: canonicalContext({
             prepared,
@@ -454,7 +478,9 @@ async function prepareAction({
             actionSet,
             action,
             startup,
-            createdAt
+            createdAt,
+            actorContextEnvelope,
+            actorContextProgressiveReader
         }),
         metadata: entry.executionClass === 'actor'
             ? actorMetadata({ prepared, entry, action })

@@ -105,7 +105,8 @@ const manifest = {
         'deterministic-dispatcher-performance-telemetry',
         'wave-scoped-repository-base-observation',
         'verified-replay-projection-cache',
-        'verified-lifecycle-action-set-cache'
+        'verified-lifecycle-action-set-cache',
+        'stage-specific-actor-context-envelope'
     ],
     installTargets: [
         {
