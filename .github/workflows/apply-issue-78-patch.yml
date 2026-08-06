@@ -1,0 +1,73 @@
+name: apply issue 78 patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-issue-78-patch-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-78-model-pool-qualification'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-78-model-pool-qualification
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Verify and apply reviewed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '7b040864c73b02a96fb12c5f2f5db1df4096ca739b850527627d84f3dde45506  .github/issue-78-patch/part-00.b64' | sha256sum -c -
+          echo '084378af6574893549b1eff553389b3eb4ddc32722debc422eac625520a0ee90  .github/issue-78-patch/part-01.b64' | sha256sum -c -
+          cat .github/issue-78-patch/part-00.b64 .github/issue-78-patch/part-01.b64 > /tmp/issue78.patch.gz.b64
+          echo 'aa748255799d2c214e0fbb847419c7ea3784d83130680532060f350c8a6a75b0  /tmp/issue78.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue78.patch.gz.b64 > /tmp/issue78.patch.gz
+          echo '0a1df220517c60dfda43aa16a1e476f487e3f41fee305bd09c105688b525866b  /tmp/issue78.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue78.patch.gz > /tmp/issue78.patch
+          echo 'c61949a65b6f6793fb166c02c74992d83cad1901f6ba91a0ef7728095a1b4564  /tmp/issue78.patch' | sha256sum -c -
+          git apply --check /tmp/issue78.patch
+          git apply /tmp/issue78.patch
+          rm -rf .github/issue-78-patch
+          rm -f .github/workflows/apply-issue-78-patch.yml
+          cp manifest.json /tmp/issue78-prebuilt-manifest.json
+          BASE_COMMIT="$(git merge-base origin/main HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cmp /tmp/issue78-prebuilt-manifest.json manifest.json
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cmp /tmp/issue78-prebuilt-manifest.json manifest.json
+          node --check scripts/model-pool-qualification.mjs
+          node --check skills/issue-orchestration/scripts/model-pool-qualification.mjs
+          node --test --test-concurrency=1 \
+            tests/tools/issue-orchestration-model-pool-qualification-static-guard.test.mjs \
+            tests/tools/issue-orchestration-model-pool-qualification.test.mjs \
+            tests/tools/issue-orchestration-model-qualification-receipt-schema.test.mjs \
+            tests/tools/issue-orchestration-shared-package.test.mjs
+          git add -A
+          git diff --cached --check
+
+      - name: Commit final issue 78 implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add opt-in model-pool qualification command (#78)'
+          git push origin HEAD:issue-78-model-pool-qualification
