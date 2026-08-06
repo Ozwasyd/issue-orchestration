@@ -131,11 +131,19 @@ function stableMetadata(value = {}) {
     const metadata = {}
     for (const field of [
         'boundary', 'transition', 'actionDigest', 'actionType', 'nodeId',
-        'dispatchId', 'phase', 'status'
+        'dispatchId', 'phase', 'status', 'protocol', 'observationStatus'
     ]) {
         if (value[field] !== undefined && value[field] !== null) {
             metadata[field] = value[field]
         }
+    }
+    for (const field of ['remoteFactsTransferred', 'deltaMembers']) {
+        if (Number.isInteger(value[field]) && value[field] >= 0) {
+            metadata[field] = value[field]
+        }
+    }
+    if (typeof value.selectorRebuilt === 'boolean') {
+        metadata.selectorRebuilt = value.selectorRebuilt
     }
     if (Array.isArray(value.repositories) && value.repositories.length > 0) {
         metadata.repositories = [...new Set(value.repositories)].sort()
@@ -275,9 +283,20 @@ export function createDispatcherPerformanceCollector({
                     fail('dispatcher-performance-byte-measurement-failed')
                 }
             }
+            let resolvedMetadata = metadata
+            if (typeof options.resolveMetadata === 'function') {
+                try {
+                    resolvedMetadata = options.resolveMetadata({
+                        result,
+                        error: failure
+                    })
+                } catch {
+                    resolvedMetadata = metadata
+                }
+            }
             recordSpan({
                 metrics: resolvedMetrics,
-                metadata,
+                metadata: resolvedMetadata,
                 startedAt: spanStartedAt,
                 completedAt: now(),
                 canonicalBytes,

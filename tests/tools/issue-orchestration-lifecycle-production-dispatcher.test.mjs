@@ -3154,7 +3154,7 @@ test('dispatcher performance metrics are absent from authority inputs', () => {
         const source = fs.readFileSync(path.join(scripts, file), 'utf8')
         assert.doesNotMatch(
             source,
-            /dispatcher-performance|performanceTelemetry|performanceReceipt|promptCacheMetadata|cacheIdentityDigest|stablePrefixDigest/u,
+            /dispatcher-performance|performanceTelemetry|performanceReceipt|promptCacheMetadata|cacheIdentityDigest|stablePrefixDigest|remoteFactsTransferred|deltaMembers|selectorRebuilt|observationStatus/u,
             file
         )
     }

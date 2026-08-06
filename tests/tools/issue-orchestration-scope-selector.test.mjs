@@ -104,6 +104,12 @@ function assertReceiptShape(receipt, selector, previousReceipt = null) {
     assert.ok(receipt.exclusionReasons && !Array.isArray(receipt.exclusionReasons))
     assert.equal(typeof receipt.remoteFactDigests, 'object')
     assert.ok(receipt.remoteFactDigests && !Array.isArray(receipt.remoteFactDigests))
+    assert.equal(typeof receipt.remoteIssueFacts, 'object')
+    assert.ok(receipt.remoteIssueFacts && !Array.isArray(receipt.remoteIssueFacts))
+    assert.deepEqual(
+        Object.keys(receipt.remoteIssueFacts),
+        sorted(Object.keys(receipt.remoteIssueFacts))
+    )
     assert.deepEqual(Object.keys(receipt.remoteChangeSet).sort(), [
         'added',
         'changed',
@@ -120,6 +126,10 @@ function assertReceiptShape(receipt, selector, previousReceipt = null) {
     assertDigest(receipt.parametersDigest, 'parametersDigest')
     assertDigest(receipt.selectorDigest, 'selectorDigest')
     assertDigest(receipt.remoteSnapshotDigest, 'remoteSnapshotDigest')
+    assertDigest(
+        receipt.remoteObservationSnapshotDigest,
+        'remoteObservationSnapshotDigest'
+    )
     assertDigest(receipt.receiptDigest, 'receiptDigest')
 }
 
@@ -247,6 +257,11 @@ test('[A03][M02] canonical replay ignores remote ordering but preserves all cont
     assert.equal(replay.parametersDigest, first.parametersDigest)
     assert.equal(replay.selectorDigest, first.selectorDigest)
     assert.equal(replay.remoteSnapshotDigest, first.remoteSnapshotDigest)
+    assert.equal(
+        replay.remoteObservationSnapshotDigest,
+        first.remoteObservationSnapshotDigest
+    )
+    assert.deepEqual(replay.remoteIssueFacts, first.remoteIssueFacts)
     assert.equal(replay.receiptDigest, first.receiptDigest)
 })
 

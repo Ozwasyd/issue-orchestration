@@ -8,6 +8,7 @@ import test from 'node:test'
 import { digest } from '../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
 import { createSemanticGraph } from '../../skills/issue-orchestration/scripts/semantic-runtime-projection.mjs'
 import {
+    bindLifecycleSelectorRemoteObservation,
     compileLifecycleRunGenesisAuthority,
     repositoryAuthorityFor,
     resolveLifecycleSelector
@@ -22,11 +23,16 @@ import {
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
     consumeLifecycleRepositoryBaseObservationEpoch,
+    declareLifecycleRemoteScopeDeltaObserver,
     executeLifecycleScopeRefresh,
     observeLifecycleRepositoryBaseBeforeAction,
     observeLifecycleRepositoryBaseEpoch,
     verifyLifecycleRepositoryBaseObservationEpoch
 } from '../../skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs'
+import {
+    canonicalRemoteIssueFacts,
+    remoteObservationSnapshotDigest
+} from '../../skills/issue-orchestration/scripts/scope-selector.mjs'
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
@@ -78,6 +84,7 @@ function issue(repository, number, overrides = {}) {
         labels: ['orchestration'],
         milestone: null,
         dependsOn: [],
+        trackedIssueIds: [],
         ...overrides
     }
 }
@@ -95,7 +102,11 @@ function selectorDefinition(repository, type, issueIds = []) {
     }
 }
 
-function makeFixture({ type = 'repository-open-issues', issues } = {}) {
+function makeFixture({
+    type = 'repository-open-issues',
+    issues,
+    deltaContinuation = false
+} = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'live-refresh-'))
     const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'live-refresh-state-'))
     const repository = initRepository(root)
@@ -122,7 +133,7 @@ function makeFixture({ type = 'repository-open-issues', issues } = {}) {
         slotCapacity: 2,
         createdAt: CREATED_AT
     })
-    const selectorReceipt = resolveLifecycleSelector({
+    let selectorReceipt = resolveLifecycleSelector({
         lifecycleAuthority: authority,
         startup,
         selector: definition,
@@ -130,6 +141,28 @@ function makeFixture({ type = 'repository-open-issues', issues } = {}) {
         previousReceipt: null,
         resolvedAt: CREATED_AT
     })
+    if (deltaContinuation) {
+        selectorReceipt = bindLifecycleSelectorRemoteObservation({
+            lifecycleAuthority: authority,
+            startup,
+            selectorReceipt,
+            remoteObservationContinuation: {
+                schema:
+                    'issue-orchestration.lifecycle-remote-observation-continuation.v1',
+                status: 'verified',
+                producerAuthority: 'trusted-remote-observation-adapter',
+                rootAuthored: false,
+                selectorDigest: selectorReceipt.selectorDigest,
+                remoteQueryIdentity: selectorReceipt.remoteQueryIdentity,
+                remoteSnapshotDigest: selectorReceipt.remoteSnapshotDigest,
+                remoteObservationSnapshotDigest:
+                    selectorReceipt.remoteObservationSnapshotDigest,
+                observationCursor: 'cursor-0',
+                conditionalIdentity: 'etag-0',
+                observedAt: CREATED_AT
+            }
+        })
+    }
     const binding = repositoryAuthorityFor(authority, repository.repository)
     const policyDigest = digest('live-refresh-policy')
     const selected = rawIssues.filter((entry) =>
@@ -212,6 +245,669 @@ function observation(request, issues, observedAt, mutate = null) {
     value.observationDigest = digest(value)
     return value
 }
+
+function completeIssue(value) {
+    return {
+        repository: value.repository,
+        number: value.number,
+        state: value.state,
+        stateReason: value.stateReason ?? null,
+        updatedAt: value.updatedAt,
+        title: value.title,
+        body: value.body,
+        comments: structuredClone(value.comments ?? []),
+        labels: [...(value.labels ?? [])],
+        milestone: value.milestone ? { ...value.milestone } : null,
+        dependsOn: [...(value.dependsOn ?? [])],
+        trackedIssueIds: [...(value.trackedIssueIds ?? [])]
+    }
+}
+
+function deltaObservation(request, {
+    status,
+    currentIssues,
+    changes = null,
+    observedAt = '2026-08-04T00:10:00.000Z',
+    observationCursor = 'cursor-1',
+    conditionalIdentity = 'etag-1',
+    mutate = null
+}) {
+    const facts = currentIssues === null
+        ? null
+        : canonicalRemoteIssueFacts(currentIssues.map(completeIssue))
+    const currentRemoteObservationSnapshotDigest = status === 'unchanged'
+        ? request.previousRemoteObservationSnapshotDigest
+        : remoteObservationSnapshotDigest({
+            selectorDigest: request.selectorDigest,
+            remoteIssueFacts: facts
+        })
+    const value = {
+        schema:
+            'issue-orchestration.lifecycle-remote-scope-delta-observation.v1',
+        status,
+        producerAuthority: 'trusted-remote-observation-adapter',
+        rootAuthored: false,
+        selectorDigest: request.selectorDigest,
+        remoteQueryIdentity: request.remoteQueryIdentity,
+        repositories: request.repositories,
+        previousSelectorReceiptDigest:
+            request.previousSelectorReceiptDigest,
+        previousRemoteSnapshotDigest:
+            request.previousRemoteSnapshotDigest,
+        previousRemoteObservationSnapshotDigest:
+            request.previousRemoteObservationSnapshotDigest,
+        previousObservationCursor: request.previousObservationCursor,
+        previousConditionalIdentity: request.previousConditionalIdentity,
+        observationCursor,
+        conditionalIdentity,
+        currentRemoteObservationSnapshotDigest,
+        observedAt
+    }
+    if (status === 'full') {
+        value.issues = currentIssues.map(completeIssue)
+    } else if (status === 'changed') {
+        value.changes = structuredClone(changes)
+    }
+    mutate?.(value)
+    value.observationDigest = digest(value)
+    return value
+}
+
+test('authoritative delta unchanged reuses the verified selector receipt without append or rebuild', () => {
+    const fixture = makeFixture({ deltaContinuation: true })
+    try {
+        const before = lifecycleRunObservationContext(fixture.ledger, {
+            startup: fixture.startup
+        })
+        let diagnostics = null
+        let calls = 0
+        const observer = declareLifecycleRemoteScopeDeltaObserver((request) => {
+            calls += 1
+            assert.equal(
+                request.schema,
+                'issue-orchestration.lifecycle-remote-scope-request.v2'
+            )
+            assert.equal(request.fullObservationRequired, false)
+            assert.equal(request.previousObservationCursor, 'cursor-0')
+            assert.equal(request.previousConditionalIdentity, 'etag-0')
+            assert.equal(
+                request.previousRemoteObservationSnapshotDigest,
+                before.selectorReceipt.remoteObservationSnapshotDigest
+            )
+            return deltaObservation(request, {
+                status: 'unchanged',
+                currentIssues: null,
+                observationCursor: 'cursor-0',
+                conditionalIdentity: 'etag-0'
+            })
+        })
+        const next = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: observer,
+            onObservation(value) {
+                diagnostics = value
+            },
+            startup: fixture.startup
+        })
+        assert.strictEqual(next, fixture.ledger)
+        assert.equal(calls, 1)
+        const after = lifecycleRunObservationContext(next, {
+            startup: fixture.startup
+        })
+        assert.deepEqual(after.selectorReceipt, before.selectorReceipt)
+        assert.deepEqual(diagnostics, {
+            protocol: 'delta-v1',
+            observationStatus: 'unchanged',
+            remoteFactsTransferred: 0,
+            deltaMembers: 0,
+            selectorRebuilt: false
+        })
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('first delta-aware observation requires a complete snapshot and persists its continuation', () => {
+    const fixture = makeFixture()
+    try {
+        const before = lifecycleRunObservationContext(fixture.ledger, {
+            startup: fixture.startup
+        })
+        const currentIssues = [issue('Fixture/Repo', 1)]
+        const observer = declareLifecycleRemoteScopeDeltaObserver((request) => {
+            assert.equal(request.fullObservationRequired, true)
+            assert.equal(request.previousObservationCursor, null)
+            assert.equal(request.previousConditionalIdentity, null)
+            return deltaObservation(request, {
+                status: 'full',
+                currentIssues,
+                observedAt: '2026-08-04T00:10:15.000Z',
+                observationCursor: 'cursor-1',
+                conditionalIdentity: 'etag-1'
+            })
+        })
+        const next = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: observer,
+            startup: fixture.startup
+        })
+        const after = lifecycleRunObservationContext(next, {
+            startup: fixture.startup
+        })
+        assert.equal(
+            after.selectorReceipt.remoteSnapshotDigest,
+            before.selectorReceipt.remoteSnapshotDigest
+        )
+        assert.deepEqual(after.nodes, before.nodes)
+        assert.equal(
+            after.selectorReceipt.remoteObservationContinuation
+                .observationCursor,
+            'cursor-1'
+        )
+        assert.notEqual(
+            after.controlLedgerHeadDigest,
+            before.controlLedgerHeadDigest
+        )
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('delta changes outside selected scope advance observation authority without rebinding active nodes', () => {
+    const fixture = makeFixture({
+        deltaContinuation: true,
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2, { state: 'CLOSED' })
+        ]
+    })
+    try {
+        const before = lifecycleRunObservationContext(fixture.ledger, {
+            startup: fixture.startup
+        })
+        const observedAt = '2026-08-04T00:10:30.000Z'
+        const currentIssues = [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2, {
+                state: 'CLOSED',
+                title: 'Excluded issue changed',
+                updatedAt: observedAt
+            })
+        ]
+        const changedObserver = declareLifecycleRemoteScopeDeltaObserver(
+            (request) => deltaObservation(request, {
+                status: 'changed',
+                currentIssues,
+                changes: [{
+                    kind: 'upsert',
+                    issue: completeIssue(currentIssues[1])
+                }],
+                observedAt,
+                observationCursor: 'cursor-1',
+                conditionalIdentity: 'etag-1'
+            })
+        )
+        const advanced = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: changedObserver,
+            startup: fixture.startup
+        })
+        const after = lifecycleRunObservationContext(advanced, {
+            startup: fixture.startup
+        })
+        assert.equal(
+            after.selectorReceipt.remoteSnapshotDigest,
+            before.selectorReceipt.remoteSnapshotDigest
+        )
+        assert.notEqual(
+            after.selectorReceipt.remoteObservationSnapshotDigest,
+            before.selectorReceipt.remoteObservationSnapshotDigest
+        )
+        assert.notEqual(
+            after.selectorReceipt.receiptDigest,
+            before.selectorReceipt.receiptDigest
+        )
+        assert.equal(
+            after.selectorReceipt.remoteObservationContinuation
+                .observationCursor,
+            'cursor-1'
+        )
+        assert.deepEqual(after.nodes, before.nodes)
+        assert.notEqual(
+            after.controlLedgerHeadDigest,
+            before.controlLedgerHeadDigest
+        )
+
+        const unchangedObserver = declareLifecycleRemoteScopeDeltaObserver(
+            (request) => deltaObservation(request, {
+                status: 'unchanged',
+                currentIssues: null,
+                observedAt: '2026-08-04T00:10:31.000Z',
+                observationCursor: 'cursor-1',
+                conditionalIdentity: 'etag-1'
+            })
+        )
+        const unchanged = executeLifecycleScopeRefresh({
+            ledger: advanced,
+            observeRemoteIssues: unchangedObserver,
+            startup: fixture.startup
+        })
+        assert.strictEqual(unchanged, advanced)
+        assert.deepEqual(
+            lifecycleRunObservationContext(unchanged, {
+                startup: fixture.startup
+            }).selectorReceipt,
+            after.selectorReceipt
+        )
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('changed-member delta and complete observation compile the same canonical selector receipt', () => {
+    const fixture = makeFixture({
+        deltaContinuation: true,
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2, { state: 'CLOSED' })
+        ]
+    })
+    try {
+        const previous = lifecycleRunObservationContext(fixture.ledger, {
+            startup: fixture.startup
+        }).selectorReceipt
+        const observedAt = '2026-08-04T00:11:00.000Z'
+        const currentIssues = [
+            issue('Fixture/Repo', 1, {
+                title: 'Changed title',
+                body: 'Changed body',
+                updatedAt: observedAt,
+                comments: [{
+                    id: 'relevant-1',
+                    body: 'Changed acceptance',
+                    updatedAt: observedAt,
+                    relevant: true
+                }],
+                labels: ['orchestration', 'priority:p0'],
+                milestone: { number: 7, title: 'Delta' },
+                dependsOn: ['Fixture/Repo#3']
+            }),
+            issue('Fixture/Repo', 2, {
+                state: 'OPEN',
+                updatedAt: observedAt
+            }),
+            issue('Fixture/Repo', 3, {
+                updatedAt: observedAt
+            })
+        ]
+        let expected = resolveLifecycleSelector({
+            lifecycleAuthority: fixture.authority,
+            startup: fixture.startup,
+            selector: fixture.definition,
+            remoteIssues: currentIssues.map(completeIssue),
+            previousReceipt: previous,
+            resolvedAt: observedAt
+        })
+        expected = bindLifecycleSelectorRemoteObservation({
+            lifecycleAuthority: fixture.authority,
+            startup: fixture.startup,
+            selectorReceipt: expected,
+            remoteObservationContinuation: {
+                schema:
+                    'issue-orchestration.lifecycle-remote-observation-continuation.v1',
+                status: 'verified',
+                producerAuthority: 'trusted-remote-observation-adapter',
+                rootAuthored: false,
+                selectorDigest: expected.selectorDigest,
+                remoteQueryIdentity: expected.remoteQueryIdentity,
+                remoteSnapshotDigest: expected.remoteSnapshotDigest,
+                remoteObservationSnapshotDigest:
+                    expected.remoteObservationSnapshotDigest,
+                observationCursor: 'cursor-1',
+                conditionalIdentity: 'etag-1',
+                observedAt
+            }
+        })
+        const changes = currentIssues.map((entry) => ({
+            kind: 'upsert',
+            issue: completeIssue(entry)
+        }))
+        let diagnostics = null
+        const observer = declareLifecycleRemoteScopeDeltaObserver((request) =>
+            deltaObservation(request, {
+                status: 'changed',
+                currentIssues,
+                changes,
+                observedAt
+            }))
+        const next = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: observer,
+            onObservation(value) {
+                diagnostics = value
+            },
+            startup: fixture.startup
+        })
+        const context = lifecycleRunObservationContext(next, {
+            startup: fixture.startup
+        })
+        assert.deepEqual(context.selectorReceipt, expected)
+        assert.deepEqual(context.selectorReceipt.remoteChangeSet, {
+            added: ['Fixture/Repo#2', 'Fixture/Repo#3'],
+            changed: ['Fixture/Repo#1'],
+            closed: [],
+            removed: [],
+            reopened: []
+        })
+        assert.deepEqual(Object.keys(context.nodes).sort(), [
+            'Fixture/Repo#1',
+            'Fixture/Repo#2',
+            'Fixture/Repo#3'
+        ])
+        assert.deepEqual(diagnostics, {
+            protocol: 'delta-v1',
+            observationStatus: 'changed',
+            remoteFactsTransferred: 3,
+            deltaMembers: 3,
+            selectorRebuilt: true
+        })
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('delta application converges with complete canonical resolution for additions, changes, and departures', async (t) => {
+    const scenarios = [
+        {
+            name: 'addition',
+            initial: [issue('Fixture/Repo', 1)],
+            current: [
+                issue('Fixture/Repo', 1),
+                issue('Fixture/Repo', 2, {
+                    updatedAt: '2026-08-04T00:11:30.000Z'
+                })
+            ],
+            changes(current) {
+                return [{
+                    kind: 'upsert',
+                    issue: completeIssue(current[1])
+                }]
+            }
+        },
+        {
+            name: 'selected member change',
+            initial: [issue('Fixture/Repo', 1)],
+            current: [issue('Fixture/Repo', 1, {
+                body: 'Updated acceptance facts',
+                updatedAt: '2026-08-04T00:11:30.000Z'
+            })],
+            changes(current) {
+                return [{
+                    kind: 'upsert',
+                    issue: completeIssue(current[0])
+                }]
+            }
+        },
+        {
+            name: 'dynamic departure',
+            initial: [
+                issue('Fixture/Repo', 1),
+                issue('Fixture/Repo', 2)
+            ],
+            current: [
+                issue('Fixture/Repo', 1),
+                issue('Fixture/Repo', 2, {
+                    state: 'CLOSED',
+                    updatedAt: '2026-08-04T00:11:30.000Z'
+                })
+            ],
+            changes(current) {
+                return [{
+                    kind: 'upsert',
+                    issue: completeIssue(current[1])
+                }]
+            }
+        }
+    ]
+    for (const scenario of scenarios) {
+        await t.test(scenario.name, () => {
+            const fixture = makeFixture({
+                deltaContinuation: true,
+                issues: scenario.initial
+            })
+            try {
+                const previous = lifecycleRunObservationContext(
+                    fixture.ledger,
+                    { startup: fixture.startup }
+                ).selectorReceipt
+                const observedAt = '2026-08-04T00:11:30.000Z'
+                let expected = resolveLifecycleSelector({
+                    lifecycleAuthority: fixture.authority,
+                    startup: fixture.startup,
+                    selector: fixture.definition,
+                    remoteIssues: scenario.current.map(completeIssue),
+                    previousReceipt: previous,
+                    resolvedAt: observedAt
+                })
+                expected = bindLifecycleSelectorRemoteObservation({
+                    lifecycleAuthority: fixture.authority,
+                    startup: fixture.startup,
+                    selectorReceipt: expected,
+                    remoteObservationContinuation: {
+                        schema:
+                            'issue-orchestration.lifecycle-remote-observation-continuation.v1',
+                        status: 'verified',
+                        producerAuthority:
+                            'trusted-remote-observation-adapter',
+                        rootAuthored: false,
+                        selectorDigest: expected.selectorDigest,
+                        remoteQueryIdentity:
+                            expected.remoteQueryIdentity,
+                        remoteSnapshotDigest:
+                            expected.remoteSnapshotDigest,
+                        remoteObservationSnapshotDigest:
+                            expected.remoteObservationSnapshotDigest,
+                        observationCursor: 'cursor-1',
+                        conditionalIdentity: 'etag-1',
+                        observedAt
+                    }
+                })
+                const observer = declareLifecycleRemoteScopeDeltaObserver(
+                    (request) => deltaObservation(request, {
+                        status: 'changed',
+                        currentIssues: scenario.current,
+                        changes: scenario.changes(scenario.current),
+                        observedAt
+                    })
+                )
+                const next = executeLifecycleScopeRefresh({
+                    ledger: fixture.ledger,
+                    observeRemoteIssues: observer,
+                    startup: fixture.startup
+                })
+                const actual = lifecycleRunObservationContext(next, {
+                    startup: fixture.startup
+                }).selectorReceipt
+                assert.deepEqual(actual, expected)
+            } finally {
+                fixture.cleanup()
+            }
+        })
+    }
+})
+
+test('delta removals, additions, and reopen facts remain visible to dynamic selectors', () => {
+    const fixture = makeFixture({
+        deltaContinuation: true,
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2)
+        ]
+    })
+    try {
+        const observedAt = '2026-08-04T00:12:00.000Z'
+        const currentIssues = [
+            issue('Fixture/Repo', 1, {
+                state: 'CLOSED',
+                updatedAt: observedAt
+            }),
+            issue('Fixture/Repo', 3, {
+                updatedAt: observedAt
+            })
+        ]
+        const observer = declareLifecycleRemoteScopeDeltaObserver((request) =>
+            deltaObservation(request, {
+                status: 'changed',
+                currentIssues,
+                changes: [
+                    {
+                        kind: 'upsert',
+                        issue: completeIssue(currentIssues[0])
+                    },
+                    {
+                        kind: 'remove',
+                        repository: 'Fixture/Repo',
+                        number: 2
+                    },
+                    {
+                        kind: 'upsert',
+                        issue: completeIssue(currentIssues[1])
+                    }
+                ],
+                observedAt
+            }))
+        const next = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: observer,
+            startup: fixture.startup
+        })
+        const receipt = lifecycleRunObservationContext(next, {
+            startup: fixture.startup
+        }).selectorReceipt
+        assert.deepEqual(receipt.resolvedIssueSet, ['Fixture/Repo#3'])
+        assert.deepEqual(receipt.remoteChangeSet.added, ['Fixture/Repo#3'])
+        assert.deepEqual(receipt.remoteChangeSet.removed, [
+            'Fixture/Repo#1',
+            'Fixture/Repo#2'
+        ])
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('invalid, partial, stale, and contradictory delta responses never become unchanged', async (t) => {
+    const fixture = makeFixture({ deltaContinuation: true })
+    try {
+        const cases = [
+            ['stale cursor', (value) => {
+                value.previousObservationCursor = 'stale-cursor'
+            }],
+            ['wrong selector', (value) => {
+                value.selectorDigest = digest('wrong-selector')
+            }],
+            ['wrong authority', (value) => {
+                value.producerAuthority = 'caller-authored-cache'
+            }],
+            ['contradictory snapshot', (value) => {
+                value.currentRemoteObservationSnapshotDigest =
+                    digest('wrong-snapshot')
+            }],
+            ['missing field', (value) => {
+                delete value.conditionalIdentity
+            }]
+        ]
+        for (const [name, mutate] of cases) {
+            await t.test(name, () => {
+                const observer = declareLifecycleRemoteScopeDeltaObserver(
+                    (request) => deltaObservation(request, {
+                        status: 'unchanged',
+                        currentIssues: null,
+                        observationCursor: 'cursor-0',
+                        conditionalIdentity: 'etag-0',
+                        mutate
+                    })
+                )
+                assert.throws(
+                    () => executeLifecycleScopeRefresh({
+                        ledger: fixture.ledger,
+                        observeRemoteIssues: observer,
+                        startup: fixture.startup
+                    }),
+                    ({ code }) => typeof code === 'string' &&
+                        code.startsWith('lifecycle-remote-delta-')
+                )
+            })
+        }
+        await t.test('partial changed member', () => {
+            const current = issue('Fixture/Repo', 1, {
+                title: 'partial',
+                updatedAt: '2026-08-04T00:13:00.000Z'
+            })
+            const observer = declareLifecycleRemoteScopeDeltaObserver(
+                (request) => deltaObservation(request, {
+                    status: 'changed',
+                    currentIssues: [current],
+                    changes: [{
+                        kind: 'upsert',
+                        issue: (() => {
+                            const value = completeIssue(current)
+                            delete value.labels
+                            return value
+                        })()
+                    }]
+                })
+            )
+            assert.throws(
+                () => executeLifecycleScopeRefresh({
+                    ledger: fixture.ledger,
+                    observeRemoteIssues: observer,
+                    startup: fixture.startup
+                }),
+                ({ code }) =>
+                    code === 'lifecycle-remote-delta-issue-incomplete'
+            )
+        })
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('adapters without delta declaration preserve the complete v1 refresh path', () => {
+    const fixture = makeFixture({ deltaContinuation: true })
+    try {
+        let requestSchema = null
+        let diagnostics = null
+        const next = executeLifecycleScopeRefresh({
+            ledger: fixture.ledger,
+            observeRemoteIssues: (request) => {
+                requestSchema = request.schema
+                return observation(
+                    request,
+                    [issue('Fixture/Repo', 1)],
+                    '2026-08-04T00:14:00.000Z'
+                )
+            },
+            onObservation(value) {
+                diagnostics = value
+            },
+            startup: fixture.startup
+        })
+        assert.strictEqual(next, fixture.ledger)
+        assert.equal(
+            requestSchema,
+            'issue-orchestration.lifecycle-remote-scope-request.v1'
+        )
+        assert.deepEqual(diagnostics, {
+            protocol: 'complete-v1',
+            observationStatus: 'full',
+            remoteFactsTransferred: 1,
+            deltaMembers: 0,
+            selectorRebuilt: true
+        })
+    } finally {
+        fixture.cleanup()
+    }
+})
 
 test('scope refresh admits raw remote facts, resets changed nodes, and registers additions', () => {
     const fixture = makeFixture({

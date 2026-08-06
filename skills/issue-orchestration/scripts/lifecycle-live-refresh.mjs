@@ -14,16 +14,27 @@ import {
     recordLifecycleScopeRefresh
 } from './lifecycle-run-loop.mjs'
 import {
+    bindLifecycleSelectorRemoteObservation,
     resolveLifecycleSelector,
     repositoryAuthorityFor,
     validateLifecycleRunAuthority
 } from './lifecycle-genesis-authority.mjs'
 import {
+    canonicalRemoteIssueFacts,
+    remoteObservationSnapshotDigest,
     verifySelectorDefinition
 } from './scope-selector.mjs'
 
 const REMOTE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-remote-scope-observation.v1'
+const REMOTE_DELTA_REQUEST_SCHEMA =
+    'issue-orchestration.lifecycle-remote-scope-request.v2'
+const REMOTE_DELTA_OBSERVATION_SCHEMA =
+    'issue-orchestration.lifecycle-remote-scope-delta-observation.v1'
+const REMOTE_CONTINUATION_SCHEMA =
+    'issue-orchestration.lifecycle-remote-observation-continuation.v1'
+const REMOTE_DELTA_PROTOCOL_PROPERTY =
+    'issueOrchestrationRemoteScopeProtocol'
 const BASE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-repository-base-observation.v1'
 const BASE_OBSERVATION_EPOCH_SCHEMA =
@@ -66,6 +77,108 @@ function requireRefreshActionSet(actionSet) {
     return actionSet
 }
 
+function exactKeys(value, keys, code) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        !sameValue(Object.keys(value).sort(), [...keys].sort())) {
+        fail(code)
+    }
+    return value
+}
+
+function nullableText(value, code) {
+    if (value !== null && value !== undefined &&
+        (typeof value !== 'string' || value.length === 0)) {
+        fail(code)
+    }
+    return value ?? null
+}
+
+function validateRemoteIssue(issue, repositories, {
+    complete = false
+} = {}) {
+    if (!issue || typeof issue !== 'object' || Array.isArray(issue) ||
+        !repositories.has(issue.repository) ||
+        !Number.isInteger(issue.number) || issue.number <= 0 ||
+        typeof issue.state !== 'string' || issue.state.length === 0 ||
+        typeof issue.updatedAt !== 'string' || issue.updatedAt.length === 0 ||
+        typeof issue.title !== 'string' ||
+        typeof issue.body !== 'string') {
+        fail('lifecycle-remote-issue-fact-invalid')
+    }
+    if (complete) {
+        exactKeys(issue, [
+            'repository', 'number', 'state', 'stateReason', 'updatedAt',
+            'title', 'body', 'comments', 'labels', 'milestone',
+            'dependsOn', 'trackedIssueIds'
+        ], 'lifecycle-remote-delta-issue-incomplete')
+        if (issue.stateReason !== null &&
+            (typeof issue.stateReason !== 'string' ||
+                issue.stateReason.length === 0) ||
+            !Array.isArray(issue.comments) ||
+            !Array.isArray(issue.labels) ||
+            !Array.isArray(issue.dependsOn) ||
+            !Array.isArray(issue.trackedIssueIds) ||
+            issue.labels.some((value) =>
+                typeof value !== 'string' || value.length === 0) ||
+            issue.dependsOn.some((value) =>
+                typeof value !== 'string' || value.length === 0) ||
+            issue.trackedIssueIds.some((value) =>
+                typeof value !== 'string' || value.length === 0)) {
+            fail('lifecycle-remote-delta-issue-incomplete')
+        }
+        for (const comment of issue.comments) {
+            exactKeys(comment, ['id', 'body', 'updatedAt', 'relevant'],
+                'lifecycle-remote-delta-comment-incomplete')
+            if ((typeof comment.id !== 'string' &&
+                    !Number.isInteger(comment.id)) ||
+                typeof comment.body !== 'string' ||
+                typeof comment.updatedAt !== 'string' ||
+                comment.updatedAt.length === 0 ||
+                typeof comment.relevant !== 'boolean') {
+                fail('lifecycle-remote-delta-comment-incomplete')
+            }
+        }
+        if (issue.milestone !== null) {
+            exactKeys(issue.milestone, ['number', 'title'],
+                'lifecycle-remote-delta-milestone-incomplete')
+            if (!Number.isInteger(issue.milestone.number) ||
+                issue.milestone.number <= 0 ||
+                typeof issue.milestone.title !== 'string') {
+                fail('lifecycle-remote-delta-milestone-incomplete')
+            }
+        }
+    }
+    const identity = `${issue.repository}#${issue.number}`
+    for (const forbidden of [
+        'selectorReceipt', 'remoteSnapshotReceipt', 'actionSet',
+        'ledger', 'projection', 'lifecycleAuthority'
+    ]) {
+        if (Object.hasOwn(issue, forbidden)) {
+            fail('lifecycle-remote-observation-authority-forbidden', {
+                identity,
+                field: forbidden
+            })
+        }
+    }
+    return identity
+}
+
+function validateRemoteIssues(issues, request, options = {}) {
+    if (!Array.isArray(issues)) {
+        fail('lifecycle-remote-scope-observation-invalid')
+    }
+    const repositories = new Set(request.repositories)
+    const identities = new Set()
+    for (const issue of issues) {
+        const identity = validateRemoteIssue(issue, repositories, options)
+        if (identities.has(identity)) {
+            fail('lifecycle-remote-issue-fact-duplicate', { identity })
+        }
+        identities.add(identity)
+    }
+    return issues
+}
+
 function validateRemoteObservation(observation, request) {
     if (observation?.schema !== REMOTE_OBSERVATION_SCHEMA ||
         observation.producerAuthority !==
@@ -78,50 +191,325 @@ function validateRemoteObservation(observation, request) {
             [...(observation.repositories ?? [])].sort(),
             request.repositories
         ) ||
-        !Array.isArray(observation.issues) ||
         typeof observation.observedAt !== 'string' ||
         observation.observedAt.length === 0 ||
         observation.observationDigest !==
             unsignedDigest(observation, 'observationDigest')) {
         fail('lifecycle-remote-scope-observation-invalid')
     }
-    const repositories = new Set(request.repositories)
-    const identities = new Set()
-    for (const issue of observation.issues) {
-        if (!issue || typeof issue !== 'object' ||
-            Array.isArray(issue) ||
-            !repositories.has(issue.repository) ||
-            !Number.isInteger(issue.number) || issue.number <= 0 ||
-            typeof issue.state !== 'string' ||
-            typeof issue.updatedAt !== 'string' ||
-            typeof issue.title !== 'string' ||
-            typeof issue.body !== 'string') {
-            fail('lifecycle-remote-issue-fact-invalid')
-        }
-        const identity = `${issue.repository}#${issue.number}`
-        if (identities.has(identity)) {
-            fail('lifecycle-remote-issue-fact-duplicate', { identity })
-        }
-        identities.add(identity)
-        for (const forbidden of [
-            'selectorReceipt', 'remoteSnapshotReceipt', 'actionSet',
-            'ledger', 'projection', 'lifecycleAuthority'
-        ]) {
-            if (Object.hasOwn(issue, forbidden)) {
-                fail('lifecycle-remote-observation-authority-forbidden', {
-                    identity,
-                    field: forbidden
-                })
-            }
-        }
+    validateRemoteIssues(observation.issues, request)
+    return Object.freeze({
+        protocol: 'complete-v1',
+        status: 'full',
+        issues: clone(observation.issues),
+        observedAt: observation.observedAt,
+        observationDigest: observation.observationDigest,
+        observationCursor: null,
+        conditionalIdentity: null,
+        currentRemoteObservationSnapshotDigest: null,
+        remoteFactsTransferred: observation.issues.length,
+        deltaMembers: 0
+    })
+}
+
+function validatePreviousRemoteSnapshot(receipt) {
+    if (!receipt?.remoteIssueFacts ||
+        typeof receipt.remoteIssueFacts !== 'object' ||
+        Array.isArray(receipt.remoteIssueFacts) ||
+        !HASH.test(receipt.remoteObservationSnapshotDigest ?? '') ||
+        receipt.remoteObservationSnapshotDigest !==
+            remoteObservationSnapshotDigest({
+                selectorDigest: receipt.selectorDigest,
+                remoteIssueFacts: receipt.remoteIssueFacts
+            })) {
+        fail('lifecycle-remote-delta-prior-snapshot-unavailable')
+    }
+    return receipt.remoteIssueFacts
+}
+
+function validateDeltaCommon(observation, request, keys) {
+    exactKeys(observation, keys,
+        'lifecycle-remote-delta-observation-invalid')
+    if (observation.schema !== REMOTE_DELTA_OBSERVATION_SCHEMA ||
+        !['full', 'unchanged', 'changed'].includes(observation.status) ||
+        observation.producerAuthority !==
+            'trusted-remote-observation-adapter' ||
+        observation.rootAuthored !== false ||
+        observation.selectorDigest !== request.selectorDigest ||
+        observation.remoteQueryIdentity !==
+            request.remoteQueryIdentity ||
+        !sameValue(
+            [...(observation.repositories ?? [])].sort(),
+            request.repositories
+        ) ||
+        observation.previousSelectorReceiptDigest !==
+            request.previousSelectorReceiptDigest ||
+        observation.previousRemoteSnapshotDigest !==
+            request.previousRemoteSnapshotDigest ||
+        observation.previousRemoteObservationSnapshotDigest !==
+            request.previousRemoteObservationSnapshotDigest ||
+        observation.previousObservationCursor !==
+            request.previousObservationCursor ||
+        observation.previousConditionalIdentity !==
+            request.previousConditionalIdentity ||
+        typeof observation.observedAt !== 'string' ||
+        observation.observedAt.length === 0 ||
+        !HASH.test(observation.currentRemoteObservationSnapshotDigest ?? '') ||
+        observation.observationDigest !==
+            unsignedDigest(observation, 'observationDigest')) {
+        fail('lifecycle-remote-delta-observation-invalid')
+    }
+    nullableText(
+        observation.observationCursor,
+        'lifecycle-remote-delta-continuation-invalid'
+    )
+    nullableText(
+        observation.conditionalIdentity,
+        'lifecycle-remote-delta-continuation-invalid'
+    )
+    if (![observation.observationCursor,
+        observation.conditionalIdentity].some((value) =>
+        typeof value === 'string' && value.length > 0)) {
+        fail('lifecycle-remote-delta-continuation-invalid')
     }
     return observation
+}
+
+function applyRemoteDelta(previousFacts, changes, request) {
+    if (!Array.isArray(changes) || changes.length === 0) {
+        fail('lifecycle-remote-delta-changes-invalid')
+    }
+    const repositories = new Set(request.repositories)
+    const facts = new Map(Object.entries(clone(previousFacts)))
+    const identities = new Set()
+    for (const change of changes) {
+        if (change?.kind === 'upsert') {
+            exactKeys(change, ['kind', 'issue'],
+                'lifecycle-remote-delta-change-invalid')
+            const identity = validateRemoteIssue(
+                change.issue,
+                repositories,
+                { complete: true }
+            )
+            if (identities.has(identity)) {
+                fail('lifecycle-remote-delta-change-duplicate', { identity })
+            }
+            identities.add(identity)
+            facts.set(
+                identity,
+                canonicalRemoteIssueFacts([change.issue])[identity]
+            )
+            continue
+        }
+        if (change?.kind === 'remove') {
+            exactKeys(change, ['kind', 'repository', 'number'],
+                'lifecycle-remote-delta-change-invalid')
+            if (!repositories.has(change.repository) ||
+                !Number.isInteger(change.number) || change.number <= 0) {
+                fail('lifecycle-remote-delta-change-invalid')
+            }
+            const identity = `${change.repository}#${change.number}`
+            if (identities.has(identity) || !facts.has(identity)) {
+                fail('lifecycle-remote-delta-change-invalid', { identity })
+            }
+            identities.add(identity)
+            facts.delete(identity)
+            continue
+        }
+        fail('lifecycle-remote-delta-change-invalid')
+    }
+    return Object.freeze(Object.fromEntries(
+        [...facts.entries()].sort(([left], [right]) =>
+            left.localeCompare(right))
+    ))
+}
+
+function validateDeltaObservation(observation, request, selectorReceipt) {
+    const common = [
+        'schema', 'status', 'producerAuthority', 'rootAuthored',
+        'selectorDigest', 'remoteQueryIdentity', 'repositories',
+        'previousSelectorReceiptDigest', 'previousRemoteSnapshotDigest',
+        'previousRemoteObservationSnapshotDigest',
+        'previousObservationCursor', 'previousConditionalIdentity',
+        'observationCursor', 'conditionalIdentity',
+        'currentRemoteObservationSnapshotDigest', 'observedAt',
+        'observationDigest'
+    ]
+    if (observation?.status === 'full') {
+        validateDeltaCommon(observation, request, [...common, 'issues'])
+        validateRemoteIssues(observation.issues, request, { complete: true })
+        const facts = canonicalRemoteIssueFacts(observation.issues)
+        const snapshotDigest = remoteObservationSnapshotDigest({
+            selectorDigest: request.selectorDigest,
+            remoteIssueFacts: facts
+        })
+        if (snapshotDigest !==
+            observation.currentRemoteObservationSnapshotDigest) {
+            fail('lifecycle-remote-delta-snapshot-digest-mismatch')
+        }
+        return Object.freeze({
+            protocol: 'delta-v1',
+            status: 'full',
+            issues: Object.values(facts),
+            observedAt: observation.observedAt,
+            observationDigest: observation.observationDigest,
+            observationCursor: observation.observationCursor,
+            conditionalIdentity: observation.conditionalIdentity,
+            currentRemoteObservationSnapshotDigest: snapshotDigest,
+            remoteFactsTransferred: observation.issues.length,
+            deltaMembers: 0
+        })
+    }
+    if (observation?.status === 'unchanged') {
+        validateDeltaCommon(observation, request, common)
+        validatePreviousRemoteSnapshot(selectorReceipt)
+        const continuation = selectorReceipt.remoteObservationContinuation
+        if (!continuation ||
+            request.previousObservationCursor === null &&
+                request.previousConditionalIdentity === null ||
+            observation.currentRemoteObservationSnapshotDigest !==
+                request.previousRemoteObservationSnapshotDigest ||
+            observation.observationCursor !==
+                request.previousObservationCursor ||
+            observation.conditionalIdentity !==
+                request.previousConditionalIdentity) {
+            fail('lifecycle-remote-delta-unchanged-unverified')
+        }
+        return Object.freeze({
+            protocol: 'delta-v1',
+            status: 'unchanged',
+            issues: null,
+            observedAt: observation.observedAt,
+            observationDigest: observation.observationDigest,
+            observationCursor: observation.observationCursor,
+            conditionalIdentity: observation.conditionalIdentity,
+            currentRemoteObservationSnapshotDigest:
+                observation.currentRemoteObservationSnapshotDigest,
+            remoteFactsTransferred: 0,
+            deltaMembers: 0
+        })
+    }
+    if (observation?.status === 'changed') {
+        validateDeltaCommon(observation, request, [...common, 'changes'])
+        if (request.fullObservationRequired === true ||
+            !selectorReceipt.remoteObservationContinuation) {
+            fail('lifecycle-remote-delta-prior-continuation-unavailable')
+        }
+        const previousFacts = validatePreviousRemoteSnapshot(selectorReceipt)
+        const facts = applyRemoteDelta(previousFacts, observation.changes, request)
+        const snapshotDigest = remoteObservationSnapshotDigest({
+            selectorDigest: request.selectorDigest,
+            remoteIssueFacts: facts
+        })
+        if (snapshotDigest ===
+                request.previousRemoteObservationSnapshotDigest ||
+            snapshotDigest !==
+                observation.currentRemoteObservationSnapshotDigest) {
+            fail('lifecycle-remote-delta-snapshot-digest-mismatch')
+        }
+        return Object.freeze({
+            protocol: 'delta-v1',
+            status: 'changed',
+            issues: Object.values(facts),
+            observedAt: observation.observedAt,
+            observationDigest: observation.observationDigest,
+            observationCursor: observation.observationCursor,
+            conditionalIdentity: observation.conditionalIdentity,
+            currentRemoteObservationSnapshotDigest: snapshotDigest,
+            remoteFactsTransferred: observation.changes.filter(
+                ({ kind }) => kind === 'upsert'
+            ).length,
+            deltaMembers: observation.changes.length
+        })
+    }
+    fail('lifecycle-remote-delta-observation-invalid')
+}
+
+export function declareLifecycleRemoteScopeDeltaObserver(observer) {
+    if (typeof observer !== 'function') {
+        fail('lifecycle-remote-observer-required')
+    }
+    Object.defineProperty(observer, REMOTE_DELTA_PROTOCOL_PROPERTY, {
+        value: REMOTE_DELTA_OBSERVATION_SCHEMA,
+        enumerable: false,
+        configurable: false,
+        writable: false
+    })
+    return observer
+}
+
+function deltaAware(observer) {
+    return observer?.[REMOTE_DELTA_PROTOCOL_PROPERTY] ===
+        REMOTE_DELTA_OBSERVATION_SCHEMA
+}
+
+function reportObservation(onObservation, value) {
+    if (typeof onObservation !== 'function') return
+    try {
+        onObservation(Object.freeze({ ...value }))
+    } catch {
+        // Diagnostics cannot influence selector, lifecycle, or mutation authority.
+    }
+}
+
+function remoteScopeRequest({ context, selector, observer }) {
+    const base = {
+        runId: context.runId,
+        repositories: [...selector.repositories].sort(),
+        selector: clone(selector),
+        selectorDigest: context.selectorReceipt.selectorDigest,
+        remoteQueryIdentity: selector.remoteQueryIdentity,
+        previousSelectorReceiptDigest:
+            context.selectorReceipt.receiptDigest,
+        previousRemoteSnapshotDigest:
+            context.selectorReceipt.remoteSnapshotDigest,
+        lifecycleAuthorityBindingDigest:
+            context.lifecycleAuthority.binding.bindingDigest
+    }
+    if (!deltaAware(observer)) {
+        return Object.freeze({
+            schema: 'issue-orchestration.lifecycle-remote-scope-request.v1',
+            ...base
+        })
+    }
+    const continuation =
+        context.selectorReceipt.remoteObservationContinuation ?? null
+    return Object.freeze({
+        schema: REMOTE_DELTA_REQUEST_SCHEMA,
+        ...base,
+        previousRemoteObservationSnapshotDigest:
+            context.selectorReceipt.remoteObservationSnapshotDigest ?? null,
+        previousObservationCursor:
+            continuation?.observationCursor ?? null,
+        previousConditionalIdentity:
+            continuation?.conditionalIdentity ?? null,
+        fullObservationRequired: continuation === null ||
+            !context.selectorReceipt.remoteIssueFacts
+    })
+}
+
+function remoteObservationContinuation(result, selectorReceipt) {
+    return Object.freeze({
+        schema: REMOTE_CONTINUATION_SCHEMA,
+        status: 'verified',
+        producerAuthority: 'trusted-remote-observation-adapter',
+        rootAuthored: false,
+        selectorDigest: selectorReceipt.selectorDigest,
+        remoteQueryIdentity: selectorReceipt.remoteQueryIdentity,
+        remoteSnapshotDigest: selectorReceipt.remoteSnapshotDigest,
+        remoteObservationSnapshotDigest:
+            selectorReceipt.remoteObservationSnapshotDigest,
+        observationCursor: result.observationCursor,
+        conditionalIdentity: result.conditionalIdentity,
+        observedAt: result.observedAt
+    })
 }
 
 export function executeLifecycleScopeRefresh({
     ledger,
     actionSet,
     observeRemoteIssues,
+    onObservation,
     createdAt,
     startup
 } = {}) {
@@ -141,26 +529,30 @@ export function executeLifecycleScopeRefresh({
         context.selectorDefinition,
         context.selectorReceipt
     )
-    const request = Object.freeze({
-        schema:
-            'issue-orchestration.lifecycle-remote-scope-request.v1',
-        runId: context.runId,
-        repositories: [...selector.repositories].sort(),
-        selector: clone(selector),
-        selectorDigest: context.selectorReceipt.selectorDigest,
-        remoteQueryIdentity: selector.remoteQueryIdentity,
-        previousSelectorReceiptDigest:
-            context.selectorReceipt.receiptDigest,
-        previousRemoteSnapshotDigest:
-            context.selectorReceipt.remoteSnapshotDigest,
-        lifecycleAuthorityBindingDigest:
-            context.lifecycleAuthority.binding.bindingDigest
+    const request = remoteScopeRequest({
+        context,
+        selector,
+        observer: observeRemoteIssues
     })
-    const observation = validateRemoteObservation(
-        observeRemoteIssues(request),
-        request
-    )
-    const selectorReceipt = resolveLifecycleSelector({
+    const rawObservation = observeRemoteIssues(request)
+    const observation = request.schema === REMOTE_DELTA_REQUEST_SCHEMA
+        ? validateDeltaObservation(
+            rawObservation,
+            request,
+            context.selectorReceipt
+        )
+        : validateRemoteObservation(rawObservation, request)
+    if (observation.status === 'unchanged') {
+        reportObservation(onObservation, {
+            protocol: observation.protocol,
+            observationStatus: observation.status,
+            remoteFactsTransferred: 0,
+            deltaMembers: 0,
+            selectorRebuilt: false
+        })
+        return ledger
+    }
+    let selectorReceipt = resolveLifecycleSelector({
         lifecycleAuthority: context.lifecycleAuthority,
         startup,
         selector,
@@ -168,8 +560,47 @@ export function executeLifecycleScopeRefresh({
         previousReceipt: context.selectorReceipt,
         resolvedAt: observation.observedAt
     })
-    if (selectorReceipt.remoteSnapshotDigest ===
-            context.selectorReceipt.remoteSnapshotDigest) {
+    if (observation.protocol === 'delta-v1') {
+        if (selectorReceipt.remoteObservationSnapshotDigest !==
+            observation.currentRemoteObservationSnapshotDigest) {
+            fail('lifecycle-remote-delta-snapshot-digest-mismatch')
+        }
+        selectorReceipt = bindLifecycleSelectorRemoteObservation({
+            lifecycleAuthority: context.lifecycleAuthority,
+            startup,
+            selectorReceipt,
+            remoteObservationContinuation:
+                remoteObservationContinuation(observation, selectorReceipt)
+        })
+    }
+    reportObservation(onObservation, {
+        protocol: observation.protocol,
+        observationStatus: observation.status,
+        remoteFactsTransferred: observation.remoteFactsTransferred,
+        deltaMembers: observation.deltaMembers,
+        selectorRebuilt: true
+    })
+    const selectedSnapshotChanged =
+        selectorReceipt.remoteSnapshotDigest !==
+            context.selectorReceipt.remoteSnapshotDigest
+    const priorContinuation =
+        context.selectorReceipt.remoteObservationContinuation ?? null
+    const nextContinuation =
+        selectorReceipt.remoteObservationContinuation ?? null
+    const continuationAdvanced = nextContinuation !== null && (
+        priorContinuation === null ||
+        nextContinuation.observationCursor !==
+            priorContinuation.observationCursor ||
+        nextContinuation.conditionalIdentity !==
+            priorContinuation.conditionalIdentity
+    )
+    const observationSnapshotAdvanced =
+        selectorReceipt.remoteObservationSnapshotDigest !==
+            context.selectorReceipt.remoteObservationSnapshotDigest
+    const observationOnlyRefreshRequired =
+        observation.protocol === 'delta-v1' &&
+        (continuationAdvanced || observationSnapshotAdvanced)
+    if (!selectedSnapshotChanged && !observationOnlyRefreshRequired) {
         return ledger
     }
     const current = compileLifecycleRunActionSet(ledger, {

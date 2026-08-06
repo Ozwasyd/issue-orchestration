@@ -98,14 +98,64 @@ function remoteFact(issue) {
         body: issue.body,
         relevantComments: (issue.comments ?? [])
             .filter(({ relevant }) => relevant)
-            .map(({ id, body, updatedAt }) => ({ id, body, updatedAt })),
-        labels: issue.labels ?? [],
+            .map(({ id, body, updatedAt }) => ({ id, body, updatedAt }))
+            .sort((left, right) => JSON.stringify(left).localeCompare(
+                JSON.stringify(right)
+            )),
+        labels: [...(issue.labels ?? [])].sort(),
         milestone: issue.milestone
             ? { number: issue.milestone.number, title: issue.milestone.title }
             : null,
         declaredDependencies: [...(issue.dependsOn ?? [])].sort(),
         trackedIssueIds: [...(issue.trackedIssueIds ?? [])].sort()
     }
+}
+
+export function canonicalRemoteIssueFact(issue) {
+    const fact = remoteFact(issue)
+    return Object.freeze({
+        repository: issue.repository,
+        number: issue.number,
+        state: fact.state,
+        stateReason: fact.stateReason,
+        updatedAt: fact.updatedAt,
+        title: fact.title,
+        body: fact.body,
+        comments: fact.relevantComments.map((comment) => ({
+            ...comment,
+            relevant: true
+        })),
+        labels: [...fact.labels],
+        milestone: fact.milestone ? { ...fact.milestone } : null,
+        dependsOn: [...fact.declaredDependencies],
+        trackedIssueIds: [...fact.trackedIssueIds]
+    })
+}
+
+export function canonicalRemoteIssueFacts(remoteIssues) {
+    if (!Array.isArray(remoteIssues)) {
+        throw Object.assign(new Error('remote issues must be an array'), {
+            code: 'remote-issues-invalid'
+        })
+    }
+    const entries = remoteIssues.map((issue) => [
+        issueId(issue),
+        canonicalRemoteIssueFact(issue)
+    ]).sort(([left], [right]) => left.localeCompare(right))
+    if (new Set(entries.map(([identity]) => identity)).size !==
+        entries.length) {
+        throw Object.assign(new Error('duplicate remote issue identity'), {
+            code: 'remote-issue-duplicate'
+        })
+    }
+    return Object.freeze(Object.fromEntries(entries))
+}
+
+export function remoteObservationSnapshotDigest({
+    selectorDigest,
+    remoteIssueFacts
+}) {
+    return digest({ selectorDigest, remoteIssueFacts })
 }
 
 export function remoteIssueFactDigest(issue) {
@@ -201,7 +251,8 @@ export function resolveSelector({
         )
     }
 
-    const issuesById = new Map(remoteIssues.map((issue) => [issueId(issue), issue]))
+    const remoteIssueFacts = canonicalRemoteIssueFacts(remoteIssues)
+    const issuesById = new Map(Object.entries(remoteIssueFacts))
     const selected = selectedIds(selector, issuesById)
     const resolvedIssueSet = [...selected].filter((id) => issuesById.has(id)).sort()
     const exclusionReasons = Object.fromEntries(
@@ -262,6 +313,11 @@ export function resolveSelector({
         previousRemoteSnapshotDigest: previousReceipt?.remoteSnapshotDigest ?? null,
         remoteSnapshotDigest,
         remoteFactDigests,
+        remoteIssueFacts,
+        remoteObservationSnapshotDigest: remoteObservationSnapshotDigest({
+            selectorDigest,
+            remoteIssueFacts
+        }),
         remoteChangeSet: { added, changed, closed, removed, reopened },
         issueHistory,
         issueStates: Object.fromEntries(resolvedIssueSet.map((id) => [

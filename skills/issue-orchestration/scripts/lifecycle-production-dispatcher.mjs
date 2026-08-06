@@ -1656,9 +1656,13 @@ export async function runLifecycleProductionDispatcher({
             }
             const beforeRefreshDigest =
                 projection.aggregateProjection.aggregateProjectionDigest
+            let refreshObservation = null
             const refresh = () => executeLifecycleScopeRefresh({
                 ledger: currentLedger,
                 observeRemoteIssues: contextProvider.observeRemoteIssues,
+                onObservation(value) {
+                    refreshObservation = value
+                },
                 createdAt: timestamp(clock),
                 startup
             })
@@ -1669,7 +1673,14 @@ export async function runLifecycleProductionDispatcher({
                         boundary: 'remote-scope-observation',
                         transition: transitions
                     },
-                    refresh
+                    refresh,
+                    {
+                        resolveMetadata: () => ({
+                            boundary: 'remote-scope-observation',
+                            transition: transitions,
+                            ...(refreshObservation ?? {})
+                        })
+                    }
                 )
                 : refresh()
             const afterRefresh = measuredProjection(

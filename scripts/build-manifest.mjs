@@ -103,6 +103,7 @@ const manifest = {
         'stage-scoped-write-lease',
         'typed-terminalization-authority',
         'deterministic-dispatcher-performance-telemetry',
+        'delta-aware-remote-scope-observation',
         'wave-scoped-repository-base-observation',
         'verified-replay-projection-cache',
         'verified-lifecycle-action-set-cache',
