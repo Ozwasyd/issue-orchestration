@@ -1,0 +1,49 @@
+name: apply issue 68 patch
+
+on:
+  push:
+    branches:
+      - issue-68-action-set-cache
+    paths:
+      - .github/issue-68-patch/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-68-action-set-cache
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '98d3256ef29078c2825845c4ceda0501ee1fa0dd46fe4db9bce0347bbe94d27b  .github/issue-68-patch/part-00.b64' | sha256sum -c -
+          echo '9ec23e42ab52317e164ba0ffba54bbaeb6c008abf6a5d55a2381bf54dc7ffdac  .github/issue-68-patch/part-01.b64' | sha256sum -c -
+          echo '479626ddbe029ce4ad94f29bdb1adbfc4711317780c06a1eae2611c7cb112f60  .github/issue-68-patch/part-02.b64' | sha256sum -c -
+          echo 'eff8cee87eecb94ed4fe9489ca391498790411fea239976b1b4fa652a5bfd9a5  .github/issue-68-patch/part-03.b64' | sha256sum -c -
+          echo '39fa79d72d144d1bd3f4158605cfef4eebb346582104d25577ed9ea75f9815bc  .github/issue-68-patch/part-04.b64' | sha256sum -c -
+          cat .github/issue-68-patch/part-*.b64 > /tmp/issue68.patch.gz.b64
+          echo '825a330389d096c915177549d07d0f208565afa2e9f2e8e9ac065a8e83dee403  /tmp/issue68.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue68.patch.gz.b64 > /tmp/issue68.patch.gz
+          echo '4153b6a83b75dd6e20bda42ce00c057f25e67e1169fea26728274e285b3a71ea  /tmp/issue68.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue68.patch.gz > /tmp/issue68.patch
+          echo '7fcb5a15cdcb75ce3da28ea48c31a8a8299d9049db2da42fce80111d7b1a4aba  /tmp/issue68.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue68.patch
+          git apply --binary /tmp/issue68.patch
+          rm -rf .github/issue-68-patch
+          rm -f .github/workflows/apply-issue-68-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Reuse canonical lifecycle action sets (#68)'
+          git push origin HEAD:issue-68-action-set-cache
