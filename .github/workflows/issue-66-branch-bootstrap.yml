@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - issue-66-delta-scope-refresh
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -26,7 +29,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$GITHUB_REF_NAME" = "issue-66-delta-scope-refresh"
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            test "$GITHUB_REF_NAME" = "issue-66-delta-scope-refresh"
+          else
+            test "$GITHUB_HEAD_REF" = "issue-66-delta-scope-refresh"
+          fi
           test "$(git merge-base HEAD origin/main)" = "fb61e03d8a38dab344320332e476dcff55c7318f"
           cat .github/issue-66.patch.part* > /tmp/issue-66.patch.gz.b64
           echo "1b9d84a03809709e476a28386fd1779df6fbce66a0abb49ee58a1e38d40663aa  /tmp/issue-66.patch.gz.b64" | sha256sum --check
@@ -42,5 +49,3 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Add delta-aware remote scope observation (#66)"
           git push origin HEAD:issue-66-delta-scope-refresh
-
-# Connector-triggered second push ensures the workflow already exists on the branch.
