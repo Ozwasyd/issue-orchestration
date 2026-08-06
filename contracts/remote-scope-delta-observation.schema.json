@@ -77,9 +77,15 @@
         "repository",
         "number",
         "state",
+        "stateReason",
         "updatedAt",
         "title",
-        "body"
+        "body",
+        "comments",
+        "labels",
+        "milestone",
+        "dependsOn",
+        "trackedIssueIds"
       ],
       "properties": {
         "repository": {

@@ -3,7 +3,7 @@
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
     "sourceCommit": "fb61e03d8a38dab344320332e476dcff55c7318f",
-    "sourceTreeDigest": "cecc9bd29aa9d4207446ba836777775abf7ad3e27fe062ef46e154e1b0f22882",
+    "sourceTreeDigest": "997a0a654225cdaca628b2151ad9b4982b8d654d629f23f3f44ba010b563ad16",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "e7a6e6a1db22ac24ee58dbdbf71a9f3347bdf525475c9c51c7b0fb83c88c526b",
     "agentDigests": {
@@ -207,7 +207,7 @@
         "contracts/quiescence-receipt.schema.json": "d806950ff3e02189ab63386c32467062b257e475c304164b6663689a0b4c27c5",
         "contracts/remote-mutation-policy.schema.json": "97b1ebaaf16e62306a96eb02ee578a7344cbe2da44a220c8baf675fe092ae3c9",
         "contracts/remote-mutation-receipt.schema.json": "f0c824306b982050d6f7b437036f6386f7d9da69a5eea3d955f3ab10a40e6930",
-        "contracts/remote-scope-delta-observation.schema.json": "68f83adf885336557393c985c090c939eaa6bd33b5c917c42b65c172e31886d9",
+        "contracts/remote-scope-delta-observation.schema.json": "cb64ed29651982cdfb7539afc0549363fd7aec15a26147fb85bd8534df647746",
         "contracts/remote-scope-delta-request.schema.json": "b4e44dbb434ab92bd38504895c0d411e47caa1e22ba98280de8822edd3743fd5",
         "contracts/remote-staging-ref-cleanup-receipt.schema.json": "d8e6774a1cdc3eb5e864dae72d56496e1eb5447f540db54a62ea1da896bfb091",
         "contracts/remote-state-snapshot.schema.json": "7eef6ceda1e00a4604891bf0310a62dbc4aa7696cd381fc24d91b05475019725",
@@ -326,7 +326,7 @@
         "skills/issue-orchestration/scripts/lifecycle-delivery-executor.mjs": "878bd4f582cd10c24bd9c9487e634aaa663d8bd822336a492f99d43d9067b314",
         "skills/issue-orchestration/scripts/lifecycle-executor-failure-admission.mjs": "aa67cf27a20eb61a5122fa37a2d603bb3a1a891837568ad95e7e3f060295384b",
         "skills/issue-orchestration/scripts/lifecycle-genesis-authority.mjs": "2af3656cb3add07e330144d3ed617657e9f2c249b54bfdec2a06bab41c56dcaf",
-        "skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs": "8dd3c0f44dc68842d5f24b1027f486718ada98d358404588649724199c150529",
+        "skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs": "bc4ca85a9f5927f35b4c143aa31c11370d54867da54003f088071189087c342f",
         "skills/issue-orchestration/scripts/lifecycle-observe-only-executor.mjs": "e9d11d1ba055937dc91a8d7eb169a6eafcfce88f827ca50bdc3af643532679d3",
         "skills/issue-orchestration/scripts/lifecycle-prewriter-executor.mjs": "96d5ae874a4d810520c90f68d9d1192b49db47967326769bdf7a9f09fc272d0d",
         "skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs": "08485f7f76ec2f24609dac656010f75d59089660961f00195b763f29cbca9600",
@@ -367,5 +367,5 @@
         "skills/issue-orchestration/SKILL.md": "e7a6e6a1db22ac24ee58dbdbf71a9f3347bdf525475c9c51c7b0fb83c88c526b",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "445987bdc84279e387fdf73b340c3b6fae1edc0a40d0a6429aded741f6569a22"
+    "manifestDigest": "7c3d73362bd7af0160c03ed409fc474c8aef7e1f7a023b55f80f9ccd62caa002"
 }

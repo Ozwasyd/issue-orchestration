@@ -83,7 +83,11 @@ function issueIdentity(issue) {
     return `${issue.repository}#${issue.number}`
 }
 
-function validateRemoteIssueFact(issue, repositories) {
+function validateRemoteIssueFact(
+    issue,
+    repositories,
+    { requireComplete = false } = {}
+) {
     if (!issue || typeof issue !== 'object' ||
         Array.isArray(issue) ||
         !repositories.has(issue.repository) ||
@@ -95,6 +99,20 @@ function validateRemoteIssueFact(issue, repositories) {
         fail('lifecycle-remote-issue-fact-invalid')
     }
     const identity = issueIdentity(issue)
+    if (requireComplete) {
+        const required = [
+            'repository', 'number', 'state', 'stateReason', 'updatedAt',
+            'title', 'body', 'comments', 'labels', 'milestone',
+            'dependsOn', 'trackedIssueIds'
+        ]
+        const missing = required.filter((field) => !Object.hasOwn(issue, field))
+        if (missing.length > 0) {
+            fail('lifecycle-remote-scope-delta-member-partial', {
+                identity,
+                missing
+            })
+        }
+    }
     for (const forbidden of [
         'selectorReceipt', 'remoteSnapshotReceipt', 'actionSet',
         'ledger', 'projection', 'lifecycleAuthority'
@@ -208,7 +226,11 @@ function validateRemoteDeltaObservation(observation, request) {
     const repositories = new Set(request.repositories)
     const changedIds = new Set()
     for (const issue of observation.changedIssues) {
-        const identity = validateRemoteIssueFact(issue, repositories)
+        const identity = validateRemoteIssueFact(
+            issue,
+            repositories,
+            { requireComplete: true }
+        )
         if (changedIds.has(identity)) {
             fail('lifecycle-remote-issue-fact-duplicate', { identity })
         }

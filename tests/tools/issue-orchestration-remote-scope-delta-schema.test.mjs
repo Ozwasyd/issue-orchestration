@@ -88,7 +88,19 @@ test('remote scope delta request and all response variants validate strictly', (
         observationCursor: 'cursor-2',
         conditionalIdentity: null,
         currentIssueIds: ['Fixture/Repo#2'],
-        changedIssues: [{ repository: 'Fixture/Repo', number: 2 }],
+        changedIssues: [{
+            repository: 'Fixture/Repo',
+            number: 2,
+            state: 'OPEN',
+            stateReason: null,
+            updatedAt: '2026-08-06T00:00:00.000Z',
+            title: 'Issue 2',
+            body: 'Body 2',
+            comments: [],
+            milestone: null,
+            dependsOn: [],
+            trackedIssueIds: []
+        }],
         removedIssueIds: []
     }
     assert.notDeepEqual(validateJsonSchema(partial, observationSchema), [])

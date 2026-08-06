@@ -875,6 +875,21 @@ test('stale contradictory and partial deltas fail before selector authority', as
                 conditionalIdentity: 'etag-1'
             }
         )],
+        ['partial changed member', (request) => {
+            const partial = issue('Fixture/Repo', 1)
+            delete partial.labels
+            return deltaObservation(
+                request,
+                'changed',
+                {
+                    observationCursor: 'cursor-2',
+                    conditionalIdentity: 'etag-2',
+                    currentIssueIds: ['Fixture/Repo#1'],
+                    changedIssues: [partial],
+                    removedIssueIds: []
+                }
+            )
+        }],
         ['missing new member', (request) => deltaObservation(
             request,
             'changed',
