@@ -42,3 +42,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Add delta-aware remote scope observation (#66)"
           git push origin HEAD:issue-66-delta-scope-refresh
+
+# Connector-triggered second push ensures the workflow already exists on the branch.
