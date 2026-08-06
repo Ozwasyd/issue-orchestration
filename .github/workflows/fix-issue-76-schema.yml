@@ -1,0 +1,46 @@
+name: fix issue 76 strict schema
+
+on:
+  push:
+    branches:
+      - issue-76-actor-prompt-cache-identity
+    paths:
+      - .github/workflows/fix-issue-76-schema.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-76-actor-prompt-cache-identity
+      - name: Apply strict schema fix and rebuild manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('contracts/actor-prompt-cache-identity.schema.json')
+          source = path.read_text()
+          old = '''    "tokenizerIdentity": {\n      "type": ["string", "object", "null"]\n    },\n    "runtimeIdentity": {\n      "type": ["string", "object", "null"]\n    },'''
+          new = '''    "tokenizerIdentity": {\n      "oneOf": [\n        { "type": "string" },\n        { "type": "object" },\n        { "type": "null" }\n      ]\n    },\n    "runtimeIdentity": {\n      "oneOf": [\n        { "type": "string" },\n        { "type": "object" },\n        { "type": "null" }\n      ]\n    },'''
+          if old not in source:
+              raise SystemExit('issue-76-schema-fix-precondition')
+          path.write_text(source.replace(old, new))
+          PY
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT=8d46758818b3c97ca374cc3284dc5750d8387e3e node scripts/build-manifest.mjs
+          rm -f .github/workflows/fix-issue-76-schema.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit strict schema fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Use strict nullable schema forms for prompt cache identity (#76)'
+          git push origin HEAD:issue-76-actor-prompt-cache-identity
