@@ -1,0 +1,55 @@
+name: apply issue 72 patch
+
+on:
+  push:
+    branches:
+      - issue-72-typed-actor-failure-isolation
+    paths:
+      - .github/issue-72-patch/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-72-typed-actor-failure-isolation
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'e7b80fb0f15fce5dd734f6985e79d49315e18e3755f2c0228b4b71d4e2ae6237  .github/issue-72-patch/part-00.b64' | sha256sum -c -
+          echo 'bcd4ebf9a0d7ecd50b5ff6f45092de46d691c8aff3784174568630c2b0a851f9  .github/issue-72-patch/part-01.b64' | sha256sum -c -
+          echo '00d61d52ab8b676c4a254a537a7fc6fb208eacc4e050398b9273610e35139f0a  .github/issue-72-patch/part-02.b64' | sha256sum -c -
+          echo '465c1fccd82b8864e5ea1397418f64351f32b7e9364dd9142fccfeab28c1e2ca  .github/issue-72-patch/part-03.b64' | sha256sum -c -
+          echo 'e64b354fab6464ddbb9cb037c990bc5a9188471d403b03a0fa2755926b355347  .github/issue-72-patch/part-04.b64' | sha256sum -c -
+          echo '6ee882e7c4b1873b1d91c788c6551e24ad1b8c451c38896a40e6af591690a766  .github/issue-72-patch/part-05.b64' | sha256sum -c -
+          echo 'e7ba05637ba717d48e41f4ffd0134716c3c9904de98952be10437e7ce00c3e80  .github/issue-72-patch/part-06.b64' | sha256sum -c -
+          echo 'bbb31627ced712e3590604adb54bb2b409316323d5ed4a546d5724272c1d2de4  .github/issue-72-patch/part-07.b64' | sha256sum -c -
+          echo '1f5196abc6c44437e8f2cdf2d07fa27b7fe898f31b205e1803fb487539d8647b  .github/issue-72-patch/part-08.b64' | sha256sum -c -
+          echo 'f4188767c0ad283b4e87c542d03377954c632923e60f109c57ba8c4ab3788b7e  .github/issue-72-patch/part-09.b64' | sha256sum -c -
+          echo '9634dfc8731e5717858a6114c16ec5158609c7d8f74dbec0e41ef1cfcda8f5fe  .github/issue-72-patch/part-10.b64' | sha256sum -c -
+          cat .github/issue-72-patch/part-*.b64 > /tmp/issue72.patch.gz.b64
+          echo 'a74f5d86999b5bc284b35048d5a2c22f58e3d60cf7601bb24bd704ed0b6a63d7  /tmp/issue72.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue72.patch.gz.b64 > /tmp/issue72.patch.gz
+          echo '328aca693c5120da84e20faf81b9cc96939771a1ad7c401b17288cff7d739594  /tmp/issue72.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue72.patch.gz > /tmp/issue72.patch
+          echo '9e0dc73ee1965d74e8a4836406bc11906eeb608306059d5a4f9b91e68641b60b  /tmp/issue72.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue72.patch
+          git apply --binary /tmp/issue72.patch
+          rm -rf .github/issue-72-patch
+          rm -f .github/workflows/apply-issue-72-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Isolate typed actor-stage failures (#72)'
+          git push origin HEAD:issue-72-typed-actor-failure-isolation
