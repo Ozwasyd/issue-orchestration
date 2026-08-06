@@ -222,16 +222,16 @@
       {
         "path": "agents/test-owner.toml",
         "presence": "present",
-        "sha256": "e3c08f369b54f2bcc1c40fc25fe9932a7fa0a46ea679c082f9325e3df35ac152",
+        "sha256": "be78c25b6e7a933086cf67e58b09b4f0e0484a9e5d264e3c46c96aeaf315bc6c",
         "gitMode": "100644"
       },
       {
         "path": "agents/code-implementer.toml",
         "presence": "present",
-        "sha256": "efa56d267e2008eaca7c848660a58e11739ebc0cfd89ccf4447a9e65d7c9c205",
+        "sha256": "8570d07e2ce8e77026942a7bdb90531b453f7b076659c92fc39710421801d4ca",
         "gitMode": "100644"
       }
     ],
-    "candidateDigest": "b867418b950777462133627125002883c2fbd0d87785628f69529bb5a30c7942"
+    "candidateDigest": "18fd36c4bdd4416f62bc45f37cfb7cf166ee27de257880b693b6d3ca6c1bd701"
   }
 }

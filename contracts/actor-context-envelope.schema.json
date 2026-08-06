@@ -15,6 +15,7 @@
     "acceptanceItemIds",
     "stageContext",
     "instructions",
+    "repositoryEvidencePack",
     "sources",
     "outputInterface",
     "measurement",
@@ -24,18 +25,34 @@
     "schema": {
       "const": "issue-orchestration.actor-context-envelope.v1"
     },
-    "status": { "const": "compiled" },
+    "status": {
+      "const": "compiled"
+    },
     "authority": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "grants"],
+      "required": [
+        "kind",
+        "grants"
+      ],
       "properties": {
-        "kind": { "const": "actor-input-only" },
-        "grants": { "type": "array", "maxItems": 0 }
+        "kind": {
+          "const": "actor-input-only"
+        },
+        "grants": {
+          "type": "array",
+          "maxItems": 0
+        }
       }
     },
-    "role": { "type": "string", "minLength": 1 },
-    "phase": { "type": "string", "minLength": 1 },
+    "role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase": {
+      "type": "string",
+      "minLength": 1
+    },
     "actionType": {
       "enum": [
         "request-semantic-proposal",
@@ -68,73 +85,156 @@
         "startupAttestationDigest"
       ],
       "properties": {
-        "actionDigest": { "$ref": "#/$defs/digest" },
-        "actionSetDigest": { "$ref": "#/$defs/digest" },
-        "nodeId": { "type": "string", "minLength": 1 },
-        "runId": { "type": "string", "minLength": 1 },
-        "repository": { "type": "string", "minLength": 1 },
-        "issueNumber": { "type": "integer", "minimum": 1 },
-        "baseSha": { "$ref": "#/$defs/sha" },
-        "selectorReceiptDigest": { "$ref": "#/$defs/digest" },
-        "remoteSnapshotDigest": { "$ref": "#/$defs/digest" },
-        "semanticGraphDigest": { "$ref": "#/$defs/digest" },
-        "aggregateProjectionDigest": { "$ref": "#/$defs/digest" },
-        "policyDigest": { "$ref": "#/$defs/digest" },
-        "runtimeCapabilityBindingDigest": { "$ref": "#/$defs/digest" },
-        "lifecycleAuthorityBindingDigest": { "$ref": "#/$defs/digest" },
-        "startupAttestationDigest": { "$ref": "#/$defs/digest" }
+        "actionDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "actionSetDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issueNumber": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseSha": {
+          "$ref": "#/$defs/sha"
+        },
+        "selectorReceiptDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "remoteSnapshotDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "semanticGraphDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "aggregateProjectionDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "policyDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "runtimeCapabilityBindingDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "lifecycleAuthorityBindingDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "startupAttestationDigest": {
+          "$ref": "#/$defs/digest"
+        }
       }
     },
     "acceptanceItemIds": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 },
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "uniqueItems": true
     },
-    "stageContext": { "type": "object" },
+    "stageContext": {
+      "type": "object"
+    },
     "instructions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "entries"],
+      "required": [
+        "status",
+        "entries"
+      ],
       "properties": {
-        "status": { "enum": ["resolved", "none-applicable"] },
+        "status": {
+          "enum": [
+            "resolved",
+            "none-applicable"
+          ]
+        },
         "entries": {
           "type": "array",
-          "items": { "$ref": "#/$defs/instruction" }
+          "items": {
+            "$ref": "#/$defs/instruction"
+          }
         }
       }
+    },
+    "repositoryEvidencePack": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object"
+        }
+      ]
     },
     "sources": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["inline", "progressive", "totalSourceBytes"],
+      "required": [
+        "inline",
+        "progressive",
+        "totalSourceBytes"
+      ],
       "properties": {
         "inline": {
           "type": "array",
-          "items": { "$ref": "#/$defs/inlineSource" }
+          "items": {
+            "$ref": "#/$defs/inlineSource"
+          }
         },
         "progressive": {
           "type": "array",
-          "items": { "$ref": "#/$defs/progressiveSource" }
+          "items": {
+            "$ref": "#/$defs/progressiveSource"
+          }
         },
-        "totalSourceBytes": { "type": "integer", "minimum": 0 }
+        "totalSourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "outputInterface": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schema", "requiredFields", "failureVocabulary"],
+      "required": [
+        "schema",
+        "requiredFields",
+        "failureVocabulary"
+      ],
       "properties": {
-        "schema": { "type": "string", "minLength": 1 },
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
         "requiredFields": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "uniqueItems": true
         },
         "failureVocabulary": {
           "type": "array",
           "minItems": 1,
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "uniqueItems": true
         }
       }
@@ -147,17 +247,39 @@
         "estimatedTokens",
         "inlineSourceBytes",
         "progressiveSourceBytes",
-        "instructionBytes"
+        "instructionBytes",
+        "evidencePackBytes"
       ],
       "properties": {
-        "envelopeBytes": { "type": "integer", "minimum": 0 },
-        "estimatedTokens": { "type": "integer", "minimum": 0 },
-        "inlineSourceBytes": { "type": "integer", "minimum": 0 },
-        "progressiveSourceBytes": { "type": "integer", "minimum": 0 },
-        "instructionBytes": { "type": "integer", "minimum": 0 }
+        "envelopeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimatedTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inlineSourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "progressiveSourceBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "instructionBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "evidencePackBytes": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
-    "envelopeDigest": { "$ref": "#/$defs/digest" }
+    "envelopeDigest": {
+      "$ref": "#/$defs/digest"
+    }
   },
   "$defs": {
     "digest": {
@@ -171,14 +293,28 @@
     "instruction": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["path", "digest", "text", "appliesToPaths"],
+      "required": [
+        "path",
+        "digest",
+        "text",
+        "appliesToPaths"
+      ],
       "properties": {
-        "path": { "type": "string", "minLength": 1 },
-        "digest": { "$ref": "#/$defs/digest" },
-        "text": { "type": "string" },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "text": {
+          "type": "string"
+        },
         "appliesToPaths": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true
         }
       }
@@ -196,34 +332,72 @@
         "nodeId"
       ],
       "properties": {
-        "sourceId": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "minLength": 1 },
-        "path": { "type": "string", "minLength": 1 },
-        "digest": { "$ref": "#/$defs/digest" },
-        "bytes": { "type": "integer", "minimum": 0 },
-        "role": { "type": "string", "minLength": 1 },
-        "phase": { "type": "string", "minLength": 1 },
-        "nodeId": { "type": "string", "minLength": 1 }
+        "sourceId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     },
     "inlineSource": {
       "allOf": [
-        { "$ref": "#/$defs/sourceBase" },
+        {
+          "$ref": "#/$defs/sourceBase"
+        },
         {
           "type": "object",
-          "required": ["text"],
-          "properties": { "text": { "type": "string" } }
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
         }
       ]
     },
     "progressiveSource": {
       "allOf": [
-        { "$ref": "#/$defs/sourceBase" },
+        {
+          "$ref": "#/$defs/sourceBase"
+        },
         {
           "type": "object",
-          "required": ["referenceId"],
+          "required": [
+            "referenceId"
+          ],
           "properties": {
-            "referenceId": { "type": "string", "minLength": 1 }
+            "referenceId": {
+              "type": "string",
+              "minLength": 1
+            }
           }
         }
       ]

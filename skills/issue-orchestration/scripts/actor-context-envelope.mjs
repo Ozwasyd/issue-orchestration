@@ -6,6 +6,10 @@ import {
     digest,
     sameValue
 } from './runtime-contract-lib.mjs'
+import {
+    compileRepositoryEvidencePack,
+    validateRepositoryEvidencePack
+} from './repository-evidence-pack.mjs'
 
 const SCHEMA = 'issue-orchestration.actor-context-envelope.v1'
 const HASH = /^[a-f0-9]{64}$/u
@@ -123,7 +127,8 @@ const IDENTITY_FIELDS = Object.freeze([
 const TOP_LEVEL_KEYS = new Set([
     'schema', 'status', 'authority', 'role', 'phase', 'actionType',
     'identities', 'acceptanceItemIds', 'stageContext', 'instructions',
-    'sources', 'outputInterface', 'measurement', 'envelopeDigest'
+    'repositoryEvidencePack', 'sources', 'outputInterface', 'measurement',
+    'envelopeDigest'
 ])
 const IDENTITY_KEYS = new Set([
     'actionDigest', 'actionSetDigest', 'nodeId', ...IDENTITY_FIELDS
@@ -753,7 +758,7 @@ function scanForbiddenKeys(value, location = '$') {
     }
 }
 
-function measurement(core, sources, instructions) {
+function measurement(core, sources, instructions, evidencePack) {
     const envelopeBytes = utf8Bytes(JSON.stringify(canonical(core)))
     const inlineSourceBytes = sources.inline.reduce(
         (sum, entry) => sum + entry.bytes,
@@ -769,7 +774,8 @@ function measurement(core, sources, instructions) {
         inlineSourceBytes,
         progressiveSourceBytes:
             sources.progressive.reduce((sum, entry) => sum + entry.bytes, 0),
-        instructionBytes
+        instructionBytes,
+        evidencePackBytes: evidencePack?.measurement?.packBytes ?? 0
     })
 }
 
@@ -807,10 +813,25 @@ export function compileActorContextBundle({
             }
         }
     }
+    const evidenceBundle = stage.kind === 'writer'
+        ? compileRepositoryEvidencePack({
+            repositoryPath,
+            role: spec.role,
+            phase: spec.phase,
+            nodeId: action.nodeId,
+            identities: identityEnvelope(action, actionSet),
+            stageContext: stage,
+            instructions,
+            request: actorContext.repositoryEvidencePackRequest ?? {}
+        })
+        : { pack: null, sourceBlocks: [] }
     const compiledSources = compileSources({
         action,
         spec,
-        explicit: actorContext.sourceBlocks,
+        explicit: [
+            ...evidenceBundle.sourceBlocks,
+            ...(actorContext.sourceBlocks ?? [])
+        ],
         preparedContext
     })
     const sources = compiledSources.document
@@ -833,6 +854,7 @@ export function compileActorContextBundle({
         ),
         stageContext: stage,
         instructions,
+        repositoryEvidencePack: evidenceBundle.pack,
         sources,
         outputInterface: {
             schema: spec.outputSchema,
@@ -843,7 +865,12 @@ export function compileActorContextBundle({
     scanForbiddenKeys(core)
     const result = {
         ...core,
-        measurement: measurement(core, sources, instructions)
+        measurement: measurement(
+            core,
+            sources,
+            instructions,
+            evidenceBundle.pack
+        )
     }
     result.envelopeDigest = digest(result)
     return Object.freeze({
@@ -895,7 +922,7 @@ function validateClosedEnvelopeShape(envelope) {
         'actor-context-output-interface-fields-invalid')
     exactKeys(envelope.measurement, new Set([
         'envelopeBytes', 'estimatedTokens', 'inlineSourceBytes',
-        'progressiveSourceBytes', 'instructionBytes'
+        'progressiveSourceBytes', 'instructionBytes', 'evidencePackBytes'
     ]), 'actor-context-measurement-fields-invalid')
 }
 
@@ -926,10 +953,42 @@ function validateActionInterface(envelope) {
     }
 }
 
+function validateEvidencePackBinding(envelope) {
+    const pack = envelope.repositoryEvidencePack
+    if (envelope.stageContext.kind !== 'writer') {
+        if (pack !== null) fail('actor-context-evidence-pack-forbidden')
+        return
+    }
+    if (!pack) fail('actor-context-evidence-pack-required')
+    validateRepositoryEvidencePack(pack, {
+        role: envelope.role,
+        phase: envelope.phase,
+        nodeId: envelope.identities.nodeId,
+        identities: envelope.identities
+    })
+    const sources = [
+        ...envelope.sources.inline,
+        ...envelope.sources.progressive
+    ]
+    const byId = new Map(sources.map((entry) => [entry.sourceId, entry]))
+    for (const reference of pack.sourceReferences) {
+        const source = byId.get(reference.sourceId)
+        if (!source || source.kind !== reference.kind ||
+            source.path !== reference.path ||
+            source.digest !== reference.digest ||
+            source.bytes !== reference.bytes) {
+            fail('actor-context-evidence-pack-source-mismatch', {
+                sourceId: reference.sourceId
+            })
+        }
+    }
+}
+
 export function validateActorContextEnvelope(envelope) {
     object(envelope, 'actor-context-envelope-required')
     validateClosedEnvelopeShape(envelope)
     validateActionInterface(envelope)
+    validateEvidencePackBinding(envelope)
     if (envelope.schema !== SCHEMA ||
         envelope.status !== 'compiled' ||
         envelope.authority?.kind !== 'actor-input-only' ||

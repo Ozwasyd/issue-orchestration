@@ -2,17 +2,17 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "f167eaacdbfbb56d1c9bda66ac7f4f716234ff4f",
-    "sourceTreeDigest": "905ce8fd791bbc9942057e0831608fd45b322bef4eb4974c90327ea5db97e537",
+    "sourceCommit": "e3c51b54d735d0f648a797910dd75944ff31d00d",
+    "sourceTreeDigest": "092dadf3b6ac3ffc0741822ad0099f0bc28bf26191cdf7afec9c378b0e8c539f",
     "skillIdentity": "issue-orchestration",
-    "skillDigest": "2e2bc3d984100c8456856b8c234ea45624f90a19810ca7ce78a5016f79d52c81",
+    "skillDigest": "434346665d82607e577018ee81598f531a94ccd81744df130d37b8f54c241fac",
     "agentDigests": {
-        "code-implementer": "efa56d267e2008eaca7c848660a58e11739ebc0cfd89ccf4447a9e65d7c9c205",
+        "code-implementer": "8570d07e2ce8e77026942a7bdb90531b453f7b076659c92fc39710421801d4ca",
         "dag-creator-updater": "8c5f6c029ed60031a374d7260faf73cd9c96425ed610f36bf9536ee1cff1a104",
-        "documentation-writer": "141e60f474789b25f454abc322497da3b45220a04a6dd2d30c9d6f5c1c14a6b7",
-        "test-owner": "e3c08f369b54f2bcc1c40fc25fe9932a7fa0a46ea679c082f9325e3df35ac152",
+        "documentation-writer": "752bb70e3dac137e1759f9559be2c3a8b81bb0508f09d645a30eca56b66ae6a5",
+        "test-owner": "be78c25b6e7a933086cf67e58b09b4f0e0484a9e5d264e3c46c96aeaf315bc6c",
         "ui-system-adjudicator": "73fe80b6584b321a33dbf52a7339fbad2365871240bb30f414915ff965eeced1",
-        "ui-ux-implementer": "9ca524304b29bb6b9be8013b1a0577c8518d25a1135e25db55707636e330ab26",
+        "ui-ux-implementer": "071b08bdecb894157257d005a7361d8054cf57df3c1d71a3e5ebf45152d92a54",
         "ux-acceptance-verifier": "018723afa89abc8a46494be8662879b9c89d6b347235692694df54ba90d30cc4"
     },
     "modelPoolPolicyVersion": "stage-model-pool.v4",
@@ -75,7 +75,8 @@
         "verified-replay-projection-cache",
         "verified-lifecycle-action-set-cache",
         "stage-specific-actor-context-envelope",
-        "concise-envelope-bound-actor-instructions"
+        "concise-envelope-bound-actor-instructions",
+        "deterministic-repository-evidence-pack"
     ],
     "installTargets": [
         {
@@ -134,15 +135,15 @@
         "bootstrap-executor"
     ],
     "artifactDigests": {
-        "agents/code-implementer.toml": "efa56d267e2008eaca7c848660a58e11739ebc0cfd89ccf4447a9e65d7c9c205",
+        "agents/code-implementer.toml": "8570d07e2ce8e77026942a7bdb90531b453f7b076659c92fc39710421801d4ca",
         "agents/dag-creator-updater.toml": "8c5f6c029ed60031a374d7260faf73cd9c96425ed610f36bf9536ee1cff1a104",
-        "agents/documentation-writer.toml": "141e60f474789b25f454abc322497da3b45220a04a6dd2d30c9d6f5c1c14a6b7",
-        "agents/test-owner.toml": "e3c08f369b54f2bcc1c40fc25fe9932a7fa0a46ea679c082f9325e3df35ac152",
+        "agents/documentation-writer.toml": "752bb70e3dac137e1759f9559be2c3a8b81bb0508f09d645a30eca56b66ae6a5",
+        "agents/test-owner.toml": "be78c25b6e7a933086cf67e58b09b4f0e0484a9e5d264e3c46c96aeaf315bc6c",
         "agents/ui-system-adjudicator.toml": "73fe80b6584b321a33dbf52a7339fbad2365871240bb30f414915ff965eeced1",
-        "agents/ui-ux-implementer.toml": "9ca524304b29bb6b9be8013b1a0577c8518d25a1135e25db55707636e330ab26",
+        "agents/ui-ux-implementer.toml": "071b08bdecb894157257d005a7361d8054cf57df3c1d71a3e5ebf45152d92a54",
         "agents/ux-acceptance-verifier.toml": "018723afa89abc8a46494be8662879b9c89d6b347235692694df54ba90d30cc4",
         "contracts/acceptance-group-summary.schema.json": "c4a54211b55084de27cf37eca57f2a787cd839b68bcfba186188c08dc2e3a9b4",
-        "contracts/actor-context-envelope.schema.json": "1ced2b7d67fb790c04af997313e5806473f414582a51571b8b394d5167b46e42",
+        "contracts/actor-context-envelope.schema.json": "4ca8c9ee42166fcbc81f16fdf748e8e179a7212b99df970020baba4240d2b8ae",
         "contracts/aggregate-runtime-projection.schema.json": "485a39f31bfeff459ef0aaf5d0bfa0ccdaca8c9b64de096665ea6e29accbae08",
         "contracts/behavior-receipt-v3.schema.json": "43a958f1c9baf27fe2871ca0ec1f2d2a7622a231c6ccd0fdaa70b2a0a2dde803",
         "contracts/branch-retirement-receipt.schema.json": "889039d6531978f8f5cce8fe54505680a8c657554716fd38ec88b42b05d0f3b6",
@@ -201,6 +202,7 @@
         "contracts/remote-staging-ref-cleanup-receipt.schema.json": "d8e6774a1cdc3eb5e864dae72d56496e1eb5447f540db54a62ea1da896bfb091",
         "contracts/remote-state-snapshot.schema.json": "7eef6ceda1e00a4604891bf0310a62dbc4aa7696cd381fc24d91b05475019725",
         "contracts/repository-base-observation-epoch.schema.json": "12a70c2244cc6aeace63e2dd2a093f7bf1785b059718b0b7726c04199373360f",
+        "contracts/repository-evidence-pack.schema.json": "16f8e3dc856fc134d8f33b023d0371d6f1b5b41b790ec1d161e2286f95cc6479",
         "contracts/repository-landing-lane.schema.json": "4dc07f7acc699f477804fc2fc08856ba671397092b1e6822076839ccf30ca680",
         "contracts/reviewed-routing-assumptions.schema.json": "8819bce3119a48c11a7ecb58a6f4367f0e14d19494828311f86bb38b400c3a7c",
         "contracts/root-control-action-receipt.schema.json": "cb23f7188384b46e5e516377390013de1febd906644a43b33d160656cb0d0b5e",
@@ -275,7 +277,7 @@
         "policy/stage-mutation-guard-policy.json": "4e398c35cbd0bea86d0111e9a5439cc3b989bc54a63c25869278cb024eee9053",
         "policy/stage-permissions.json": "c772f84bf0862d48f45d76cd8c012380de2d628f9486185b6ed36b9d40fc6043",
         "policy/terminal-policy.json": "762b859601e24da86fe936e1fa12b9bac42188876df9998197ac4aee4d11fac1",
-        "scripts/build-manifest.mjs": "1fb2671b8872de4aabc2c6ead9284f2456a8256e6b093abd516842f3fd08f971",
+        "scripts/build-manifest.mjs": "0228da93a28e59fda2986d36ed96f1a8663fc048c58671a8e80129498dc171a6",
         "scripts/discover.mjs": "10d68bf4241e7d61fa02670654a1177005e74498c4306a73cb5def7160de8811",
         "scripts/install-workspace.mjs": "a05809343b3c001256768210293e5efa5e353e6db1d081693d6f88b9f0a6d914",
         "scripts/install.mjs": "6304fcdc44360269a04d2596fe57607e95e56bc85e32f706b735fac17d883fc9",
@@ -290,7 +292,7 @@
         "skills/issue-orchestration/references/review-failure-and-verification.md": "d97a84fd1c49e70b531417095830ae208890b4c6f5088c3153bfcd223df93a37",
         "skills/issue-orchestration/references/runtime-discovery-canary.md": "8dc72b595b2f987e96947fe5bd4e596718d23a9c162f10dc5688ec8126609351",
         "skills/issue-orchestration/scripts/acceptance-group-session.mjs": "1213a9869810d43f84e42214a91fda6fd713aee9d1e405a6940d150af6971609",
-        "skills/issue-orchestration/scripts/actor-context-envelope.mjs": "d9776e6e1a7780cb2059ee33e1f7cfb5756d63a69f4b0808f8e306f764ce3669",
+        "skills/issue-orchestration/scripts/actor-context-envelope.mjs": "736d8fba232c20ce5515a1468f2d6133d35582d6ead185fd26a0c6c2ff9d3472",
         "skills/issue-orchestration/scripts/behavior-revalidation.mjs": "746e2d30ae1f6bd8a7a1862729c4898ccac62caba8a6334f181f104522d4b49d",
         "skills/issue-orchestration/scripts/check-dag-gate.mjs": "f09cb4ce2f66c1f2d873268f86b0a6d29f653f0e5f219ff10bff563b69d179aa",
         "skills/issue-orchestration/scripts/codex-runtime-canary.mjs": "09fd4d75b1c472043474edbf8e338c9f30a0a31cba296a283a9e1470989b909a",
@@ -328,6 +330,7 @@
         "skills/issue-orchestration/scripts/quiescence-observation-collector.mjs": "f1647839037f9a09d34badb1fdb3dc6bda89d2634b2a3bbb97d254e2e87559cb",
         "skills/issue-orchestration/scripts/quiescence.mjs": "e96b6b170328c5248e3d7a61551cdf293ae32d388c38aff9a9f707d226fac1ea",
         "skills/issue-orchestration/scripts/remote-mutation-authority.mjs": "9426e52a61198f412747dd891823924a02dd678c1fe0edb67d6ab8199d35064b",
+        "skills/issue-orchestration/scripts/repository-evidence-pack.mjs": "025abd5b6b98e81442850143ac3157d2ec2eaf2eb8cee74af19e8a42e9f22637",
         "skills/issue-orchestration/scripts/repository-landing-lane.mjs": "766d1525f5a3d414f2a28552ba4472a0af6700f46f2337eeb597f85a5ff5a027",
         "skills/issue-orchestration/scripts/resource-lifecycle.mjs": "099d5939984140770eec24521084ac956381a21bab28a2a1b6ecfe789f1febb2",
         "skills/issue-orchestration/scripts/root-control-plane.mjs": "82e9c6c7b0d2e93751b617b645e8ab80b7bdd4a0a39eb96aa7bc51dc5ea13930",
@@ -349,8 +352,8 @@
         "skills/issue-orchestration/scripts/validate-state-root.mjs": "bf138d9705e50b931f2ab3419b87f71305a03401ac06308ac02f8099fdf0a00c",
         "skills/issue-orchestration/scripts/writer-runtime-watchdog.mjs": "ee4ff64bd5df649f48b3b397e89d50fcff3dc7df97250754993a6e608986da7d",
         "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447",
-        "skills/issue-orchestration/SKILL.md": "2e2bc3d984100c8456856b8c234ea45624f90a19810ca7ce78a5016f79d52c81",
+        "skills/issue-orchestration/SKILL.md": "434346665d82607e577018ee81598f531a94ccd81744df130d37b8f54c241fac",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "5d0e6ab03e48401f3bb092a9c4353a8a2b1c5c6aa4c0e6db951997d74a072f31"
+    "manifestDigest": "6ee890bfa382a2a59e1280ad47bf27dc22ec6ea5ed6248e7d5e0139665c13173"
 }

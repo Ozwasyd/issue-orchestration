@@ -107,7 +107,8 @@ const manifest = {
         'verified-replay-projection-cache',
         'verified-lifecycle-action-set-cache',
         'stage-specific-actor-context-envelope',
-        'concise-envelope-bound-actor-instructions'
+        'concise-envelope-bound-actor-instructions',
+        'deterministic-repository-evidence-pack'
     ],
     installTargets: [
         {

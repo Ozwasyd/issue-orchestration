@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/repository-evidence-pack.schema.json",
+  "title": "Repository evidence pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "authority",
+    "role",
+    "phase",
+    "nodeId",
+    "inputIdentity",
+    "scopeMap",
+    "instructions",
+    "commands",
+    "testOwnership",
+    "gitEvidence",
+    "sourceReferences",
+    "searches",
+    "failureEvidence",
+    "measurement",
+    "packDigest"
+  ],
+  "properties": {
+    "schema": { "const": "issue-orchestration.repository-evidence-pack.v1" },
+    "status": { "const": "compiled" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "grants"],
+      "properties": {
+        "kind": { "const": "actor-input-only" },
+        "grants": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "role": { "type": "string", "minLength": 1 },
+    "phase": { "type": "string", "minLength": 1 },
+    "nodeId": { "type": "string", "minLength": 1 },
+    "inputIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "baseSha",
+        "actionDigest",
+        "sliceDigest",
+        "instructionSetDigest",
+        "requestDigest"
+      ],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "baseSha": { "$ref": "#/$defs/sha" },
+        "actionDigest": { "$ref": "#/$defs/digest" },
+        "sliceDigest": { "$ref": "#/$defs/digest" },
+        "instructionSetDigest": { "$ref": "#/$defs/digest" },
+        "requestDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "scopeMap": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/scopeEntry" }
+    },
+    "instructions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/instruction" }
+    },
+    "commands": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/command" }
+    },
+    "testOwnership": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testOwnership" }
+    },
+    "gitEvidence": { "$ref": "#/$defs/gitEvidence" },
+    "sourceReferences": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sourceReference" }
+    },
+    "searches": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/search" }
+    },
+    "failureEvidence": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/failureEvidence" }
+      ]
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packBytes",
+        "sourceBytes",
+        "filesObserved",
+        "searchesExecuted",
+        "commandsBound"
+      ],
+      "properties": {
+        "packBytes": { "type": "integer", "minimum": 0 },
+        "sourceBytes": { "type": "integer", "minimum": 0 },
+        "filesObserved": { "type": "integer", "minimum": 0 },
+        "searchesExecuted": { "type": "integer", "minimum": 0 },
+        "commandsBound": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "packDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "scopeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "access", "exists", "kind", "bytes", "contentDigest"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "access": { "enum": ["read", "write"] },
+        "exists": { "type": "boolean" },
+        "kind": { "enum": ["file", "directory", "missing", "pattern"] },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "contentDigest": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/digest" }]
+        }
+      }
+    },
+    "instruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "digest", "appliesToPaths"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "appliesToPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "digest", "declaredPaths"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "declaredPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "testOwnership": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["testPath", "commandDigest", "nearbyPaths"],
+      "properties": {
+        "testPath": { "type": "string", "minLength": 1 },
+        "commandDigest": { "$ref": "#/$defs/digest" },
+        "nearbyPaths": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        }
+      }
+    },
+    "gitEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "observedHead",
+        "baseReachable",
+        "candidateSha",
+        "candidateReachable",
+        "pathStatus",
+        "diffStat",
+        "observationDigest"
+      ],
+      "properties": {
+        "status": { "enum": ["observed", "not-a-git-worktree"] },
+        "observedHead": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha" }]
+        },
+        "baseReachable": { "type": "boolean" },
+        "candidateSha": {
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha" }]
+        },
+        "candidateReachable": { "type": "boolean" },
+        "pathStatus": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "diffStat": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "observationDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "sourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceId", "kind", "path", "digest", "bytes"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "kind": {
+          "enum": [
+            "repository-evidence-file",
+            "repository-evidence-search",
+            "repository-evidence-failure"
+          ]
+        },
+        "path": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "path", "matchCount", "sourceId", "digest"],
+      "properties": {
+        "query": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 },
+        "matchCount": { "type": "integer", "minimum": 0 },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "failureEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "failureDigest", "sourceId", "digest", "bytes"],
+      "properties": {
+        "command": { "type": "string", "minLength": 1 },
+        "failureDigest": { "$ref": "#/$defs/digest" },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" },
+        "bytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

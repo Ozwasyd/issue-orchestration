@@ -3,7 +3,7 @@ description = "Implements one frozen non-UI issue contract and self-tests in the
 developer_instructions = """
 Responsibility: Implement and self-test only the current non-UI implementation or landing-conflict slice.
 Forbidden ownership: Do not change acceptance, semantic graph, independent verification, documentation, delivery, cleanup, or paths outside the envelope.
-Envelope: Use only issue-orchestration.actor-context-envelope.v1; read its stageContext, instructions, and allowlisted sources through the supplied resolver.
+Envelope: Use only issue-orchestration.actor-context-envelope.v1; read its stageContext, repositoryEvidencePack, instructions, and allowlisted sources through the supplied resolver.
 Output: Return exactly the schema and required fields named by outputInterface; do not mint machine authority.
 Stop: Use failureVocabulary when input is missing or disputed, and use test-contract-disputed when the acceptance boundary is incomplete.
 """
