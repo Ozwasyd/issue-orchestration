@@ -1,0 +1,44 @@
+name: Issue 66 branch bootstrap
+
+on:
+  push:
+    branches:
+      - issue-66-delta-scope-refresh
+
+permissions:
+  contents: write
+
+jobs:
+  apply-reviewed-patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact issue branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          ref: issue-66-delta-scope-refresh
+
+      - name: Apply reviewed issue 66 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = "issue-66-delta-scope-refresh"
+          test "$(git merge-base HEAD origin/main)" = "fb61e03d8a38dab344320332e476dcff55c7318f"
+          cat .github/issue-66.patch.part* > /tmp/issue-66.patch.gz.b64
+          echo "1b9d84a03809709e476a28386fd1779df6fbce66a0abb49ee58a1e38d40663aa  /tmp/issue-66.patch.gz.b64" | sha256sum --check
+          base64 --decode /tmp/issue-66.patch.gz.b64 | gzip --decompress > /tmp/issue-66.patch
+          echo "ba0c8844365f957d8327f776293247b6bbf94039075c3d026e712113dce0eaa6  /tmp/issue-66.patch" | sha256sum --check
+          git apply --3way --index /tmp/issue-66.patch
+          rm .github/issue-66.patch.part*
+          rm .github/workflows/issue-66-branch-bootstrap.yml
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="fb61e03d8a38dab344320332e476dcff55c7318f" node scripts/build-manifest.mjs
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Add delta-aware remote scope observation (#66)"
+          git push origin HEAD:issue-66-delta-scope-refresh
