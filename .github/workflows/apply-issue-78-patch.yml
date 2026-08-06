@@ -40,7 +40,10 @@ jobs:
           echo '8a0beb5ba1964453607e4c5306c5f23426ea763d77af4455dd2cdb928a4949f7  .github/issue-78-patch/chunk-01b.b64' | sha256sum -c -
           echo 'd6a7bf45408205df4f72261157cab4a07e13d79438284d368c42af0af94d0d2d  .github/issue-78-patch/chunk-01c.b64' | sha256sum -c -
           echo '68bc70d2260638c32b497bff6ce027711103a21d006ebc55c030cf3dfac89dd3  .github/issue-78-patch/chunk-01d.b64' | sha256sum -c -
-          echo 'fcf3af437989349028ee36ded358e5605a7bdb91d4ea1a39f17f54181312415d  .github/issue-78-patch/chunk-02.b64' | sha256sum -c -
+          echo '15a751d8e71ed2480dc5484ce798bd18e36d0beeea6e773d7e10c3dda4141267  .github/issue-78-patch/chunk-02a.b64' | sha256sum -c -
+          echo 'd11095329059d3c8d10263f3189d077b04991e0d006001bbabf5d3fd60a2387b  .github/issue-78-patch/chunk-02b.b64' | sha256sum -c -
+          echo 'c46528981d4309eab3e994ec9038db515cda3a91fb43bfb5bc3197335e3cedd4  .github/issue-78-patch/chunk-02c.b64' | sha256sum -c -
+          echo 'e4eeadcd29a82fe73bb0941b39be40ad7f25489c4567255ce6253fd062380426  .github/issue-78-patch/chunk-02d.b64' | sha256sum -c -
           echo '2617655ed7e3dfa6808903798b4033f77e3d65c86d9f5853467054a4d67bb058  .github/issue-78-patch/chunk-03.b64' | sha256sum -c -
           echo '388561a7fe4fd7d2c3810369bc12b0dc77b80d21bda4cb10f2975179cfb65bb4  .github/issue-78-patch/chunk-04.b64' | sha256sum -c -
           echo 'd633e7523c6446e55a5479e3fe6f60329d35999242d19935f6b28e9b0f05049a  .github/issue-78-patch/chunk-05.b64' | sha256sum -c -
@@ -51,7 +54,10 @@ jobs:
             .github/issue-78-patch/chunk-01b.b64 \
             .github/issue-78-patch/chunk-01c.b64 \
             .github/issue-78-patch/chunk-01d.b64 \
-            .github/issue-78-patch/chunk-02.b64 \
+            .github/issue-78-patch/chunk-02a.b64 \
+            .github/issue-78-patch/chunk-02b.b64 \
+            .github/issue-78-patch/chunk-02c.b64 \
+            .github/issue-78-patch/chunk-02d.b64 \
             .github/issue-78-patch/chunk-03.b64 \
             .github/issue-78-patch/chunk-04.b64 \
             .github/issue-78-patch/chunk-05.b64 \
