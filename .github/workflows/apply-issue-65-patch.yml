@@ -1,9 +1,6 @@
 name: apply issue 65 patch
 
 on:
-  push:
-    branches:
-      - issue-65-repository-base-wave
   pull_request:
     branches:
       - main
@@ -13,7 +10,6 @@ permissions:
 
 jobs:
   apply:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
@@ -24,7 +20,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base64 -d .github/issue-65-patch/payload.b64 > /tmp/issue65.patch.gz
+          echo '73defbe1f9455506e0d966b7cab9b274ba59e86c57fb659307f128d369d11db4  .github/issue-65-patch/part-00.b64' | sha256sum -c -
+          echo '924e75f87a0e6b6207d8debef0bed285fed40a16e07e4cef80a38021b5eb229f  .github/issue-65-patch/part-01.b64' | sha256sum -c -
+          echo '496b0bb9e2e8dfa8fa15618445f727d7beff975414de0091b4afcfda5890af6a  .github/issue-65-patch/part-02.b64' | sha256sum -c -
+          echo '07984029570e25382e73be4d772d3b100d75741fdb328d46546909a1cfdaa43e  .github/issue-65-patch/part-03.b64' | sha256sum -c -
+          cat .github/issue-65-patch/part-0*.b64 | base64 -d > /tmp/issue65.patch.gz
           echo '8b39c268dd96e41ea02e937c6a940ee29c542c6eec4ed1f63b3d57a9563f3ccb  /tmp/issue65.patch.gz' | sha256sum -c -
           gzip -dc /tmp/issue65.patch.gz > /tmp/issue65.patch
           echo 'f0f9519d730d0955338e0133b60612d16e9d6640d4a52238a8785a0ff12334be  /tmp/issue65.patch' | sha256sum -c -
