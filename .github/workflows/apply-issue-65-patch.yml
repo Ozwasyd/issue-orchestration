@@ -4,12 +4,16 @@ on:
   push:
     branches:
       - issue-65-repository-base-wave
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
 
 jobs:
   apply:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
