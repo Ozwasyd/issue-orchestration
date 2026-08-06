@@ -14,6 +14,7 @@ import {
     recordLifecycleDispatchedActionResultBatch
 } from './lifecycle-run-loop.mjs'
 import {
+    consumeLifecycleRepositoryBaseObservationEpoch,
     executeLifecycleScopeRefresh,
     observeLifecycleRepositoryBaseEpoch
 } from './lifecycle-live-refresh.mjs'
@@ -100,6 +101,17 @@ function object(value, code) {
 
 function text(value, code) {
     if (typeof value !== 'string' || value.length === 0) fail(code)
+    return value
+}
+
+function array(value, code) {
+    if (!Array.isArray(value)) fail(code)
+    return value
+}
+
+function exactKeys(value, keys, code) {
+    object(value, code)
+    if (!sameValue(Object.keys(value).sort(), [...keys].sort())) fail(code)
     return value
 }
 
@@ -331,7 +343,9 @@ export const LIFECYCLE_PRODUCTION_DISPATCH_MAP = Object.freeze(
 function provider(value) {
     object(value, 'dispatcher-context-provider-required')
     if (typeof value.prepare !== 'function' ||
-        typeof value.observeRemoteIssues !== 'function') {
+        typeof value.observeRemoteIssues !== 'function' ||
+        (value.prepareBatch !== undefined &&
+            typeof value.prepareBatch !== 'function')) {
         fail('dispatcher-context-provider-invalid')
     }
     return value
@@ -422,23 +436,47 @@ function normalizeLedger(entry, output) {
     return output?.ledger ?? output
 }
 
-async function prepareAction({
-    contextProvider,
+const PREPARED_VALUE_MISSING = Symbol('prepared-value-missing')
+
+function preparationBaseEpochBinding(receipt, action) {
+    const binding = receipt.actionBindings.find((candidate) =>
+        candidate.actionDigest === action.actionDigest &&
+        candidate.dispatchId === null)
+    if (!binding) fail('dispatcher-preparation-base-binding-missing')
+    return Object.freeze({
+        schema:
+            'issue-orchestration.dispatch-preparation-base-binding.v1',
+        epochId: receipt.epochId,
+        receiptDigest: receipt.receiptDigest,
+        actionDigest: action.actionDigest,
+        actionBindingsDigest: binding.actionBindingsDigest,
+        repositories: Object.freeze(binding.repositories.map((expected) => {
+            const observed = receipt.repositories.find((entry) =>
+                entry.repository === expected.repository)
+            if (!observed) {
+                fail('dispatcher-preparation-base-observation-missing')
+            }
+            return Object.freeze({
+                repository: expected.repository,
+                expectedBaseSha: expected.baseSha,
+                observationDigest:
+                    observed.observation.observationDigest
+            })
+        }))
+    })
+}
+
+function preparationRequest({
     entry,
     action,
     actionSet,
     ledger,
+    projection,
+    repositoryBaseEpoch,
     startup,
-    createdAt,
-    telemetry
+    createdAt
 }) {
-    const projection = measuredProjection(
-        telemetry,
-        ledger,
-        startup,
-        'context-preparation-projection'
-    )
-    const request = Object.freeze({
+    return Object.freeze({
         schema: 'issue-orchestration.dispatch-context-request.v1',
         owner: entry.owner,
         executionClass: entry.executionClass,
@@ -446,23 +484,58 @@ async function prepareAction({
         actionSet: structuredClone(actionSet),
         ledger,
         projection,
+        ...(repositoryBaseEpoch ? {
+            repositoryBaseEpoch: preparationBaseEpochBinding(
+                repositoryBaseEpoch,
+                action
+            )
+        } : {}),
         startup,
         createdAt
     })
-    const prepare = () => contextProvider.prepare(request)
-    const preparedValue = telemetry
-        ? await telemetry.measureAsync(
-            ['contextPreparation'],
-            {
-                boundary: 'context-provider-prepare',
-                actionDigest: action.actionDigest,
-                actionType: action.type,
-                nodeId: action.nodeId
-            },
-            prepare,
-            { context: request }
+}
+
+function batchPreparationAction({
+    action,
+    entry,
+    projection,
+    repositoryBaseEpoch
+}) {
+    return Object.freeze({
+        actionDigest: action.actionDigest,
+        owner: entry.owner,
+        executionClass: entry.executionClass,
+        action: structuredClone(action),
+        projection: Object.freeze({
+            schema:
+                'issue-orchestration.dispatch-action-projection.v1',
+            aggregateProjectionDigest:
+                projection.aggregateProjection.aggregateProjectionDigest,
+            semanticGraphDigest:
+                projection.semanticGraph.semanticGraphDigest,
+            nodeId: action.nodeId,
+            node: structuredClone(
+                projection.state.nodes[action.nodeId] ?? null
+            )
+        }),
+        repositoryBaseEpoch: preparationBaseEpochBinding(
+            repositoryBaseEpoch,
+            action
         )
-        : await prepare()
+    })
+}
+
+function completePreparedAction({
+    preparedValue,
+    entry,
+    action,
+    actionSet,
+    ledger,
+    projection,
+    startup,
+    createdAt,
+    telemetry
+}) {
     const prepared = object(
         preparedValue,
         'dispatcher-context-preparation-invalid'
@@ -518,6 +591,262 @@ async function prepareAction({
             ? actorMetadata({ prepared, entry, action })
             : null
     }
+}
+
+async function prepareAction({
+    contextProvider,
+    entry,
+    action,
+    actionSet,
+    ledger,
+    startup,
+    createdAt,
+    telemetry,
+    repositoryBaseEpoch,
+    projection: suppliedProjection = null,
+    preparedValue = PREPARED_VALUE_MISSING,
+    measurePreparation = true
+}) {
+    const projection = suppliedProjection ?? measuredProjection(
+        telemetry,
+        ledger,
+        startup,
+        'context-preparation-projection'
+    )
+    const request = preparationRequest({
+        entry,
+        action,
+        actionSet,
+        ledger,
+        projection,
+        repositoryBaseEpoch,
+        startup,
+        createdAt
+    })
+    let value = preparedValue
+    if (value === PREPARED_VALUE_MISSING) {
+        const prepare = () => contextProvider.prepare(request)
+        value = telemetry && measurePreparation
+            ? await telemetry.measureAsync(
+                ['contextPreparation'],
+                {
+                    boundary: 'context-provider-prepare',
+                    actionDigest: action.actionDigest,
+                    actionType: action.type,
+                    nodeId: action.nodeId
+                },
+                prepare,
+                { context: request }
+            )
+            : await prepare()
+    }
+    return completePreparedAction({
+        preparedValue: value,
+        entry,
+        action,
+        actionSet,
+        ledger,
+        projection,
+        startup,
+        createdAt,
+        telemetry
+    })
+}
+
+function normalizeBatchPreparationResult(value, items) {
+    exactKeys(value, ['schema', 'preparations'],
+        'dispatcher-batch-preparation-result-invalid')
+    if (value.schema !==
+            'issue-orchestration.dispatch-context-batch-result.v1') {
+        fail('dispatcher-batch-preparation-schema-invalid')
+    }
+    const preparations = array(
+        value.preparations,
+        'dispatcher-batch-preparations-invalid'
+    )
+    if (preparations.length !== items.length) {
+        fail('dispatcher-batch-preparation-set-invalid')
+    }
+    return preparations.map((candidate, index) => {
+        exactKeys(candidate, ['actionDigest', 'status', 'prepared'],
+            'dispatcher-batch-preparation-item-invalid')
+        const expected = items[index].action.actionDigest
+        if (candidate.actionDigest !== expected) {
+            fail('dispatcher-batch-preparation-order-invalid', {
+                expected,
+                actual: candidate.actionDigest
+            })
+        }
+        if (!['prepared', 'failed'].includes(candidate.status)) {
+            fail('dispatcher-batch-preparation-status-invalid')
+        }
+        if (candidate.status === 'prepared') {
+            object(candidate.prepared,
+                'dispatcher-batch-preparation-value-invalid')
+        } else if (candidate.prepared !== null) {
+            fail('dispatcher-batch-preparation-failure-value-invalid')
+        }
+        return Object.freeze({
+            actionDigest: expected,
+            status: candidate.status,
+            prepared: candidate.prepared
+        })
+    })
+}
+
+function validatePreparedWave(items) {
+    const attemptIdentities = items.map(({ action, metadata }) =>
+        `${action.nodeId}:${metadata.attemptId}`)
+    if (new Set(attemptIdentities).size !== attemptIdentities.length) {
+        fail('dispatcher-preparation-attempt-duplicate')
+    }
+    const unique = [
+        ['slotId', 'dispatcher-preparation-slot-duplicate'],
+        ['runtimeBindingDigest',
+            'dispatcher-preparation-runtime-binding-duplicate'],
+        ['leaseDigest', 'dispatcher-preparation-lease-duplicate'],
+        ['resourceDigest', 'dispatcher-preparation-resource-duplicate']
+    ]
+    for (const [field, code] of unique) {
+        const values = items.map(({ metadata }) => metadata[field])
+        if (new Set(values).size !== values.length) {
+            fail(code, { field })
+        }
+    }
+    return items
+}
+
+async function prepareActorWave({
+    contextProvider,
+    actions,
+    actionSet,
+    ledger,
+    startup,
+    createdAt,
+    telemetry,
+    repositoryBaseEpoch
+}) {
+    const projection = measuredProjection(
+        telemetry,
+        ledger,
+        startup,
+        'actor-wave-shared-projection'
+    )
+    const items = actions.map((action) => ({
+        action,
+        entry: actionOwner(action)
+    }))
+    const requests = items.map(({ action, entry }) => preparationRequest({
+        entry,
+        action,
+        actionSet,
+        ledger,
+        projection,
+        repositoryBaseEpoch,
+        startup,
+        createdAt
+    }))
+    const batchRequest = Object.freeze({
+        schema: 'issue-orchestration.dispatch-context-batch-request.v1',
+        actionSetDigest: actionSet.actionSetDigest,
+        aggregateProjectionDigest:
+            projection.aggregateProjection.aggregateProjectionDigest,
+        semanticGraphDigest: projection.semanticGraph.semanticGraphDigest,
+        repositoryBaseEpoch: Object.freeze({
+            schema: repositoryBaseEpoch.schema,
+            epochId: repositoryBaseEpoch.epochId,
+            receiptDigest: repositoryBaseEpoch.receiptDigest,
+            actionBindingSetDigest:
+                repositoryBaseEpoch.actionBindingSetDigest,
+            repositoryExpectationSetDigest:
+                repositoryBaseEpoch.repositoryExpectationSetDigest
+        }),
+        startup,
+        createdAt,
+        actions: Object.freeze(items.map((item) =>
+            batchPreparationAction({
+                ...item,
+                projection,
+                repositoryBaseEpoch
+            })))
+    })
+    const prepare = async () => {
+        if (contextProvider.prepareBatch) {
+            return normalizeBatchPreparationResult(
+                await contextProvider.prepareBatch(batchRequest),
+                items
+            )
+        }
+        return Promise.all(requests.map(async (request, index) => {
+            try {
+                return Object.freeze({
+                    actionDigest: items[index].action.actionDigest,
+                    status: 'prepared',
+                    prepared: await contextProvider.prepare(request)
+                })
+            } catch {
+                return Object.freeze({
+                    actionDigest: items[index].action.actionDigest,
+                    status: 'failed',
+                    prepared: null
+                })
+            }
+        }))
+    }
+    const outcomes = telemetry
+        ? await telemetry.measureAsync(
+            ['contextPreparation'],
+            {
+                boundary: contextProvider.prepareBatch
+                    ? 'context-provider-prepare-batch'
+                    : 'context-provider-prepare-concurrent',
+                actionDigests: actions.map(({ actionDigest }) =>
+                    actionDigest),
+                preparationCount: actions.length,
+                providerMode: contextProvider.prepareBatch
+                    ? 'batch'
+                    : 'concurrent-single'
+            },
+            prepare,
+            { context: contextProvider.prepareBatch
+                ? batchRequest
+                : requests }
+        )
+        : await prepare()
+    const prepared = []
+    const failedActionDigests = []
+    for (let index = 0; index < outcomes.length; index += 1) {
+        const outcome = outcomes[index]
+        const item = items[index]
+        if (outcome.status !== 'prepared') {
+            failedActionDigests.push(item.action.actionDigest)
+            continue
+        }
+        try {
+            const completed = await prepareAction({
+                contextProvider,
+                entry: item.entry,
+                action: item.action,
+                actionSet,
+                ledger,
+                startup,
+                createdAt,
+                telemetry,
+                projection,
+                repositoryBaseEpoch,
+                preparedValue: outcome.prepared,
+                measurePreparation: false
+            })
+            prepared.push({ ...item, ...completed })
+        } catch {
+            failedActionDigests.push(item.action.actionDigest)
+        }
+    }
+    validatePreparedWave(prepared)
+    return Object.freeze({
+        prepared: Object.freeze(prepared),
+        failedActionDigests: Object.freeze(failedActionDigests)
+    })
 }
 
 function observedRepositories(telemetry, actions) {
@@ -671,28 +1000,46 @@ async function startActorWave({
         telemetry
     })
     if (observed.rebound) {
-        return { rebound: true, ledger: observed.ledger }
+        return {
+            rebound: true,
+            ledger: observed.ledger,
+            startedCount: 0,
+            failedActionDigests: Object.freeze([])
+        }
     }
-    const prepared = []
     const createdAt = timestamp(clock)
-    for (const action of actions) {
-        const entry = actionOwner(action)
-        const value = await prepareAction({
-            contextProvider,
-            entry,
-            action,
-            actionSet,
+    const preparation = await prepareActorWave({
+        contextProvider,
+        actions,
+        actionSet,
+        ledger: currentLedger,
+        startup,
+        createdAt,
+        telemetry,
+        repositoryBaseEpoch: observed.receipt
+    })
+    const prepared = preparation.prepared
+    for (const item of prepared) {
+        consumeLifecycleRepositoryBaseObservationEpoch({
             ledger: currentLedger,
-            startup,
-            createdAt,
-            telemetry
+            receipt: observed.receipt,
+            action: item.action,
+            startup
         })
-        prepared.push({ action, entry, ...value })
+    }
+    if (prepared.length === 0) {
+        return {
+            rebound: false,
+            ledger: currentLedger,
+            startedCount: 0,
+            failedActionDigests: preparation.failedActionDigests
+        }
     }
     const recordStarted = () => recordLifecycleDispatchBatchStarted({
         ledger: currentLedger,
         actionSet,
         dispatches: prepared.map(({ metadata }) => metadata),
+        failedActionDigests: preparation.failedActionDigests,
         createdAt,
         startup
     })
@@ -730,7 +1077,12 @@ async function startActorWave({
             promise
         })
     }
-    return { rebound: false, ledger: currentLedger }
+    return {
+        rebound: false,
+        ledger: currentLedger,
+        startedCount: prepared.length,
+        failedActionDigests: preparation.failedActionDigests
+    }
 }
 
 async function recoverRunning({
@@ -1171,8 +1523,11 @@ export async function runLifecycleProductionDispatcher({
                         telemetry
                     })
                     currentLedger = started.ledger
-                    transitions += 1
-                    if (started.rebound) continue
+                    if (started.rebound) {
+                        transitions += 1
+                        continue
+                    }
+                    if (started.startedCount > 0) transitions += 1
                 }
                 currentLedger = await settleReadyBatch({
                     running,
@@ -1227,6 +1582,16 @@ export async function runLifecycleProductionDispatcher({
                     telemetry
                 })
                 currentLedger = started.ledger
+                if (started.rebound) {
+                    transitions += 1
+                    continue
+                }
+                if (started.startedCount === 0) {
+                    fail('dispatcher-actor-preparation-empty', {
+                        failedActionDigests:
+                            started.failedActionDigests
+                    })
+                }
                 transitions += 1
                 continue
             }
