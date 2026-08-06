@@ -22,6 +22,7 @@ import {
     appendNodeEventAtomicSync,
     canonicalNodeStateLocation,
     canonicalRunStateLocation,
+    canonicalControlLedgerFromRecovered,
     compileControlEvent,
     createControlLedger,
     persistAggregateRunState,
@@ -53,6 +54,9 @@ const SHA = /^[a-f0-9]{40}$/u
 const HASH = /^[a-f0-9]{64}$/u
 const AUTHORITY_CONTEXT = Symbol('lifecycle-authority-context')
 const CONTROL_FACTS_CACHE = Symbol('lifecycle-control-facts-cache')
+const REPLAY_CACHE_AUTHORITY_DIGEST = Symbol(
+    'lifecycle-replay-cache-authority-digest'
+)
 const DISPATCHABLE_ACTION_TYPES = new Set([
     'request-semantic-proposal',
     'request-test-contract-planning',
@@ -276,6 +280,15 @@ function resolveAuthority(value, startup = null) {
     }
     Object.defineProperty(authority, AUTHORITY_CONTEXT, {
         value: true
+    })
+    Object.defineProperty(authority, REPLAY_CACHE_AUTHORITY_DIGEST, {
+        value: digest({
+            schema:
+                'issue-orchestration.lifecycle-replay-cache-authority.v1',
+            stateRoot: authority.stateRoot,
+            runId: authority.runId,
+            startup: currentStartup
+        })
     })
     return authority
 }
@@ -591,12 +604,22 @@ function compileNodeEffect(node, admission, eventSequence) {
     return { node: next, receipts }
 }
 
-function currentControlFacts(authority) {
-    if (authority[CONTROL_FACTS_CACHE]) {
+function currentControlFacts(authority, replayOptions = {}) {
+    const forceReplay = replayOptions.forceFullReplay === true ||
+        replayOptions.explicitAudit === true ||
+        replayOptions.corruptionSuspected === true
+    if (!forceReplay && authority[CONTROL_FACTS_CACHE]) {
         return authority[CONTROL_FACTS_CACHE]
     }
-    const controlLedger = readCanonicalControlLedger(authority)
-    const controlProjection = replayControlLedger(controlLedger)
+    const recovered = recoverAggregateRunState({
+        ...authority,
+        cacheAuthorityDigest: authority[REPLAY_CACHE_AUTHORITY_DIGEST],
+        forceFullReplay: replayOptions.forceFullReplay === true,
+        explicitAudit: replayOptions.explicitAudit === true,
+        corruptionSuspected: replayOptions.corruptionSuspected === true
+    })
+    const controlLedger = canonicalControlLedgerFromRecovered(recovered)
+    const controlProjection = recovered.controlProjection
     const genesis = genesisFromControlLedger(controlLedger)
     const lifecycleAuthority =
         currentLifecycleAuthorityFromControlLedger(
@@ -646,7 +669,8 @@ function currentControlFacts(authority) {
         genesis,
         lifecycleAuthority,
         selectorReceipt,
-        remoteSnapshotReceipt
+        remoteSnapshotReceipt,
+        recovered
     })
     Object.defineProperty(authority, CONTROL_FACTS_CACHE, {
         value: facts,
@@ -868,7 +892,7 @@ export function replayLifecycleRunLedger(
 ) {
     const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
-    const recovered = recoverAggregateRunState(authority)
+    const recovered = facts.recovered
     const semanticGraph = currentSemanticGraph({
         ...facts,
         recovered
@@ -882,11 +906,20 @@ export function replayLifecycleRunLedger(
 
 export function projectLifecycleRun(
     value,
-    { startup } = {}
+    {
+        startup,
+        forceFullReplay = false,
+        explicitAudit = false,
+        corruptionSuspected = false
+    } = {}
 ) {
     const authority = resolveAuthority(value, startup)
-    const facts = currentControlFacts(authority)
-    const recovered = recoverAggregateRunState(authority)
+    const facts = currentControlFacts(authority, {
+        forceFullReplay,
+        explicitAudit,
+        corruptionSuspected
+    })
+    const recovered = facts.recovered
     const semanticGraph = currentSemanticGraph({
         ...facts,
         recovered
@@ -911,7 +944,7 @@ function lifecycleCompilerInput(
 ) {
     const authority = resolveAuthority(value, startup)
     const facts = currentControlFacts(authority)
-    const recovered = recoverAggregateRunState(authority)
+    const recovered = facts.recovered
     const semanticGraph = currentSemanticGraph({
         ...facts,
         recovered
@@ -1071,6 +1104,7 @@ function appendCanonicalNodeResult(arguments_) {
         event: compiled.event,
         writerRole: 'root-scheduler'
     })
+    clearControlFactsCache(arguments_.authority)
     return compiled.effect
 }
 
@@ -1730,7 +1764,7 @@ export function recordLifecycleDispatchBatchStarted({
 
 function currentNodeForDispatchedResult(authority, action) {
     const facts = currentControlFacts(authority)
-    const recovered = recoverAggregateRunState(authority)
+    const recovered = facts.recovered
     const registration = facts.controlProjection.nodes[action.nodeId]
     const entry = recovered.nodeIndex.nodes[action.nodeId]
     const nodeProjection = recovered.nodeProjections[action.nodeId]

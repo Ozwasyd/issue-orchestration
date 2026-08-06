@@ -977,8 +977,8 @@ test('enabling performance telemetry leaves canonical state byte-identical', asy
     assert.equal(receipt.failureCode, 'dispatcher-transition-limit-exceeded')
     assert.equal(receipt.transitions, 1)
     assert.deepEqual(receipt.operationSummary, {
-        canonicalReplay: { count: 3, durationMs: 15 },
-        aggregateProjectionRebuild: { count: 3, durationMs: 15 },
+        canonicalReplay: { count: 2, durationMs: 10 },
+        aggregateProjectionRebuild: { count: 2, durationMs: 10 },
         actionSetCompilation: { count: 0, durationMs: 0 },
         remoteScopeObservation: { count: 1, durationMs: 5 },
         repositoryBaseObservation: { count: 0, durationMs: 0 },
@@ -1017,8 +1017,8 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
     )
     assert.ok(receipt)
     assert.deepEqual(receipt.operationSummary, {
-        canonicalReplay: { count: 17, durationMs: 85 },
-        aggregateProjectionRebuild: { count: 17, durationMs: 85 },
+        canonicalReplay: { count: 5, durationMs: 25 },
+        aggregateProjectionRebuild: { count: 5, durationMs: 25 },
         actionSetCompilation: { count: 3, durationMs: 15 },
         remoteScopeObservation: { count: 3, durationMs: 15 },
         repositoryBaseObservation: { count: 4, durationMs: 20 },

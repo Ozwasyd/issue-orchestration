@@ -239,17 +239,40 @@ export function createDispatcherPerformanceCollector({
             fail('dispatcher-performance-span-invalid')
         }
         const spanStartedAt = now()
-        const canonicalBytes = options.ledgerRead === true
+        let result
+        let failure = null
+        let canonicalBytes = options.ledgerRead === true &&
+            typeof options.resolveCanonicalBytes !== 'function'
             ? ledgerBytes({ stateRoot, runId })
             : 0
         const contextBytes = options.context === undefined
             ? 0
             : byteLength(options.context)
         try {
-            return operation()
+            result = operation()
+            return result
+        } catch (error) {
+            failure = error
+            throw error
         } finally {
+            const resolvedMetrics = typeof options.resolveMetrics === 'function'
+                ? options.resolveMetrics({ result, error: failure })
+                : metrics
+            if (!Array.isArray(resolvedMetrics) ||
+                resolvedMetrics.some((metric) => !METRIC_SET.has(metric))) {
+                fail('dispatcher-performance-metric-invalid')
+            }
+            if (typeof options.resolveCanonicalBytes === 'function') {
+                canonicalBytes = options.resolveCanonicalBytes({
+                    result,
+                    error: failure
+                })
+                if (!Number.isInteger(canonicalBytes) || canonicalBytes < 0) {
+                    fail('dispatcher-performance-byte-measurement-failed')
+                }
+            }
             recordSpan({
-                metrics,
+                metrics: resolvedMetrics,
                 metadata,
                 startedAt: spanStartedAt,
                 completedAt: now(),
