@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/issue-orchestration/model-qualification-receipt.schema.json",
+  "title": "Issue orchestration model qualification receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "diagnosticAuthority", "automaticPolicyMutation",
+    "config", "bindings", "frozenInputs", "accounting", "invocations",
+    "scenarioResults", "cleanup", "receiptDigest"
+  ],
+  "properties": {
+    "schema": {"const": "issue-orchestration.model-qualification-receipt.v1"},
+    "status": {"const": "complete"},
+    "diagnosticAuthority": {"const": "none"},
+    "automaticPolicyMutation": {"const": false},
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profiles", "scenarios", "maxInvocations", "maxTokens", "budgetUsd", "seed", "configDigest"],
+      "properties": {
+        "profiles": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "scenarios": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "maxInvocations": {"type": "integer", "minimum": 1},
+        "maxTokens": {"type": "integer", "minimum": 1},
+        "budgetUsd": {"type": "number", "exclusiveMinimum": 0},
+        "seed": {"type": "string", "minLength": 1},
+        "configDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyDigest", "catalogDigest", "pricingDigest", "planDigest", "protectedSourceDigest"],
+      "properties": {
+        "policyDigest": {"$ref": "#/$defs/digest"},
+        "catalogDigest": {"$ref": "#/$defs/digest"},
+        "pricingDigest": {"$ref": "#/$defs/digest"},
+        "planDigest": {"$ref": "#/$defs/digest"},
+        "protectedSourceDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "frozenInputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/digest"}
+    },
+    "accounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocationCount", "totalTokens", "totalCostUsd", "pricingCurrency"],
+      "properties": {
+        "invocationCount": {"type": "integer", "minimum": 1},
+        "totalTokens": {"type": "integer", "minimum": 0},
+        "totalCostUsd": {"type": "number", "minimum": 0},
+        "pricingCurrency": {"const": "USD"}
+      }
+    },
+    "invocations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/invocation"}
+    },
+    "scenarioResults": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/result"}
+    },
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observationMethod", "temporaryRootDigest", "existsAfterDelete", "resourcesAfter", "retainedFailureEvidence", "cleanupDigest"],
+      "properties": {
+        "observationMethod": {"const": "post-delete-lstat"},
+        "temporaryRootDigest": {"$ref": "#/$defs/digest"},
+        "existsAfterDelete": {"const": false},
+        "resourcesAfter": {"const": 0},
+        "retainedFailureEvidence": {"const": false},
+        "cleanupDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "receiptDigest": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputTokens", "cachedInputTokens", "outputTokens", "totalTokens"],
+      "properties": {
+        "inputTokens": {"type": "integer", "minimum": 0},
+        "cachedInputTokens": {"type": "integer", "minimum": 0},
+        "outputTokens": {"type": "integer", "minimum": 0},
+        "totalTokens": {"type": "integer", "minimum": 0}
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema", "ordinal", "profile", "scenarioId", "phaseIndex",
+        "freshContext", "requestedRuntime", "effectiveRuntime", "usage",
+        "costUsd", "elapsedMs", "tools", "mutation", "checkpoint", "accepted", "retryRecovery",
+        "exitCode", "eventDigest", "recordDigest", "invocationDigest"
+      ],
+      "properties": {
+        "schema": {"const": "issue-orchestration.model-qualification-invocation.v1"},
+        "ordinal": {"type": "integer", "minimum": 0},
+        "profile": {"type": "string"},
+        "scenarioId": {"type": "string"},
+        "phaseIndex": {"type": "integer", "minimum": 0},
+        "freshContext": {"type": "boolean"},
+        "requestedRuntime": {"type": "object"},
+        "effectiveRuntime": {"type": "object"},
+        "usage": {"$ref": "#/$defs/usage"},
+        "costUsd": {"type": "number", "minimum": 0},
+        "elapsedMs": {"type": "integer", "minimum": 0},
+        "tools": {"type": "object"},
+        "mutation": {"type": "object"},
+        "checkpoint": {"type": ["object", "null"]},
+        "accepted": {"type": "boolean"},
+        "retryRecovery": {"type": "object"},
+        "exitCode": {"type": "integer"},
+        "eventDigest": {"type": ["string", "null"]},
+        "recordDigest": {"type": ["string", "null"]},
+        "invocationDigest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "profile", "scenarioId", "frozenInputDigest", "phaseInvocationDigests", "replacement", "evaluation", "accepted", "resultDigest"],
+      "properties": {
+        "schema": {"const": "issue-orchestration.model-qualification-scenario-result.v1"},
+        "profile": {"type": "string"},
+        "scenarioId": {"type": "string"},
+        "frozenInputDigest": {"$ref": "#/$defs/digest"},
+        "phaseInvocationDigests": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/digest"}},
+        "replacement": {"type": ["object", "null"]},
+        "evaluation": {"type": "object"},
+        "accepted": {"const": true},
+        "resultDigest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}
