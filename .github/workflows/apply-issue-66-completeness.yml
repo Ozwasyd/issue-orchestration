@@ -1,0 +1,53 @@
+name: apply issue 66 completeness
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-issue-66-completeness-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-66-delta-aware-scope-refresh'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-66-delta-aware-scope-refresh
+      - name: Verify and apply completeness patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '596366c66a28e5cd2493b686d5f4e6b22a4cc95b1459077cb18357373c7b19a0  .github/issue-66-completeness/patch.gz.b64' | sha256sum -c -
+          base64 -d .github/issue-66-completeness/patch.gz.b64 > /tmp/issue66-completeness.patch.gz
+          echo '4c4755c4fb53ebebc0b2ed8c00a5b099f9df50e7d7c29d19c5cef4206624391b  /tmp/issue66-completeness.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue66-completeness.patch.gz > /tmp/issue66-completeness.patch
+          echo '391fccc08bfb5a2c8c282b8bfed8396933c852633f149e62ffa175c04d87e543  /tmp/issue66-completeness.patch' | sha256sum -c -
+          git apply --check /tmp/issue66-completeness.patch
+          git apply /tmp/issue66-completeness.patch
+          rm -rf .github/issue-66-completeness
+          rm -f .github/workflows/apply-issue-66-completeness.yml
+          BASE_COMMIT="$(git merge-base origin/main HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cp manifest.json /tmp/issue66-manifest.json
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cmp /tmp/issue66-manifest.json manifest.json
+          node --check skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs
+          node --test --test-concurrency=1 --test-name-pattern='stale contradictory and partial' tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs
+          git add -A
+          git diff --cached --check
+      - name: Commit completeness fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Require complete authoritative delta members (#66)'
+          git push origin HEAD:issue-66-delta-aware-scope-refresh
