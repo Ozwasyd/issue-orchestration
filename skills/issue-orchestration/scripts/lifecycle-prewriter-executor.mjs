@@ -60,6 +60,11 @@ import {
 import {
     validateActorContextEnvelopeBinding
 } from './actor-context-envelope.mjs'
+import {
+    compileActorPromptBundle,
+    validateActorPromptBundleBinding,
+    sanitizeProviderPromptCacheMetadata
+} from './actor-prompt-cache-identity.mjs'
 
 const SUPPORTED = new Set([
     'request-semantic-proposal',
@@ -245,7 +250,9 @@ function compileStageRoute({
     actorAdapter,
     boundedProjection,
     actorContextEnvelope,
-    actorContextProgressiveReader
+    actorContextProgressiveReader,
+    actorPromptOptions,
+    recordActorPromptCacheMetadata
 }) {
     object(actorAdapter, 'prewriter-actor-adapter-required')
     if (typeof actorAdapter.prepare !== 'function' ||
@@ -265,6 +272,14 @@ function compileStageRoute({
         stagePhase: phase
     })
     const pendingDecision = pending.executionRouteDecision
+    const promptBundle = envelope
+        ? compileActorPromptBundle({
+            actorContextEnvelope: envelope,
+            routeDecision: pendingDecision,
+            tokenizerIdentity: actorPromptOptions?.tokenizerIdentity ?? null,
+            runtimeIdentity: actorPromptOptions?.runtimeIdentity ?? null
+        })
+        : null
     const prepared = object(actorAdapter.prepare({
         action: structuredClone(action),
         stageRole: role,
@@ -274,8 +289,28 @@ function compileStageRoute({
         ...(envelope ? { actorContextEnvelope: structuredClone(envelope) } : {}),
         ...(actorContextProgressiveReader ? {
             resolveActorContextReference: actorContextProgressiveReader
+        } : {}),
+        ...(promptBundle ? {
+            actorPrompt: promptBundle.completePrompt,
+            actorPromptStablePrefix: structuredClone(
+                promptBundle.stablePrefix
+            ),
+            actorPromptVolatileSuffix: structuredClone(
+                promptBundle.volatileSuffix
+            ),
+            actorPromptCacheIdentity: structuredClone(
+                promptBundle.cacheIdentity
+            )
         } : {})
     }), 'prewriter-actor-preparation-invalid')
+    if (promptBundle && typeof recordActorPromptCacheMetadata === 'function') {
+        recordActorPromptCacheMetadata({
+            promptBundle,
+            providerMetadata: sanitizeProviderPromptCacheMetadata(
+                prepared.promptCacheMetadata ?? null
+            )
+        })
+    }
     const runtimeBinding = compileRuntimeExecutionBinding({
         stageRole: role,
         stagePhase: phase,
@@ -319,7 +354,10 @@ function compileStageRoute({
             startup.attestation.runtimeSessionId) {
         reject('prewriter-fresh-observe-only-runtime-required')
     }
-    return { prepared, runtimeBinding, routeDecision }
+    return {
+        prepared, actorPromptBundle: promptBundle, runtimeBinding,
+        pendingRouteDecision: pendingDecision, routeDecision
+    }
 }
 
 function mutationIdentity({
@@ -378,9 +416,20 @@ function invokeObservedActor({
     repositoryTargets,
     outputClass = 'proposal',
     actorContextEnvelope = null,
-    actorContextProgressiveReader = null
+    actorContextProgressiveReader = null,
+    actorPromptBundle = null,
+    pendingRouteDecision = null
 }) {
     const requestDigest = digest(request)
+    const promptBundle = actorPromptBundle
+        ? validateActorPromptBundleBinding(actorPromptBundle, {
+            actorContextEnvelope,
+            routeDecision: pendingRouteDecision,
+            role: routeDecision.stageRole,
+            phase: routeDecision.stagePhase,
+            actionDigest: action.actionDigest
+        })
+        : null
     const preSnapshot = captureStageMutationSnapshot(mutationIdentity({
         action,
         routeDecision,
@@ -405,6 +454,12 @@ function invokeObservedActor({
         } : {}),
         ...(actorContextProgressiveReader ? {
             resolveActorContextReference: actorContextProgressiveReader
+        } : {}),
+        ...(promptBundle ? {
+            actorPrompt: promptBundle.completePrompt,
+            actorPromptCacheIdentity: structuredClone(
+                promptBundle.cacheIdentity
+            )
         } : {})
     }), 'prewriter-actor-output-invalid')
     const postSnapshot = captureStageMutationSnapshot(mutationIdentity({

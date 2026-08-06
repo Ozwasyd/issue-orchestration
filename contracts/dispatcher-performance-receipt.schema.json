@@ -20,6 +20,7 @@
     "wallTime",
     "spans",
     "actorDispatches",
+    "promptCacheObservations",
     "slotSamples",
     "slotRefills",
     "idleSafeSlotDurationMs",
@@ -113,6 +114,56 @@
     },
     "spans": { "type": "array", "items": { "type": "object" } },
     "actorDispatches": { "type": "array", "items": { "type": "object" } },
+    "promptCacheObservations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sequence",
+          "transition",
+          "observedAt",
+          "actionDigest",
+          "actionType",
+          "nodeId",
+          "role",
+          "phase",
+          "cacheIdentityDigest",
+          "stablePrefixDigest",
+          "suffixDigest",
+          "completePromptDigest",
+          "providerMetadata"
+        ],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1 },
+          "transition": { "type": "integer", "minimum": 0 },
+          "observedAt": { "type": "string", "format": "date-time" },
+          "actionDigest": { "$ref": "#/$defs/digest" },
+          "actionType": { "type": "string", "minLength": 1 },
+          "nodeId": { "type": ["string", "null"] },
+          "role": { "type": "string", "minLength": 1 },
+          "phase": { "type": "string", "minLength": 1 },
+          "cacheIdentityDigest": { "$ref": "#/$defs/digest" },
+          "stablePrefixDigest": { "$ref": "#/$defs/digest" },
+          "suffixDigest": { "$ref": "#/$defs/digest" },
+          "completePromptDigest": { "$ref": "#/$defs/digest" },
+          "providerMetadata": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "provider": { "type": "string", "minLength": 1 },
+              "cacheKey": { "type": "string", "minLength": 1 },
+              "status": { "type": "string", "minLength": 1 },
+              "supported": { "type": "boolean" },
+              "hit": { "type": "boolean" },
+              "cachedInputTokens": { "type": "integer", "minimum": 0 },
+              "uncachedInputTokens": { "type": "integer", "minimum": 0 },
+              "inputTokens": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
     "slotSamples": { "type": "array", "items": { "type": "object" } },
     "slotRefills": { "type": "array", "items": { "type": "object" } },
     "idleSafeSlotDurationMs": { "type": "number", "minimum": 0 },
@@ -122,6 +173,10 @@
     }
   },
   "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
     "metric": {
       "type": "object",
       "additionalProperties": false,

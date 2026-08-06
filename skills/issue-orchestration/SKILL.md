@@ -52,6 +52,8 @@ attestation verified 后才确认 caller 本轮明确提供的目标仓库路径
 
 每个 actor-bearing action 在 runtime preparation 前必须由 `actor-context-envelope.mjs` 确定性编译 `issue-orchestration.actor-context-envelope.v1`。包络只包含当前角色/阶段的不可变身份、相关验收项、当前 slice/candidate/verification evidence、适用 AGENTS 指令、typed output interface 与受限 content-addressed source references；完整 ledger/DAG/projection、无关节点、未来阶段历史、Root 摘要、秘密和 writer 对话均不得进入。writer 包络还必须由 `repository-evidence-pack.mjs` 在 actor 启动前确定性编译 `issue-orchestration.repository-evidence-pack.v1`：只观察当前 slice 已声明的路径、命令、适用指令、内容寻址文件/搜索结果、绑定 first-failure 的输出和 scoped Git 状态；不得扫描整仓、联网或执行语义判断。大块 source 只能经绑定 referenceId、role、phase、node、path 与 digest 的只读 resolver 渐进读取。该包络不授予 route、retry、mutation、checkpoint、candidate、verification、delivery、cleanup 或 terminal authority；各 production executor 仍必须复核 action/role/phase binding 并通过原有 machine validators。
 
+每个已验证 actor envelope 还必须由 `actor-prompt-cache-identity.mjs` 编译为有序的 stable prefix 与 volatile suffix。stable prefix 只包含精简角色边界、role/phase、envelope/output interface 版本及 package/policy/agent 指令摘要；run、node、repository、action、route、slice、candidate、checkpoint、lease、当前证据与 repository evidence pack 必须留在 volatile suffix。完整 prompt 与 `issue-orchestration.actor-prompt-cache-identity.v1` 绑定两个 section 的顺序和摘要；支持 prompt caching 的 adapter 可消费 stable prefix/cache identity，不支持者必须执行逐字相同的完整 prompt。provider cache hit、token 与状态只能写入 diagnostic telemetry，不能影响 route、retry、admission、terminal 或任何 lifecycle authority。
+
 某次修复 issue 对 Sol Ultra 或其它实现者的直接授权只适用于该次实现批次，不能写入永久 `stage-model-pool.v4`、routing、dispatch 或 fallback policy。临时 bootstrap runner、旧 run id、receipt、breaker 和 failure evidence只能作为冻结测试保管、恢复、审计 fixture 与最终退役对象；它们不是永久 dispatcher，也不能阻止当前获授权实现者修改永久源码或成为兼容入口。
 
 ## 永久组合 E2E

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/actor-prompt-cache-identity.schema.json",
+  "title": "Actor prompt cache identity",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "status", "authority", "stablePrefixDigest",
+    "suffixDigest", "completePromptDigest", "tokenizerIdentity",
+    "runtimeIdentity", "cacheIdentityDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.actor-prompt-cache-identity.v1"
+    },
+    "status": { "const": "compiled" },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "grants"],
+      "properties": {
+        "kind": { "const": "diagnostic-only" },
+        "grants": { "type": "array", "maxItems": 0 }
+      }
+    },
+    "stablePrefixDigest": { "$ref": "#/$defs/digest" },
+    "suffixDigest": { "$ref": "#/$defs/digest" },
+    "completePromptDigest": { "$ref": "#/$defs/digest" },
+    "tokenizerIdentity": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "null" }
+      ]
+    },
+    "runtimeIdentity": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "null" }
+      ]
+    },
+    "cacheIdentityDigest": { "$ref": "#/$defs/digest" }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}
