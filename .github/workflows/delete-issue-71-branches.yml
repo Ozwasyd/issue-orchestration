@@ -1,0 +1,23 @@
+name: delete merged issue 71 branches
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    if: github.head_ref == 'issue-71-deterministic-machine-batch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: Delete merged and obsolete issue 71 branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git push https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git --delete issue-71-machine-action-batch
+          git push https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git --delete issue-71-deterministic-machine-batch
