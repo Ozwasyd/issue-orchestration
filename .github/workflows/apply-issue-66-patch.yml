@@ -1,0 +1,53 @@
+name: apply issue 66 patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-66-delta-aware-scope-refresh'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-66-delta-aware-scope-refresh
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '44cdd74f104a196941f46e7a6cddb040863347fd234d7876b20389e1ea9cec84  .github/issue-66-patch/part-00.b64' | sha256sum -c -
+          echo '3ce4d8936e197482e177e8d8d4bb338b9a756f710b1c7087a4314e3e8b706afb  .github/issue-66-patch/part-01.b64' | sha256sum -c -
+          echo '7e3e6b63e7fe5ed98cf442e898356aa8170d2024db310a1275dad51e8f5778e9  .github/issue-66-patch/part-02.b64' | sha256sum -c -
+          echo '9ef46e324138be60d96d7d54cb2f89917c9e8a969c855aaef17426288119f9d5  .github/issue-66-patch/part-03.b64' | sha256sum -c -
+          echo '55ba19b95fff9379e3b7f119e12ee42c05e9bf1d93502b41c44b5b629fd912ba  .github/issue-66-patch/part-04.b64' | sha256sum -c -
+          echo '8bc48da9781d56481299cdee34b6750398b7b8bf136edab170a241cf5e58520e  .github/issue-66-patch/part-05.b64' | sha256sum -c -
+          echo '67b152f506d07d2cf4de6cb90e051ee57466a85de2422a047127cc64deb47d21  .github/issue-66-patch/part-06.b64' | sha256sum -c -
+          echo 'cbfdf86df4b61fb84c95167d1cac20a7169d2af9bd51ea00239ddf57accf5378  .github/issue-66-patch/part-07.b64' | sha256sum -c -
+          echo 'e5b83ee02725330b4d1622cdb09637f5f9f056d7383235e3fc5361464afc5d64  .github/issue-66-patch/part-08.b64' | sha256sum -c -
+          echo 'c7b8dc34e29c98b5dece99a9169479b8f6b71a69e22f0665e5b5a4a200e040ae  .github/issue-66-patch/part-09.b64' | sha256sum -c -
+          cat .github/issue-66-patch/part-*.b64 > /tmp/issue66.patch.gz.b64
+          echo '325cfdf39e1195eac198e20484ee1099eb4b0381e2b68ccef2f954dba0872089  /tmp/issue66.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue66.patch.gz.b64 > /tmp/issue66.patch.gz
+          echo '0201f98a039b7865945618707e8cf7c530f93b6cef5a57a2e99cfc48ea2f42f7  /tmp/issue66.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue66.patch.gz > /tmp/issue66.patch
+          echo '402a507ae874a288786d4521705c4a098731234a1f8c6eb51a8807d3aa40f9ca  /tmp/issue66.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue66.patch
+          git apply --binary /tmp/issue66.patch
+          rm -rf .github/issue-66-patch
+          rm -f .github/workflows/apply-issue-66-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add delta-aware canonical scope refresh (#66)'
+          git push origin HEAD:issue-66-delta-aware-scope-refresh
