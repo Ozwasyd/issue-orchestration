@@ -35,24 +35,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '7b040864c73b02a96fb12c5f2f5db1df4096ca739b850527627d84f3dde45506  .github/issue-78-patch/part-00.b64' | sha256sum -c -
-          echo '084378af6574893549b1eff553389b3eb4ddc32722debc422eac625520a0ee90  .github/issue-78-patch/part-01.b64' | sha256sum -c -
+          echo '2cab7cacb4c0dedf0e1aed66aef4ea57eef7538033bd3ede51368350f1b1351f  .github/issue-78-patch/part-00.b64' | sha256sum -c -
+          echo '02fe68bea2cdcfc9f50e51ff74b88720d02aee4f63bbf2e0d4b0a37c2a1ae455  .github/issue-78-patch/part-01.b64' | sha256sum -c -
           cat .github/issue-78-patch/part-00.b64 .github/issue-78-patch/part-01.b64 > /tmp/issue78.patch.gz.b64
-          echo 'aa748255799d2c214e0fbb847419c7ea3784d83130680532060f350c8a6a75b0  /tmp/issue78.patch.gz.b64' | sha256sum -c -
+          echo 'd75ac7ea1c1d55842837defb04dee0fbafc25caa03d9912edeb543a2af6e8dfe  /tmp/issue78.patch.gz.b64' | sha256sum -c -
           base64 -d /tmp/issue78.patch.gz.b64 > /tmp/issue78.patch.gz
-          echo '0a1df220517c60dfda43aa16a1e476f487e3f41fee305bd09c105688b525866b  /tmp/issue78.patch.gz' | sha256sum -c -
+          echo 'd5ff9897c701d6bff34fa4c8d7915385914c29f9ebe778e4c6fd610bd5679b21  /tmp/issue78.patch.gz' | sha256sum -c -
           gzip -dc /tmp/issue78.patch.gz > /tmp/issue78.patch
-          echo 'c61949a65b6f6793fb166c02c74992d83cad1901f6ba91a0ef7728095a1b4564  /tmp/issue78.patch' | sha256sum -c -
+          echo '6f22f690f0617ffdd8905508109bdb721a374affbc73cb3bb7eda6f029b59812  /tmp/issue78.patch' | sha256sum -c -
           git apply --check /tmp/issue78.patch
           git apply /tmp/issue78.patch
           rm -rf .github/issue-78-patch
           rm -f .github/workflows/apply-issue-78-patch.yml
-          cp manifest.json /tmp/issue78-prebuilt-manifest.json
           BASE_COMMIT="$(git merge-base origin/main HEAD)"
           ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
-          cmp /tmp/issue78-prebuilt-manifest.json manifest.json
+          cp manifest.json /tmp/issue78-built-manifest.json
           ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
-          cmp /tmp/issue78-prebuilt-manifest.json manifest.json
+          cmp /tmp/issue78-built-manifest.json manifest.json
           node --check scripts/model-pool-qualification.mjs
           node --check skills/issue-orchestration/scripts/model-pool-qualification.mjs
           node --test --test-concurrency=1 \
