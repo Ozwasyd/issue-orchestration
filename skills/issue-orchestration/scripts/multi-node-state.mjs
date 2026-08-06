@@ -1025,8 +1025,18 @@ export function replayControlLedger(ledger) {
                     payload.settlementDigest) {
                     fail('control-dispatch-settlement-invalid')
                 }
-                if (payload.outcome !== 'completed') {
+                if (!['completed', 'excluded'].includes(
+                    payload.outcome
+                )) {
                     fail('control-dispatch-outcome-invalid')
+                }
+                if (payload.outcome === 'excluded') {
+                    requireString(
+                        payload.exclusionCode,
+                        'control-dispatch-exclusion-code-invalid'
+                    )
+                } else if (payload.exclusionCode !== undefined) {
+                    fail('control-dispatch-exclusion-code-forbidden')
                 }
                 const active = projection.activeDispatches[
                     payload.dispatchId

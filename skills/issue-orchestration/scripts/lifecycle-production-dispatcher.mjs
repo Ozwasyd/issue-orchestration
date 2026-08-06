@@ -11,7 +11,7 @@ import {
     projectLifecycleRun,
     recordLifecycleCurrentActionResult,
     recordLifecycleDispatchBatchStarted,
-    recordLifecycleDispatchedActionResult
+    recordLifecycleDispatchedActionResultBatch
 } from './lifecycle-run-loop.mjs'
 import {
     executeLifecycleScopeRefresh,
@@ -578,24 +578,69 @@ async function observeBaseEpoch({
     }
 }
 
-function completion(promise, dispatchId, entry, telemetry = null) {
-    return Promise.resolve(promise).then(
-        (output) => {
-            const result = normalizeActorResult(entry, output)
-            telemetry?.recordActorCompletion(dispatchId, 'fulfilled')
-            return {
-                status: 'fulfilled',
-                dispatchId,
-                result
+function createSettlementQueue() {
+    const ready = []
+    let waiter = null
+    return Object.freeze({
+        push(value) {
+            ready.push(value)
+            if (waiter) {
+                const resolve = waiter
+                waiter = null
+                resolve()
             }
         },
+        async waitAndDrain() {
+            if (ready.length === 0) {
+                await new Promise((resolve) => {
+                    if (waiter) fail('dispatcher-settlement-waiter-duplicate')
+                    waiter = resolve
+                })
+            }
+            // Let every already-settled promise reaction publish its result.
+            await Promise.resolve()
+            return ready.splice(0)
+        }
+    })
+}
+
+function completion(
+    promise,
+    dispatchId,
+    entry,
+    settlementQueue,
+    telemetry = null
+) {
+    return Promise.resolve(promise).then(
+        (output) => {
+            let settled
+            try {
+                settled = {
+                    status: 'fulfilled',
+                    dispatchId,
+                    result: normalizeActorResult(entry, output)
+                }
+                telemetry?.recordActorCompletion(dispatchId, 'fulfilled')
+            } catch (error) {
+                settled = {
+                    status: 'malformed',
+                    dispatchId,
+                    error
+                }
+                telemetry?.recordActorCompletion(dispatchId, 'malformed')
+            }
+            settlementQueue.push(settled)
+            return settled
+        },
         (error) => {
-            telemetry?.recordActorCompletion(dispatchId, 'rejected')
-            return {
+            const settled = {
                 status: 'rejected',
                 dispatchId,
                 error
             }
+            telemetry?.recordActorCompletion(dispatchId, 'rejected')
+            settlementQueue.push(settled)
+            return settled
         }
     )
 }
@@ -608,6 +653,7 @@ async function startActorWave({
     startup,
     clock,
     running,
+    settlementQueue,
     telemetry
 }) {
     let currentLedger = ledger
@@ -672,6 +718,7 @@ async function startActorWave({
             Promise.resolve().then(() => item.entry.execute(item.context)),
             receipt.dispatchId,
             item.entry,
+            settlementQueue,
             telemetry
         )
         running.set(receipt.dispatchId, {
@@ -688,6 +735,7 @@ async function recoverRunning({
     startup,
     clock,
     running,
+    settlementQueue,
     telemetry
 }) {
     const projection = measuredProjection(
@@ -744,83 +792,124 @@ async function recoverRunning({
                 recovered.completion,
                 dispatch.dispatchId,
                 entry,
+                settlementQueue,
                 telemetry
             )
         })
     }
 }
 
-async function settleFirst({
+async function settleReadyBatch({
     running,
+    settlementQueue,
     ledger,
     startup,
     clock,
     telemetry
 }) {
-    const settled = await Promise.race(
-        [...running.values()].map(({ promise }) => promise)
-    )
-    const active = running.get(settled.dispatchId)
-    if (!active) fail('dispatcher-settlement-not-active')
-    if (settled.status === 'rejected') {
-        fail('dispatcher-executor-failed', {
-            dispatchId: settled.dispatchId,
-            cause: settled.error?.code ?? settled.error?.message ??
-                'unknown-executor-failure'
-        })
+    const drained = await settlementQueue.waitAndDrain()
+    const byDispatchId = new Map()
+    for (const settled of drained) {
+        if (running.has(settled.dispatchId)) {
+            byDispatchId.set(settled.dispatchId, settled)
+        }
     }
-    const baseObservation = await observeBaseEpoch({
-        ledger,
-        dispatches: [active.dispatch],
-        phase: 'post-admission',
-        startup,
-        observedAt: timestamp(clock),
-        telemetry
-    })
-    if (baseObservation.stale) {
-        const stale = baseObservation.receipt.repositories.find(
-            ({ repository }) =>
-                baseObservation.receipt.driftedRepositories.includes(
-                    repository
-                )
-        )
-        fail('dispatcher-active-result-base-stale', {
-            dispatchId: settled.dispatchId,
-            repository: stale.repository,
-            expectedBaseSha: stale.expectedBaseSha,
-            currentBaseSha:
-                stale.observation.remoteDefaultBranchHead,
-            observationEpoch: baseObservation.receipt.epochId
-        })
-    }
-    const recordResult = () => recordLifecycleDispatchedActionResult({
-        ledger,
+    const ready = [...byDispatchId.values()].sort((left, right) =>
+        left.dispatchId.localeCompare(right.dispatchId))
+    if (ready.length === 0) fail('dispatcher-settlement-not-active')
+
+    const fulfilled = ready.filter(({ status }) => status === 'fulfilled')
+    const malformed = ready.filter(({ status }) => status === 'malformed')
+    const rejected = ready.filter(({ status }) => status === 'rejected')
+    const entries = malformed.map((settled) => ({
         dispatchId: settled.dispatchId,
-        result: settled.result,
-        createdAt: timestamp(clock),
-        startup
-    })
-    const recorded = telemetry
-        ? telemetry.measureSync(
-            [
-                'canonicalReplay',
-                'aggregateProjectionRebuild',
-                'actorResultAdmission'
-            ],
-            {
-                boundary: 'actor-result-admission',
-                actionDigest: active.dispatch.actionDigest,
-                actionType: active.dispatch.action.type,
-                nodeId: active.dispatch.nodeId,
-                dispatchId: settled.dispatchId
-            },
-            recordResult,
-            { ledgerRead: true }
+        exclusionCode: settled.error?.code ??
+            'dispatcher-actor-result-malformed'
+    }))
+
+    if (fulfilled.length > 0) {
+        const dispatches = fulfilled.map(({ dispatchId }) =>
+            running.get(dispatchId).dispatch)
+        const baseObservation = await observeBaseEpoch({
+            ledger,
+            dispatches,
+            phase: 'post-admission',
+            startup,
+            observedAt: timestamp(clock),
+            telemetry
+        })
+        const driftedRepositories = new Set(
+            baseObservation.receipt.driftedRepositories ?? []
         )
-        : recordResult()
-    running.delete(settled.dispatchId)
-    telemetry?.recordActorAdmission(settled.dispatchId, running.size)
-    return recorded.ledger
+        for (const settled of fulfilled) {
+            const active = running.get(settled.dispatchId)
+            const repository = active.dispatch.action.bindings.repository
+            if (baseObservation.stale &&
+                driftedRepositories.has(repository)) {
+                entries.push({
+                    dispatchId: settled.dispatchId,
+                    exclusionCode: 'dispatcher-active-result-base-stale',
+                    resultDigest: settled.result?.resultDigest ?? null
+                })
+            } else {
+                entries.push({
+                    dispatchId: settled.dispatchId,
+                    result: settled.result
+                })
+            }
+        }
+    }
+
+    let recorded = null
+    if (entries.length > 0) {
+        const recordBatch = () =>
+            recordLifecycleDispatchedActionResultBatch({
+                ledger,
+                entries,
+                createdAt: timestamp(clock),
+                startup
+            })
+        recorded = telemetry
+            ? telemetry.measureSync(
+                [
+                    'canonicalReplay',
+                    'aggregateProjectionRebuild',
+                    'actorResultAdmission'
+                ],
+                {
+                    boundary: 'actor-result-batch-admission',
+                    dispatchIds: entries.map(({ dispatchId }) =>
+                        dispatchId).sort(),
+                    readyCount: ready.length
+                },
+                recordBatch,
+                { ledgerRead: true }
+            )
+            : recordBatch()
+        for (const item of [
+            ...recorded.admitted,
+            ...recorded.excluded
+        ]) {
+            running.delete(item.dispatchId)
+            telemetry?.recordActorAdmission(item.dispatchId, running.size)
+        }
+    }
+
+    if (rejected.length > 0) {
+        const first = rejected[0]
+        fail('dispatcher-executor-failed', {
+            dispatchId: first.dispatchId,
+            cause: first.error?.code ?? first.error?.message ??
+                'unknown-executor-failure',
+            admittedDispatchIds: recorded?.admitted.map(
+                ({ dispatchId }) => dispatchId
+            ) ?? [],
+            excludedDispatchIds: recorded?.excluded.map(
+                ({ dispatchId }) => dispatchId
+            ) ?? []
+        })
+    }
+    return recorded?.ledger ?? ledger
 }
 
 async function executeImmediate({
@@ -935,6 +1024,7 @@ export async function runLifecycleProductionDispatcher({
     }
 
     const running = new Map()
+    const settlementQueue = createSettlementQueue()
     try {
         await recoverRunning({
             ledger: currentLedger,
@@ -942,6 +1032,7 @@ export async function runLifecycleProductionDispatcher({
             startup,
             clock,
             running,
+            settlementQueue,
             telemetry
         })
         while (transitions < maxTransitions) {
@@ -1033,14 +1124,16 @@ export async function runLifecycleProductionDispatcher({
                         startup,
                         clock,
                         running,
+                        settlementQueue,
                         telemetry
                     })
                     currentLedger = started.ledger
                     transitions += 1
                     if (started.rebound) continue
                 }
-                currentLedger = await settleFirst({
+                currentLedger = await settleReadyBatch({
                     running,
+                    settlementQueue,
                     ledger: currentLedger,
                     startup,
                     clock,
@@ -1087,6 +1180,7 @@ export async function runLifecycleProductionDispatcher({
                     startup,
                     clock,
                     running,
+                    settlementQueue,
                     telemetry
                 })
                 currentLedger = started.ledger

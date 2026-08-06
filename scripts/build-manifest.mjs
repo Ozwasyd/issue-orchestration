@@ -106,6 +106,7 @@ const manifest = {
         'wave-scoped-repository-base-observation',
         'verified-replay-projection-cache',
         'verified-lifecycle-action-set-cache',
+        'canonical-ready-result-batch-admission',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',
