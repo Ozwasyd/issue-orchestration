@@ -1,0 +1,66 @@
+name: apply issue 78 patch v4
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-issue-78-patch-v4-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-78-model-pool-qualification'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-78-model-pool-qualification
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tools/test-matrix/schema-validator/package-lock.json
+
+      - name: Install schema validator dependencies
+        run: npm ci --prefix tools/test-matrix/schema-validator
+
+      - name: Execute verified v3 payload with corrected index ordering
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path('.github/workflows/apply-issue-78-patch-v3.yml').read_text().splitlines()
+          start = source.index('      - name: Verify and apply reviewed patch')
+          run_index = next(i for i in range(start, len(source)) if source[i] == '        run: |')
+          end = next(i for i in range(run_index + 1, len(source)) if source[i] == '      - name: Commit final issue 78 implementation')
+          body = []
+          for line in source[run_index + 1:end]:
+              body.append(line[10:] if line.startswith('          ') else line)
+          marker = 'BASE_COMMIT="$(git merge-base origin/main HEAD)"'
+          insert = body.index(marker)
+          body[insert:insert] = [
+              'rm -f .github/workflows/apply-issue-78-patch-v4.yml',
+              'git add -A',
+              ''
+          ]
+          Path('/tmp/apply-issue-78-v4.sh').write_text('\n'.join(body) + '\n')
+          PY
+          bash /tmp/apply-issue-78-v4.sh
+
+      - name: Commit final issue 78 implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Add opt-in model-pool qualification command (#78)'
+          git push origin HEAD:issue-78-model-pool-qualification
