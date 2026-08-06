@@ -84,6 +84,7 @@ const requiredPackageFiles = [
     'contracts/actor-context-envelope.schema.json',
     'contracts/dispatcher-performance-receipt.schema.json',
     'contracts/repository-base-observation-epoch.schema.json',
+    'contracts/repository-evidence-pack.schema.json',
     'contracts/node-index.schema.json',
     'contracts/node-ledger-header.schema.json',
     'contracts/node-ledger.schema.json',
@@ -101,6 +102,7 @@ const requiredPackageFiles = [
 ]
 const requiredRuntimeModules = [
     'actor-context-envelope.mjs',
+    'repository-evidence-pack.mjs',
     'dispatcher-performance-telemetry.mjs',
     'delivery-epoch.mjs',
     'control-plane-advisor.mjs',

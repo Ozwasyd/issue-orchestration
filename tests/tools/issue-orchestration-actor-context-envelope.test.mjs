@@ -6,7 +6,9 @@ import test from 'node:test'
 
 import {
     actorContextEnvelopeActionTypes,
+    compileActorContextBundle,
     compileActorContextEnvelope,
+    createActorContextProgressiveReader,
     resolveActorContextReference,
     validateActorContextEnvelope,
     validateActorContextEnvelopeBinding
@@ -179,8 +181,13 @@ function repository(t) {
     fs.mkdirSync(path.join(directory, 'src'), { recursive: true })
     fs.writeFileSync(path.join(directory, 'AGENTS.md'),
         'Only modify the exact allowlisted paths.\n')
+    fs.mkdirSync(path.join(directory, 'tests'), { recursive: true })
     fs.writeFileSync(path.join(directory, 'src', 'AGENTS.override.md'),
         'Run the required test command before returning.\n')
+    fs.writeFileSync(path.join(directory, 'src', 'current.mjs'),
+        `export const targetSymbol = 1\n${'export const filler = 0\n'.repeat(120)}`)
+    fs.writeFileSync(path.join(directory, 'tests', 'current.test.mjs'),
+        "import { targetSymbol } from '../src/current.mjs'\n")
     t.after(() => fs.rmSync(directory, { recursive: true, force: true }))
     return directory
 }
@@ -280,6 +287,11 @@ test('writer envelope contains the current slice but no whole-run authority', (t
     assert.deepEqual(envelope.stageContext.writeAllowlist,
         ['src/current.mjs', 'tests/current.test.mjs'])
     assert.equal(envelope.instructions.status, 'resolved')
+    assert.equal(envelope.repositoryEvidencePack.schema,
+        'issue-orchestration.repository-evidence-pack.v1')
+    assert.equal(envelope.repositoryEvidencePack.authority.grants.length, 0)
+    assert.ok(envelope.repositoryEvidencePack.sourceReferences.some((entry) =>
+        entry.path === 'src/current.mjs'))
     assert.deepEqual(envelope.instructions.entries.map(({ path: item }) => item),
         ['AGENTS.md', 'src/AGENTS.override.md'])
     const serialized = JSON.stringify(envelope)
@@ -430,4 +442,62 @@ test('the envelope is smaller than broad context and rejects tampering', (t) => 
     selfSigned.envelopeDigest = digest(selfSigned)
     assert.throws(() => validateActorContextEnvelope(selfSigned),
         (error) => error?.code === 'actor-context-stage-fields-invalid')
+})
+
+
+test('repository evidence is resolved only through the envelope reader', (t) => {
+    const bundle = actionBundle('dispatch-implementation-writer')
+    const repositoryPath = repository(t)
+    const failureDigest = digest(bundle.node.firstFailure)
+    const compiled = compileActorContextBundle({
+        action: bundle.action,
+        actionSet: bundle.actionSet,
+        projection: bundle.projection,
+        preparedContext: preparedContext(bundle),
+        actorContext: {
+            repositoryEvidencePackRequest: {
+                searches: [{
+                    path: 'src/current.mjs',
+                    query: 'targetSymbol',
+                    maxMatches: 4
+                }],
+                failureOutput: {
+                    command: 'node --test tests/current.test.mjs',
+                    failureDigest,
+                    output: 'AssertionError: expected targetSymbol to equal 2\n'
+                }
+            }
+        },
+        repositoryPath
+    })
+    const pack = compiled.envelope.repositoryEvidencePack
+    assert.equal(pack.searches[0].matchCount, 1)
+    assert.equal(pack.failureEvidence.failureDigest, failureDigest)
+    const fileReference = pack.sourceReferences.find((entry) =>
+        entry.path === 'src/current.mjs')
+    const envelopeSource = compiled.envelope.sources.progressive.find((entry) =>
+        entry.sourceId === fileReference.sourceId)
+    assert.ok(envelopeSource)
+    const read = createActorContextProgressiveReader({
+        envelope: compiled.envelope,
+        sourceCatalog: compiled.sourceCatalog
+    })
+    const resolved = read({
+        referenceId: envelopeSource.referenceId,
+        role: compiled.envelope.role,
+        phase: compiled.envelope.phase,
+        nodeId: bundle.action.nodeId,
+        path: envelopeSource.path,
+        digest: envelopeSource.digest
+    })
+    assert.match(resolved.text, /targetSymbol/u)
+    assert.throws(() => read({
+        referenceId: envelopeSource.referenceId,
+        role: compiled.envelope.role,
+        phase: compiled.envelope.phase,
+        nodeId: bundle.action.nodeId,
+        path: 'src/other.mjs',
+        digest: envelopeSource.digest
+    }), (error) => error?.code ===
+        'actor-context-progressive-reference-rejected')
 })

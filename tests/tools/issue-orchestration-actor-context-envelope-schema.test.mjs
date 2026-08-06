@@ -42,6 +42,7 @@ function envelope() {
         acceptanceItemIds: ['AC-1'],
         stageContext: { kind: 'writer' },
         instructions: { status: 'none-applicable', entries: [] },
+        repositoryEvidencePack: null,
         sources: { inline: [], progressive: [], totalSourceBytes: 0 },
         outputInterface: {
             schema: 'issue-orchestration.implementation-writer-output.v1',
@@ -53,7 +54,8 @@ function envelope() {
             estimatedTokens: 3,
             inlineSourceBytes: 0,
             progressiveSourceBytes: 0,
-            instructionBytes: 0
+            instructionBytes: 0,
+            evidencePackBytes: 0
         },
         envelopeDigest: hash
     }

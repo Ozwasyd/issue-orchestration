@@ -18,6 +18,7 @@ Each envelope contains only:
 - one stage-specific context object;
 - the applicable `AGENTS.md` and `AGENTS.override.md` chain for the current
   allowlisted paths;
+- a deterministic `issue-orchestration.repository-evidence-pack.v1` for writer stages, containing only slice-declared path, command, instruction, test ownership, scoped Git, search, and first-failure evidence;
 - bounded inline source excerpts and content-addressed progressive references;
 - the typed output interface and stable actor failure vocabulary;
 - deterministic byte and token estimates.
@@ -54,3 +55,5 @@ observe-only executors revalidate the action/role/phase binding before passing
 it to the runtime adapter. Existing route, runtime execution binding, mutation
 postcondition, checkpoint, candidate, and independent-verifier validators
 remain the only stage authority.
+
+Repository evidence is compiled before actor invocation by local read-only tools. It never scans outside the executable slice, and every file, search result, or failure excerpt is exposed only through the envelope's content-addressed source boundary. Pack digests and runtime observations are input evidence only and grant no acceptance, route, checkpoint, candidate, verification, mutation, delivery, cleanup, or terminal authority.
