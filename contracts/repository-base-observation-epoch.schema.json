@@ -74,7 +74,7 @@
       "then": {
         "properties": {
           "reusable": { "const": true },
-          "driftedRepositories": { "maxItems": 0 }
+          "driftedRepositories": { "type": "array", "maxItems": 0 }
         }
       }
     },
@@ -84,7 +84,7 @@
         "properties": {
           "phase": { "const": "pre-dispatch" },
           "reusable": { "const": false },
-          "driftedRepositories": { "minItems": 1 }
+          "driftedRepositories": { "type": "array", "minItems": 1 }
         }
       }
     },
@@ -94,7 +94,7 @@
         "properties": {
           "phase": { "const": "post-admission" },
           "reusable": { "const": false },
-          "driftedRepositories": { "minItems": 1 }
+          "driftedRepositories": { "type": "array", "minItems": 1 }
         }
       }
     }

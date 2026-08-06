@@ -3,7 +3,7 @@
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
     "sourceCommit": "97bd5319af03cf30ce6f4cf08aa5780fb289a97f",
-    "sourceTreeDigest": "fc95db8afb474de4f22a7816cea0c7f62e5f276846cc435ab655b9ba7d5dd1b9",
+    "sourceTreeDigest": "23e98183851154a8bc43934873b91e7727661aa88be909a218bcd7b6805340b8",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "0a1bc9e4d43fc7626b96c0170398a91647b989041baa00ddb9cacd364309e99c",
     "agentDigests": {
@@ -195,7 +195,7 @@
         "contracts/remote-mutation-receipt.schema.json": "f0c824306b982050d6f7b437036f6386f7d9da69a5eea3d955f3ab10a40e6930",
         "contracts/remote-staging-ref-cleanup-receipt.schema.json": "d8e6774a1cdc3eb5e864dae72d56496e1eb5447f540db54a62ea1da896bfb091",
         "contracts/remote-state-snapshot.schema.json": "7eef6ceda1e00a4604891bf0310a62dbc4aa7696cd381fc24d91b05475019725",
-        "contracts/repository-base-observation-epoch.schema.json": "f5dba8c1447aaeb74ce925d028a9829b2e1426614ee5f3d6db9f59064f068173",
+        "contracts/repository-base-observation-epoch.schema.json": "12a70c2244cc6aeace63e2dd2a093f7bf1785b059718b0b7726c04199373360f",
         "contracts/repository-landing-lane.schema.json": "4dc07f7acc699f477804fc2fc08856ba671397092b1e6822076839ccf30ca680",
         "contracts/reviewed-routing-assumptions.schema.json": "8819bce3119a48c11a7ecb58a6f4367f0e14d19494828311f86bb38b400c3a7c",
         "contracts/root-control-action-receipt.schema.json": "cb23f7188384b46e5e516377390013de1febd906644a43b33d160656cb0d0b5e",
@@ -346,5 +346,5 @@
         "skills/issue-orchestration/SKILL.md": "0a1bc9e4d43fc7626b96c0170398a91647b989041baa00ddb9cacd364309e99c",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "f12a3a363d1bfb932d6731e74c83902865adc8030fdf9652195505e543d12f2a"
+    "manifestDigest": "18e36608ded4e73e69f0bfb2258dd5ab306497df2767a37c48296527657b55cf"
 }
