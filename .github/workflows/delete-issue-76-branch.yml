@@ -1,11 +1,9 @@
 name: delete merged issue 76 branch
 
 on:
-  push:
+  pull_request:
     branches:
-      - issue-76-actor-prompt-cache-identity
-    paths:
-      - .github/workflows/delete-issue-76-branch.yml
+      - main
 
 permissions:
   contents: write
