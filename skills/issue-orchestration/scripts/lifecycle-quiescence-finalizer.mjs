@@ -1046,7 +1046,10 @@ export async function executeLifecycleQuiescenceFinalization(input = {}) {
     if (!sameValue(currentActionSet, actionSet)) {
         reject('finalization-action-set-stale')
     }
-    const state = projectLifecycleRun(ledger, { startup })
+    const state = projectLifecycleRun(ledger, {
+        startup,
+        explicitAudit: true
+    })
     if (state.aggregateProjection.terminal) {
         reject('finalization-already-terminal')
     }
@@ -1170,7 +1173,10 @@ export async function executeLifecycleQuiescenceFinalization(input = {}) {
         createdAt,
         startup
     })
-    const replayed = projectLifecycleRun(recorded, { startup })
+    const replayed = projectLifecycleRun(recorded, {
+        startup,
+        explicitAudit: true
+    })
     const terminal = replayed.aggregateProjection.terminal
     if (!terminal ||
         terminal.receiptDigest !== receipt.receiptDigest ||

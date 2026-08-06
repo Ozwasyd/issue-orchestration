@@ -47,6 +47,9 @@ import {
 import {
     createDispatcherPerformanceCollector
 } from './dispatcher-performance-telemetry.mjs'
+import {
+    verifiedReplayProjectionCacheStats
+} from './multi-node-state.mjs'
 
 const ACTOR_ACTION_TYPES = new Set([
     'request-semantic-proposal',
@@ -123,18 +126,53 @@ function performanceConfiguration(value, ledger) {
     })
 }
 
+function replayStats(ledger) {
+    return verifiedReplayProjectionCacheStats({
+        stateRoot: ledger.stateRoot,
+        runId: ledger.runId
+    })
+}
+
+function replayMetricOptions(ledger, before, always = []) {
+    return {
+        resolveMetrics() {
+            const after = replayStats(ledger)
+            const metrics = [...always]
+            if (after.controlLedgerReplays > before.controlLedgerReplays ||
+                after.nodeLedgerReplays > before.nodeLedgerReplays) {
+                metrics.push('canonicalReplay')
+            }
+            if (after.aggregateProjectionRebuilds >
+                before.aggregateProjectionRebuilds) {
+                metrics.push('aggregateProjectionRebuild')
+            }
+            return metrics
+        },
+        resolveCanonicalBytes() {
+            const after = replayStats(ledger)
+            return Math.max(
+                0,
+                after.canonicalLedgerBytesRead -
+                    before.canonicalLedgerBytesRead
+            )
+        }
+    }
+}
+
 function measuredProjection(telemetry, ledger, startup, boundary) {
     if (!telemetry) return projectLifecycleRun(ledger, { startup })
+    const before = replayStats(ledger)
     return telemetry.measureSync(
         ['canonicalReplay', 'aggregateProjectionRebuild'],
         { boundary },
         () => projectLifecycleRun(ledger, { startup }),
-        { ledgerRead: true }
+        replayMetricOptions(ledger, before)
     )
 }
 
 function measuredActionSet(telemetry, ledger, startup, boundary) {
     if (!telemetry) return compileLifecycleRunActionSet(ledger, { startup })
+    const before = replayStats(ledger)
     return telemetry.measureSync(
         [
             'canonicalReplay',
@@ -143,7 +181,7 @@ function measuredActionSet(telemetry, ledger, startup, boundary) {
         ],
         { boundary },
         () => compileLifecycleRunActionSet(ledger, { startup }),
-        { ledgerRead: true }
+        replayMetricOptions(ledger, before, ['actionSetCompilation'])
     )
 }
 

@@ -12,6 +12,16 @@ import {
 const GENESIS = '0'.repeat(64)
 const SHA256 = /^[a-f0-9]{64}$/u
 const GIT_SHA = /^[a-f0-9]{40}$/u
+const CACHE_RESULT_CONTROL_LEDGER = Symbol(
+    'verified-replay-cache-control-ledger'
+)
+const CACHE_RESULT_OBSERVATION = Symbol(
+    'verified-replay-cache-observation'
+)
+const VERIFIED_REPLAY_CACHE = new Map()
+const VERIFIED_REPLAY_AUTHORITY_INDEX = new Map()
+const VERIFIED_REPLAY_RUN_KEYS = new Map()
+const VERIFIED_REPLAY_STATS = new Map()
 
 export const CONTROL_EVENT_TYPES = Object.freeze([
     'scope.refreshed',
@@ -127,6 +137,193 @@ function readLedger(filePath) {
         }
     })
     return { header: entries[0], events: entries.slice(1) }
+}
+
+
+function fileContentDigest(filePath) {
+    return createHash('sha256')
+        .update(fs.readFileSync(filePath))
+        .digest('hex')
+}
+
+function readBoundaryLine(filePath, fromEnd = false) {
+    const descriptor = fs.openSync(filePath, 'r')
+    try {
+        const { size } = fs.fstatSync(descriptor)
+        if (size === 0) fail('ledger-empty')
+        const chunkSize = 4_096
+        let position = fromEnd ? size : 0
+        let text = ''
+        let bytesRead = 0
+        while (fromEnd ? position > 0 : position < size) {
+            const length = Math.min(chunkSize, fromEnd ? position : size - position)
+            const start = fromEnd ? position - length : position
+            const buffer = Buffer.allocUnsafe(length)
+            const count = fs.readSync(descriptor, buffer, 0, length, start)
+            bytesRead += count
+            const piece = buffer.subarray(0, count).toString('utf8')
+            text = fromEnd ? `${piece}${text}` : `${text}${piece}`
+            if (fromEnd) {
+                position = start
+                const trimmed = text.replace(/\n+$/u, '')
+                const boundary = trimmed.lastIndexOf('\n')
+                if (boundary >= 0 || position === 0) {
+                    return {
+                        line: trimmed.slice(boundary + 1),
+                        bytesRead
+                    }
+                }
+            } else {
+                position += count
+                const boundary = text.indexOf('\n')
+                if (boundary >= 0 || position === size) {
+                    return {
+                        line: boundary >= 0 ? text.slice(0, boundary) : text,
+                        bytesRead
+                    }
+                }
+            }
+        }
+        fail('ledger-empty')
+    } finally {
+        fs.closeSync(descriptor)
+    }
+}
+
+function readLedgerIdentity(filePath) {
+    const first = readBoundaryLine(filePath, false)
+    const last = readBoundaryLine(filePath, true)
+    let header
+    let tail
+    try {
+        header = JSON.parse(first.line)
+        tail = JSON.parse(last.line)
+    } catch {
+        fail('ledger-tail-corrupt', 'ledger boundary is corrupt', { filePath })
+    }
+    const sameLine = first.line === last.line
+    const headDigest = sameLine
+        ? GENESIS
+        : tail.eventDigest
+    requireDigest(header.headerDigest, 'ledger-header-digest-invalid')
+    if (unsignedDigest(header, 'headerDigest') !== header.headerDigest) {
+        fail('ledger-header-digest-invalid')
+    }
+    if (!sameLine) {
+        requireDigest(headDigest, 'ledger-head-digest-invalid')
+        if (unsignedDigest(tail, 'eventDigest') !== headDigest) {
+            fail('ledger-head-digest-invalid')
+        }
+    }
+    return Object.freeze({
+        headerDigest: header.headerDigest,
+        headDigest,
+        runId: header.runId,
+        nodeId: header.nodeId ?? null,
+        nodeEpoch: header.nodeEpoch ?? null,
+        bytesRead: first.bytesRead + last.bytesRead
+    })
+}
+
+function cacheRunIdentity({ stateRoot, runId }) {
+    return `${path.resolve(stateRoot)}\u0000${runId}`
+}
+
+function cacheAuthorityIdentity({ stateRoot, runId, cacheAuthorityDigest }) {
+    return stateDigest({
+        schema: 'issue-orchestration.verified-replay-cache-authority.v1',
+        stateRoot: path.resolve(stateRoot),
+        runId,
+        cacheAuthorityDigest
+    })
+}
+
+function statsForRun({ stateRoot, runId }) {
+    const key = cacheRunIdentity({ stateRoot, runId })
+    if (!VERIFIED_REPLAY_STATS.has(key)) {
+        VERIFIED_REPLAY_STATS.set(key, {
+            fullReplays: 0,
+            cacheHits: 0,
+            controlLedgerReplays: 0,
+            nodeLedgerReplays: 0,
+            aggregateProjectionRebuilds: 0,
+            ledgerIdentityReads: 0,
+            canonicalLedgerBytesRead: 0
+        })
+    }
+    return VERIFIED_REPLAY_STATS.get(key)
+}
+
+function noteLedgerIdentity(stats, identity) {
+    stats.ledgerIdentityReads += 1
+    stats.canonicalLedgerBytesRead += identity.bytesRead
+}
+
+function noteFullLedgerRead(stats, filePath) {
+    stats.canonicalLedgerBytesRead += fs.statSync(filePath).size
+}
+
+function registerCacheKey(runIdentity, key) {
+    const keys = VERIFIED_REPLAY_RUN_KEYS.get(runIdentity) ?? new Set()
+    keys.add(key)
+    VERIFIED_REPLAY_RUN_KEYS.set(runIdentity, keys)
+}
+
+function cloneCacheResult(result, controlLedger, observation) {
+    const clone = structuredClone(result)
+    Object.defineProperty(clone, CACHE_RESULT_CONTROL_LEDGER, {
+        value: structuredClone(controlLedger),
+        enumerable: false
+    })
+    Object.defineProperty(clone, CACHE_RESULT_OBSERVATION, {
+        value: Object.freeze(structuredClone(observation)),
+        enumerable: false
+    })
+    return clone
+}
+
+export function verifiedReplayProjectionCacheObservation(value) {
+    return Object.freeze(structuredClone(
+        value?.[CACHE_RESULT_OBSERVATION] ?? {
+            status: 'unobserved',
+            controlLedgerReplays: 0,
+            nodeLedgerReplays: 0,
+            aggregateProjectionRebuilds: 0,
+            canonicalLedgerBytesRead: 0
+        }
+    ))
+}
+
+export function canonicalControlLedgerFromRecovered(value) {
+    const ledger = value?.[CACHE_RESULT_CONTROL_LEDGER]
+    if (!ledger) fail('verified-replay-control-ledger-unavailable')
+    return structuredClone(ledger)
+}
+
+export function verifiedReplayProjectionCacheStats({ stateRoot, runId } = {}) {
+    return Object.freeze(structuredClone(statsForRun({ stateRoot, runId })))
+}
+
+export function clearVerifiedReplayProjectionCache({ stateRoot, runId } = {}) {
+    if (stateRoot === undefined && runId === undefined) {
+        VERIFIED_REPLAY_CACHE.clear()
+        VERIFIED_REPLAY_AUTHORITY_INDEX.clear()
+        VERIFIED_REPLAY_RUN_KEYS.clear()
+        VERIFIED_REPLAY_STATS.clear()
+        return
+    }
+    const runIdentity = cacheRunIdentity({ stateRoot, runId })
+    for (const key of VERIFIED_REPLAY_RUN_KEYS.get(runIdentity) ?? []) {
+        const entry = VERIFIED_REPLAY_CACHE.get(key)
+        if (entry?.authorityLookupKey) {
+            VERIFIED_REPLAY_AUTHORITY_INDEX.delete(
+                entry.authorityLookupKey
+            )
+        }
+        VERIFIED_REPLAY_CACHE.delete(key)
+    }
+    VERIFIED_REPLAY_RUN_KEYS.delete(runIdentity)
+    VERIFIED_REPLAY_STATS.delete(runIdentity)
 }
 
 export function canonicalRunStateLocation({ stateRoot, runId } = {}) {
@@ -1281,17 +1478,11 @@ function statusAtOrAfter(status, expected) {
     return order.indexOf(status) >= order.indexOf(expected)
 }
 
-export function projectAggregateRun({
-    stateRoot,
-    controlLedger,
-    nodeLedgers
-} = {}) {
-    const controlProjection = replayControlLedger(controlLedger)
-    const { index, projections } = replayRegisteredNodes({
-        stateRoot,
-        controlProjection,
-        nodeLedgers
-    })
+function assembleAggregateRun({
+    controlProjection,
+    index,
+    projections
+}) {
     const nodes = {}
     for (const [nodeId, registration] of Object.entries(
         controlProjection.nodes
@@ -1391,12 +1582,185 @@ export function projectAggregateRun({
         terminal: controlProjection.terminal
     }
     projection.aggregateProjectionDigest = stateDigest(projection)
+    return projection
+}
+
+function indexFromVerifiedComponents({
+    stateRoot,
+    controlProjection,
+    components
+}) {
+    const entries = {}
+    const projections = {}
+    for (const [nodeId, registration] of Object.entries(
+        controlProjection.nodes
+    ).sort(([left], [right]) => left.localeCompare(right))) {
+        if (registration.status !== 'active') continue
+        const location = canonicalNodeStateLocation({
+            stateRoot,
+            runId: controlProjection.runId,
+            nodeId,
+            nodeEpoch: registration.nodeEpoch
+        })
+        const component = components.get(nodeId)
+        if (!component || component.status !== 'verified') {
+            entries[nodeId] = {
+                nodeId,
+                nodeKey: location.nodeKey,
+                ledgerPath: path.relative(
+                    location.runRoot,
+                    location.ledgerPath
+                ),
+                projectionPath: path.relative(
+                    location.runRoot,
+                    location.projectionPath
+                ),
+                status: 'quarantined',
+                errorCode: component?.errorCode ?? 'node-ledger-missing',
+                ledgerHeadDigest: null,
+                projectionDigest: null
+            }
+            continue
+        }
+        projections[nodeId] = component.projection
+        entries[nodeId] = {
+            nodeId,
+            nodeKey: location.nodeKey,
+            ledgerPath: path.relative(
+                location.runRoot,
+                location.ledgerPath
+            ),
+            projectionPath: path.relative(
+                location.runRoot,
+                location.projectionPath
+            ),
+            status: 'verified',
+            errorCode: null,
+            ledgerHeadDigest: component.projection.lastEventDigest,
+            projectionDigest: component.projection.projectionDigest
+        }
+    }
+    const index = {
+        schema: 'issue-orchestration.node-index.v1',
+        runId: controlProjection.runId,
+        lifecycleAuthorityBinding:
+            controlProjection.lifecycleAuthorityBinding,
+        controlProjectionDigest:
+            controlProjection.controlProjectionDigest,
+        nodes: entries
+    }
+    index.nodeIndexDigest = stateDigest(index)
+    return { index, projections }
+}
+
+function verifiedNodeComponent({
+    stateRoot,
+    controlProjection,
+    nodeId,
+    registration,
+    ledger
+}) {
+    try {
+        verifyNodeIdentity(controlProjection.runId, registration, ledger.header)
+        const projection = replayEventLedgerSync(ledger)
+        if (!projection.nodes[nodeId]) fail('node-projection-node-missing')
+        return {
+            nodeId,
+            nodeEpoch: registration.nodeEpoch,
+            registrationDigest: stateDigest(registration),
+            status: 'verified',
+            errorCode: null,
+            ledger: structuredClone(ledger),
+            projection: structuredClone(projection),
+            ledgerIdentity: {
+                headerDigest: ledger.header.headerDigest,
+                headDigest: projection.lastEventDigest
+            }
+        }
+    } catch (error) {
+        return {
+            nodeId,
+            nodeEpoch: registration.nodeEpoch,
+            registrationDigest: stateDigest(registration),
+            status: 'quarantined',
+            errorCode: error?.code ?? 'node-ledger-replay-invalid',
+            ledger: null,
+            projection: null,
+            ledgerIdentity: null
+        }
+    }
+}
+
+function resultFromVerifiedComponents({
+    stateRoot,
+    controlLedger,
+    controlProjection,
+    components
+}) {
+    const { index, projections } = indexFromVerifiedComponents({
+        stateRoot,
+        controlProjection,
+        components
+    })
+    const projection = assembleAggregateRun({
+        controlProjection,
+        index,
+        projections
+    })
     return {
         controlProjection,
         nodeIndex: index,
         nodeProjections: projections,
         projection
     }
+}
+
+export function projectAggregateRun({
+    stateRoot,
+    controlLedger,
+    nodeLedgers
+} = {}) {
+    if (!Array.isArray(nodeLedgers)) fail('node-ledgers-invalid')
+    const controlProjection = replayControlLedger(controlLedger)
+    const components = new Map()
+    const supplied = new Map()
+    for (const ledger of nodeLedgers) {
+        const nodeId = ledger?.header?.nodeId
+        requireString(nodeId, 'node-ledger-node-id-invalid')
+        if (supplied.has(nodeId)) fail('node-ledger-duplicate')
+        supplied.set(nodeId, ledger)
+    }
+    for (const [nodeId, registration] of Object.entries(
+        controlProjection.nodes
+    ).filter(([, value]) => value.status === 'active')) {
+        const ledger = supplied.get(nodeId)
+        if (!ledger) {
+            components.set(nodeId, {
+                nodeId,
+                nodeEpoch: registration.nodeEpoch,
+                registrationDigest: stateDigest(registration),
+                status: 'quarantined',
+                errorCode: 'node-ledger-missing',
+                ledger: null,
+                projection: null,
+                ledgerIdentity: null
+            })
+            continue
+        }
+        components.set(nodeId, verifiedNodeComponent({
+            stateRoot,
+            controlProjection,
+            nodeId,
+            registration,
+            ledger
+        }))
+    }
+    return resultFromVerifiedComponents({
+        stateRoot,
+        controlLedger,
+        controlProjection,
+        components
+    })
 }
 
 export async function appendNodeEventAtomic(input = {}) {
@@ -1448,12 +1812,346 @@ export function persistAggregateRunState({
         location.aggregateProjectionPath,
         `${JSON.stringify(result.projection, null, 2)}\n`
     )
+    const supplied = new Map(nodeLedgers.map((ledger) => [
+        ledger?.header?.nodeId,
+        ledger
+    ]))
+    const components = new Map()
+    for (const [nodeId, registration] of activeRegistrations(
+        result.controlProjection
+    )) {
+        const ledger = supplied.get(nodeId)
+        components.set(nodeId, ledger
+            ? verifiedNodeComponent({
+                stateRoot,
+                controlProjection: result.controlProjection,
+                nodeId,
+                registration,
+                ledger
+            })
+            : {
+                nodeId,
+                nodeEpoch: registration.nodeEpoch,
+                registrationDigest: stateDigest(registration),
+                status: 'quarantined',
+                errorCode: 'node-ledger-missing',
+                ledger: null,
+                projection: null,
+                ledgerIdentity: null
+            })
+    }
+    installReplayCacheEntry({
+        stateRoot,
+        runId: controlLedger.header.runId,
+        authorityDigest: fallbackCacheAuthorityDigest(
+            result.controlProjection
+        ),
+        controlLedger,
+        controlProjection: result.controlProjection,
+        controlIdentity: {
+            headerDigest: controlLedger.header.headerDigest,
+            headDigest: result.controlProjection.lastEventDigest
+        },
+        components,
+        result
+    })
     return result
 }
 
-export function recoverAggregateRunState({ stateRoot, runId } = {}) {
+function fallbackCacheAuthorityDigest(controlProjection) {
+    return stateDigest({
+        schema: 'issue-orchestration.verified-replay-fallback-authority.v1',
+        runId: controlProjection.runId,
+        lifecycleAuthorityBinding:
+            controlProjection.lifecycleAuthorityBinding ?? null
+    })
+}
+
+function activeRegistrations(controlProjection) {
+    return Object.entries(controlProjection.nodes)
+        .filter(([, registration]) => registration.status === 'active')
+        .sort(([left], [right]) => left.localeCompare(right))
+}
+
+function captureDerivedArtifactDigests({
+    stateRoot,
+    runId,
+    components
+}) {
     const location = canonicalRunStateLocation({ stateRoot, runId })
+    const nodeProjections = {}
+    for (const [nodeId, component] of components) {
+        if (component.status !== 'verified') continue
+        const nodeLocation = canonicalNodeStateLocation({
+            stateRoot,
+            runId,
+            nodeId,
+            nodeEpoch: component.nodeEpoch
+        })
+        nodeProjections[nodeId] = fileContentDigest(
+            nodeLocation.projectionPath
+        )
+    }
+    return Object.freeze({
+        controlProjection: fileContentDigest(
+            location.controlProjectionPath
+        ),
+        nodeIndex: fileContentDigest(location.nodeIndexPath),
+        aggregateProjection: fileContentDigest(
+            location.aggregateProjectionPath
+        ),
+        nodeProjections
+    })
+}
+
+function derivedArtifactsMatch(entry) {
+    try {
+        const current = captureDerivedArtifactDigests({
+            stateRoot: entry.stateRoot,
+            runId: entry.runId,
+            components: entry.components
+        })
+        return stateDigest(current) ===
+            stateDigest(entry.derivedArtifactDigests)
+    } catch {
+        return false
+    }
+}
+
+function startupPolicyBindingDigest(controlLedger, controlProjection) {
+    const genesis = controlLedger.events.find(({ eventType, payload }) =>
+        eventType === 'scope.refreshed' && payload?.runGenesis
+    )?.payload?.runGenesis ?? null
+    const rebound = [...controlLedger.events].reverse().find(
+        ({ eventType, payload }) =>
+            eventType === 'runtime-authority.rebound' &&
+            payload?.lifecycleAuthority
+    )?.payload?.lifecycleAuthority ?? null
+    return stateDigest({
+        schema:
+            'issue-orchestration.verified-replay-startup-policy-binding.v1',
+        startupAttestationDigest:
+            controlProjection.lifecycleAuthorityBinding
+                ?.startupAttestationDigest ?? null,
+        runtimeTrustBindingDigest:
+            controlProjection.lifecycleAuthorityBinding
+                ?.runtimeTrustBindingDigest ?? null,
+        repositoryBindingSetDigest:
+            controlProjection.lifecycleAuthorityBinding
+                ?.repositoryBindingSetDigest ?? null,
+        runtimeCapabilityBindingDigest:
+            controlProjection.lifecycleAuthorityBinding
+                ?.runtimeCapabilityBindingDigest ?? null,
+        installedPolicyDigest:
+            genesis?.installedPolicy?.policyDigest ?? null,
+        packageBinding: genesis?.lifecycleAuthority?.packageBinding ??
+            genesis?.lifecycleAuthority?.binding ?? null,
+        currentAuthorityBinding: rebound?.binding ??
+            controlProjection.lifecycleAuthorityBinding ?? null
+    })
+}
+
+function immutableReplayKey({
+    stateRoot,
+    runId,
+    authorityDigest,
+    controlLedger,
+    controlProjection,
+    controlIdentity,
+    result
+}) {
+    return stateDigest({
+        schema: 'issue-orchestration.verified-replay-cache-key.v1',
+        stateRoot: path.resolve(stateRoot),
+        runId,
+        authorityDigest,
+        startupPolicyBindingDigest: startupPolicyBindingDigest(
+            controlLedger,
+            controlProjection
+        ),
+        controlLedgerHeadDigest: controlIdentity.headDigest,
+        nodeIndexDigest: result.nodeIndex.nodeIndexDigest,
+        nodeLedgerHeads: Object.fromEntries(
+            Object.entries(result.nodeIndex.nodes)
+                .sort(([left], [right]) => left.localeCompare(right))
+                .map(([nodeId, node]) => [nodeId, node.ledgerHeadDigest])
+        )
+    })
+}
+
+function installReplayCacheEntry({
+    stateRoot,
+    runId,
+    authorityDigest,
+    controlLedger,
+    controlProjection,
+    controlIdentity,
+    components,
+    result
+}) {
+    const authorityLookupKey = cacheAuthorityIdentity({
+        stateRoot,
+        runId,
+        cacheAuthorityDigest: authorityDigest
+    })
+    const runIdentity = cacheRunIdentity({ stateRoot, runId })
+    const entry = {
+        stateRoot: path.resolve(stateRoot),
+        runId,
+        authorityDigest,
+        authorityLookupKey,
+        controlLedger: structuredClone(controlLedger),
+        controlProjection: structuredClone(controlProjection),
+        controlIdentity: structuredClone(controlIdentity),
+        components: new Map([...components].map(([nodeId, component]) => [
+            nodeId,
+            structuredClone(component)
+        ])),
+        result: structuredClone(result),
+        immutableKey: immutableReplayKey({
+            stateRoot,
+            runId,
+            authorityDigest,
+            controlLedger,
+            controlProjection,
+            controlIdentity,
+            result
+        }),
+        derivedArtifactDigests: captureDerivedArtifactDigests({
+            stateRoot,
+            runId,
+            components
+        })
+    }
+    const previousImmutableKey =
+        VERIFIED_REPLAY_AUTHORITY_INDEX.get(authorityLookupKey)
+    if (previousImmutableKey &&
+        previousImmutableKey !== entry.immutableKey) {
+        VERIFIED_REPLAY_CACHE.delete(previousImmutableKey)
+        VERIFIED_REPLAY_RUN_KEYS.get(runIdentity)?.delete(
+            previousImmutableKey
+        )
+    }
+    VERIFIED_REPLAY_CACHE.set(entry.immutableKey, entry)
+    VERIFIED_REPLAY_AUTHORITY_INDEX.set(
+        authorityLookupKey,
+        entry.immutableKey
+    )
+    registerCacheKey(runIdentity, entry.immutableKey)
+    return entry
+}
+
+function writeRecoveredDerivedArtifacts({
+    stateRoot,
+    runId,
+    result,
+    components,
+    writeControlProjection = true,
+    changedNodeIds = null
+}) {
+    const location = canonicalRunStateLocation({ stateRoot, runId })
+    if (writeControlProjection) {
+        atomicWrite(
+            location.controlProjectionPath,
+            `${JSON.stringify(result.controlProjection, null, 2)}\n`
+        )
+    }
+    const changed = changedNodeIds === null
+        ? new Set(components.keys())
+        : new Set(changedNodeIds)
+    for (const nodeId of changed) {
+        const component = components.get(nodeId)
+        if (!component || component.status !== 'verified') continue
+        const nodeLocation = canonicalNodeStateLocation({
+            stateRoot,
+            runId,
+            nodeId,
+            nodeEpoch: component.nodeEpoch
+        })
+        atomicWrite(
+            nodeLocation.projectionPath,
+            `${JSON.stringify(component.projection, null, 2)}\n`
+        )
+    }
+    atomicWrite(
+        location.nodeIndexPath,
+        `${JSON.stringify(result.nodeIndex, null, 2)}\n`
+    )
+    atomicWrite(
+        location.aggregateProjectionPath,
+        `${JSON.stringify(result.projection, null, 2)}\n`
+    )
+}
+
+function readNodeLedgerOrCorrupt({
+    stateRoot,
+    runId,
+    nodeId,
+    nodeEpoch,
+    stats
+}) {
+    const nodeLocation = canonicalNodeStateLocation({
+        stateRoot,
+        runId,
+        nodeId,
+        nodeEpoch
+    })
+    try {
+        noteFullLedgerRead(stats, nodeLocation.ledgerPath)
+        return readLedger(nodeLocation.ledgerPath)
+    } catch (error) {
+        return {
+            header: {
+                schema: 'issue-orchestration.corrupt-node-ledger.v1',
+                runId,
+                nodeId,
+                memberId: nodeId
+            },
+            events: [],
+            recoveryErrorCode:
+                error?.code ?? 'node-ledger-replay-invalid'
+        }
+    }
+}
+
+function componentForLedger({
+    stateRoot,
+    controlProjection,
+    nodeId,
+    registration,
+    ledger
+}) {
+    if (ledger.recoveryErrorCode) {
+        return {
+            nodeId,
+            nodeEpoch: registration.nodeEpoch,
+            registrationDigest: stateDigest(registration),
+            status: 'quarantined',
+            errorCode: ledger.recoveryErrorCode,
+            ledger: null,
+            projection: null,
+            ledgerIdentity: null
+        }
+    }
+    return verifiedNodeComponent({
+        stateRoot,
+        controlProjection,
+        nodeId,
+        registration,
+        ledger
+    })
+}
+
+function fullReplayAggregateRunState({
+    stateRoot,
+    runId,
+    cacheAuthorityDigest = null,
+    stats
+}) {
+    const location = canonicalRunStateLocation({ stateRoot, runId })
+    noteFullLedgerRead(stats, location.controlLedgerPath)
     const controlLedger = readLedger(location.controlLedgerPath)
+    stats.controlLedgerReplays += 1
     const controlProjection = replayControlLedger(controlLedger)
     const storedIndex = JSON.parse(
         fs.readFileSync(location.nodeIndexPath, 'utf8')
@@ -1465,64 +2163,461 @@ export function recoverAggregateRunState({ stateRoot, runId } = {}) {
             storedIndex.nodeIndexDigest) {
         fail('node-index-digest-invalid')
     }
-    const nodeLedgers = Object.entries(controlProjection.nodes)
-        .filter(([, registration]) => registration.status === 'active')
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([nodeId, registration]) => {
-            const nodeLocation = canonicalNodeStateLocation({
+    const components = new Map()
+    for (const [nodeId, registration] of activeRegistrations(
+        controlProjection
+    )) {
+        const ledger = readNodeLedgerOrCorrupt({
+            stateRoot,
+            runId,
+            nodeId,
+            nodeEpoch: registration.nodeEpoch,
+            stats
+        })
+        stats.nodeLedgerReplays += 1
+        components.set(nodeId, componentForLedger({
+            stateRoot,
+            controlProjection,
+            nodeId,
+            registration,
+            ledger
+        }))
+    }
+    const result = resultFromVerifiedComponents({
+        stateRoot,
+        controlLedger,
+        controlProjection,
+        components
+    })
+    stats.fullReplays += 1
+    stats.aggregateProjectionRebuilds += 1
+    writeRecoveredDerivedArtifacts({
+        stateRoot,
+        runId,
+        result,
+        components
+    })
+    const controlIdentity = {
+        headerDigest: controlLedger.header.headerDigest,
+        headDigest: controlProjection.lastEventDigest
+    }
+    const authorityDigest = cacheAuthorityDigest ??
+        fallbackCacheAuthorityDigest(controlProjection)
+    const entry = installReplayCacheEntry({
+        stateRoot,
+        runId,
+        authorityDigest,
+        controlLedger,
+        controlProjection,
+        controlIdentity,
+        components,
+        result
+    })
+    return { entry, observation: {
+        status: 'full-replay',
+        immutableKey: entry.immutableKey,
+        controlLedgerReplays: 1,
+        nodeLedgerReplays: components.size,
+        aggregateProjectionRebuilds: 1
+    } }
+}
+
+function validateCurrentCachedIdentities(entry, stats) {
+    const controlLocation = canonicalRunStateLocation({
+        stateRoot: entry.stateRoot,
+        runId: entry.runId
+    })
+    const controlIdentity = readLedgerIdentity(
+        controlLocation.controlLedgerPath
+    )
+    noteLedgerIdentity(stats, controlIdentity)
+    const nodeIdentities = new Map()
+    for (const [nodeId, component] of entry.components) {
+        const nodeLocation = canonicalNodeStateLocation({
+            stateRoot: entry.stateRoot,
+            runId: entry.runId,
+            nodeId,
+            nodeEpoch: component.nodeEpoch
+        })
+        try {
+            const identity = readLedgerIdentity(nodeLocation.ledgerPath)
+            noteLedgerIdentity(stats, identity)
+            nodeIdentities.set(nodeId, identity)
+        } catch (error) {
+            nodeIdentities.set(nodeId, {
+                errorCode: error?.code ?? 'node-ledger-replay-invalid'
+            })
+        }
+    }
+    return { controlIdentity, nodeIdentities }
+}
+
+function reconcileComponents({
+    entry,
+    controlLedger,
+    controlProjection,
+    identities,
+    stats
+}) {
+    const components = new Map()
+    const changedNodeIds = []
+    for (const [nodeId, registration] of activeRegistrations(
+        controlProjection
+    )) {
+        const cached = entry.components.get(nodeId)
+        const identity = identities.nodeIdentities.get(nodeId)
+        if (cached &&
+            cached.registrationDigest === stateDigest(registration) &&
+            cached.status === 'verified' &&
+            identity && !identity.errorCode &&
+            identity.headerDigest ===
+                cached.ledgerIdentity.headerDigest &&
+            identity.headDigest === cached.ledgerIdentity.headDigest) {
+            components.set(nodeId, structuredClone(cached))
+            continue
+        }
+        const ledger = readNodeLedgerOrCorrupt({
+            stateRoot: entry.stateRoot,
+            runId: entry.runId,
+            nodeId,
+            nodeEpoch: registration.nodeEpoch,
+            stats
+        })
+        stats.nodeLedgerReplays += 1
+        changedNodeIds.push(nodeId)
+        components.set(nodeId, componentForLedger({
+            stateRoot: entry.stateRoot,
+            controlProjection,
+            nodeId,
+            registration,
+            ledger
+        }))
+    }
+    const result = resultFromVerifiedComponents({
+        stateRoot: entry.stateRoot,
+        controlLedger,
+        controlProjection,
+        components
+    })
+    stats.aggregateProjectionRebuilds += 1
+    return { components, result, changedNodeIds }
+}
+
+export function recoverAggregateRunState({
+    stateRoot,
+    runId,
+    cacheAuthorityDigest = null,
+    forceFullReplay = false,
+    explicitAudit = false,
+    corruptionSuspected = false
+} = {}) {
+    const canonicalStateRoot = path.resolve(stateRoot)
+    const stats = statsForRun({ stateRoot: canonicalStateRoot, runId })
+    const beforeBytes = stats.canonicalLedgerBytesRead
+    const authorityDigest = cacheAuthorityDigest
+    const authorityLookupKey = authorityDigest === null
+        ? null
+        : cacheAuthorityIdentity({
+            stateRoot: canonicalStateRoot,
+            runId,
+            cacheAuthorityDigest: authorityDigest
+        })
+    const immutableLookupKey = authorityLookupKey === null
+        ? null
+        : VERIFIED_REPLAY_AUTHORITY_INDEX.get(authorityLookupKey)
+    let entry = immutableLookupKey === null ||
+        immutableLookupKey === undefined
+        ? null
+        : VERIFIED_REPLAY_CACHE.get(immutableLookupKey)
+    if (!entry && authorityLookupKey === null) {
+        const runIdentity = cacheRunIdentity({
+            stateRoot: canonicalStateRoot,
+            runId
+        })
+        const candidates = [...(VERIFIED_REPLAY_RUN_KEYS.get(runIdentity) ?? [])]
+            .map((key) => VERIFIED_REPLAY_CACHE.get(key))
+            .filter(Boolean)
+        if (candidates.length === 1) entry = candidates[0]
+    }
+    if (!entry || forceFullReplay || explicitAudit || corruptionSuspected ||
+        !derivedArtifactsMatch(entry)) {
+        const replayed = fullReplayAggregateRunState({
+            stateRoot: canonicalStateRoot,
+            runId,
+            cacheAuthorityDigest: authorityDigest,
+            stats
+        })
+        return cloneCacheResult(
+            replayed.entry.result,
+            replayed.entry.controlLedger,
+            {
+                ...replayed.observation,
+                canonicalLedgerBytesRead:
+                    stats.canonicalLedgerBytesRead - beforeBytes
+            }
+        )
+    }
+    const identities = validateCurrentCachedIdentities(entry, stats)
+    const controlUnchanged =
+        identities.controlIdentity.headerDigest ===
+            entry.controlIdentity.headerDigest &&
+        identities.controlIdentity.headDigest ===
+            entry.controlIdentity.headDigest
+    const nodesUnchanged = [...entry.components].every(
+        ([nodeId, component]) => {
+            const current = identities.nodeIdentities.get(nodeId)
+            return current && !current.errorCode &&
+                current.headerDigest ===
+                    component.ledgerIdentity?.headerDigest &&
+                current.headDigest === component.ledgerIdentity?.headDigest
+        }
+    )
+    if (controlUnchanged && nodesUnchanged) {
+        stats.cacheHits += 1
+        return cloneCacheResult(entry.result, entry.controlLedger, {
+            status: 'cache-hit',
+            immutableKey: entry.immutableKey,
+            controlLedgerReplays: 0,
+            nodeLedgerReplays: 0,
+            aggregateProjectionRebuilds: 0,
+            canonicalLedgerBytesRead:
+                stats.canonicalLedgerBytesRead - beforeBytes
+        })
+    }
+    let controlLedger = entry.controlLedger
+    let controlProjection = entry.controlProjection
+    if (!controlUnchanged) {
+        const location = canonicalRunStateLocation({
+            stateRoot: canonicalStateRoot,
+            runId
+        })
+        noteFullLedgerRead(stats, location.controlLedgerPath)
+        controlLedger = readLedger(location.controlLedgerPath)
+        stats.controlLedgerReplays += 1
+        controlProjection = replayControlLedger(controlLedger)
+        if (stateDigest(controlProjection.lifecycleAuthorityBinding ?? null) !==
+            stateDigest(entry.controlProjection.lifecycleAuthorityBinding ?? null)) {
+            const replayed = fullReplayAggregateRunState({
+                stateRoot: canonicalStateRoot,
+                runId,
+                cacheAuthorityDigest: authorityDigest,
+                stats
+            })
+            return cloneCacheResult(
+                replayed.entry.result,
+                replayed.entry.controlLedger,
+                {
+                    ...replayed.observation,
+                    status: 'authority-change-full-replay',
+                    canonicalLedgerBytesRead:
+                        stats.canonicalLedgerBytesRead - beforeBytes
+                }
+            )
+        }
+    }
+    const reconciled = reconcileComponents({
+        entry,
+        controlLedger,
+        controlProjection,
+        identities,
+        stats
+    })
+    writeRecoveredDerivedArtifacts({
+        stateRoot: canonicalStateRoot,
+        runId,
+        result: reconciled.result,
+        components: reconciled.components,
+        writeControlProjection: !controlUnchanged,
+        changedNodeIds: reconciled.changedNodeIds
+    })
+    const nextControlIdentity = {
+        headerDigest: controlLedger.header.headerDigest,
+        headDigest: controlProjection.lastEventDigest
+    }
+    const next = installReplayCacheEntry({
+        stateRoot: canonicalStateRoot,
+        runId,
+        authorityDigest: authorityDigest ?? entry.authorityDigest,
+        controlLedger,
+        controlProjection,
+        controlIdentity: nextControlIdentity,
+        components: reconciled.components,
+        result: reconciled.result
+    })
+    return cloneCacheResult(next.result, next.controlLedger, {
+        status: controlUnchanged
+            ? 'node-incremental-replay'
+            : 'control-incremental-replay',
+        immutableKey: next.immutableKey,
+        controlLedgerReplays: controlUnchanged ? 0 : 1,
+        nodeLedgerReplays: reconciled.changedNodeIds.length,
+        aggregateProjectionRebuilds: 1,
+        canonicalLedgerBytesRead:
+            stats.canonicalLedgerBytesRead - beforeBytes
+    })
+}
+
+
+function cacheEntriesForRun({ stateRoot, runId }) {
+    const runIdentity = cacheRunIdentity({ stateRoot, runId })
+    return [...(VERIFIED_REPLAY_RUN_KEYS.get(runIdentity) ?? [])]
+        .map((key) => VERIFIED_REPLAY_CACHE.get(key))
+        .filter(Boolean)
+}
+
+function updateEntriesAfterNodeAppend({
+    stateRoot,
+    runId,
+    nodeId,
+    candidateLedger,
+    nodeProjection
+}) {
+    const entries = cacheEntriesForRun({ stateRoot, runId })
+    if (entries.length === 0) return null
+    const stats = statsForRun({ stateRoot, runId })
+    const compatible = entries.filter((entry) => {
+        const registration = entry.controlProjection.nodes[nodeId]
+        return registration?.status === 'active' &&
+            entry.controlIdentity.headDigest ===
+                entry.controlProjection.lastEventDigest
+    })
+    if (compatible.length === 0) return null
+    let canonical = null
+    for (const entry of compatible) {
+        const registration = entry.controlProjection.nodes[nodeId]
+        const component = verifiedNodeComponent({
+            stateRoot,
+            controlProjection: entry.controlProjection,
+            nodeId,
+            registration,
+            ledger: candidateLedger
+        })
+        if (component.status !== 'verified' ||
+            component.projection.projectionDigest !==
+                nodeProjection.projectionDigest) {
+            fail('verified-replay-node-append-invalid')
+        }
+        const components = new Map([...entry.components].map(
+            ([key, value]) => [key, structuredClone(value)]
+        ))
+        components.set(nodeId, component)
+        const result = resultFromVerifiedComponents({
+            stateRoot,
+            controlLedger: entry.controlLedger,
+            controlProjection: entry.controlProjection,
+            components
+        })
+        if (!canonical) {
+            canonical = { result, components }
+            stats.nodeLedgerReplays += 1
+            stats.aggregateProjectionRebuilds += 1
+            writeRecoveredDerivedArtifacts({
+                stateRoot,
+                runId,
+                result,
+                components,
+                writeControlProjection: false,
+                changedNodeIds: [nodeId]
+            })
+        } else if (stateDigest(result) !== stateDigest(canonical.result)) {
+            fail('verified-replay-cache-entry-diverged')
+        }
+        installReplayCacheEntry({
+            stateRoot,
+            runId,
+            authorityDigest: entry.authorityDigest,
+            controlLedger: entry.controlLedger,
+            controlProjection: entry.controlProjection,
+            controlIdentity: entry.controlIdentity,
+            components,
+            result
+        })
+    }
+    return canonical.result
+}
+
+function updateEntriesAfterControlAppend({
+    stateRoot,
+    runId,
+    previousControlHeadDigest,
+    candidateLedger,
+    controlProjection
+}) {
+    const entries = cacheEntriesForRun({ stateRoot, runId })
+        .filter((entry) =>
+            entry.controlIdentity.headDigest === previousControlHeadDigest)
+    if (entries.length === 0) return null
+    const bindingChanged = entries.some((entry) =>
+        stateDigest(entry.controlProjection.lifecycleAuthorityBinding ?? null) !==
+        stateDigest(controlProjection.lifecycleAuthorityBinding ?? null))
+    if (bindingChanged) return null
+    const stats = statsForRun({ stateRoot, runId })
+    let canonical = null
+    for (const entry of entries) {
+        const components = new Map()
+        const changedNodeIds = []
+        for (const [nodeId, registration] of activeRegistrations(
+            controlProjection
+        )) {
+            const cached = entry.components.get(nodeId)
+            if (cached &&
+                cached.registrationDigest === stateDigest(registration)) {
+                components.set(nodeId, structuredClone(cached))
+                continue
+            }
+            const ledger = readNodeLedgerOrCorrupt({
                 stateRoot,
                 runId,
                 nodeId,
-                nodeEpoch: registration.nodeEpoch
+                nodeEpoch: registration.nodeEpoch,
+                stats
             })
-            try {
-                return readLedger(nodeLocation.ledgerPath)
-            } catch (error) {
-                return {
-                    header: {
-                        schema: 'issue-orchestration.corrupt-node-ledger.v1',
-                        runId,
-                        nodeId,
-                        memberId: nodeId
-                    },
-                    events: [],
-                    recoveryErrorCode:
-                        error?.code ?? 'node-ledger-replay-invalid'
-                }
-            }
+            stats.nodeLedgerReplays += 1
+            changedNodeIds.push(nodeId)
+            components.set(nodeId, componentForLedger({
+                stateRoot,
+                controlProjection,
+                nodeId,
+                registration,
+                ledger
+            }))
+        }
+        const result = resultFromVerifiedComponents({
+            stateRoot,
+            controlLedger: candidateLedger,
+            controlProjection,
+            components
         })
-    const result = projectAggregateRun({
-        stateRoot,
-        controlLedger,
-        nodeLedgers
-    })
-    atomicWrite(
-        location.controlProjectionPath,
-        `${JSON.stringify(result.controlProjection, null, 2)}\n`
-    )
-    for (const ledger of nodeLedgers) {
-        if (ledger.recoveryErrorCode) continue
-        const nodeLocation = canonicalNodeStateLocation({
+        if (!canonical) {
+            canonical = { result, components, changedNodeIds }
+            stats.controlLedgerReplays += 1
+            stats.aggregateProjectionRebuilds += 1
+            writeRecoveredDerivedArtifacts({
+                stateRoot,
+                runId,
+                result,
+                components,
+                writeControlProjection: false,
+                changedNodeIds
+            })
+        } else if (stateDigest(result) !== stateDigest(canonical.result)) {
+            fail('verified-replay-cache-entry-diverged')
+        }
+        installReplayCacheEntry({
             stateRoot,
             runId,
-            nodeId: ledger.header.nodeId,
-            nodeEpoch: ledger.header.nodeEpoch
+            authorityDigest: entry.authorityDigest,
+            controlLedger: candidateLedger,
+            controlProjection,
+            controlIdentity: {
+                headerDigest: candidateLedger.header.headerDigest,
+                headDigest: controlProjection.lastEventDigest
+            },
+            components,
+            result
         })
-        const projection = replayEventLedgerSync(ledger)
-        atomicWrite(
-            nodeLocation.projectionPath,
-            `${JSON.stringify(projection, null, 2)}\n`
-        )
     }
-    atomicWrite(
-        location.nodeIndexPath,
-        `${JSON.stringify(result.nodeIndex, null, 2)}\n`
-    )
-    atomicWrite(
-        location.aggregateProjectionPath,
-        `${JSON.stringify(result.projection, null, 2)}\n`
-    )
-    return result
+    return canonical.result
 }
 
 function loadActiveNodeLedgers({ stateRoot, controlProjection }) {
@@ -1640,7 +2735,13 @@ export function appendNodeEventAtomicSync({
         location.projectionPath,
         `${JSON.stringify(projection, null, 2)}\n`
     )
-    const aggregate = refreshAggregateDerivedState({
+    const aggregate = updateEntriesAfterNodeAppend({
+        stateRoot,
+        runId,
+        nodeId,
+        candidateLedger: candidate,
+        nodeProjection: projection
+    }) ?? refreshAggregateDerivedState({
         stateRoot,
         controlLedger
     })
@@ -1672,7 +2773,14 @@ export function appendControlEventAtomicSync({
         location.controlProjectionPath,
         `${JSON.stringify(projection, null, 2)}\n`
     )
-    const aggregate = refreshAggregateDerivedState({
+    const aggregate = updateEntriesAfterControlAppend({
+        stateRoot,
+        runId,
+        previousControlHeadDigest:
+            ledger.events.at(-1)?.eventDigest ?? GENESIS,
+        candidateLedger: candidate,
+        controlProjection: projection
+    }) ?? refreshAggregateDerivedState({
         stateRoot,
         controlLedger: candidate,
         writeControlProjection: false

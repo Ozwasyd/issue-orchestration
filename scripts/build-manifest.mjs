@@ -103,7 +103,8 @@ const manifest = {
         'stage-scoped-write-lease',
         'typed-terminalization-authority',
         'deterministic-dispatcher-performance-telemetry',
-        'wave-scoped-repository-base-observation'
+        'wave-scoped-repository-base-observation',
+        'verified-replay-projection-cache'
     ],
     installTargets: [
         {
