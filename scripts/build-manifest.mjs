@@ -108,6 +108,7 @@ const manifest = {
         'verified-lifecycle-action-set-cache',
         'canonical-ready-result-batch-admission',
         'typed-actor-stage-failure-isolation',
+        'shared-projection-batch-actor-preparation',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',

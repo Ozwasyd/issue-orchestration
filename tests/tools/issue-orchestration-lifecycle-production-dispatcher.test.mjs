@@ -782,6 +782,504 @@ test('ready queue is process-local and production uses canonical batch admission
 })
 
 
+function pendingActorPreparation(prepared, events, nodeId) {
+    const adapter = prepared.context.actorAdapter
+    return {
+        ...prepared,
+        context: {
+            ...prepared.context,
+            actorAdapter: {
+                ...adapter,
+                prepare(input) {
+                    events.push(`actor-start:${nodeId}`)
+                    return adapter.prepare(input)
+                },
+                invoke() {
+                    return new Promise(() => {})
+                }
+            }
+        }
+    }
+}
+
+async function expectStartOnly(value, contextProvider) {
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    return readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+}
+
+test('compatible actor preparations share one projection and overlap before any actor starts', async (t) => {
+    const value = fixture([81, 82], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const base = semanticContextProvider(value)
+    const projectionRefs = []
+    const events = []
+    let active = 0
+    let maximumActive = 0
+    let entered = 0
+    let release
+    const gate = new Promise((resolve) => { release = resolve })
+    const timer = setTimeout(release, 250)
+    t.after(() => clearTimeout(timer))
+    const contextProvider = {
+        ...base,
+        async prepare(request) {
+            projectionRefs.push(request.projection)
+            assert.equal(
+                request.repositoryBaseEpoch.schema,
+                'issue-orchestration.dispatch-preparation-base-binding.v1'
+            )
+            active += 1
+            maximumActive = Math.max(maximumActive, active)
+            entered += 1
+            if (entered === 2) release()
+            await gate
+            const prepared = await base.prepare(request)
+            events.push(`prepared:${request.action.nodeId}`)
+            active -= 1
+            return pendingActorPreparation(
+                prepared,
+                events,
+                request.action.nodeId
+            )
+        }
+    }
+    const ledger = await expectStartOnly(value, contextProvider)
+    assert.equal(maximumActive, 2)
+    assert.equal(projectionRefs.length, 2)
+    assert.equal(projectionRefs[0], projectionRefs[1])
+    const firstActor = events.findIndex((entry) =>
+        entry.startsWith('actor-start:'))
+    assert.ok(firstActor >= 2, events)
+    assert.equal(activeDispatches(value, ledger).length, 2)
+})
+
+test('prepareBatch receives bounded per-action projections and runs once', async (t) => {
+    const value = fixture([83, 84], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const base = semanticContextProvider(value)
+    const events = []
+    let batchCalls = 0
+    let singleCalls = 0
+    const contextProvider = {
+        ...base,
+        async prepare() {
+            singleCalls += 1
+            throw new Error('single prepare must not run')
+        },
+        async prepareBatch(request) {
+            batchCalls += 1
+            assert.deepEqual(Object.keys(request).sort(), [
+                'actionSetDigest',
+                'actions',
+                'aggregateProjectionDigest',
+                'createdAt',
+                'repositoryBaseEpoch',
+                'schema',
+                'semanticGraphDigest',
+                'startup'
+            ])
+            assert.equal(request.actions.length, 2)
+            assert.equal(
+                request.repositoryBaseEpoch.schema,
+                'issue-orchestration.repository-base-observation-epoch.v1'
+            )
+            const ledger = readLifecycleRunLedger({
+                stateRoot: value.stateRoot,
+                runId: value.runId,
+                startup: value.startup
+            })
+            const projection = projectLifecycleRun(ledger, {
+                startup: value.startup
+            })
+            const preparations = []
+            for (const item of request.actions) {
+                assert.deepEqual(Object.keys(item.projection).sort(), [
+                    'aggregateProjectionDigest',
+                    'node',
+                    'nodeId',
+                    'schema',
+                    'semanticGraphDigest'
+                ])
+                assert.equal(item.projection.nodeId, item.action.nodeId)
+                assert.equal(item.projection.node.id, item.action.nodeId)
+                const prepared = await base.prepare({
+                    owner: item.owner,
+                    executionClass: item.executionClass,
+                    action: item.action,
+                    projection
+                })
+                preparations.push({
+                    actionDigest: item.actionDigest,
+                    status: 'prepared',
+                    prepared: pendingActorPreparation(
+                        prepared,
+                        events,
+                        item.action.nodeId
+                    )
+                })
+            }
+            return {
+                schema:
+                    'issue-orchestration.dispatch-context-batch-result.v1',
+                preparations
+            }
+        }
+    }
+    const ledger = await expectStartOnly(value, contextProvider)
+    assert.equal(batchCalls, 1)
+    assert.equal(singleCalls, 0)
+    assert.equal(activeDispatches(value, ledger).length, 2)
+    assert.equal(events.filter((entry) =>
+        entry.startsWith('actor-start:')).length, 2)
+})
+
+test('invalid preparation identities fail before dispatch append or actor spawn', async (t) => {
+    const cases = [
+        ['slotId', 'dispatcher-preparation-slot-duplicate'],
+        ['runtimeBindingDigest',
+            'dispatcher-preparation-runtime-binding-duplicate'],
+        ['leaseDigest', 'dispatcher-preparation-lease-duplicate'],
+        ['resourceDigest', 'dispatcher-preparation-resource-duplicate']
+    ]
+    for (const [field, code] of cases) {
+        await t.test(field, async (t) => {
+            const value = fixture([85, 86], { slotCapacity: 2 })
+            t.after(() => {
+                fs.rmSync(value.root, { recursive: true, force: true })
+                fs.rmSync(value.stateRoot, { recursive: true, force: true })
+            })
+            const base = semanticContextProvider(value)
+            let actorStarts = 0
+            const contextProvider = {
+                ...base,
+                async prepareBatch(request) {
+                    const ledger = readLifecycleRunLedger({
+                        stateRoot: value.stateRoot,
+                        runId: value.runId,
+                        startup: value.startup
+                    })
+                    const projection = projectLifecycleRun(ledger, {
+                        startup: value.startup
+                    })
+                    const preparations = []
+                    for (const item of request.actions) {
+                        const prepared = await base.prepare({
+                            owner: item.owner,
+                            executionClass: item.executionClass,
+                            action: item.action,
+                            projection
+                        })
+                        const adapter = prepared.context.actorAdapter
+                        prepared.context.actorAdapter = {
+                            ...adapter,
+                            prepare(input) {
+                                actorStarts += 1
+                                return adapter.prepare(input)
+                            }
+                        }
+                        preparations.push({
+                            actionDigest: item.actionDigest,
+                            status: 'prepared',
+                            prepared
+                        })
+                    }
+                    preparations[1].prepared.dispatch[field] =
+                        preparations[0].prepared.dispatch[field]
+                    return {
+                        schema:
+                            'issue-orchestration.dispatch-context-batch-result.v1',
+                        preparations
+                    }
+                }
+            }
+            await assert.rejects(
+                runLifecycleProductionDispatcher({
+                    ledger: value.ledger,
+                    startup: value.startup,
+                    contextProvider,
+                    clock: clock(),
+                    maxTransitions: 1
+                }),
+                (error) => error?.code === code
+            )
+            const ledger = readLifecycleRunLedger({
+                stateRoot: value.stateRoot,
+                runId: value.runId,
+                startup: value.startup
+            })
+            assert.equal(activeDispatches(value, ledger).length, 0)
+            assert.equal(actorStarts, 0)
+        })
+    }
+})
+
+test('one failed preparation excludes only that action and starts valid peers', async (t) => {
+    const value = fixture([87, 88], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const base = semanticContextProvider(value)
+    const events = []
+    const failedNodeId = `${value.repository.repository}#87`
+    const contextProvider = {
+        ...base,
+        async prepare(request) {
+            if (request.action.nodeId === failedNodeId) {
+                throw new Error('action-local preparation failed')
+            }
+            return pendingActorPreparation(
+                await base.prepare(request),
+                events,
+                request.action.nodeId
+            )
+        }
+    }
+    const ledger = await expectStartOnly(value, contextProvider)
+    const active = activeDispatches(value, ledger)
+    assert.equal(active.length, 1)
+    assert.equal(active[0].nodeId,
+        `${value.repository.repository}#88`)
+    assert.deepEqual(events.filter((entry) =>
+        entry.startsWith('actor-start:')), [
+        `actor-start:${value.repository.repository}#88`
+    ])
+})
+
+test('dispatch batch recorder rejects silent preparation omissions', (t) => {
+    const value = fixture([93, 94], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const actionSet = compileLifecycleRunActionSet(value.ledger, {
+        startup: value.startup
+    })
+    const actions = actionSet.actions.filter(({ type }) =>
+        type === 'request-semantic-proposal')
+    const metadata = {
+        actionDigest: actions[0].actionDigest,
+        nodeId: actions[0].nodeId,
+        owner: 'pre-writer',
+        attemptId: 'partition-attempt',
+        slotId: 'partition-slot',
+        runtimeBindingDigest: digest('partition-runtime'),
+        leaseDigest: digest('partition-lease'),
+        resourceDigest: digest('partition-resource')
+    }
+    assert.throws(
+        () => recordLifecycleDispatchBatchStarted({
+            ledger: value.ledger,
+            actionSet,
+            dispatches: [metadata],
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }),
+        (error) => error?.code ===
+            'lifecycle-dispatch-preparation-partition-invalid'
+    )
+    const recorded = recordLifecycleDispatchBatchStarted({
+        ledger: value.ledger,
+        actionSet,
+        dispatches: [metadata],
+        failedActionDigests: [actions[1].actionDigest],
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    assert.deepEqual(recorded.batch.failedActionDigests, [
+        actions[1].actionDigest
+    ])
+    assert.equal(recorded.dispatches.length, 1)
+})
+
+test('prepareBatch cannot reorder action outputs or start any actor', async (t) => {
+    const value = fixture([89, 90], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const base = semanticContextProvider(value)
+    let actorStarts = 0
+    const contextProvider = {
+        ...base,
+        async prepareBatch(request) {
+            const ledger = readLifecycleRunLedger({
+                stateRoot: value.stateRoot,
+                runId: value.runId,
+                startup: value.startup
+            })
+            const projection = projectLifecycleRun(ledger, {
+                startup: value.startup
+            })
+            const prepared = await Promise.all(request.actions.map(
+                async (item) => {
+                    const value = await base.prepare({
+                        owner: item.owner,
+                        executionClass: item.executionClass,
+                        action: item.action,
+                        projection
+                    })
+                    const adapter = value.context.actorAdapter
+                    value.context.actorAdapter = {
+                        ...adapter,
+                        prepare(input) {
+                            actorStarts += 1
+                            return adapter.prepare(input)
+                        }
+                    }
+                    return value
+                }))
+            return {
+                schema:
+                    'issue-orchestration.dispatch-context-batch-result.v1',
+                preparations: [
+                    {
+                        actionDigest: request.actions[1].actionDigest,
+                        status: 'prepared',
+                        prepared: prepared[1]
+                    },
+                    {
+                        actionDigest: request.actions[0].actionDigest,
+                        status: 'prepared',
+                        prepared: prepared[0]
+                    }
+                ]
+            }
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code ===
+            'dispatcher-batch-preparation-order-invalid'
+    )
+    assert.equal(actorStarts, 0)
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    assert.equal(activeDispatches(value, ledger).length, 0)
+})
+
+
+test('batch and concurrent-single preparation append byte-identical start evidence', async (t) => {
+    const value = fixture([91, 92], { slotCapacity: 2 })
+    const snapshot = fs.mkdtempSync(path.join(
+        os.tmpdir(),
+        'dispatcher-preparation-snapshot-'
+    ))
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+        fs.rmSync(snapshot, { recursive: true, force: true })
+    })
+    fs.cpSync(value.stateRoot, snapshot, { recursive: true })
+
+    const fallbackBase = semanticContextProvider(value)
+    const fallbackProvider = {
+        ...fallbackBase,
+        async prepare(request) {
+            return pendingActorPreparation(
+                await fallbackBase.prepare(request),
+                [],
+                request.action.nodeId
+            )
+        }
+    }
+    await expectStartOnly(value, fallbackProvider)
+    const fallbackTree = stateTree(value.stateRoot)
+    const fallbackProjection = projectLifecycleRun(
+        readLifecycleRunLedger({
+            stateRoot: value.stateRoot,
+            runId: value.runId,
+            startup: value.startup
+        }),
+        { startup: value.startup }
+    ).aggregateProjection
+
+    fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    fs.cpSync(snapshot, value.stateRoot, { recursive: true })
+    clearDerivedCaches(value)
+
+    const batchBase = semanticContextProvider(value)
+    const batchProvider = {
+        ...batchBase,
+        async prepareBatch(request) {
+            const ledger = readLifecycleRunLedger({
+                stateRoot: value.stateRoot,
+                runId: value.runId,
+                startup: value.startup
+            })
+            const projection = projectLifecycleRun(ledger, {
+                startup: value.startup
+            })
+            return {
+                schema:
+                    'issue-orchestration.dispatch-context-batch-result.v1',
+                preparations: await Promise.all(request.actions.map(
+                    async (item) => ({
+                        actionDigest: item.actionDigest,
+                        status: 'prepared',
+                        prepared: pendingActorPreparation(
+                            await batchBase.prepare({
+                                owner: item.owner,
+                                executionClass: item.executionClass,
+                                action: item.action,
+                                projection
+                            }),
+                            [],
+                            item.action.nodeId
+                        )
+                    })))
+            }
+        }
+    }
+    await expectStartOnly(value, batchProvider)
+    const batchTree = stateTree(value.stateRoot)
+    const batchProjection = projectLifecycleRun(
+        readLifecycleRunLedger({
+            stateRoot: value.stateRoot,
+            runId: value.runId,
+            startup: value.startup
+        }),
+        { startup: value.startup }
+    ).aggregateProjection
+
+    assert.deepEqual(batchTree, fallbackTree)
+    assert.deepEqual(
+        batchProjection.activeDispatches,
+        fallbackProjection.activeDispatches
+    )
+    assert.deepEqual(batchProjection.slots, fallbackProjection.slots)
+})
+
+
 test('typed actor-stage failures require an exact validated stage result', (t) => {
     const value = fixture([51], { slotCapacity: 1 })
     t.after(() => {
@@ -2165,7 +2663,7 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
         actionSetCompilation: { count: 2, durationMs: 10 },
         remoteScopeObservation: { count: 2, durationMs: 10 },
         repositoryBaseObservation: { count: 2, durationMs: 10 },
-        contextPreparation: { count: 2, durationMs: 10 },
+        contextPreparation: { count: 1, durationMs: 5 },
         machineActionExecution: { count: 0, durationMs: 0 },
         actorResultAdmission: { count: 1, durationMs: 5 }
     })

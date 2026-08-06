@@ -1835,6 +1835,7 @@ export function recordLifecycleDispatchBatchStarted({
     ledger,
     actionSet,
     dispatches,
+    failedActionDigests = [],
     createdAt,
     startup
 } = {}) {
@@ -1845,9 +1846,25 @@ export function recordLifecycleDispatchBatchStarted({
     }
     const actorActions = actionSet.actions.filter(({ type }) =>
         DISPATCHABLE_ACTION_TYPES.has(type))
-    if (actorActions.length !== dispatches.length ||
-        actorActions.length === 0) {
+    if (actorActions.length === 0) {
         fail('lifecycle-dispatch-batch-incomplete')
+    }
+    const actorActionByDigest = new Map(actorActions.map((action) => [
+        action.actionDigest,
+        action
+    ]))
+    if (!Array.isArray(failedActionDigests) ||
+        new Set(failedActionDigests).size !== failedActionDigests.length) {
+        fail('lifecycle-dispatch-preparation-failures-invalid')
+    }
+    for (const actionDigest of failedActionDigests) {
+        requireDigest(
+            actionDigest,
+            'lifecycle-dispatch-preparation-failure-digest-invalid'
+        )
+        if (!actorActionByDigest.has(actionDigest)) {
+            fail('lifecycle-dispatch-preparation-failure-unknown')
+        }
     }
     const metadataByDigest = new Map()
     for (const metadata of dispatches) {
@@ -1856,14 +1873,50 @@ export function recordLifecycleDispatchBatchStarted({
             metadata.actionDigest,
             'lifecycle-dispatch-action-digest-invalid'
         )
+        if (!actorActionByDigest.has(actionDigest)) {
+            fail('lifecycle-dispatch-batch-unknown-action')
+        }
         if (metadataByDigest.has(actionDigest)) {
             fail('lifecycle-dispatch-metadata-duplicate')
         }
         metadataByDigest.set(actionDigest, metadata)
     }
-    const receipts = actorActions.map((action) => {
+    const acceptedActionDigests = [...metadataByDigest.keys()]
+    if (failedActionDigests.some((actionDigest) =>
+        metadataByDigest.has(actionDigest))) {
+        fail('lifecycle-dispatch-preparation-partition-overlap')
+    }
+    const expectedFailedActionDigests = actorActions
+        .filter((action) => !metadataByDigest.has(action.actionDigest))
+        .map(({ actionDigest }) => actionDigest)
+        .sort()
+    if (!sameValue(
+        [...failedActionDigests].sort(),
+        expectedFailedActionDigests
+    ) || acceptedActionDigests.length + failedActionDigests.length !==
+        actorActions.length) {
+        fail('lifecycle-dispatch-preparation-partition-invalid')
+    }
+    const attemptIdentities = dispatches.map((metadata) =>
+        `${metadata.nodeId}:${metadata.attemptId}`)
+    if (new Set(attemptIdentities).size !== attemptIdentities.length) {
+        fail('lifecycle-dispatch-attempt-duplicate')
+    }
+    for (const [field, code] of [
+        ['slotId', 'lifecycle-dispatch-slot-duplicate'],
+        ['runtimeBindingDigest', 'lifecycle-dispatch-runtime-duplicate'],
+        ['leaseDigest', 'lifecycle-dispatch-lease-duplicate'],
+        ['resourceDigest', 'lifecycle-dispatch-resource-duplicate']
+    ]) {
+        const values = dispatches.map((metadata) => metadata[field])
+        if (new Set(values).size !== values.length) {
+            fail(code)
+        }
+    }
+    const receipts = actorActions
+        .filter((action) => metadataByDigest.has(action.actionDigest))
+        .map((action) => {
         const metadata = metadataByDigest.get(action.actionDigest)
-        if (!metadata) fail('lifecycle-dispatch-batch-incomplete')
         for (const [field, code] of [
             ['owner', 'lifecycle-dispatch-owner-invalid'],
             ['attemptId', 'lifecycle-dispatch-attempt-invalid'],
@@ -1909,6 +1962,7 @@ export function recordLifecycleDispatchBatchStarted({
         actionSetDigest: actionSet.actionSetDigest,
         actionDigests: receipts.map(({ actionDigest }) => actionDigest).sort(),
         dispatchIds: receipts.map(({ dispatchId }) => dispatchId).sort(),
+        failedActionDigests: [...failedActionDigests].sort(),
         createdAt
     }
     batch.batchDigest = digest(batch)
