@@ -1,9 +1,6 @@
 name: Issue 66 branch bootstrap
 
 on:
-  push:
-    branches:
-      - issue-66-delta-scope-refresh
   pull_request:
     branches:
       - main
@@ -29,17 +26,42 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            test "$GITHUB_REF_NAME" = "issue-66-delta-scope-refresh"
-          else
-            test "$GITHUB_HEAD_REF" = "issue-66-delta-scope-refresh"
-          fi
+          test "$GITHUB_HEAD_REF" = "issue-66-delta-scope-refresh"
           test "$(git merge-base HEAD origin/main)" = "fb61e03d8a38dab344320332e476dcff55c7318f"
           cat .github/issue-66.patch.part* > /tmp/issue-66.patch.gz.b64
           echo "1b9d84a03809709e476a28386fd1779df6fbce66a0abb49ee58a1e38d40663aa  /tmp/issue-66.patch.gz.b64" | sha256sum --check
           base64 --decode /tmp/issue-66.patch.gz.b64 | gzip --decompress > /tmp/issue-66.patch
           echo "ba0c8844365f957d8327f776293247b6bbf94039075c3d026e712113dce0eaa6  /tmp/issue-66.patch" | sha256sum --check
+          set +e
           git apply --3way --index /tmp/issue-66.patch
+          apply_status=$?
+          set -e
+          if [ "$apply_status" -ne 0 ]; then
+            test "$(git diff --name-only --diff-filter=U)" = "skills/issue-orchestration/references/dag-and-scheduling.md"
+            git checkout --ours -- skills/issue-orchestration/references/dag-and-scheduling.md
+            python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('skills/issue-orchestration/references/dag-and-scheduling.md')
+          text = path.read_text()
+          heading = '### Delta-aware remote scope observation'
+          marker = '`lifecycle-production-dispatcher.mjs` 是 action set 到 production owner 的唯一可执行桥梁。'
+          section = '''### Delta-aware remote scope observation
+
+          `lifecycle-live-refresh.mjs` 的默认协议仍是完整 `lifecycle-remote-scope-request.v1`。adapter 只有经 `declareLifecycleRemoteScopeDeltaObserver` 显式声明 delta-v1 后，才会收到上一份 verified selector receipt、selected remote snapshot、完整 remote-observation snapshot，以及 adapter-owned cursor/conditional identity。`unchanged` 必须逐项回绑这些身份并保持同一 snapshot/cursor；它复用原 selector receipt，不重建 selector、不追加 scope event。`changed` 必须返回每个 changed member 的完整 authoritative fact 或显式 removal，再经 canonical selector resolver 产生与完整观察相同的 receipt。
+
+          Delta 不得从 TTL、模型叙述、prompt ETag、Root summary 或本地 issue cache 推断。缺字段、矛盾 digest、stale cursor、wrong selector/authority、未知 removal 或不完整 member 一律 fail closed。仅改变未入选 member 时，dispatcher 追加一个 `observationOnly=true` 的 control refresh 来持久化新的完整观察摘要与 continuation；活跃 node epoch、node ledger 和 selected remote snapshot 保持不变。telemetry 中的 protocol、facts transferred、delta member count 与 selector rebuild 仅是诊断数据，不进入 route、retry、terminal 或 mutation authority。
+
+          '''
+          if heading in text:
+              raise SystemExit('delta-aware-section-already-present')
+          if text.count(marker) != 1:
+              raise SystemExit('dag-dispatcher-marker-not-unique')
+          path.write_text(text.replace(marker, section + marker, 1))
+          PY
+            git add skills/issue-orchestration/references/dag-and-scheduling.md
+            test -z "$(git diff --name-only --diff-filter=U)"
+          fi
           rm .github/issue-66.patch.part*
           rm .github/workflows/issue-66-branch-bootstrap.yml
           ISSUE_ORCHESTRATION_SOURCE_COMMIT="fb61e03d8a38dab344320332e476dcff55c7318f" node scripts/build-manifest.mjs
