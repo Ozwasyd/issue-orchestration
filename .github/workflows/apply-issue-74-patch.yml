@@ -1,0 +1,52 @@
+name: apply issue 74 patch
+
+on:
+  push:
+    branches:
+      - issue-74-thin-actor-instructions
+    paths:
+      - .github/issue-74-patch/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-74-thin-actor-instructions
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '62b3c9297c8098b7e4c6fca06d6f8e355f5a5e44fc1d56e8edef968f07d0f752  .github/issue-74-patch/part-00.b64' | sha256sum -c -
+          echo 'c1cdb330faa0042546905662669e9648746795d43034ffbb10c2fed0c76f83d7  .github/issue-74-patch/part-01.b64' | sha256sum -c -
+          echo '8ee64d573b963b6463ff1963d52dfade2ee1264e936b97a5fd96f6ac5371b766  .github/issue-74-patch/part-02.b64' | sha256sum -c -
+          echo 'db583623af5725e65089c5bb54d52b1e70a3f51208eb4a755da89f05bcc7584f  .github/issue-74-patch/part-03.b64' | sha256sum -c -
+          echo '301418e2a7f2929db7188b6b74b60a190fa836341752a600acc7a54ef9a8071f  .github/issue-74-patch/part-04.b64' | sha256sum -c -
+          echo 'b1b128ad1b47a78557ff358ead57889f6cf609dcec93d7270545eee47df0b9a9  .github/issue-74-patch/part-05.b64' | sha256sum -c -
+          echo 'ff30902f670b4fbaae1f2c15bd903dbc834a891209a2aece8de849820123d1a6  .github/issue-74-patch/part-06.b64' | sha256sum -c -
+          echo '1319103ca52b1e158a93d372a134cc823eb2e8ac8aac6adcfb5649eae2ff019f  .github/issue-74-patch/part-07.b64' | sha256sum -c -
+          cat .github/issue-74-patch/part-*.b64 > /tmp/issue74.patch.gz.b64
+          echo '273f77154fce61242691cf73789491a51ab45bbd9539644cfb28750effae9a0b  /tmp/issue74.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue74.patch.gz.b64 > /tmp/issue74.patch.gz
+          echo '8c9ee510b18f84425af6e15b8e5002645a052afcd8beee3ca5ea137abada1c7b  /tmp/issue74.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue74.patch.gz > /tmp/issue74.patch
+          echo '26e92aa28ae54976c1537f40935c1ee6c00a5d71f8bc45590d4c6cf7eb544f21  /tmp/issue74.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue74.patch
+          git apply --binary /tmp/issue74.patch
+          rm -rf .github/issue-74-patch
+          rm -f .github/workflows/apply-issue-74-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Thin actor instructions behind context envelopes (#74)'
+          git push origin HEAD:issue-74-thin-actor-instructions
