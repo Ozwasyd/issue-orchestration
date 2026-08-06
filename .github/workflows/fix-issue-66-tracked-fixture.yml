@@ -1,0 +1,54 @@
+name: fix issue 66 tracked fixture
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-issue-66-tracked-fixture-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  fix:
+    if: github.head_ref == 'issue-66-delta-aware-scope-refresh'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-66-delta-aware-scope-refresh
+      - name: Fix fixture and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs')
+          text = path.read_text()
+          old = "        milestone: null,\n        dependsOn: [],\n        ...overrides"
+          new = "        milestone: null,\n        dependsOn: [],\n        trackedIssueIds: [],\n        ...overrides"
+          if text.count(old) != 1:
+              raise SystemExit('expected one issue fixture insertion point')
+          path.write_text(text.replace(old, new))
+          PY
+          rm -f .github/workflows/fix-issue-66-tracked-fixture.yml
+          BASE_COMMIT="$(git merge-base origin/main HEAD)"
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cp manifest.json /tmp/issue66-manifest.json
+          ISSUE_ORCHESTRATION_SOURCE_COMMIT="$BASE_COMMIT" node scripts/build-manifest.mjs
+          cmp /tmp/issue66-manifest.json manifest.json
+          node --test --test-concurrency=1 tests/tools/issue-orchestration-lifecycle-live-refresh.test.mjs
+          git add -A
+          git diff --cached --check
+      - name: Commit fixture fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Complete delta test issue facts (#66)'
+          git push origin HEAD:issue-66-delta-aware-scope-refresh
