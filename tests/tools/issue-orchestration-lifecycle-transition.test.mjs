@@ -22,7 +22,11 @@ const sha = (label) => digest({ label })
 const baseSha = 'a'.repeat(40)
 const policyDigest = sha('policy')
 const selectorDigest = sha('selector')
-const remoteDigest = sha('remote')
+const remoteDigest = digest({
+    selectorDigest,
+    resolvedIssueSet: [],
+    remoteFactDigests: {}
+})
 const graphInputDigest = sha('graph-input')
 const scopeDigest = sha('scope')
 const repository = 'ExampleOrg/RepositoryA'
