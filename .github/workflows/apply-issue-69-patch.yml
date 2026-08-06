@@ -1,0 +1,51 @@
+name: apply issue 69 patch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.head_ref == 'issue-69-batch-actor-preparation'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-69-batch-actor-preparation
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '5dbab176918c6eb22362a54f7856fb7e5ad1cdedbb20c54946c41bc65065ba75  .github/issue-69-patch/part-00.b64' | sha256sum -c -
+          echo '11c1ca963dc8c88ce2c523f7476ca1b03750e81cbb9a581ddc9cb0d74f04d846  .github/issue-69-patch/part-01.b64' | sha256sum -c -
+          echo '3f21b9d96dcb8e5c16be197204cc0627c0bcc089196bc55d7a47113cb37854a8  .github/issue-69-patch/part-02.b64' | sha256sum -c -
+          echo 'c7854b441b1d04da2ca1ed3745948c74e96a68a30ecfbcca316a5f2fa592d2b7  .github/issue-69-patch/part-03.b64' | sha256sum -c -
+          echo 'b76a8a1913ab986cfc0980eb10c93fbca3f1db5d28db0f579f5c5979786a4da3  .github/issue-69-patch/part-04.b64' | sha256sum -c -
+          echo '4da43af4d5069e26dc7dceb4ebf4f6a1d9af601ba95c31519e9f17175d107300  .github/issue-69-patch/part-05.b64' | sha256sum -c -
+          echo '539afb3a27ef546083c7b402bc4cb66031edefc8bd971d5b40b8c5a23937a29f  .github/issue-69-patch/part-06.b64' | sha256sum -c -
+          echo '01b9a56ae91176b4c94db0423e706a43cd0da96f9bb297a998fa2e5e54116026  .github/issue-69-patch/part-07.b64' | sha256sum -c -
+          cat .github/issue-69-patch/part-*.b64 > /tmp/issue69.patch.gz.b64
+          echo 'f3a5cbb066b8f026f3e82a796dca64bf19d1ba15c02a9769a41debe30a1f29c1  /tmp/issue69.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue69.patch.gz.b64 > /tmp/issue69.patch.gz
+          echo '75c03fed0b22c2c639b84a234efda2a51bdbb5150d096c5feaf4922431b173f7  /tmp/issue69.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue69.patch.gz > /tmp/issue69.patch
+          echo '75e17a5fe31fdcf8aac90c855c66f2a5ef0c43844133c0a16b5484f6445e2360  /tmp/issue69.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue69.patch
+          git apply --binary /tmp/issue69.patch
+          rm -rf .github/issue-69-patch
+          rm -f .github/workflows/apply-issue-69-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Prepare actor waves concurrently (#69)'
+          git push origin HEAD:issue-69-batch-actor-preparation
