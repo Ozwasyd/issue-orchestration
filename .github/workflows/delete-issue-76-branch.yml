@@ -1,0 +1,20 @@
+name: delete merged issue 76 branch
+
+on:
+  push:
+    branches:
+      - issue-76-actor-prompt-cache-identity
+    paths:
+      - .github/workflows/delete-issue-76-branch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  delete:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete merged branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: git push https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git --delete issue-76-actor-prompt-cache-identity
