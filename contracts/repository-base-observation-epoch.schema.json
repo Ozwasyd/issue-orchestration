@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/repository-base-observation-epoch.schema.json",
+  "title": "Repository base observation epoch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "phase",
+    "producerAuthority",
+    "rootAuthored",
+    "runId",
+    "observedAt",
+    "controlLedgerHeadDigest",
+    "lifecycleAuthorityBindingDigest",
+    "startupAttestationDigest",
+    "runtimeInvocationId",
+    "rootAuthorityEpoch",
+    "packageDigest",
+    "policySetDigest",
+    "actionBindings",
+    "actionBindingSetDigest",
+    "repositories",
+    "repositoryExpectationSetDigest",
+    "driftedRepositories",
+    "reusable",
+    "epochId",
+    "receiptDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.repository-base-observation-epoch.v1"
+    },
+    "status": { "enum": ["current", "rebound", "stale"] },
+    "phase": { "enum": ["pre-dispatch", "post-admission"] },
+    "producerAuthority": {
+      "const": "trusted-git-runtime-observer"
+    },
+    "rootAuthored": { "const": false },
+    "runId": { "type": "string", "minLength": 1 },
+    "observedAt": { "type": "string", "format": "date-time" },
+    "controlLedgerHeadDigest": { "$ref": "#/$defs/digest" },
+    "lifecycleAuthorityBindingDigest": { "$ref": "#/$defs/digest" },
+    "startupAttestationDigest": { "$ref": "#/$defs/digest" },
+    "runtimeInvocationId": { "type": "string", "minLength": 1 },
+    "rootAuthorityEpoch": { "type": "string", "minLength": 1 },
+    "packageDigest": { "$ref": "#/$defs/digest" },
+    "policySetDigest": { "$ref": "#/$defs/digest" },
+    "actionBindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/actionBinding" }
+    },
+    "actionBindingSetDigest": { "$ref": "#/$defs/digest" },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/repositoryEntry" }
+    },
+    "repositoryExpectationSetDigest": { "$ref": "#/$defs/digest" },
+    "driftedRepositories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "reusable": { "type": "boolean" },
+    "epochId": { "$ref": "#/$defs/digest" },
+    "receiptDigest": { "$ref": "#/$defs/digest" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "current" } } },
+      "then": {
+        "properties": {
+          "reusable": { "const": true },
+          "driftedRepositories": { "type": "array", "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "rebound" } } },
+      "then": {
+        "properties": {
+          "phase": { "const": "pre-dispatch" },
+          "reusable": { "const": false },
+          "driftedRepositories": { "type": "array", "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "status": { "const": "stale" } } },
+      "then": {
+        "properties": {
+          "phase": { "const": "post-admission" },
+          "reusable": { "const": false },
+          "driftedRepositories": { "type": "array", "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "actionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionDigest",
+        "actionType",
+        "nodeId",
+        "dispatchId",
+        "actionSetDigest",
+        "actionBindingsDigest",
+        "repositories"
+      ],
+      "properties": {
+        "actionDigest": { "$ref": "#/$defs/digest" },
+        "actionType": { "type": "string", "minLength": 1 },
+        "nodeId": { "type": ["string", "null"] },
+        "dispatchId": { "type": ["string", "null"] },
+        "actionSetDigest": { "$ref": "#/$defs/digest" },
+        "actionBindingsDigest": { "$ref": "#/$defs/digest" },
+        "repositories": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["repository", "baseSha"],
+            "properties": {
+              "repository": { "type": "string", "minLength": 1 },
+              "baseSha": { "$ref": "#/$defs/sha" }
+            }
+          }
+        }
+      }
+    },
+    "repositoryEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "expectedBaseSha",
+        "repositoryBindingDigest",
+        "observation"
+      ],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "expectedBaseSha": { "$ref": "#/$defs/sha" },
+        "repositoryBindingDigest": { "$ref": "#/$defs/digest" },
+        "observation": { "$ref": "#/$defs/observation" }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "status",
+        "producerAuthority",
+        "rootAuthored",
+        "repository",
+        "canonicalPath",
+        "commonDir",
+        "origin",
+        "defaultBranch",
+        "localHead",
+        "remoteDefaultBranchHead",
+        "dirtyEntries",
+        "repositoryBindingDigest",
+        "observationDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.lifecycle-repository-base-observation.v1"
+        },
+        "status": { "const": "observed" },
+        "producerAuthority": {
+          "const": "trusted-git-runtime-observer"
+        },
+        "rootAuthored": { "const": false },
+        "repository": { "type": "string", "minLength": 1 },
+        "canonicalPath": { "type": "string", "minLength": 1 },
+        "commonDir": { "type": "string", "minLength": 1 },
+        "origin": { "type": "string", "minLength": 1 },
+        "defaultBranch": { "type": "string", "minLength": 1 },
+        "localHead": { "$ref": "#/$defs/sha" },
+        "remoteDefaultBranchHead": { "$ref": "#/$defs/sha" },
+        "dirtyEntries": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "repositoryBindingDigest": { "$ref": "#/$defs/digest" },
+        "observationDigest": { "$ref": "#/$defs/digest" }
+      }
+    }
+  }
+}
