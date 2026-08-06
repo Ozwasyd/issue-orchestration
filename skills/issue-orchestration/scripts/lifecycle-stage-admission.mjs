@@ -716,48 +716,51 @@ const WRITER_TERMINAL_FAILURE_ARTIFACTS = Object.freeze({
     mutationPostcondition: COMMON.mutationPostcondition
 })
 
+export function validateIndependentVerificationRejection(value) {
+    exactKeys(value, [
+        'candidateSha', 'continuationAttemptId', 'firstFailure',
+        'implementationOwnerActorId', 'reworkCount',
+        'impactEvidenceDigest', 'verifierInvocationId',
+        'freshContext', 'independent'
+    ], 'lifecycle-behavior-rejection-fields-invalid')
+    sha(value.candidateSha,
+        'lifecycle-behavior-rejection-candidate-invalid')
+    text(value.continuationAttemptId,
+        'lifecycle-behavior-rejection-attempt-invalid')
+    const firstFailure = evidenceObject(
+        value.firstFailure,
+        'lifecycle-behavior-rejection-first-failure-invalid'
+    )
+    exactKeys(firstFailure, [
+        'classification', 'evidenceRef', 'signature'
+    ], 'lifecycle-behavior-rejection-first-failure-fields-invalid')
+    text(firstFailure.classification,
+        'lifecycle-behavior-rejection-classification-invalid')
+    text(firstFailure.evidenceRef,
+        'lifecycle-behavior-rejection-evidence-ref-invalid')
+    text(firstFailure.signature,
+        'lifecycle-behavior-rejection-signature-invalid')
+    text(value.implementationOwnerActorId,
+        'lifecycle-behavior-rejection-owner-invalid')
+    integer(value.reworkCount,
+        'lifecycle-behavior-rejection-rework-invalid', { min: 1 })
+    hash(value.impactEvidenceDigest,
+        'lifecycle-behavior-rejection-impact-invalid')
+    text(value.verifierInvocationId,
+        'lifecycle-behavior-rejection-verifier-invalid')
+    if (value.freshContext !== true || value.independent !== true) {
+        fail('lifecycle-behavior-rejection-independent-invalid')
+    }
+    return value
+}
+
 const BEHAVIOR_REJECTION_ARTIFACTS = Object.freeze({
     verificationRejection: artifact({
         schema:
             'issue-orchestration.independent-verification-rejection.v1',
         producerAuthority: 'behavior-rejection-validator',
         validator: 'validateIndependentVerificationRejection',
-        evidence: (value) => {
-            exactKeys(value, [
-                'candidateSha', 'continuationAttemptId', 'firstFailure',
-                'implementationOwnerActorId', 'reworkCount',
-                'impactEvidenceDigest', 'verifierInvocationId',
-                'freshContext', 'independent'
-            ], 'lifecycle-behavior-rejection-fields-invalid')
-            sha(value.candidateSha,
-                'lifecycle-behavior-rejection-candidate-invalid')
-            text(value.continuationAttemptId,
-                'lifecycle-behavior-rejection-attempt-invalid')
-            const firstFailure = evidenceObject(
-                value.firstFailure,
-                'lifecycle-behavior-rejection-first-failure-invalid'
-            )
-            exactKeys(firstFailure, [
-                'classification', 'evidenceRef', 'signature'
-            ], 'lifecycle-behavior-rejection-first-failure-fields-invalid')
-            text(firstFailure.classification,
-                'lifecycle-behavior-rejection-classification-invalid')
-            text(firstFailure.evidenceRef,
-                'lifecycle-behavior-rejection-evidence-ref-invalid')
-            text(firstFailure.signature,
-                'lifecycle-behavior-rejection-signature-invalid')
-            text(value.implementationOwnerActorId,
-                'lifecycle-behavior-rejection-owner-invalid')
-            integer(value.reworkCount,
-                'lifecycle-behavior-rejection-rework-invalid', { min: 1 })
-            hash(value.impactEvidenceDigest,
-                'lifecycle-behavior-rejection-impact-invalid')
-            text(value.verifierInvocationId,
-                'lifecycle-behavior-rejection-verifier-invalid')
-            if (value.freshContext !== true || value.independent !== true) {
-                fail('lifecycle-behavior-rejection-independent-invalid')
-            }
-        }
+        evidence: validateIndependentVerificationRejection
     }),
     runtimeBinding: COMMON.runtimeBinding,
     mutationPostcondition: COMMON.mutationPostcondition

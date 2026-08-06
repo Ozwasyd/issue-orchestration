@@ -3,7 +3,7 @@
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
     "sourceCommit": "90c98fbf9ad5604e78ca1c485e82bfb3073edd22",
-    "sourceTreeDigest": "024718ff72e2be0be6d5f29532a40c0cba4ba9ea34a662e9b77b35ecac1d91e2",
+    "sourceTreeDigest": "d1d0e96fe2ff332eddcda921845a02edb34d8fd3d18415222960bd8ec0c38364",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "57ff4a18f631b2494cceb2e3704fadcff273e8cc62bd7069a17988522c704cb6",
     "agentDigests": {
@@ -326,8 +326,8 @@
         "skills/issue-orchestration/scripts/lifecycle-prewriter-executor.mjs": "96d5ae874a4d810520c90f68d9d1192b49db47967326769bdf7a9f09fc272d0d",
         "skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs": "1610dd4ac60dd46da966f45e9981c19d4b992c37a1cc897d74845315aa9842f7",
         "skills/issue-orchestration/scripts/lifecycle-quiescence-finalizer.mjs": "f745c948b1d751d2ee7c9ea47af32057b0594e04f4decc9e7697ad047dc2f486",
-        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "379e1173b4f4f2abf70195c012e47ebcc5170a6a036da4b51d06d2840211ad9a",
-        "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "5d5f1afa16087179b9fca64459dedc102ad476556a7e4598fea494d26a6356ce",
+        "skills/issue-orchestration/scripts/lifecycle-run-loop.mjs": "b97159624b8e0c41fdb2c27af1ca6348c2e92cc15c66967788b21fb5979e98fd",
+        "skills/issue-orchestration/scripts/lifecycle-stage-admission.mjs": "5c94848c53d31e6a1e39b2175634b1f68a0ba8e344fe12deca9e141bd83859d3",
         "skills/issue-orchestration/scripts/lifecycle-state-machine.mjs": "a49215ff410e2eb474e6a7acf11e899b371c675348e4b5efa0819dad18c6066d",
         "skills/issue-orchestration/scripts/lifecycle-terminalization-executor.mjs": "c290676fe3bfdfa44c42ec098fefa2c9fe8fcebea784c9e2061b3894340b6c87",
         "skills/issue-orchestration/scripts/lifecycle-transition-compiler.mjs": "75e96ada62e332a55d7685d914ffd159681327b300d418b6ed684143a1b76439",
@@ -362,5 +362,5 @@
         "skills/issue-orchestration/SKILL.md": "57ff4a18f631b2494cceb2e3704fadcff273e8cc62bd7069a17988522c704cb6",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "686f18f058993bb3167bdff586169456809d2a2650e23153b94a34fc1d273c74"
+    "manifestDigest": "d1be848811259c83bf3660c8c17a3b29650d6e5912e1ba85e7231a3d912eb76c"
 }
