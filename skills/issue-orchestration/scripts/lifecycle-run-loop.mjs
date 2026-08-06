@@ -37,6 +37,7 @@ import {
     sealNodeLedgerHeader
 } from './event-ledger.mjs'
 import {
+    LifecycleStageAdmissionError,
     validateLifecycleStageResult
 } from './lifecycle-stage-admission.mjs'
 import {
@@ -1976,22 +1977,83 @@ function existingDispatchedNodeEvent(authority, dispatch, result) {
         ?? null
 }
 
-export function recordLifecycleDispatchedActionResult({
-    ledger,
+const EXPLICIT_DISPATCH_EXCLUSION_CODES = new Set([
+    'dispatcher-active-result-base-stale',
+    'dispatcher-actor-result-invalid'
+])
+
+const ISOLATABLE_DISPATCH_RESULT_CODES = new Set([
+    'lifecycle-stage-result-invalid',
+    'lifecycle-dispatch-result-digest-invalid',
+    'lifecycle-dispatch-result-identity-mismatch',
+    'lifecycle-dispatch-result-stale',
+    'lifecycle-dispatch-node-unavailable'
+])
+
+function isolatableDispatchResultError(error) {
+    return error instanceof LifecycleStageAdmissionError ||
+        (error instanceof LifecycleRunLoopError &&
+            ISOLATABLE_DISPATCH_RESULT_CODES.has(error.code))
+}
+
+function activeDispatch(authority, dispatchId) {
+    return currentControlFacts(authority)
+        .controlProjection.activeDispatches[dispatchId] ?? null
+}
+
+function appendDispatchSettlement({
+    authority,
+    dispatch,
+    resultDigest,
+    outcome,
+    exclusionCode = null,
+    createdAt
+}) {
+    const effectiveResultDigest = HASH.test(resultDigest ?? '')
+        ? resultDigest
+        : digest({
+            dispatchId: dispatch.dispatchId,
+            actionDigest: dispatch.actionDigest,
+            outcome,
+            exclusionCode
+        })
+    const settlement = {
+        schema: 'issue-orchestration.lifecycle-dispatch-settlement.v1',
+        dispatchId: dispatch.dispatchId,
+        actionDigest: dispatch.actionDigest,
+        resultDigest: effectiveResultDigest,
+        outcome,
+        ...(outcome === 'excluded' ? {
+            exclusionCode: requireText(
+                exclusionCode,
+                'lifecycle-dispatch-exclusion-code-invalid'
+            )
+        } : {}),
+        settledAt: createdAt
+    }
+    settlement.settlementDigest = digest(settlement)
+    appendCanonicalControlEvent({
+        authority,
+        eventType: 'dispatch.action-settled',
+        payload: settlement,
+        createdAt
+    })
+    return Object.freeze(settlement)
+}
+
+function recordDispatchedActionResultWithAuthority({
+    authority,
     dispatchId,
     result,
-    createdAt,
-    startup
-} = {}) {
-    const authority = resolveAuthority(ledger, startup)
+    createdAt
+}) {
     requireText(dispatchId, 'lifecycle-dispatch-id-invalid')
     requireObject(result, 'lifecycle-stage-result-invalid')
     requireDigest(
         result.resultDigest,
         'lifecycle-dispatch-result-digest-invalid'
     )
-    const facts = currentControlFacts(authority)
-    const dispatch = facts.controlProjection.activeDispatches[dispatchId]
+    const dispatch = activeDispatch(authority, dispatchId)
     if (!dispatch) fail('lifecycle-dispatch-not-active')
     if (dispatch.actionDigest !== result.actionDigest ||
         dispatch.attemptId !== result.attemptId) {
@@ -2020,25 +2082,147 @@ export function recordLifecycleDispatchedActionResult({
             createdAt
         })
     }
-    const settlement = {
-        schema: 'issue-orchestration.lifecycle-dispatch-settlement.v1',
-        dispatchId,
-        actionDigest: dispatch.actionDigest,
+    const settlement = appendDispatchSettlement({
+        authority,
+        dispatch,
         resultDigest: result.resultDigest,
         outcome: 'completed',
-        settledAt: createdAt
-    }
-    settlement.settlementDigest = digest(settlement)
-    appendCanonicalControlEvent({
+        createdAt
+    })
+    return Object.freeze({
+        dispatchId,
+        effect,
+        settlement,
+        replayedExistingResult: existing !== null
+    })
+}
+
+function excludeDispatchedActionWithAuthority({
+    authority,
+    dispatchId,
+    exclusionCode,
+    resultDigest = null,
+    createdAt
+}) {
+    requireText(dispatchId, 'lifecycle-dispatch-id-invalid')
+    const dispatch = activeDispatch(authority, dispatchId)
+    if (!dispatch) fail('lifecycle-dispatch-not-active')
+    const settlement = appendDispatchSettlement({
         authority,
-        eventType: 'dispatch.action-settled',
-        payload: settlement,
+        dispatch,
+        resultDigest,
+        outcome: 'excluded',
+        exclusionCode,
+        createdAt
+    })
+    return Object.freeze({
+        dispatchId,
+        exclusionCode,
+        settlement
+    })
+}
+
+export function recordLifecycleDispatchedActionResultBatch({
+    ledger,
+    entries,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    if (!Array.isArray(entries) || entries.length === 0) {
+        fail('lifecycle-dispatch-result-batch-empty')
+    }
+    const normalized = entries.map((entry) => {
+        requireObject(entry, 'lifecycle-dispatch-result-entry-invalid')
+        return {
+            dispatchId: requireText(
+                entry.dispatchId,
+                'lifecycle-dispatch-id-invalid'
+            ),
+            ...(entry.exclusionCode !== undefined ? {
+                exclusionCode: (() => {
+                    const code = requireText(
+                        entry.exclusionCode,
+                        'lifecycle-dispatch-exclusion-code-invalid'
+                    )
+                    if (!EXPLICIT_DISPATCH_EXCLUSION_CODES.has(code)) {
+                        fail('lifecycle-dispatch-exclusion-code-invalid')
+                    }
+                    return code
+                })(),
+                resultDigest: entry.resultDigest ?? null
+            } : {
+                result: entry.result
+            })
+        }
+    }).sort((left, right) =>
+        left.dispatchId.localeCompare(right.dispatchId))
+    if (new Set(normalized.map(({ dispatchId }) => dispatchId)).size !==
+        normalized.length) {
+        fail('lifecycle-dispatch-result-batch-duplicate')
+    }
+    const admitted = []
+    const excluded = []
+    for (const entry of normalized) {
+        if (entry.exclusionCode !== undefined) {
+            excluded.push(excludeDispatchedActionWithAuthority({
+                authority,
+                ...entry,
+                createdAt
+            }))
+            continue
+        }
+        try {
+            admitted.push(recordDispatchedActionResultWithAuthority({
+                authority,
+                dispatchId: entry.dispatchId,
+                result: entry.result,
+                createdAt
+            }))
+        } catch (error) {
+            if (!isolatableDispatchResultError(error)) throw error
+            if (!activeDispatch(authority, entry.dispatchId)) {
+                excluded.push(Object.freeze({
+                    dispatchId: entry.dispatchId,
+                    exclusionCode: error.code,
+                    settlement: null
+                }))
+                continue
+            }
+            excluded.push(excludeDispatchedActionWithAuthority({
+                authority,
+                dispatchId: entry.dispatchId,
+                exclusionCode: error.code,
+                resultDigest: entry.result?.resultDigest ?? null,
+                createdAt
+            }))
+        }
+    }
+    return Object.freeze({
+        ledger: makeHandle(authority),
+        admitted: Object.freeze(admitted),
+        excluded: Object.freeze(excluded)
+    })
+}
+
+export function recordLifecycleDispatchedActionResult({
+    ledger,
+    dispatchId,
+    result,
+    createdAt,
+    startup
+} = {}) {
+    const authority = resolveAuthority(ledger, startup)
+    const recorded = recordDispatchedActionResultWithAuthority({
+        authority,
+        dispatchId,
+        result,
         createdAt
     })
     return Object.freeze({
         ledger: makeHandle(authority),
-        effect,
-        replayedExistingResult: existing !== null
+        effect: recorded.effect,
+        replayedExistingResult: recorded.replayedExistingResult
     })
 }
 

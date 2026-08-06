@@ -27,7 +27,8 @@ import {
     projectLifecycleRun,
     readLifecycleRunLedger,
     recordLifecycleDispatchBatchStarted,
-    recordLifecycleDispatchedActionResult
+    recordLifecycleDispatchedActionResult,
+    recordLifecycleDispatchedActionResultBatch
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
     LIFECYCLE_ACTION_TYPES
@@ -44,6 +45,9 @@ import {
     normalizeDispatcherPerformanceReceipt,
     verifyDispatcherPerformanceReceipt
 } from '../../skills/issue-orchestration/scripts/dispatcher-performance-telemetry.mjs'
+import {
+    clearVerifiedReplayProjectionCache
+} from '../../skills/issue-orchestration/scripts/multi-node-state.mjs'
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
@@ -323,7 +327,7 @@ function actorAdapter(fixture, nodeId) {
     }
 }
 
-function fixture(numbers = [41, 42, 43]) {
+function fixture(numbers = [41, 42, 43], { slotCapacity = 2 } = {}) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dispatcher-root-'))
     const stateRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dispatcher-state-'))
     const repository = repositoryFixture(root)
@@ -343,7 +347,7 @@ function fixture(numbers = [41, 42, 43]) {
         }],
         workspaces: [root],
         worktrees: [],
-        slotCapacity: 2,
+        slotCapacity,
         createdAt: CREATED_AT
     })
     const binding = repositoryAuthorityFor(authority, repository.repository)
@@ -408,7 +412,7 @@ function fixture(numbers = [41, 42, 43]) {
         },
         lifecycleAuthority: authority,
         startup,
-        slotCapacity: 2
+        slotCapacity
     })
     return {
         root,
@@ -503,6 +507,36 @@ function semanticContextProvider(value) {
     }
 }
 
+async function recoveredResult(value, contextProvider, ledger, dispatch) {
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    return contextProvider.executeRecoveredDispatch({
+        dispatch,
+        projection,
+        ledger,
+        observedAt: CREATED_AT
+    })
+}
+
+function activeDispatches(value, ledger) {
+    return Object.values(projectLifecycleRun(ledger, {
+        startup: value.startup
+    }).aggregateProjection.activeDispatches).sort((left, right) =>
+        left.dispatchId.localeCompare(right.dispatchId))
+}
+
+function clearDerivedCaches(value) {
+    clearLifecycleActionSetCache({
+        stateRoot: value.stateRoot,
+        runId: value.runId
+    })
+    clearVerifiedReplayProjectionCache({
+        stateRoot: value.stateRoot,
+        runId: value.runId
+    })
+}
+
 function clock() {
     let sequence = 0
     return () => {
@@ -564,6 +598,22 @@ test('production dispatcher map is exhaustive, immutable, and has no fallback', 
     assert.match(skill, /runLifecycleProductionDispatcher/u)
     assert.doesNotMatch(skill, /Root 逐项机械执行/u)
     assert.doesNotMatch(skill, /Root 主循环固定为：执行 action set/u)
+})
+
+test('ready queue is process-local and production uses canonical batch admission', () => {
+    const dispatcher = fs.readFileSync(new URL(
+        '../../skills/issue-orchestration/scripts/lifecycle-production-dispatcher.mjs',
+        import.meta.url
+    ), 'utf8')
+    const state = fs.readFileSync(new URL(
+        '../../skills/issue-orchestration/scripts/multi-node-state.mjs',
+        import.meta.url
+    ), 'utf8')
+    assert.doesNotMatch(dispatcher, /Promise\.race/u)
+    assert.match(dispatcher, /createSettlementQueue/u)
+    assert.match(dispatcher, /waitAndDrain/u)
+    assert.match(dispatcher, /recordLifecycleDispatchedActionResultBatch/u)
+    assert.doesNotMatch(state, /settlementQueue|readyResultQueue/u)
 })
 
 test('action-set cache key uses only the seven verified compiler digests', () => {
@@ -772,7 +822,7 @@ test('caller-edited action set cannot reuse a copied cache identity', (t) => {
     )
 })
 
-test('two actors start together and the free slot refills before the other settles', async (t) => {
+test('two ready actors settle in one stable batch before recompilation', async (t) => {
     const value = fixture()
     t.after(() => {
         fs.rmSync(value.root, { recursive: true, force: true })
@@ -785,7 +835,7 @@ test('two actors start together and the free slot refills before the other settl
             startup: value.startup,
             contextProvider,
             clock: clock(),
-            maxTransitions: 3
+            maxTransitions: 2
         }),
         (error) => error?.code === 'dispatcher-transition-limit-exceeded'
     )
@@ -797,17 +847,14 @@ test('two actors start together and the free slot refills before the other settl
     const projection = projectLifecycleRun(ledger, {
         startup: value.startup
     })
-    const events = projection.aggregateProjection.dispatchHistory
-        .map(({ nodeId }) => `settle:${nodeId}`)
-    const active = Object.values(
-        projection.aggregateProjection.activeDispatches
-    ).map(({ nodeId }) => `start:${nodeId}`).sort()
     const control = projection.aggregateProjection
     assert.equal(control.dispatchHistory.length, 2)
-    assert.equal(Object.keys(control.activeDispatches).length, 1)
-    assert.equal(control.slots.active.length, 1)
-    assert.equal(events.length, 2)
-    assert.equal(active.length, 1)
+    assert.equal(Object.keys(control.activeDispatches).length, 0)
+    assert.equal(control.slots.active.length, 0)
+    assert.deepEqual(
+        control.dispatchHistory.map(({ dispatchId }) => dispatchId),
+        control.dispatchHistory.map(({ dispatchId }) => dispatchId).sort()
+    )
 
     const rawEvents = fs.readFileSync(
         path.join(
@@ -823,28 +870,382 @@ test('two actors start together and the free slot refills before the other settl
             'dispatch.action-started',
             'dispatch.action-settled'
         ].includes(eventType))
-        .map(({ eventType, payload }) =>
-            `${eventType === 'dispatch.action-started' ? 'start' : 'settle'}:${payload.nodeId ?? control.dispatchHistory.find(({ dispatchId }) => dispatchId === payload.dispatchId)?.nodeId}`)
-    assert.equal(order.length, 5)
-    assert.match(order[0], /^start:/u)
-    assert.match(order[1], /^start:/u)
-    assert.match(order[2], /^settle:/u)
-    assert.match(order[3], /^start:/u)
-    assert.match(order[4], /^settle:/u)
-    assert.notEqual(order[3].slice(6), order[4].slice(7))
+        .map(({ eventType, payload }) => ({
+            eventType,
+            dispatchId: payload.dispatchId
+        }))
+    assert.equal(order.length, 4)
+    assert.deepEqual(
+        order.slice(0, 2).map(({ eventType }) => eventType),
+        ['dispatch.action-started', 'dispatch.action-started']
+    )
+    assert.deepEqual(
+        order.slice(2).map(({ eventType }) => eventType),
+        ['dispatch.action-settled', 'dispatch.action-settled']
+    )
+    assert.deepEqual(
+        order.slice(2).map(({ dispatchId }) => dispatchId),
+        order.slice(2).map(({ dispatchId }) => dispatchId).sort()
+    )
     assert.ok(value.actorContextEnvelopes.length >= 2)
     assert.ok(value.actorContextEnvelopes.every((envelope) =>
         envelope.schema ===
             'issue-orchestration.actor-context-envelope.v1' &&
         envelope.authority.kind === 'actor-input-only' &&
         envelope.authority.grants.length === 0))
-    assert.ok(value.actorPromptBundles.length >= 2)
     const semanticPrefixes = value.actorPromptBundles
         .filter(({ stablePrefix }) =>
             stablePrefix.phase === 'semantic-proposal')
         .map(({ cacheIdentity }) => cacheIdentity.stablePrefixDigest)
-    assert.ok(semanticPrefixes.length >= 2)
+    assert.equal(semanticPrefixes.length, 2)
     assert.equal(new Set(semanticPrefixes).size, 1)
+})
+
+
+test('three already-ready actors drain through one admission operation', async (t) => {
+    const value = fixture([41, 42, 43], { slotCapacity: 3 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    let receipt = null
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: semanticContextProvider(value),
+            clock: clock(),
+            maxTransitions: 2,
+            performanceTelemetry: {
+                clock: performanceClock(),
+                onReceipt(value) {
+                    receipt = value
+                }
+            }
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    assert.equal(projection.aggregateProjection.dispatchHistory.length, 3)
+    assert.equal(
+        Object.keys(projection.aggregateProjection.activeDispatches).length,
+        0
+    )
+    assert.equal(receipt.operationSummary.actorResultAdmission.count, 1)
+    assert.equal(receipt.operationSummary.actionSetCompilation.count, 2)
+    assert.ok(receipt.spans.some((span) =>
+        span.boundary === 'actor-result-batch-admission' &&
+        span.dispatchIds?.length === 3))
+    assert.ok(receipt.spans.some((span) =>
+        span.boundary === 'repository-base-post-wave' &&
+        span.dispatchIds?.length === 3))
+})
+
+test('one ready actor is admitted without waiting for an unfinished peer', async (t) => {
+    const value = fixture([41, 42])
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const baseProvider = semanticContextProvider(value)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: baseProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const [ready, unfinished] = activeDispatches(value, ledger)
+    const recoveryProvider = {
+        prepare: baseProvider.prepare,
+        observeRemoteIssues: baseProvider.observeRemoteIssues,
+        async recoverActiveDispatch(request) {
+            if (request.dispatch.dispatchId === unfinished.dispatchId) {
+                return { completion: new Promise(() => {}) }
+            }
+            return {
+                completion: Promise.resolve().then(() =>
+                    baseProvider.executeRecoveredDispatch(request))
+            }
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider: recoveryProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const after = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(after, {
+        startup: value.startup
+    }).aggregateProjection
+    assert.deepEqual(
+        projection.dispatchHistory.map(({ dispatchId }) => dispatchId),
+        [ready.dispatchId]
+    )
+    assert.deepEqual(
+        Object.keys(projection.activeDispatches),
+        [unfinished.dispatchId]
+    )
+})
+
+test('a rejected actor does not block an unrelated valid admission', async (t) => {
+    const value = fixture([41, 42])
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const baseProvider = semanticContextProvider(value)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider: baseProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const [rejected, valid] = activeDispatches(value, ledger)
+    const recoveryProvider = {
+        prepare: baseProvider.prepare,
+        observeRemoteIssues: baseProvider.observeRemoteIssues,
+        async recoverActiveDispatch(request) {
+            if (request.dispatch.dispatchId === rejected.dispatchId) {
+                const error = new Error('fixture actor rejection')
+                error.code = 'fixture-actor-rejection'
+                return { completion: Promise.reject(error) }
+            }
+            return {
+                completion: Promise.resolve().then(() =>
+                    baseProvider.executeRecoveredDispatch(request))
+            }
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger,
+            startup: value.startup,
+            contextProvider: recoveryProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => {
+            assert.equal(error?.code, 'dispatcher-executor-failed')
+            assert.deepEqual(error.details.admittedDispatchIds, [
+                valid.dispatchId
+            ])
+            return true
+        }
+    )
+    const after = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const projection = projectLifecycleRun(after, {
+        startup: value.startup
+    }).aggregateProjection
+    assert.deepEqual(
+        projection.dispatchHistory.map(({ dispatchId }) => dispatchId),
+        [valid.dispatchId]
+    )
+    assert.deepEqual(
+        Object.keys(projection.activeDispatches),
+        [rejected.dispatchId]
+    )
+})
+
+test('batch recorder sorts results and isolates one malformed result', async (t) => {
+    const value = fixture([41, 42])
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const contextProvider = semanticContextProvider(value)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    const ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const [first, second] = activeDispatches(value, ledger)
+    const valid = await recoveredResult(
+        value,
+        contextProvider,
+        ledger,
+        first
+    )
+    const malformed = structuredClone(await recoveredResult(
+        value,
+        contextProvider,
+        ledger,
+        second
+    ))
+    delete malformed.artifacts[Object.keys(malformed.artifacts)[0]]
+    delete malformed.resultDigest
+    malformed.resultDigest = digest(malformed)
+    assert.throws(
+        () => recordLifecycleDispatchedActionResultBatch({
+            ledger,
+            entries: [{
+                dispatchId: first.dispatchId,
+                exclusionCode: 'caller-authored-exclusion'
+            }],
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }),
+        (error) => error?.code ===
+            'lifecycle-dispatch-exclusion-code-invalid'
+    )
+    const recorded = recordLifecycleDispatchedActionResultBatch({
+        ledger,
+        entries: [
+            { dispatchId: second.dispatchId, result: malformed },
+            { dispatchId: first.dispatchId, result: valid }
+        ],
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    assert.deepEqual(
+        recorded.admitted.map(({ dispatchId }) => dispatchId),
+        [first.dispatchId]
+    )
+    assert.deepEqual(
+        recorded.excluded.map(({ dispatchId }) => dispatchId),
+        [second.dispatchId]
+    )
+    const projection = projectLifecycleRun(recorded.ledger, {
+        startup: value.startup
+    })
+    assert.deepEqual(
+        projection.aggregateProjection.dispatchHistory.map(
+            ({ dispatchId }) => dispatchId
+        ),
+        [first.dispatchId, second.dispatchId]
+    )
+    assert.equal(
+        projection.aggregateProjection.dispatchHistory[1].outcome,
+        'excluded'
+    )
+    assert.ok(Object.keys(
+        projection.state.nodes[first.nodeId].receipts
+    ).length > 0)
+    assert.equal(Object.keys(
+        projection.state.nodes[second.nodeId].receipts
+    ).length, 0)
+})
+
+test('batch and sorted single-result admission produce byte-identical state', async (t) => {
+    const value = fixture([41, 42])
+    const snapshot = fs.mkdtempSync(path.join(
+        os.tmpdir(),
+        'dispatcher-ready-batch-snapshot-'
+    ))
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+        fs.rmSync(snapshot, { recursive: true, force: true })
+    })
+    const contextProvider = semanticContextProvider(value)
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: value.ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
+    )
+    let ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const dispatches = activeDispatches(value, ledger)
+    const results = new Map()
+    for (const dispatch of dispatches) {
+        results.set(dispatch.dispatchId, await recoveredResult(
+            value,
+            contextProvider,
+            ledger,
+            dispatch
+        ))
+    }
+    fs.cpSync(value.stateRoot, snapshot, { recursive: true })
+    const batch = recordLifecycleDispatchedActionResultBatch({
+        ledger,
+        entries: [...dispatches].reverse().map((dispatch) => ({
+            dispatchId: dispatch.dispatchId,
+            result: results.get(dispatch.dispatchId)
+        })),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const batchTree = stateTree(value.stateRoot)
+    const batchActions = compileLifecycleRunActionSet(batch.ledger, {
+        startup: value.startup
+    })
+
+    fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    fs.cpSync(snapshot, value.stateRoot, { recursive: true })
+    clearDerivedCaches(value)
+    ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    for (const dispatch of dispatches) {
+        ledger = recordLifecycleDispatchedActionResult({
+            ledger,
+            dispatchId: dispatch.dispatchId,
+            result: results.get(dispatch.dispatchId),
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }).ledger
+    }
+    assert.deepEqual(stateTree(value.stateRoot), batchTree)
+    assert.deepEqual(compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    }), batchActions)
 })
 
 
@@ -925,11 +1326,11 @@ test('active dispatches require machine recovery and stale attempts cannot settl
     })
     assert.equal(
         projection.aggregateProjection.dispatchHistory.length,
-        1
+        2
     )
     assert.equal(
         Object.keys(projection.aggregateProjection.activeDispatches).length,
-        1
+        0
     )
 })
 
@@ -992,7 +1393,7 @@ test('fresh remote scope drift is recorded before any actor preparation', async 
     )
 })
 
-test('a default-branch change while an actor runs rejects the stale result', async (t) => {
+test('a default-branch change excludes stale actor results without node mutation', async (t) => {
     const value = fixture()
     t.after(() => {
         fs.rmSync(value.root, { recursive: true, force: true })
@@ -1030,16 +1431,23 @@ test('a default-branch change while an actor runs rejects the stale result', asy
             clock: clock(),
             maxTransitions: 1
         }),
-        (error) => error?.code === 'dispatcher-active-result-base-stale'
+        (error) => error?.code === 'dispatcher-transition-limit-exceeded'
     )
     const projection = projectLifecycleRun(ledger, {
         startup: value.startup
     })
-    assert.equal(projection.aggregateProjection.dispatchHistory.length, 0)
+    assert.equal(projection.aggregateProjection.dispatchHistory.length, 2)
+    assert.ok(projection.aggregateProjection.dispatchHistory.every(
+        ({ outcome, exclusionCode }) =>
+            outcome === 'excluded' &&
+            exclusionCode === 'dispatcher-active-result-base-stale'
+    ))
     assert.equal(
         Object.keys(projection.aggregateProjection.activeDispatches).length,
-        2
+        0
     )
+    assert.ok(Object.values(projection.state.nodes).every((node) =>
+        Object.keys(node.receipts).length === 0))
 })
 
 
@@ -1311,7 +1719,7 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
             startup: value.startup,
             contextProvider: semanticContextProvider(value),
             clock: clock(),
-            maxTransitions: 3,
+            maxTransitions: 2,
             performanceTelemetry: {
                 clock: performanceClock(),
                 onReceipt(value) {
@@ -1323,17 +1731,17 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
     )
     assert.ok(receipt)
     assert.deepEqual(receipt.operationSummary, {
-        canonicalReplay: { count: 5, durationMs: 25 },
-        aggregateProjectionRebuild: { count: 5, durationMs: 25 },
-        actionSetCompilation: { count: 3, durationMs: 15 },
-        remoteScopeObservation: { count: 3, durationMs: 15 },
-        repositoryBaseObservation: { count: 4, durationMs: 20 },
-        contextPreparation: { count: 3, durationMs: 15 },
+        canonicalReplay: { count: 3, durationMs: 15 },
+        aggregateProjectionRebuild: { count: 3, durationMs: 15 },
+        actionSetCompilation: { count: 2, durationMs: 10 },
+        remoteScopeObservation: { count: 2, durationMs: 10 },
+        repositoryBaseObservation: { count: 2, durationMs: 10 },
+        contextPreparation: { count: 2, durationMs: 10 },
         machineActionExecution: { count: 0, durationMs: 0 },
-        actorResultAdmission: { count: 2, durationMs: 10 }
+        actorResultAdmission: { count: 1, durationMs: 5 }
     })
-    assert.equal(receipt.actorDispatches.length, 3)
-    assert.equal(receipt.promptCacheObservations.length, 3)
+    assert.equal(receipt.actorDispatches.length, 2)
+    assert.equal(receipt.promptCacheObservations.length, 2)
     assert.ok(receipt.promptCacheObservations.every((observation) =>
         observation.providerMetadata.provider === 'fixture-runtime' &&
         observation.providerMetadata.ignoredAuthority === undefined &&
@@ -1343,18 +1751,17 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
             .length,
         2
     )
-    assert.equal(receipt.slotRefills.length, 1)
-    assert.equal(receipt.slotRefills[0].durationMs, 125)
-    assert.equal(receipt.idleSafeSlotDurationMs, 125)
-    assert.equal(receipt.slotSamples.length, 9)
+    assert.equal(receipt.slotRefills.length, 0)
+    assert.equal(receipt.idleSafeSlotDurationMs, 0)
+    assert.equal(receipt.slotSamples.length, 7)
     assert.ok(receipt.slotSamples.some(({ capacity, active, available }) =>
         capacity === 2 && active === 2 && available === 0))
     assert.ok(receipt.slotSamples.some(({ capacity, active, available }) =>
         capacity === 2 && active === 1 && available === 1))
     assert.deepEqual(receipt.repositoryBaseObservations, [{
         repository: value.repository.repository,
-        count: 4,
-        durationMs: 20
+        count: 2,
+        durationMs: 10
     }])
     const sharedPreWave = receipt.spans.find((span) =>
         span.boundary === 'repository-base-pre-wave' &&
@@ -1365,7 +1772,7 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
     ])
     assert.ok(receipt.spans.some((span) =>
         span.boundary === 'repository-base-post-wave' &&
-        span.dispatchIds?.length === 1))
+        span.dispatchIds?.length === 2))
     assert.equal(
         receipt.bytes.canonicalLedgersRead,
         receipt.spans.reduce(
