@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - issue-65-repository-base-wave
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
