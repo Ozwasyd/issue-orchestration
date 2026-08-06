@@ -57,6 +57,9 @@ import {
     repositoryAuthorityFor,
     validateLifecycleRunAuthority
 } from './lifecycle-genesis-authority.mjs'
+import {
+    validateActorContextEnvelopeBinding
+} from './actor-context-envelope.mjs'
 
 const SUPPORTED = new Set([
     'request-semantic-proposal',
@@ -240,13 +243,22 @@ function compileStageRoute({
     runtimeTrustBinding,
     repositoryTargets,
     actorAdapter,
-    boundedProjection
+    boundedProjection,
+    actorContextEnvelope,
+    actorContextProgressiveReader
 }) {
     object(actorAdapter, 'prewriter-actor-adapter-required')
     if (typeof actorAdapter.prepare !== 'function' ||
         typeof actorAdapter.invoke !== 'function') {
         reject('prewriter-actor-adapter-invalid')
     }
+    const envelope = actorContextEnvelope === undefined
+        ? null
+        : validateActorContextEnvelopeBinding(actorContextEnvelope, {
+            action,
+            role,
+            phase
+        })
     const pending = compileCanonicalRoute({
         ...routingClassification,
         stageRole: role,
@@ -258,7 +270,11 @@ function compileStageRoute({
         stageRole: role,
         stagePhase: phase,
         routeDecision: structuredClone(pendingDecision),
-        boundedProjection: structuredClone(boundedProjection)
+        boundedProjection: structuredClone(boundedProjection),
+        ...(envelope ? { actorContextEnvelope: structuredClone(envelope) } : {}),
+        ...(actorContextProgressiveReader ? {
+            resolveActorContextReference: actorContextProgressiveReader
+        } : {})
     }), 'prewriter-actor-preparation-invalid')
     const runtimeBinding = compileRuntimeExecutionBinding({
         stageRole: role,
@@ -360,7 +376,9 @@ function invokeObservedActor({
     startup,
     runtimeTrustBinding,
     repositoryTargets,
-    outputClass = 'proposal'
+    outputClass = 'proposal',
+    actorContextEnvelope = null,
+    actorContextProgressiveReader = null
 }) {
     const requestDigest = digest(request)
     const preSnapshot = captureStageMutationSnapshot(mutationIdentity({
@@ -381,7 +399,13 @@ function invokeObservedActor({
         action: structuredClone(action),
         routeDecision: structuredClone(routeDecision),
         runtimeExecutionBinding: structuredClone(runtimeBinding),
-        request: structuredClone(request)
+        request: structuredClone(request),
+        ...(actorContextEnvelope ? {
+            actorContextEnvelope: structuredClone(actorContextEnvelope)
+        } : {}),
+        ...(actorContextProgressiveReader ? {
+            resolveActorContextReference: actorContextProgressiveReader
+        } : {})
     }), 'prewriter-actor-output-invalid')
     const postSnapshot = captureStageMutationSnapshot(mutationIdentity({
         action,

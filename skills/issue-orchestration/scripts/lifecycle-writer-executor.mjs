@@ -60,6 +60,9 @@ import {
     repositoryAuthorityFor,
     validateLifecycleRunAuthority
 } from './lifecycle-genesis-authority.mjs'
+import {
+    validateActorContextEnvelopeBinding
+} from './actor-context-envelope.mjs'
 
 const SUPPORTED = new Set([
     'dispatch-test-contract-writer',
@@ -335,6 +338,16 @@ function compileWriterRoute(context, stage, authority) {
         typeof context.actorAdapter.invoke !== 'function') {
         reject('writer-actor-adapter-invalid')
     }
+    const envelope = context.actorContextEnvelope === undefined
+        ? null
+        : validateActorContextEnvelopeBinding(
+            context.actorContextEnvelope,
+            {
+                action: context.action,
+                role: stage.role,
+                phase: stage.phase
+            }
+        )
     const routeBase = {
         stageWorkPlan: authority.plan,
         executableSlice: authority.slice,
@@ -357,7 +370,12 @@ function compileWriterRoute(context, stage, authority) {
         stageWorkPlan: structuredClone(authority.plan),
         executableSlice: structuredClone(authority.slice),
         compiledPrompt: structuredClone(authority.prompt),
-        writeLeaseDigest: authority.plan.resourceLeaseReceiptDigest
+        writeLeaseDigest: authority.plan.resourceLeaseReceiptDigest,
+        ...(envelope ? { actorContextEnvelope: structuredClone(envelope) } : {}),
+        ...(context.actorContextProgressiveReader ? {
+            resolveActorContextReference:
+                context.actorContextProgressiveReader
+        } : {})
     }), 'writer-actor-preparation-invalid')
     const runtimeBinding = compileRuntimeExecutionBinding({
         stageRole: stage.role,
@@ -869,7 +887,16 @@ async function executeLeasedWriter(context, stage, authority) {
             request: structuredClone(request),
             routeDecision: structuredClone(route.routeDecision),
             runtimeExecutionBinding: structuredClone(route.runtimeBinding),
-            watchdog: watchdogState.watchdog
+            watchdog: watchdogState.watchdog,
+            ...(context.actorContextEnvelope ? {
+                actorContextEnvelope: structuredClone(
+                    context.actorContextEnvelope
+                )
+            } : {}),
+            ...(context.actorContextProgressiveReader ? {
+                resolveActorContextReference:
+                    context.actorContextProgressiveReader
+            } : {})
         }), 'writer-actor-output-invalid')
     } catch (error) {
         if (error instanceof LifecycleWriterExecutorError) throw error

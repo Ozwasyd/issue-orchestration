@@ -50,6 +50,8 @@ attestation verified 后才确认 caller 本轮明确提供的目标仓库路径
 
 共享 package 永久只发布七个角色：`code-implementer`、`dag-creator-updater`、`documentation-writer`、`test-owner`、`ui-system-adjudicator`、`ui-ux-implementer` 和 `ux-acceptance-verifier`。Landing conflict slice 继续由 `code-implementer` 或 `ui-ux-implementer` 执行；不得新增 `landing-owner` 或其它第八个 dispatch role。 所有 actor-bearing proposal/receipt 都必须绑定通过验证的 `issue-orchestration.execution-route-decision.v2` 与 runtime execution binding；除 canonical routing policy/compiler 外，任何脚本不得把 actor 自声明的 model、profile 或 effort 当作独立授权来源。
 
+每个 actor-bearing action 在 runtime preparation 前必须由 `actor-context-envelope.mjs` 确定性编译 `issue-orchestration.actor-context-envelope.v1`。包络只包含当前角色/阶段的不可变身份、相关验收项、当前 slice/candidate/verification evidence、适用 AGENTS 指令、typed output interface 与受限 content-addressed source references；完整 ledger/DAG/projection、无关节点、未来阶段历史、Root 摘要、秘密和 writer 对话均不得进入。大块 source 只能经绑定 referenceId、role、phase、node、path 与 digest 的只读 resolver 渐进读取。该包络不授予 route、retry、mutation、checkpoint、candidate、verification、delivery、cleanup 或 terminal authority；各 production executor 仍必须复核 action/role/phase binding 并通过原有 machine validators。
+
 某次修复 issue 对 Sol Ultra 或其它实现者的直接授权只适用于该次实现批次，不能写入永久 `stage-model-pool.v4`、routing、dispatch 或 fallback policy。临时 bootstrap runner、旧 run id、receipt、breaker 和 failure evidence只能作为冻结测试保管、恢复、审计 fixture 与最终退役对象；它们不是永久 dispatcher，也不能阻止当前获授权实现者修改永久源码或成为兼容入口。
 
 ## 永久组合 E2E

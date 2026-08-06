@@ -3,6 +3,9 @@ import {
     sameValue
 } from './runtime-contract-lib.mjs'
 import {
+    validateActorContextEnvelopeBinding
+} from './actor-context-envelope.mjs'
+import {
     LIFECYCLE_STAGE_ADMISSION_MAP,
     LIFECYCLE_STAGE_RESULT_SCHEMA,
     validateLifecycleStageResult
@@ -543,10 +546,19 @@ export async function executeLifecycleObserveOnlyAction({
     observeRuntime,
     snapshot,
     evaluateMutation,
+    actorContextEnvelope,
+    actorContextProgressiveReader,
     observedAt = new Date(0).toISOString()
 } = {}) {
     const stage = stageFor(action)
     exactAction(action, actionSet)
+    const envelope = actorContextEnvelope === undefined
+        ? null
+        : validateActorContextEnvelopeBinding(actorContextEnvelope, {
+            action,
+            role: stage.actorRole,
+            phase: stage.stagePhase
+        })
     const adapter = assertActorAdapter(actorAdapter)
     const routeCompiler = assertRouteCompiler(compileRoute)
     const runtimeObserver = assertRuntimeObserver(observeRuntime)
@@ -564,7 +576,11 @@ export async function executeLifecycleObserveOnlyAction({
         node: clone(node),
         stage: clone(stage),
         routeDecision: clone(route),
-        observedAt
+        observedAt,
+        ...(envelope ? { actorContextEnvelope: clone(envelope) } : {}),
+        ...(actorContextProgressiveReader ? {
+            resolveActorContextReference: actorContextProgressiveReader
+        } : {})
     }), 'observe-only-preparation-invalid')
     if (prepared.writerConversationInherited === true ||
         prepared.writeLeaseAcquired === true ||
@@ -604,7 +620,11 @@ export async function executeLifecycleObserveOnlyAction({
             routeDecision: clone(route),
             runtime: clone(runtime),
             projection: clone(projection),
-            observedAt
+            observedAt,
+            ...(envelope ? { actorContextEnvelope: clone(envelope) } : {}),
+            ...(actorContextProgressiveReader ? {
+                resolveActorContextReference: actorContextProgressiveReader
+            } : {})
         }),
         stage,
         action
