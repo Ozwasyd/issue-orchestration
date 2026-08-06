@@ -12,6 +12,10 @@ jobs:
   delete:
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: issue-76-actor-prompt-cache-identity
       - name: Delete merged branch
         env:
           GH_TOKEN: ${{ github.token }}
