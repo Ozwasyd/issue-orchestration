@@ -2869,8 +2869,29 @@ export function recordLifecycleScopeRefresh({
         ...removed,
         ...reopened
     ])].sort()
-    if (changedNodeIds.length === 0) {
-        fail('lifecycle-scope-refresh-without-change')
+    const observationOnly = changedNodeIds.length === 0
+    if (observationOnly) {
+        const priorContinuation =
+            facts.selectorReceipt.remoteObservationContinuation ?? null
+        const nextContinuation =
+            selector.remoteObservationContinuation ?? null
+        const continuationAdvanced = nextContinuation !== null && (
+            priorContinuation === null ||
+            nextContinuation.observationCursor !==
+                priorContinuation.observationCursor ||
+            nextContinuation.conditionalIdentity !==
+                priorContinuation.conditionalIdentity
+        )
+        const observationSnapshotAdvanced =
+            selector.remoteObservationSnapshotDigest !==
+                facts.selectorReceipt.remoteObservationSnapshotDigest
+        if (selector.remoteSnapshotDigest !==
+                facts.selectorReceipt.remoteSnapshotDigest ||
+            selector.receiptDigest === facts.selectorReceipt.receiptDigest ||
+            nextContinuation === null ||
+            !(continuationAdvanced || observationSnapshotAdvanced)) {
+            fail('lifecycle-scope-refresh-without-change')
+        }
     }
     const selected = new Set(selector.resolvedIssueSet)
     const remote = compileLifecycleRemoteSnapshotReceipt(selector)
@@ -2878,6 +2899,7 @@ export function recordLifecycleScopeRefresh({
     appendControlInMemory(controlLedger, 'scope.refreshed', {
         selectorReceiptDigest: selector.receiptDigest,
         selectorReceipt: selector,
+        observationOnly,
         changedNodeIds,
         remoteChangeSet: clone(selector.remoteChangeSet)
     }, createdAt, binding)

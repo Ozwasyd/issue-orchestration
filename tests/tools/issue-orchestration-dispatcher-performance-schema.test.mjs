@@ -44,6 +44,45 @@ test('dispatcher performance receipt validates its versioned schema', () => {
     )
 })
 
+test('remote-scope spans expose transfer and selector-rebuild diagnostics only', () => {
+    const collector = createDispatcherPerformanceCollector({
+        runId: 'delta-scope-fixture',
+        stateRoot: path.join(os.tmpdir(), 'dispatcher-performance-delta'),
+        clock: clock()
+    })
+    collector.measureSync(
+        ['remoteScopeObservation'],
+        { boundary: 'remote-scope-observation' },
+        () => ({ status: 'unchanged' }),
+        {
+            resolveMetadata: () => ({
+                boundary: 'remote-scope-observation',
+                protocol: 'delta-v1',
+                observationStatus: 'unchanged',
+                remoteFactsTransferred: 0,
+                deltaMembers: 0,
+                selectorRebuilt: false
+            })
+        }
+    )
+    const receipt = collector.finalize({
+        status: 'failed',
+        transitions: 0,
+        failureCode: 'delta-scope-fixture-stop'
+    })
+    const [span] = receipt.spans
+    assert.equal(span.protocol, 'delta-v1')
+    assert.equal(span.observationStatus, 'unchanged')
+    assert.equal(span.remoteFactsTransferred, 0)
+    assert.equal(span.deltaMembers, 0)
+    assert.equal(span.selectorRebuilt, false)
+    assert.deepEqual(receipt.authority, {
+        kind: 'diagnostic-only',
+        grants: []
+    })
+    assert.deepEqual(validateJsonSchema(receipt, schema), [])
+})
+
 test('dispatcher performance module has no network or model-call surface', () => {
     const source = fs.readFileSync(path.join(
         root,

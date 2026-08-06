@@ -34,6 +34,8 @@ const STATE_ROOT_SCHEMA =
     'issue-orchestration.lifecycle-state-root-identity.v1'
 const REPOSITORY_SCHEMA =
     'issue-orchestration.lifecycle-repository-binding.v1'
+const REMOTE_CONTINUATION_SCHEMA =
+    'issue-orchestration.lifecycle-remote-observation-continuation.v1'
 const HASH = /^[a-f0-9]{64}$/u
 const SHA = /^[a-f0-9]{40}$/u
 
@@ -483,6 +485,43 @@ export function validateLifecycleAuthorityBinding(value) {
 }
 
 
+function bindSelectorToRemoteObservation(receipt, continuation) {
+    if (continuation === undefined || continuation === null) return receipt
+    if (continuation?.schema !== REMOTE_CONTINUATION_SCHEMA ||
+        continuation.status !== 'verified' ||
+        continuation.producerAuthority !==
+            'trusted-remote-observation-adapter' ||
+        continuation.rootAuthored !== false ||
+        continuation.selectorDigest !== receipt.selectorDigest ||
+        continuation.remoteQueryIdentity !==
+            receipt.remoteQueryIdentity ||
+        continuation.remoteSnapshotDigest !==
+            receipt.remoteSnapshotDigest ||
+        continuation.remoteObservationSnapshotDigest !==
+            receipt.remoteObservationSnapshotDigest ||
+        typeof continuation.observedAt !== 'string' ||
+        continuation.observedAt.length === 0 ||
+        !([continuation.observationCursor,
+            continuation.conditionalIdentity].some((value) =>
+            typeof value === 'string' && value.length > 0))) {
+        fail('lifecycle-remote-observation-continuation-invalid')
+    }
+    for (const field of ['observationCursor', 'conditionalIdentity']) {
+        const value = continuation[field]
+        if (value !== null && value !== undefined &&
+            (typeof value !== 'string' || value.length === 0)) {
+            fail('lifecycle-remote-observation-continuation-invalid')
+        }
+    }
+    const bound = {
+        ...clone(receipt),
+        remoteObservationContinuation: clone(continuation)
+    }
+    delete bound.receiptDigest
+    bound.receiptDigest = digest(bound)
+    return verifySelectorReceipt(bound)
+}
+
 function bindSelectorToAuthority(receipt, lifecycleAuthority) {
     const bound = {
         ...clone(receipt),
@@ -509,6 +548,7 @@ function bindSelectorToAuthority(receipt, lifecycleAuthority) {
 export function resolveLifecycleSelector({
     lifecycleAuthority,
     startup,
+    remoteObservationContinuation = null,
     ...selectorInput
 } = {}) {
     validateLifecycleRunAuthority(lifecycleAuthority, { startup })
@@ -516,7 +556,26 @@ export function resolveLifecycleSelector({
         ...selectorInput,
         startup
     })
-    return bindSelectorToAuthority(receipt, lifecycleAuthority)
+    const observed = bindSelectorToRemoteObservation(
+        receipt,
+        remoteObservationContinuation
+    )
+    return bindSelectorToAuthority(observed, lifecycleAuthority)
+}
+
+export function bindLifecycleSelectorRemoteObservation({
+    lifecycleAuthority,
+    startup,
+    selectorReceipt,
+    remoteObservationContinuation
+} = {}) {
+    validateLifecycleRunAuthority(lifecycleAuthority, { startup })
+    const receipt = resolveSelectorReceiptForRebind(selectorReceipt)
+    const observed = bindSelectorToRemoteObservation(
+        receipt,
+        remoteObservationContinuation
+    )
+    return bindSelectorToAuthority(observed, lifecycleAuthority)
 }
 
 export function rebindLifecycleSelectorAuthority({
