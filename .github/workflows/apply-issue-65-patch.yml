@@ -1,0 +1,40 @@
+name: apply issue 65 patch
+
+on:
+  push:
+    branches:
+      - issue-65-repository-base-wave
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-65-repository-base-wave
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .github/issue-65-patch/payload.b64 > /tmp/issue65.patch.gz
+          echo '8b39c268dd96e41ea02e937c6a940ee29c542c6eec4ed1f63b3d57a9563f3ccb  /tmp/issue65.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue65.patch.gz > /tmp/issue65.patch
+          echo 'f0f9519d730d0955338e0133b60612d16e9d6640d4a52238a8785a0ff12334be  /tmp/issue65.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue65.patch
+          git apply --binary /tmp/issue65.patch
+          rm -rf .github/issue-65-patch
+          rm -f .github/workflows/apply-issue-65-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Share repository base observations by dispatcher wave (#65)'
+          git push origin HEAD:issue-65-repository-base-wave
