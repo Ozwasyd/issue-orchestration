@@ -27,10 +27,18 @@
     "suffixDigest": { "$ref": "#/$defs/digest" },
     "completePromptDigest": { "$ref": "#/$defs/digest" },
     "tokenizerIdentity": {
-      "type": ["string", "object", "null"]
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "null" }
+      ]
     },
     "runtimeIdentity": {
-      "type": ["string", "object", "null"]
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object" },
+        { "type": "null" }
+      ]
     },
     "cacheIdentityDigest": { "$ref": "#/$defs/digest" }
   },

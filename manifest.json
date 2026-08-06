@@ -3,7 +3,7 @@
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
     "sourceCommit": "8d46758818b3c97ca374cc3284dc5750d8387e3e",
-    "sourceTreeDigest": "bb9a844f751347be610245394f0db12afd06b1323bf5cd1eefbe32d83588262f",
+    "sourceTreeDigest": "2b50b91d9c103dadac54ada3059aed8b681ec3b0c448efe0215cbaf999f7d928",
     "skillIdentity": "issue-orchestration",
     "skillDigest": "c41fe19cdfd363c89e77740ba15c0b1cef5137b71bb8e88cdabdd5ec0c30b2a3",
     "agentDigests": {
@@ -145,7 +145,7 @@
         "agents/ux-acceptance-verifier.toml": "018723afa89abc8a46494be8662879b9c89d6b347235692694df54ba90d30cc4",
         "contracts/acceptance-group-summary.schema.json": "c4a54211b55084de27cf37eca57f2a787cd839b68bcfba186188c08dc2e3a9b4",
         "contracts/actor-context-envelope.schema.json": "4ca8c9ee42166fcbc81f16fdf748e8e179a7212b99df970020baba4240d2b8ae",
-        "contracts/actor-prompt-cache-identity.schema.json": "253c73dd1c6da74af11e8ab9e02e12401989c6b642830308314948f7d4f1f9b1",
+        "contracts/actor-prompt-cache-identity.schema.json": "806d2d0ca2a900512a84ed960b07f65f39d0847a28f60f8deec8623bc1418434",
         "contracts/aggregate-runtime-projection.schema.json": "485a39f31bfeff459ef0aaf5d0bfa0ccdaca8c9b64de096665ea6e29accbae08",
         "contracts/behavior-receipt-v3.schema.json": "43a958f1c9baf27fe2871ca0ec1f2d2a7622a231c6ccd0fdaa70b2a0a2dde803",
         "contracts/branch-retirement-receipt.schema.json": "889039d6531978f8f5cce8fe54505680a8c657554716fd38ec88b42b05d0f3b6",
@@ -358,5 +358,5 @@
         "skills/issue-orchestration/SKILL.md": "c41fe19cdfd363c89e77740ba15c0b1cef5137b71bb8e88cdabdd5ec0c30b2a3",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "0b2e26260d09f227b93a70ede1740f6485fdb2297bc8ff1151444f16a791d561"
+    "manifestDigest": "b98dd83f1172d0d22e31167c0a617f19057aa7d9b7dade95b54d413e833aa060"
 }
