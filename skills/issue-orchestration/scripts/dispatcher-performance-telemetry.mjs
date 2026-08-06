@@ -137,6 +137,11 @@ function stableMetadata(value = {}) {
     if (Array.isArray(value.repositories) && value.repositories.length > 0) {
         metadata.repositories = [...new Set(value.repositories)].sort()
     }
+    for (const field of ['actionDigests', 'dispatchIds']) {
+        if (Array.isArray(value[field]) && value[field].length > 0) {
+            metadata[field] = [...new Set(value[field])].sort()
+        }
+    }
     return metadata
 }
 

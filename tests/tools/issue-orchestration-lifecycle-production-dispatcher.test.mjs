@@ -1021,7 +1021,7 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
         aggregateProjectionRebuild: { count: 17, durationMs: 85 },
         actionSetCompilation: { count: 3, durationMs: 15 },
         remoteScopeObservation: { count: 3, durationMs: 15 },
-        repositoryBaseObservation: { count: 5, durationMs: 25 },
+        repositoryBaseObservation: { count: 4, durationMs: 20 },
         contextPreparation: { count: 3, durationMs: 15 },
         machineActionExecution: { count: 0, durationMs: 0 },
         actorResultAdmission: { count: 2, durationMs: 10 }
@@ -1042,9 +1042,19 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
         capacity === 2 && active === 1 && available === 1))
     assert.deepEqual(receipt.repositoryBaseObservations, [{
         repository: value.repository.repository,
-        count: 5,
-        durationMs: 25
+        count: 4,
+        durationMs: 20
     }])
+    const sharedPreWave = receipt.spans.find((span) =>
+        span.boundary === 'repository-base-pre-wave' &&
+        span.actionDigests?.length === 2)
+    assert.ok(sharedPreWave)
+    assert.deepEqual(sharedPreWave.repositories, [
+        value.repository.repository
+    ])
+    assert.ok(receipt.spans.some((span) =>
+        span.boundary === 'repository-base-post-wave' &&
+        span.dispatchIds?.length === 1))
     assert.equal(
         receipt.bytes.canonicalLedgersRead,
         receipt.spans.reduce(
@@ -1063,9 +1073,20 @@ test('two-slot telemetry exposes dispatch, admission, and refill timing', async 
     assert.ok(receipt.bytes.actorContextPrepared > 0)
     assert.ok(receipt.wallTime.actorObservedWallDurationMs > 0)
     assert.ok(receipt.wallTime.rootControlPlaneObservedDurationMs > 0)
-    assert.notEqual(
+    assert.equal(
         receipt.wallTime.actorObservedWallDurationMs,
-        receipt.wallTime.rootControlPlaneObservedDurationMs
+        receipt.actorDispatches.reduce(
+            (total, dispatch) =>
+                total + (dispatch.actorWallDurationMs ?? 0),
+            0
+        )
+    )
+    assert.equal(
+        receipt.wallTime.rootControlPlaneObservedDurationMs,
+        receipt.spans.reduce(
+            (total, span) => total + span.durationMs,
+            0
+        )
     )
 })
 

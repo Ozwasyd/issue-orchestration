@@ -82,6 +82,7 @@ const requiredPackageFiles = [
     'graph/semantic-graph.schema.json',
     'contracts/aggregate-runtime-projection.schema.json',
     'contracts/dispatcher-performance-receipt.schema.json',
+    'contracts/repository-base-observation-epoch.schema.json',
     'contracts/node-index.schema.json',
     'contracts/node-ledger-header.schema.json',
     'contracts/node-ledger.schema.json',

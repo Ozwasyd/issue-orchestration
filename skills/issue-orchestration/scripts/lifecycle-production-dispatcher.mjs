@@ -14,8 +14,7 @@ import {
 } from './lifecycle-run-loop.mjs'
 import {
     executeLifecycleScopeRefresh,
-    observeLifecycleRepositoryBaseBeforeAction,
-    observeLifecycleRepositoryBaseForActiveAction
+    observeLifecycleRepositoryBaseEpoch
 } from './lifecycle-live-refresh.mjs'
 import {
     executePreWriterLifecycleAction,
@@ -404,42 +403,66 @@ async function prepareAction({
     }
 }
 
-async function observeBases({
+function observedRepositories(telemetry, actions) {
+    if (!telemetry) return []
+    return [...new Set(actions.flatMap((action) =>
+        telemetry.repositoriesForAction(action)))].sort()
+}
+
+async function observeBaseEpoch({
     ledger,
     actionSet,
-    action,
+    actions = null,
+    dispatches = null,
+    phase,
     startup,
-    createdAt,
+    observedAt,
     telemetry
 }) {
-    const observe = () => observeLifecycleRepositoryBaseBeforeAction({
+    const epochActions = actions ?? dispatches.map(({ action }) => action)
+    const observe = () => observeLifecycleRepositoryBaseEpoch({
         ledger,
         actionSet,
-        actionDigest: action.actionDigest,
+        actions,
+        dispatches,
+        phase,
         startup,
-        createdAt
+        observedAt
     })
     const metadata = {
-        boundary: 'repository-base-before-action',
-        actionDigest: action.actionDigest,
-        actionType: action.type,
-        nodeId: action.nodeId,
-        repositories: telemetry?.repositoriesForAction(action) ?? []
+        boundary: phase === 'pre-dispatch'
+            ? 'repository-base-pre-wave'
+            : 'repository-base-post-wave',
+        actionDigests: epochActions.map(({ actionDigest }) =>
+            actionDigest).sort(),
+        dispatchIds: dispatches?.map(({ dispatchId }) =>
+            dispatchId).sort() ?? [],
+        repositories: observedRepositories(telemetry, epochActions)
     }
     const result = telemetry
-        ? telemetry.measureSync(
+        ? await telemetry.measureAsync(
             ['repositoryBaseObservation'],
             metadata,
             observe
         )
-        : observe()
-    if (result.status === 'rebound') {
-        return { rebound: true, ledger: result.ledger }
+        : await observe()
+    if (result.receipt.status === 'rebound') {
+        return {
+            rebound: true,
+            stale: false,
+            receipt: result.receipt,
+            ledger: result.ledger
+        }
     }
-    if (result.status !== 'current') {
+    if (!['current', 'stale'].includes(result.receipt.status)) {
         fail('dispatcher-base-observation-invalid')
     }
-    return { rebound: false, ledger }
+    return {
+        rebound: false,
+        stale: result.receipt.status === 'stale',
+        receipt: result.receipt,
+        ledger
+    }
 }
 
 function completion(promise, dispatchId, entry, telemetry = null) {
@@ -475,18 +498,17 @@ async function startActorWave({
     telemetry
 }) {
     let currentLedger = ledger
-    for (const action of actions) {
-        const observed = await observeBases({
-            ledger: currentLedger,
-            actionSet,
-            action,
-            startup,
-            createdAt: timestamp(clock),
-            telemetry
-        })
-        if (observed.rebound) {
-            return { rebound: true, ledger: observed.ledger }
-        }
+    const observed = await observeBaseEpoch({
+        ledger: currentLedger,
+        actionSet,
+        actions,
+        phase: 'pre-dispatch',
+        startup,
+        observedAt: timestamp(clock),
+        telemetry
+    })
+    if (observed.rebound) {
+        return { rebound: true, ledger: observed.ledger }
     }
     const prepared = []
     const createdAt = timestamp(clock)
@@ -634,34 +656,28 @@ async function settleFirst({
                 'unknown-executor-failure'
         })
     }
-    const observeBase = () =>
-        observeLifecycleRepositoryBaseForActiveAction({
-            ledger,
-            action: active.dispatch.action,
-            startup
-        })
-    const baseMetadata = {
-        boundary: 'repository-base-before-result-admission',
-        actionDigest: active.dispatch.actionDigest,
-        actionType: active.dispatch.action.type,
-        nodeId: active.dispatch.nodeId,
-        dispatchId: settled.dispatchId,
-        repositories:
-            telemetry?.repositoriesForAction(active.dispatch.action) ?? []
-    }
-    const baseObservation = telemetry
-        ? telemetry.measureSync(
-            ['repositoryBaseObservation'],
-            baseMetadata,
-            observeBase
+    const baseObservation = await observeBaseEpoch({
+        ledger,
+        dispatches: [active.dispatch],
+        phase: 'post-admission',
+        startup,
+        observedAt: timestamp(clock),
+        telemetry
+    })
+    if (baseObservation.stale) {
+        const stale = baseObservation.receipt.repositories.find(
+            ({ repository }) =>
+                baseObservation.receipt.driftedRepositories.includes(
+                    repository
+                )
         )
-        : observeBase()
-    if (baseObservation.status !== 'current') {
         fail('dispatcher-active-result-base-stale', {
             dispatchId: settled.dispatchId,
-            repository: baseObservation.repository,
-            expectedBaseSha: baseObservation.expectedBaseSha,
-            currentBaseSha: baseObservation.currentBaseSha
+            repository: stale.repository,
+            expectedBaseSha: stale.expectedBaseSha,
+            currentBaseSha:
+                stale.observation.remoteDefaultBranchHead,
+            observationEpoch: baseObservation.receipt.epochId
         })
     }
     const recordResult = () => recordLifecycleDispatchedActionResult({
@@ -706,12 +722,13 @@ async function executeImmediate({
     const entry = actionOwner(action)
     const createdAt = timestamp(clock)
     if (!['refresh-scope', 'idle'].includes(action.type)) {
-        const observed = await observeBases({
+        const observed = await observeBaseEpoch({
             ledger,
             actionSet,
-            action,
+            actions: [action],
+            phase: 'pre-dispatch',
             startup,
-            createdAt,
+            observedAt: createdAt,
             telemetry
         })
         if (observed.rebound) return observed.ledger

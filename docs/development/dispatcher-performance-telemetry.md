@@ -32,7 +32,8 @@ and summaries for:
 
 - canonical replay and aggregate projection rebuild boundaries;
 - action-set compilation and live remote-scope observation;
-- repository-base observation, grouped by repository;
+- repository-base observation, grouped by repository and annotated with the
+  pre-dispatch or post-admission wave action/dispatch set;
 - `contextProvider.prepare` calls and prepared-context bytes;
 - actor start, completion, admission, slot samples, and slot refill delay;
 - machine-action execution;

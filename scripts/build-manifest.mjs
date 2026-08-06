@@ -102,7 +102,8 @@ const manifest = {
         'caller-supplied-repository-identity',
         'stage-scoped-write-lease',
         'typed-terminalization-authority',
-        'deterministic-dispatcher-performance-telemetry'
+        'deterministic-dispatcher-performance-telemetry',
+        'wave-scoped-repository-base-observation'
     ],
     installTargets: [
         {

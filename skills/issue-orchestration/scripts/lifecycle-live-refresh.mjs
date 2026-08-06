@@ -1,5 +1,6 @@
-import { execFileSync } from 'node:child_process'
+import { execFile, execFileSync } from 'node:child_process'
 import path from 'node:path'
+import { promisify } from 'node:util'
 
 import {
     digest,
@@ -8,6 +9,7 @@ import {
 import {
     compileLifecycleRunActionSet,
     lifecycleRunObservationContext,
+    projectLifecycleRun,
     recordLifecycleBaseChange,
     recordLifecycleScopeRefresh
 } from './lifecycle-run-loop.mjs'
@@ -24,7 +26,11 @@ const REMOTE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-remote-scope-observation.v1'
 const BASE_OBSERVATION_SCHEMA =
     'issue-orchestration.lifecycle-repository-base-observation.v1'
+const BASE_OBSERVATION_EPOCH_SCHEMA =
+    'issue-orchestration.repository-base-observation-epoch.v1'
 const SHA = /^[a-f0-9]{40}$/u
+const HASH = /^[a-f0-9]{64}$/u
+const execFileAsync = promisify(execFile)
 
 export class LifecycleLiveRefreshError extends Error {
     constructor(code, details = {}) {
@@ -259,6 +265,93 @@ function observeRepository(binding) {
     return Object.freeze(observation)
 }
 
+async function gitObserved(repositoryPath, args, code) {
+    try {
+        const { stdout } = await execFileAsync(
+            'git',
+            ['-C', repositoryPath, ...args],
+            {
+                encoding: 'utf8',
+                maxBuffer: 16 * 1024 * 1024
+            }
+        )
+        return stdout.trim()
+    } catch {
+        fail(code)
+    }
+}
+
+function parseRemoteDefaultBranch(output) {
+    const branch = output.match(
+        /^ref:\s+refs\/heads\/([^\s]+)\s+HEAD$/mu
+    )?.[1]
+    const head = output.match(/^([a-f0-9]{40})\s+HEAD$/mu)?.[1]
+    if (!branch || !head) {
+        fail('lifecycle-base-remote-observation-invalid')
+    }
+    return { branch, head }
+}
+
+async function observeRepositoryForEpoch(binding) {
+    const [
+        topLevel,
+        commonDirectory,
+        origin,
+        remoteOutput,
+        localHead,
+        dirtyOutput
+    ] = await Promise.all([
+        gitObserved(
+            binding.canonicalPath,
+            ['rev-parse', '--show-toplevel'],
+            'lifecycle-base-repository-unobservable'
+        ),
+        gitObserved(
+            binding.canonicalPath,
+            ['rev-parse', '--git-common-dir'],
+            'lifecycle-base-git-identity-unobservable'
+        ),
+        gitObserved(
+            binding.canonicalPath,
+            ['config', '--get', 'remote.origin.url'],
+            'lifecycle-base-origin-unobservable'
+        ),
+        gitObserved(
+            binding.canonicalPath,
+            ['ls-remote', '--symref', 'origin', 'HEAD'],
+            'lifecycle-base-remote-observation-failed'
+        ),
+        gitObserved(
+            binding.canonicalPath,
+            ['rev-parse', 'HEAD'],
+            'lifecycle-base-local-head-unobservable'
+        ),
+        gitObserved(
+            binding.canonicalPath,
+            ['status', '--porcelain=v1', '--untracked-files=all'],
+            'lifecycle-base-dirty-state-unobservable'
+        )
+    ])
+    const remote = parseRemoteDefaultBranch(remoteOutput)
+    const observation = {
+        schema: BASE_OBSERVATION_SCHEMA,
+        status: 'observed',
+        producerAuthority: 'trusted-git-runtime-observer',
+        rootAuthored: false,
+        repository: binding.repository,
+        canonicalPath: path.resolve(topLevel),
+        commonDir: path.resolve(binding.canonicalPath, commonDirectory),
+        origin,
+        defaultBranch: remote.branch,
+        localHead,
+        remoteDefaultBranchHead: remote.head,
+        dirtyEntries: dirtyOutput.split('\n').filter(Boolean),
+        repositoryBindingDigest: binding.bindingDigest
+    }
+    observation.observationDigest = digest(observation)
+    return Object.freeze(observation)
+}
+
 function actionRepositoryBindings(action) {
     const bindings = action?.bindings
     if (!bindings || typeof bindings !== 'object') {
@@ -286,6 +379,423 @@ function actionRepositoryBindings(action) {
             left.repository.localeCompare(right.repository))
     }
     fail('lifecycle-base-action-unsupported')
+}
+
+function epochPhase(value) {
+    if (!['pre-dispatch', 'post-admission'].includes(value)) {
+        fail('lifecycle-base-epoch-phase-invalid')
+    }
+    return value
+}
+
+function requireEpochTimestamp(value) {
+    if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+        fail('lifecycle-base-epoch-time-invalid')
+    }
+    return value
+}
+
+function preDispatchSubjects({ ledger, actionSet, actions, startup }) {
+    const current = compileLifecycleRunActionSet(ledger, { startup })
+    if (!sameValue(current, actionSet)) {
+        fail('lifecycle-base-action-set-stale')
+    }
+    if (!Array.isArray(actions) || actions.length === 0) {
+        fail('lifecycle-base-epoch-actions-required')
+    }
+    const currentByDigest = new Map(current.actions.map((action) => [
+        action.actionDigest,
+        action
+    ]))
+    const seen = new Set()
+    return actions.map((candidate) => {
+        const action = currentByDigest.get(candidate?.actionDigest)
+        if (!action || !sameValue(action, candidate) ||
+            ['refresh-scope', 'idle'].includes(action.type) ||
+            seen.has(action.actionDigest)) {
+            fail('lifecycle-base-epoch-action-invalid')
+        }
+        seen.add(action.actionDigest)
+        return {
+            action,
+            dispatchId: null,
+            actionSetDigest: current.actionSetDigest
+        }
+    }).sort((left, right) =>
+        left.action.actionDigest.localeCompare(right.action.actionDigest))
+}
+
+function postAdmissionSubjects({ ledger, dispatches, startup }) {
+    if (!Array.isArray(dispatches) || dispatches.length === 0) {
+        fail('lifecycle-base-epoch-dispatches-required')
+    }
+    const projection = projectLifecycleRun(ledger, { startup })
+    const active = projection.aggregateProjection.activeDispatches ?? {}
+    const seen = new Set()
+    return dispatches.map((candidate) => {
+        const dispatch = active[candidate?.dispatchId]
+        if (!dispatch || !sameValue(dispatch, candidate) ||
+            seen.has(dispatch.dispatchId)) {
+            fail('lifecycle-base-epoch-dispatch-invalid')
+        }
+        seen.add(dispatch.dispatchId)
+        return {
+            action: dispatch.action,
+            dispatchId: dispatch.dispatchId,
+            actionSetDigest: dispatch.actionSetDigest
+        }
+    }).sort((left, right) =>
+        left.dispatchId.localeCompare(right.dispatchId))
+}
+
+function epochActionBindings(subjects) {
+    return subjects.map(({ action, dispatchId, actionSetDigest }) => ({
+        actionDigest: action.actionDigest,
+        actionType: action.type,
+        nodeId: action.nodeId ?? null,
+        dispatchId,
+        actionSetDigest,
+        actionBindingsDigest: digest(action.bindings),
+        repositories: actionRepositoryBindings(action)
+    }))
+}
+
+function expectedRepositories(actionBindings) {
+    const expected = new Map()
+    for (const action of actionBindings) {
+        for (const repository of action.repositories) {
+            const prior = expected.get(repository.repository)
+            if (prior && prior.baseSha !== repository.baseSha) {
+                fail('lifecycle-base-epoch-conflicting-base', {
+                    repository: repository.repository,
+                    expectedBaseShas: [prior.baseSha, repository.baseSha]
+                        .sort()
+                })
+            }
+            expected.set(repository.repository, repository)
+        }
+    }
+    return [...expected.values()].sort((left, right) =>
+        left.repository.localeCompare(right.repository))
+}
+
+function validateEpochRepositoryIdentity({
+    binding,
+    expected,
+    observation,
+    phase
+}) {
+    if (observation.canonicalPath !== path.resolve(binding.canonicalPath) ||
+        observation.origin !== binding.remoteUrl ||
+        observation.defaultBranch !== binding.defaultBranch ||
+        observation.repositoryBindingDigest !== binding.bindingDigest) {
+        fail(
+            phase === 'post-admission'
+                ? 'lifecycle-active-base-repository-identity-drift'
+                : 'lifecycle-base-repository-identity-drift',
+            { repository: expected.repository }
+        )
+    }
+}
+
+function epochId(value) {
+    return digest({
+        phase: value.phase,
+        runId: value.runId,
+        controlLedgerHeadDigest: value.controlLedgerHeadDigest,
+        lifecycleAuthorityBindingDigest:
+            value.lifecycleAuthorityBindingDigest,
+        rootAuthorityEpoch: value.rootAuthorityEpoch,
+        actionBindingSetDigest: value.actionBindingSetDigest,
+        repositoryExpectationSetDigest:
+            value.repositoryExpectationSetDigest
+    })
+}
+
+function validateEpochReceiptShape(receipt) {
+    if (receipt?.schema !== BASE_OBSERVATION_EPOCH_SCHEMA ||
+        !['current', 'rebound', 'stale'].includes(receipt.status) ||
+        receipt.producerAuthority !== 'trusted-git-runtime-observer' ||
+        receipt.rootAuthored !== false ||
+        typeof receipt.runId !== 'string' ||
+        !HASH.test(receipt.controlLedgerHeadDigest ?? '') ||
+        !HASH.test(receipt.lifecycleAuthorityBindingDigest ?? '') ||
+        !HASH.test(receipt.startupAttestationDigest ?? '') ||
+        typeof receipt.runtimeInvocationId !== 'string' ||
+        typeof receipt.rootAuthorityEpoch !== 'string' ||
+        !HASH.test(receipt.packageDigest ?? '') ||
+        !HASH.test(receipt.policySetDigest ?? '') ||
+        !HASH.test(receipt.actionBindingSetDigest ?? '') ||
+        !HASH.test(receipt.repositoryExpectationSetDigest ?? '') ||
+        !HASH.test(receipt.epochId ?? '') ||
+        !Array.isArray(receipt.actionBindings) ||
+        receipt.actionBindings.length === 0 ||
+        !Array.isArray(receipt.repositories) ||
+        receipt.repositories.length === 0 ||
+        !Array.isArray(receipt.driftedRepositories) ||
+        typeof receipt.reusable !== 'boolean' ||
+        !HASH.test(receipt.receiptDigest ?? '') ||
+        receipt.receiptDigest !== unsignedDigest(receipt, 'receiptDigest') ||
+        receipt.epochId !== epochId(receipt) ||
+        receipt.actionBindingSetDigest !== digest(receipt.actionBindings) ||
+        receipt.repositoryExpectationSetDigest !== digest(
+            receipt.repositories.map(({ repository, expectedBaseSha,
+                repositoryBindingDigest }) => ({
+                repository,
+                expectedBaseSha,
+                repositoryBindingDigest
+            }))
+        )) {
+        fail('lifecycle-base-epoch-receipt-invalid')
+    }
+    epochPhase(receipt.phase)
+    requireEpochTimestamp(receipt.observedAt)
+    return receipt
+}
+
+export function verifyLifecycleRepositoryBaseObservationEpoch({
+    ledger,
+    receipt,
+    startup
+} = {}) {
+    validateEpochReceiptShape(receipt)
+    const context = lifecycleRunObservationContext(ledger, { startup })
+    const authority = context.lifecycleAuthority.binding
+    if (receipt.runId !== context.runId ||
+        receipt.controlLedgerHeadDigest !==
+            context.controlLedgerHeadDigest ||
+        receipt.lifecycleAuthorityBindingDigest !==
+            authority.bindingDigest ||
+        receipt.startupAttestationDigest !==
+            authority.startupAttestationDigest ||
+        receipt.runtimeInvocationId !== authority.runtimeInvocationId ||
+        receipt.rootAuthorityEpoch !== authority.rootAuthorityEpoch ||
+        receipt.packageDigest !== authority.packageDigest ||
+        receipt.policySetDigest !== authority.policySetDigest) {
+        fail('lifecycle-base-epoch-stale')
+    }
+    const seenActions = new Set()
+    for (const action of receipt.actionBindings) {
+        const identity = `${action.dispatchId ?? 'pre'}:${action.actionDigest}`
+        if (!HASH.test(action?.actionDigest ?? '') ||
+            typeof action.actionType !== 'string' ||
+            action.actionType.length === 0 ||
+            ![null, 'string'].includes(
+                action.nodeId === null ? null : typeof action.nodeId
+            ) ||
+            !HASH.test(action.actionSetDigest ?? '') ||
+            !HASH.test(action.actionBindingsDigest ?? '') ||
+            !Array.isArray(action.repositories) ||
+            action.repositories.length === 0 ||
+            seenActions.has(identity) ||
+            (receipt.phase === 'pre-dispatch' &&
+                action.dispatchId !== null) ||
+            (receipt.phase === 'post-admission' &&
+                (typeof action.dispatchId !== 'string' ||
+                    action.dispatchId.length === 0))) {
+            fail('lifecycle-base-epoch-action-binding-invalid')
+        }
+        seenActions.add(identity)
+        const repositoryNames = new Set()
+        for (const expected of action.repositories) {
+            if (typeof expected?.repository !== 'string' ||
+                !SHA.test(expected.baseSha ?? '') ||
+                repositoryNames.has(expected.repository)) {
+                fail('lifecycle-base-epoch-action-binding-invalid')
+            }
+            repositoryNames.add(expected.repository)
+        }
+    }
+    const expectedByAction = expectedRepositories(receipt.actionBindings)
+    const expectationByRepository = new Map(expectedByAction.map(
+        (entry) => [entry.repository, entry.baseSha]
+    ))
+    if (expectationByRepository.size !== receipt.repositories.length) {
+        fail('lifecycle-base-epoch-repository-set-invalid')
+    }
+    const drifted = []
+    const seenRepositories = new Set()
+    for (const entry of receipt.repositories) {
+        if (typeof entry?.repository !== 'string' ||
+            !SHA.test(entry.expectedBaseSha ?? '') ||
+            !HASH.test(entry.repositoryBindingDigest ?? '') ||
+            seenRepositories.has(entry.repository) ||
+            expectationByRepository.get(entry.repository) !==
+                entry.expectedBaseSha ||
+            entry.observation?.schema !== BASE_OBSERVATION_SCHEMA ||
+            entry.observation.status !== 'observed' ||
+            entry.observation.producerAuthority !==
+                'trusted-git-runtime-observer' ||
+            entry.observation.rootAuthored !== false ||
+            entry.observation.repository !== entry.repository ||
+            !Array.isArray(entry.observation.dirtyEntries) ||
+            entry.observation?.observationDigest !==
+                unsignedDigest(entry.observation, 'observationDigest')) {
+            fail('lifecycle-base-epoch-repository-invalid')
+        }
+        seenRepositories.add(entry.repository)
+        const binding = repositoryAuthorityFor(
+            context.lifecycleAuthority,
+            entry.repository
+        )
+        if (entry.repositoryBindingDigest !== binding.bindingDigest) {
+            fail('lifecycle-base-epoch-repository-binding-stale', {
+                repository: entry.repository
+            })
+        }
+        validateEpochRepositoryIdentity({
+            binding,
+            expected: entry,
+            observation: entry.observation,
+            phase: receipt.phase
+        })
+        if (entry.observation.remoteDefaultBranchHead !==
+                entry.expectedBaseSha) {
+            drifted.push(entry.repository)
+        }
+    }
+    if (!sameValue(drifted.sort(), [...receipt.driftedRepositories].sort()) ||
+        receipt.reusable !== (receipt.status === 'current') ||
+        (receipt.status === 'current') !== (drifted.length === 0) ||
+        (receipt.phase === 'pre-dispatch' && drifted.length > 0 &&
+            receipt.status !== 'rebound') ||
+        (receipt.phase === 'post-admission' && drifted.length > 0 &&
+            receipt.status !== 'stale')) {
+        fail('lifecycle-base-epoch-status-invalid')
+    }
+    return receipt
+}
+
+export function consumeLifecycleRepositoryBaseObservationEpoch({
+    ledger,
+    receipt,
+    action,
+    dispatchId = null,
+    startup
+} = {}) {
+    verifyLifecycleRepositoryBaseObservationEpoch({
+        ledger,
+        receipt,
+        startup
+    })
+    if (receipt.status !== 'current') {
+        fail('lifecycle-base-epoch-not-current')
+    }
+    const binding = receipt.actionBindings.find((candidate) =>
+        candidate.actionDigest === action?.actionDigest &&
+        candidate.dispatchId === dispatchId)
+    if (!binding || binding.actionType !== action.type ||
+        binding.nodeId !== (action.nodeId ?? null) ||
+        binding.actionBindingsDigest !== digest(action.bindings) ||
+        !sameValue(binding.repositories, actionRepositoryBindings(action))) {
+        fail('lifecycle-base-epoch-action-binding-invalid')
+    }
+    return Object.freeze({
+        schema: 'issue-orchestration.repository-base-epoch-consumption.v1',
+        epochId: receipt.epochId,
+        actionDigest: action.actionDigest,
+        dispatchId,
+        repositoryObservationDigests: binding.repositories.map(
+            ({ repository }) => receipt.repositories.find(
+                (entry) => entry.repository === repository
+            ).observation.observationDigest
+        )
+    })
+}
+
+export async function observeLifecycleRepositoryBaseEpoch({
+    ledger,
+    actionSet,
+    actions,
+    dispatches,
+    phase,
+    observedAt,
+    startup
+} = {}) {
+    const selectedPhase = epochPhase(phase)
+    const subjects = selectedPhase === 'pre-dispatch'
+        ? preDispatchSubjects({ ledger, actionSet, actions, startup })
+        : postAdmissionSubjects({ ledger, dispatches, startup })
+    const actionBindings = epochActionBindings(subjects)
+    const repositories = expectedRepositories(actionBindings)
+    const context = lifecycleRunObservationContext(ledger, { startup })
+    const repositoryEntries = await Promise.all(repositories.map(
+        async (expected) => {
+            const binding = repositoryAuthorityFor(
+                context.lifecycleAuthority,
+                expected.repository
+            )
+            const observation = await observeRepositoryForEpoch(binding)
+            validateEpochRepositoryIdentity({
+                binding,
+                expected,
+                observation,
+                phase: selectedPhase
+            })
+            return Object.freeze({
+                repository: expected.repository,
+                expectedBaseSha: expected.baseSha,
+                repositoryBindingDigest: binding.bindingDigest,
+                observation
+            })
+        }
+    ))
+    const driftedRepositories = repositoryEntries
+        .filter(({ expectedBaseSha, observation }) =>
+            observation.remoteDefaultBranchHead !== expectedBaseSha)
+        .map(({ repository }) => repository)
+        .sort()
+    const status = driftedRepositories.length === 0
+        ? 'current'
+        : selectedPhase === 'pre-dispatch' ? 'rebound' : 'stale'
+    const authority = context.lifecycleAuthority.binding
+    const receipt = {
+        schema: BASE_OBSERVATION_EPOCH_SCHEMA,
+        status,
+        phase: selectedPhase,
+        producerAuthority: 'trusted-git-runtime-observer',
+        rootAuthored: false,
+        runId: context.runId,
+        observedAt: requireEpochTimestamp(observedAt),
+        controlLedgerHeadDigest: context.controlLedgerHeadDigest,
+        lifecycleAuthorityBindingDigest: authority.bindingDigest,
+        startupAttestationDigest: authority.startupAttestationDigest,
+        runtimeInvocationId: authority.runtimeInvocationId,
+        rootAuthorityEpoch: authority.rootAuthorityEpoch,
+        packageDigest: authority.packageDigest,
+        policySetDigest: authority.policySetDigest,
+        actionBindings,
+        actionBindingSetDigest: digest(actionBindings),
+        repositories: repositoryEntries,
+        repositoryExpectationSetDigest: digest(repositoryEntries.map(
+            ({ repository, expectedBaseSha, repositoryBindingDigest }) => ({
+                repository,
+                expectedBaseSha,
+                repositoryBindingDigest
+            })
+        )),
+        driftedRepositories,
+        reusable: status === 'current'
+    }
+    receipt.epochId = epochId(receipt)
+    receipt.receiptDigest = digest(receipt)
+    const verified = Object.freeze(validateEpochReceiptShape(receipt))
+    if (status !== 'rebound') {
+        return Object.freeze({ receipt: verified, ledger })
+    }
+    const repository = driftedRepositories[0]
+    const current = repositoryEntries.find((entry) =>
+        entry.repository === repository)
+    return Object.freeze({
+        receipt: verified,
+        ledger: recordLifecycleBaseChange({
+            ledger,
+            repository,
+            baseSha: current.observation.remoteDefaultBranchHead,
+            createdAt: observedAt,
+            startup
+        })
+    })
 }
 
 export function observeLifecycleRepositoryBaseBeforeAction({
@@ -417,6 +927,7 @@ export function observeLifecycleRepositoryBaseForActiveAction({
 export function lifecycleLiveRefreshSchemas() {
     return Object.freeze({
         remoteObservation: REMOTE_OBSERVATION_SCHEMA,
-        baseObservation: BASE_OBSERVATION_SCHEMA
+        baseObservation: BASE_OBSERVATION_SCHEMA,
+        baseObservationEpoch: BASE_OBSERVATION_EPOCH_SCHEMA
     })
 }

@@ -17,11 +17,15 @@ import {
     createLifecycleRunLedger,
     lifecycleRunObservationContext,
     projectLifecycleRun,
-    readLifecycleRunLedger
+    readLifecycleRunLedger,
+    recordLifecycleDispatchBatchStarted
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
 import {
+    consumeLifecycleRepositoryBaseObservationEpoch,
     executeLifecycleScopeRefresh,
-    observeLifecycleRepositoryBaseBeforeAction
+    observeLifecycleRepositoryBaseBeforeAction,
+    observeLifecycleRepositoryBaseEpoch,
+    verifyLifecycleRepositoryBaseObservationEpoch
 } from '../../skills/issue-orchestration/scripts/lifecycle-live-refresh.mjs'
 import {
     verifiedRuntimeStartup
@@ -437,6 +441,215 @@ test('base observation validates the exact current action without changing state
             result.observations[0].origin,
             fixture.repository.remoteUrl
         )
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('one pre-dispatch epoch is shared by every compatible action for one repository', async () => {
+    const fixture = makeFixture({
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2)
+        ]
+    })
+    try {
+        const actionSet = compileLifecycleRunActionSet(fixture.ledger, {
+            startup: fixture.startup
+        })
+        assert.equal(actionSet.actions.length, 2)
+        const result = await observeLifecycleRepositoryBaseEpoch({
+            ledger: fixture.ledger,
+            actionSet,
+            actions: actionSet.actions,
+            phase: 'pre-dispatch',
+            observedAt: CREATED_AT,
+            startup: fixture.startup
+        })
+        assert.equal(result.receipt.status, 'current')
+        assert.equal(result.receipt.reusable, true)
+        assert.equal(result.receipt.repositories.length, 1)
+        assert.equal(result.receipt.actionBindings.length, 2)
+        const consumptions = actionSet.actions.map((action) =>
+            consumeLifecycleRepositoryBaseObservationEpoch({
+                ledger: fixture.ledger,
+                receipt: result.receipt,
+                action,
+                startup: fixture.startup
+            }))
+        assert.equal(new Set(consumptions.map((entry) =>
+            entry.repositoryObservationDigests[0])).size, 1)
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('an epoch is invalid after the control ledger head changes', async () => {
+    const fixture = makeFixture({
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2)
+        ]
+    })
+    try {
+        const actionSet = compileLifecycleRunActionSet(fixture.ledger, {
+            startup: fixture.startup
+        })
+        const result = await observeLifecycleRepositoryBaseEpoch({
+            ledger: fixture.ledger,
+            actionSet,
+            actions: actionSet.actions,
+            phase: 'pre-dispatch',
+            observedAt: CREATED_AT,
+            startup: fixture.startup
+        })
+        const started = recordLifecycleDispatchBatchStarted({
+            ledger: fixture.ledger,
+            actionSet,
+            dispatches: actionSet.actions.map((action, index) => ({
+                actionDigest: action.actionDigest,
+                nodeId: action.nodeId,
+                owner: 'pre-writer',
+                attemptId: `attempt:${index}`,
+                slotId: `slot:${index}`,
+                runtimeBindingDigest: digest(`runtime:${index}`),
+                leaseDigest: digest(`lease:${index}`),
+                resourceDigest: digest(`resource:${index}`)
+            })),
+            createdAt: CREATED_AT,
+            startup: fixture.startup
+        })
+        assert.throws(
+            () => verifyLifecycleRepositoryBaseObservationEpoch({
+                ledger: started.ledger,
+                receipt: result.receipt,
+                startup: fixture.startup
+            }),
+            ({ code }) => code === 'lifecycle-base-epoch-stale'
+        )
+
+        const post = await observeLifecycleRepositoryBaseEpoch({
+            ledger: started.ledger,
+            dispatches: started.dispatches,
+            phase: 'post-admission',
+            observedAt: '2026-08-04T00:00:01.000Z',
+            startup: fixture.startup
+        })
+        assert.equal(post.receipt.status, 'current')
+        assert.equal(post.receipt.repositories.length, 1)
+        for (const dispatch of started.dispatches) {
+            assert.equal(
+                consumeLifecycleRepositoryBaseObservationEpoch({
+                    ledger: started.ledger,
+                    receipt: post.receipt,
+                    action: dispatch.action,
+                    dispatchId: dispatch.dispatchId,
+                    startup: fixture.startup
+                }).dispatchId,
+                dispatch.dispatchId
+            )
+        }
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('an epoch cannot survive repository identity drift', async () => {
+    const fixture = makeFixture()
+    try {
+        const actionSet = compileLifecycleRunActionSet(fixture.ledger, {
+            startup: fixture.startup
+        })
+        const result = await observeLifecycleRepositoryBaseEpoch({
+            ledger: fixture.ledger,
+            actionSet,
+            actions: actionSet.actions,
+            phase: 'pre-dispatch',
+            observedAt: CREATED_AT,
+            startup: fixture.startup
+        })
+        git([
+            'remote',
+            'set-url',
+            'origin',
+            'https://github.com/Fixture/Other.git'
+        ], fixture.repository.work)
+        assert.throws(
+            () => verifyLifecycleRepositoryBaseObservationEpoch({
+                ledger: fixture.ledger,
+                receipt: result.receipt,
+                startup: fixture.startup
+            }),
+            ({ code }) => [
+                'lifecycle-run-current-authority-invalid',
+                'lifecycle-authority-drift'
+            ].includes(code)
+        )
+    } finally {
+        fixture.cleanup()
+    }
+})
+
+test('one post-admission epoch rejects every dispatch bound to a stale remote head', async () => {
+    const fixture = makeFixture({
+        issues: [
+            issue('Fixture/Repo', 1),
+            issue('Fixture/Repo', 2)
+        ]
+    })
+    try {
+        const actionSet = compileLifecycleRunActionSet(fixture.ledger, {
+            startup: fixture.startup
+        })
+        const started = recordLifecycleDispatchBatchStarted({
+            ledger: fixture.ledger,
+            actionSet,
+            dispatches: actionSet.actions.map((action, index) => ({
+                actionDigest: action.actionDigest,
+                nodeId: action.nodeId,
+                owner: 'pre-writer',
+                attemptId: `attempt:${index}`,
+                slotId: `slot:${index}`,
+                runtimeBindingDigest: digest(`runtime:${index}`),
+                leaseDigest: digest(`lease:${index}`),
+                resourceDigest: digest(`resource:${index}`)
+            })),
+            createdAt: CREATED_AT,
+            startup: fixture.startup
+        })
+        fs.writeFileSync(
+            path.join(fixture.repository.work, 'remote-drift.txt'),
+            'remote head changed\n'
+        )
+        git(['add', 'remote-drift.txt'], fixture.repository.work)
+        git(['commit', '-m', 'advance remote'], fixture.repository.work)
+        git(['push', 'origin', 'main'], fixture.repository.work)
+
+        const post = await observeLifecycleRepositoryBaseEpoch({
+            ledger: started.ledger,
+            dispatches: started.dispatches,
+            phase: 'post-admission',
+            observedAt: '2026-08-04T00:00:02.000Z',
+            startup: fixture.startup
+        })
+        assert.equal(post.receipt.status, 'stale')
+        assert.equal(post.receipt.reusable, false)
+        assert.deepEqual(post.receipt.driftedRepositories, [
+            fixture.repository.repository
+        ])
+        assert.equal(post.receipt.repositories.length, 1)
+        for (const dispatch of started.dispatches) {
+            assert.throws(
+                () => consumeLifecycleRepositoryBaseObservationEpoch({
+                    ledger: started.ledger,
+                    receipt: post.receipt,
+                    action: dispatch.action,
+                    dispatchId: dispatch.dispatchId,
+                    startup: fixture.startup
+                }),
+                ({ code }) => code === 'lifecycle-base-epoch-not-current'
+            )
+        }
     } finally {
         fixture.cleanup()
     }
