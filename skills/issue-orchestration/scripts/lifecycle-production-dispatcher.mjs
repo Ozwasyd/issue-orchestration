@@ -7,6 +7,7 @@ import {
 } from './lifecycle-transition-compiler.mjs'
 import {
     compileLifecycleRunActionSet,
+    lifecycleActionSetCacheStats,
     projectLifecycleRun,
     recordLifecycleCurrentActionResult,
     recordLifecycleDispatchBatchStarted,
@@ -170,9 +171,18 @@ function measuredProjection(telemetry, ledger, startup, boundary) {
     )
 }
 
+function actionSetStats(ledger) {
+    return lifecycleActionSetCacheStats({
+        stateRoot: ledger.stateRoot,
+        runId: ledger.runId
+    })
+}
+
 function measuredActionSet(telemetry, ledger, startup, boundary) {
     if (!telemetry) return compileLifecycleRunActionSet(ledger, { startup })
-    const before = replayStats(ledger)
+    const beforeReplay = replayStats(ledger)
+    const beforeActionSet = actionSetStats(ledger)
+    const replayOptions = replayMetricOptions(ledger, beforeReplay)
     return telemetry.measureSync(
         [
             'canonicalReplay',
@@ -181,7 +191,18 @@ function measuredActionSet(telemetry, ledger, startup, boundary) {
         ],
         { boundary },
         () => compileLifecycleRunActionSet(ledger, { startup }),
-        replayMetricOptions(ledger, before, ['actionSetCompilation'])
+        {
+            resolveMetrics() {
+                const metrics = replayOptions.resolveMetrics()
+                const afterActionSet = actionSetStats(ledger)
+                if (afterActionSet.compilerInvocations >
+                    beforeActionSet.compilerInvocations) {
+                    metrics.push('actionSetCompilation')
+                }
+                return metrics
+            },
+            resolveCanonicalBytes: replayOptions.resolveCanonicalBytes
+        }
     )
 }
 
