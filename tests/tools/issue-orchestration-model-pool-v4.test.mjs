@@ -405,13 +405,20 @@ test('V4-08 sol-max is restricted to a machine-proven DAG exception', async () =
     }).executionRouteDecision.selectedProfile, 'sol-max')
 })
 
-test('V4-09 production agents consume v4 and never self-select a model', () => {
+test('V4-09 production agents consume envelopes and never self-select a model', () => {
     const agentRoot = path.join(packageRoot, 'agents')
     for (const file of fs.readdirSync(agentRoot)) {
         const source = fs.readFileSync(path.join(agentRoot, file), 'utf8')
-        assert.match(source, /stage-model-pool\.v4/u)
-        assert.doesNotMatch(source, /stage-model-pool\.v[23]/u)
-        assert.doesNotMatch(source, /gpt-5\.6-luna|luna-(?:low|medium|high|xhigh|max)/u)
+        assert.match(
+            source,
+            /issue-orchestration\.actor-context-envelope\.v1/u
+        )
+        assert.doesNotMatch(source, /stage-model-pool\.v\d+/u)
+        assert.doesNotMatch(
+            source,
+            /gpt-5\.|(?:terra|sol|luna)-(?:low|medium|high|xhigh|max)/u
+        )
+        assert.doesNotMatch(source, /\b(?:self-select|promote)\s+(?:a\s+)?(?:model|profile)\b/iu)
     }
 })
 

@@ -1,0 +1,13 @@
+{
+  "schema": "issue-orchestration.actor-instruction-baselines.v1",
+  "estimator": "utf8-bytes-ceil-div-4",
+  "roles": {
+    "code-implementer": { "instructionBytes": 2247, "estimatedTokens": 562 },
+    "dag-creator-updater": { "instructionBytes": 711, "estimatedTokens": 178 },
+    "documentation-writer": { "instructionBytes": 1965, "estimatedTokens": 492 },
+    "test-owner": { "instructionBytes": 2956, "estimatedTokens": 739 },
+    "ui-system-adjudicator": { "instructionBytes": 553, "estimatedTokens": 139 },
+    "ui-ux-implementer": { "instructionBytes": 2110, "estimatedTokens": 528 },
+    "ux-acceptance-verifier": { "instructionBytes": 415, "estimatedTokens": 104 }
+  }
+}

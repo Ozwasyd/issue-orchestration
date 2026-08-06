@@ -1106,19 +1106,21 @@ test('[R02] operational agent policies freeze authority and dispute behavior', a
     const dagPolicy = readFileSync(dagAgentPolicyPath, 'utf8')
     const ownerPolicy = readFileSync(testOwnerPolicyPath, 'utf8')
     const implementerPolicy = readFileSync(implementerPolicyPath, 'utf8')
-    assert.match(dagPolicy, /executionClass=observe-only/u)
-    assert.match(dagPolicy, /semantic graph/iu)
-    assert.match(dagPolicy, /dispatchInvestigation/iu)
-    assert.match(ownerPolicy, /stage-model-pool\.v4/iu)
-    assert.match(ownerPolicy, /never select|never.*profile/iu)
-    assert.doesNotMatch(ownerPolicy, /^\s*(?:model|effort)\s*=/mu)
-    assert.match(ownerPolicy, /tests\/fixtures\/probes\/contract|tests.*fixtures.*probes/iu)
-    assert.match(ownerPolicy, /cannot|must not|不得/iu)
+    for (const policy of [dagPolicy, ownerPolicy, implementerPolicy]) {
+        assert.match(policy, /issue-orchestration\.actor-context-envelope\.v1/u)
+        assert.match(policy, /Responsibility:/u)
+        assert.match(policy, /Forbidden ownership:/u)
+        assert.match(policy, /Output:/u)
+        assert.match(policy, /Stop:/u)
+        assert.doesNotMatch(policy, /stage-model-pool|executionClass|write lease/iu)
+        assert.doesNotMatch(policy, /^\s*(?:model|effort)\s*=/mu)
+    }
+    assert.match(dagPolicy, /discovery and classification facts/iu)
+    assert.match(dagPolicy, /implementation, readiness, delivery/iu)
+    assert.match(ownerPolicy, /test contract[\s\S]*tests and probes/iu)
+    assert.match(ownerPolicy, /implementation, delivery, or cleanup/iu)
     assert.match(implementerPolicy, /test-contract-disputed/u)
-    assert.match(
-        implementerPolicy,
-        /contract[\s\S]*work plan[\s\S]*slice[\s\S]*compiled prompt[\s\S]*incomplete/iu
-    )
+    assert.match(implementerPolicy, /acceptance boundary is incomplete/iu)
 })
 
 test('[R03] root cannot author discovery or classification facts', async () => {
