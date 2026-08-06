@@ -23,7 +23,8 @@ jobs:
           set -euo pipefail
           echo '5dbab176918c6eb22362a54f7856fb7e5ad1cdedbb20c54946c41bc65065ba75  .github/issue-69-patch/part-00.b64' | sha256sum -c -
           echo '87a26d997709971981f1ad29f477fd067b4e478faf2b535990cc65a68f423cd4  .github/issue-69-patch/part-01a1.b64' | sha256sum -c -
-          echo 'f94bd5b7332231d49f6da539de6d4d3f17950320b507c57f91add9e9cf1293f0  .github/issue-69-patch/part-01a2.b64' | sha256sum -c -
+          echo '5a7b9f4ff67f31ef4071f7f143b3760a1631ca438089c0f7a494eff4255e5298  .github/issue-69-patch/part-01a2a.b64' | sha256sum -c -
+          echo '8f85f8562133f7eb4b542233f39e11e8239e03379467d878c137e77ba85c5afe  .github/issue-69-patch/part-01a2b.b64' | sha256sum -c -
           echo '6fb0d5be0a0cbbe3f51fc900095d38a47fea633450d66b2784ea840089a02bf9  .github/issue-69-patch/part-01b1.b64' | sha256sum -c -
           echo '9d3b7d60d97198240d9569d153a8ef190e7a80c8dbb61d3df9d96af7f8224445  .github/issue-69-patch/part-01b2.b64' | sha256sum -c -
           echo '3f21b9d96dcb8e5c16be197204cc0627c0bcc089196bc55d7a47113cb37854a8  .github/issue-69-patch/part-02.b64' | sha256sum -c -
@@ -35,7 +36,8 @@ jobs:
           cat \
             .github/issue-69-patch/part-00.b64 \
             .github/issue-69-patch/part-01a1.b64 \
-            .github/issue-69-patch/part-01a2.b64 \
+            .github/issue-69-patch/part-01a2a.b64 \
+            .github/issue-69-patch/part-01a2b.b64 \
             .github/issue-69-patch/part-01b1.b64 \
             .github/issue-69-patch/part-01b2.b64 \
             .github/issue-69-patch/part-02.b64 \
