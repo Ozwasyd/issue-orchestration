@@ -10,6 +10,7 @@ import {
     lifecycleActionSetCacheStats,
     projectLifecycleRun,
     recordLifecycleCurrentActionResult,
+    recordLifecycleCurrentMachineActionResultBatch,
     recordLifecycleDispatchBatchStarted,
     recordLifecycleDispatchedActionResultBatch
 } from './lifecycle-run-loop.mjs'
@@ -70,6 +71,9 @@ const ACTOR_ACTION_TYPES = new Set([
     'request-ui-adjudication',
     'dispatch-ux-acceptance-verifier',
     'dispatch-documentation-writer'
+])
+const BATCHABLE_MACHINE_ACTION_TYPES = new Set([
+    'compile-acceptance-contract'
 ])
 const ROOT_SERIAL_ACTION_TYPES = new Set([
     'refresh-scope',
@@ -1307,6 +1311,189 @@ async function settleReadyBatch({
     return recorded?.ledger ?? ledger
 }
 
+function deterministicMachineWorkerLimit(startup, configured, count) {
+    const observed = startup?.observation?.capacity
+        ?.maxConcurrentThreadsPerSession
+    if (!Number.isInteger(observed) || observed < 1) {
+        fail('dispatcher-machine-capacity-unobservable')
+    }
+    if (configured !== null && configured !== undefined &&
+        (!Number.isInteger(configured) || configured < 1 ||
+            configured > observed)) {
+        fail('dispatcher-machine-worker-limit-invalid', {
+            configured,
+            observed
+        })
+    }
+    return Math.min(count, configured ?? observed)
+}
+
+async function boundedMap(values, limit, operation) {
+    if (values.length === 0) return []
+    const results = new Array(values.length)
+    let cursor = 0
+    async function worker() {
+        while (true) {
+            const index = cursor
+            cursor += 1
+            if (index >= values.length) return
+            results[index] = await operation(values[index], index)
+        }
+    }
+    await Promise.all(Array.from(
+        { length: Math.min(limit, values.length) },
+        () => worker()
+    ))
+    return results
+}
+
+async function executeMachineBatch({
+    ledger,
+    actionSet,
+    actions,
+    contextProvider,
+    startup,
+    clock,
+    telemetry,
+    workerLimit
+}) {
+    if (actions.length === 0 || actions.some(({ type }) =>
+        !BATCHABLE_MACHINE_ACTION_TYPES.has(type))) {
+        fail('dispatcher-machine-batch-actions-invalid')
+    }
+    const observed = await observeBaseEpoch({
+        ledger,
+        actionSet,
+        actions,
+        phase: 'pre-dispatch',
+        startup,
+        observedAt: timestamp(clock),
+        telemetry
+    })
+    if (observed.rebound) return observed.ledger
+    const createdAt = timestamp(clock)
+    const projection = measuredProjection(
+        telemetry,
+        ledger,
+        startup,
+        'machine-batch-shared-projection'
+    )
+    const limit = deterministicMachineWorkerLimit(
+        startup,
+        workerLimit,
+        actions.length
+    )
+    const prepareAll = () => boundedMap(actions, limit, async (action) => {
+        const entry = actionOwner(action)
+        consumeLifecycleRepositoryBaseObservationEpoch({
+            ledger,
+            receipt: observed.receipt,
+            action,
+            startup
+        })
+        try {
+            const prepared = await prepareAction({
+                contextProvider,
+                entry,
+                action,
+                actionSet,
+                ledger,
+                startup,
+                createdAt,
+                telemetry,
+                repositoryBaseEpoch: observed.receipt,
+                projection,
+                measurePreparation: false
+            })
+            return Object.freeze({
+                action,
+                entry,
+                prepared
+            })
+        } catch {
+            return Object.freeze({
+                action,
+                entry,
+                prepared: null
+            })
+        }
+    })
+    const prepared = telemetry
+        ? await telemetry.measureAsync(
+            ['contextPreparation'],
+            {
+                boundary: 'machine-batch-context-preparation',
+                actionDigests: actions.map(({ actionDigest }) =>
+                    actionDigest),
+                status: `workers:${limit}`
+            },
+            prepareAll
+        )
+        : await prepareAll()
+    const executeAll = () => boundedMap(prepared, limit, async (item) => {
+        if (!item.prepared) {
+            return Object.freeze({
+                actionDigest: item.action.actionDigest,
+                result: null
+            })
+        }
+        try {
+            const output = await item.entry.execute(
+                item.prepared.context
+            )
+            return Object.freeze({
+                actionDigest: item.action.actionDigest,
+                result: normalizeActorResult(item.entry, output)
+            })
+        } catch {
+            return Object.freeze({
+                actionDigest: item.action.actionDigest,
+                result: null
+            })
+        }
+    })
+    const results = telemetry
+        ? await telemetry.measureAsync(
+            ['machineActionExecution'],
+            {
+                boundary: 'machine-action-batch-execution',
+                actionDigests: actions.map(({ actionDigest }) =>
+                    actionDigest),
+                status: `workers:${limit}`
+            },
+            executeAll
+        )
+        : await executeAll()
+    const record = () => recordLifecycleCurrentMachineActionResultBatch({
+        ledger,
+        actionSet,
+        entries: results,
+        createdAt,
+        startup
+    })
+    const recorded = telemetry
+        ? telemetry.measureSync(
+            ['canonicalReplay', 'aggregateProjectionRebuild'],
+            {
+                boundary: 'machine-result-batch-admission',
+                actionDigests: actions.map(({ actionDigest }) =>
+                    actionDigest)
+            },
+            record,
+            { ledgerRead: true }
+        )
+        : record()
+    if (recorded.excluded.length > 0) {
+        fail('dispatcher-machine-result-invalid', {
+            admittedActionDigests: recorded.admitted.map(
+                ({ actionDigest }) => actionDigest
+            ),
+            excluded: recorded.excluded
+        })
+    }
+    return recorded.ledger
+}
+
 async function executeImmediate({
     ledger,
     actionSet,
@@ -1386,7 +1573,8 @@ export async function runLifecycleProductionDispatcher({
     contextProvider: suppliedProvider,
     clock = () => new Date().toISOString(),
     maxTransitions = 10_000,
-    performanceTelemetry = null
+    performanceTelemetry = null,
+    deterministicMachineWorkerLimit: machineWorkerLimit = null
 } = {}) {
     let currentLedger = object(ledger, 'dispatcher-ledger-required')
     const contextProvider = provider(suppliedProvider)
@@ -1556,16 +1744,30 @@ export async function runLifecycleProductionDispatcher({
                 continue
             }
             if (machineActions.length > 0) {
-                const action = machineActions[0]
-                currentLedger = await executeImmediate({
-                    ledger: currentLedger,
-                    actionSet,
-                    action,
-                    contextProvider,
-                    startup,
-                    clock,
-                    telemetry
-                })
+                const first = machineActions[0]
+                if (machineActions.every(({ type }) =>
+                    BATCHABLE_MACHINE_ACTION_TYPES.has(type))) {
+                    currentLedger = await executeMachineBatch({
+                        ledger: currentLedger,
+                        actionSet,
+                        actions: machineActions,
+                        contextProvider,
+                        startup,
+                        clock,
+                        telemetry,
+                        workerLimit: machineWorkerLimit
+                    })
+                } else {
+                    currentLedger = await executeImmediate({
+                        ledger: currentLedger,
+                        actionSet,
+                        action: first,
+                        contextProvider,
+                        startup,
+                        clock,
+                        telemetry
+                    })
+                }
                 transitions += 1
                 continue
             }
