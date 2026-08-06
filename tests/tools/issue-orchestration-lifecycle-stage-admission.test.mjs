@@ -16,6 +16,9 @@ import {
     unsignedDigest
 } from '../../skills/issue-orchestration/scripts/runtime-contract-lib.mjs'
 import {
+    evaluateWriterStageObservation
+} from '../../skills/issue-orchestration/scripts/writer-stage-progress.mjs'
+import {
     compileScriptedLifecycleStageResult
 } from './issue-orchestration/scripted-lifecycle-stage-result.mjs'
 
@@ -144,6 +147,98 @@ function mergeResult(target, result) {
     return target
 }
 
+function terminalFailureEvidence({
+    action: currentAction,
+    target,
+    actorRole,
+    attemptId
+}) {
+    const stagePhase = {
+        'dispatch-test-contract-writer': 'test-contract',
+        'dispatch-implementation-writer': target.uiClass === 'ui'
+            ? 'ui-implementation'
+            : 'implementation',
+        'dispatch-documentation-writer': 'documentation'
+    }[currentAction.type]
+    const planDigest = digest({
+        actionDigest: currentAction.actionDigest,
+        stagePhase,
+        kind: 'terminal-plan'
+    })
+    const sliceDigest = digest({
+        actionDigest: currentAction.actionDigest,
+        stagePhase,
+        kind: 'terminal-slice'
+    })
+    const promptDigest = digest({
+        actionDigest: currentAction.actionDigest,
+        stagePhase,
+        kind: 'terminal-prompt'
+    })
+    const routeDigest = digest({
+        actionDigest: currentAction.actionDigest,
+        stagePhase,
+        kind: 'terminal-route'
+    })
+    const observation = {
+        schema: 'issue-orchestration.writer-stage-observation.v1',
+        runId: currentAction.bindings.runId,
+        repository: currentAction.bindings.repository,
+        issue: currentAction.bindings.issueNumber,
+        node: currentAction.nodeId,
+        baseSha: currentAction.bindings.baseSha,
+        epochId: String(currentAction.bindings.nodeEpoch),
+        worktreeIdentity: `fixture-worktree:${currentAction.nodeId}`,
+        sliceId: 'slice-1',
+        sliceDigest,
+        planDigest,
+        compiledPromptDigest: promptDigest,
+        routeDigest,
+        stageRole: actorRole,
+        stagePhase,
+        attemptId,
+        agentId: `${attemptId}:actor`,
+        firstRequiredActionExecuted: false,
+        plan: null,
+        currentSlice: null,
+        checkpoint: null,
+        sliceTerminalReceipts: [],
+        invocationObservation: { started: false },
+        environmentObservation: null,
+        runtimeCapabilityObservation: null,
+        filesystemObservation: null,
+        gitObservation: null,
+        commandObservation: null,
+        renderEvidence: null,
+        verifiedNoChangeEvidence: null,
+        conflictMapping: null,
+        terminalReceipt: null,
+        priorFailureReceipt: null
+    }
+    const evaluated = evaluateWriterStageObservation(observation)
+    return {
+        family: 'writer-stage-failure',
+        eventType: evaluated.eventType,
+        actorId: observation.agentId,
+        stageWorkPlan: {
+            stageRole: actorRole,
+            stagePhase,
+            planDigest
+        },
+        currentSlice: { sliceDigest },
+        compiledPrompt: { promptDigest },
+        currentCheckpoint: null,
+        writerStageObservation: observation,
+        failureReceipt: evaluated.failureReceipt,
+        runtimeObservationDigest: digest({
+            invocationObservation: observation.invocationObservation,
+            environmentObservation: null,
+            runtimeCapabilityObservation: null
+        }),
+        watchdogReceiptDigest: null
+    }
+}
+
 function result({
     type,
     target,
@@ -157,6 +252,19 @@ function result({
         acceptanceGroup,
         memberNodes
     })
+    const scriptedFacts = clone(facts)
+    if (mode === 'terminal-failure' &&
+        !scriptedFacts.executorFailureEvidence) {
+        const attemptId = scriptedFacts.attemptId ?? `${type}:${currentAction.nodeId}:attempt:${
+            (target?.implementationAttempts ?? 0) + 1}`
+        scriptedFacts.attemptId = attemptId
+        scriptedFacts.executorFailureEvidence = terminalFailureEvidence({
+            action: currentAction,
+            target,
+            actorRole,
+            attemptId
+        })
+    }
     return {
         action: currentAction,
         result: compileScriptedLifecycleStageResult({
@@ -166,7 +274,7 @@ function result({
                 : target,
             actorRole,
             mode,
-            facts
+            facts: scriptedFacts
         })
     }
 }
@@ -230,12 +338,30 @@ function acceptedContractFixtures() {
     })
     add(pair, main, { merge: true })
 
+    const testContractFailureNode = clone(main)
+    pair = result({
+        type: 'dispatch-test-contract-writer',
+        target: testContractFailureNode,
+        actorRole: 'test-owner',
+        mode: 'terminal-failure'
+    })
+    add(pair, testContractFailureNode)
+
     pair = result({
         type: 'dispatch-test-contract-writer',
         target: main,
         actorRole: 'test-owner'
     })
     add(pair, main, { merge: true })
+
+    const implementationFailureNode = clone(main)
+    pair = result({
+        type: 'dispatch-implementation-writer',
+        target: implementationFailureNode,
+        actorRole: 'code-implementer',
+        mode: 'terminal-failure'
+    })
+    add(pair, implementationFailureNode)
 
     pair = result({
         type: 'dispatch-implementation-writer',
@@ -252,12 +378,30 @@ function acceptedContractFixtures() {
     })
     add(pair, main, { merge: true })
 
+    const behaviorRejectionNode = clone(main)
+    pair = result({
+        type: 'dispatch-behavior-verifier',
+        target: behaviorRejectionNode,
+        actorRole: 'test-owner',
+        mode: 'rejected'
+    })
+    add(pair, behaviorRejectionNode)
+
     pair = result({
         type: 'dispatch-behavior-verifier',
         target: main,
         actorRole: 'test-owner'
     })
     add(pair, main, { merge: true })
+
+    const documentationFailureNode = clone(main)
+    pair = result({
+        type: 'dispatch-documentation-writer',
+        target: documentationFailureNode,
+        actorRole: 'documentation-writer',
+        mode: 'terminal-failure'
+    })
+    add(pair, documentationFailureNode)
 
     pair = result({
         type: 'dispatch-documentation-writer',
@@ -399,7 +543,7 @@ test('admission map is exhaustive and binds every artifact to one validator', ()
 
 test('every action contract accepts one exact stage-specific artifact set', () => {
     const fixtures = acceptedContractFixtures()
-    assert.equal(fixtures.length, 15)
+    assert.equal(fixtures.length, 19)
     assert.deepEqual(
         [...new Set(fixtures.map(({ contractId }) => contractId))].sort(),
         Object.keys(LIFECYCLE_STAGE_ADMISSION_MAP).sort()
@@ -422,10 +566,22 @@ test('resealing a modified artifact fails for every action contract', () => {
         'test-contract-writer': ['testContractWriter', (artifact) => {
             artifact.evidence.checkpointVerificationDigest = changedHash
         }],
+        'test-contract-terminal-failure': ['executorFailure', (artifact) => {
+            artifact.evidence.runtimeObservationDigest = changedHash
+        }],
+        'implementation-terminal-failure': ['executorFailure', (artifact) => {
+            artifact.evidence.runtimeObservationDigest = changedHash
+        }],
+        'documentation-terminal-failure': ['executorFailure', (artifact) => {
+            artifact.evidence.runtimeObservationDigest = changedHash
+        }],
         'implementation-retry': ['retryAuthorization', (artifact) => {
             artifact.evidence.writerFailureDigest = changedHash
         }],
         'implementation-candidate': ['candidate', (artifact) => {
+            artifact.evidence.candidateSha = changedSha
+        }],
+        'behavior-rejection': ['verificationRejection', (artifact) => {
             artifact.evidence.candidateSha = changedSha
         }],
         'behavior-verification': ['behaviorVerification', (artifact) => {

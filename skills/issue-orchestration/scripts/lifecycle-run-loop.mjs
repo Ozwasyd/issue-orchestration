@@ -41,6 +41,9 @@ import {
     validateLifecycleStageResult
 } from './lifecycle-stage-admission.mjs'
 import {
+    validateLifecycleActorStageFailure
+} from './lifecycle-executor-failure-admission.mjs'
+import {
     compileLifecycleRunTakeoverAuthority,
     lifecycleAuthorityBinding,
     rebindLifecycleSelectorAuthority,
@@ -820,6 +823,7 @@ function currentCompatibilityState({
                 nodeProjection?.closedAtSequence ?? null,
             activeAttemptId:
                 nodeProjection?.activeAttemptId ?? null,
+            reworkCount: nodeProjection?.reworkCount ?? 0,
             firstFailure: clone(nodeProjection?.firstFailure ?? null),
             terminalCandidate:
                 clone(nodeProjection?.terminal ?? null),
@@ -1203,6 +1207,25 @@ function compileCanonicalNodeEvent({
             effect.node.implementationAttempts,
         deliveryCommit: effect.node.deliveryCommit,
         closedAtSequence: effect.node.closedAtSequence
+    }
+    if ([
+        'test-contract-terminal-failure',
+        'implementation-terminal-failure',
+        'documentation-terminal-failure'
+    ].includes(admission.contractId)) {
+        const receipt = result.artifacts.executorFailure
+            .evidence.failureReceipt
+        payload.firstFailure = {
+            classification: receipt.eventType,
+            evidenceRef: receipt.receiptDigest,
+            signature: receipt.semanticFailureDigest
+        }
+    }
+    if (admission.contractId === 'behavior-rejection') {
+        const rejection = result.artifacts
+            .verificationRejection.evidence
+        payload.firstFailure = clone(rejection.firstFailure)
+        payload.reworkCount = rejection.reworkCount
     }
     const event = {
         schema: 'issue-orchestration.event.v2',
@@ -2007,6 +2030,7 @@ function appendDispatchSettlement({
     resultDigest,
     outcome,
     exclusionCode = null,
+    failureFamily = null,
     createdAt
 }) {
     const effectiveResultDigest = HASH.test(resultDigest ?? '')
@@ -2028,6 +2052,11 @@ function appendDispatchSettlement({
                 exclusionCode,
                 'lifecycle-dispatch-exclusion-code-invalid'
             )
+        } : outcome === 'failed' ? {
+            failureFamily: requireText(
+                failureFamily,
+                'lifecycle-dispatch-failure-family-invalid'
+            )
         } : {}),
         settledAt: createdAt
     }
@@ -2045,7 +2074,9 @@ function recordDispatchedActionResultWithAuthority({
     authority,
     dispatchId,
     result,
-    createdAt
+    createdAt,
+    settlementOutcome = 'completed',
+    failureFamily = null
 }) {
     requireText(dispatchId, 'lifecycle-dispatch-id-invalid')
     requireObject(result, 'lifecycle-stage-result-invalid')
@@ -2086,7 +2117,8 @@ function recordDispatchedActionResultWithAuthority({
         authority,
         dispatch,
         resultDigest: result.resultDigest,
-        outcome: 'completed',
+        outcome: settlementOutcome,
+        failureFamily,
         createdAt
     })
     return Object.freeze({
@@ -2134,27 +2166,47 @@ export function recordLifecycleDispatchedActionResultBatch({
     }
     const normalized = entries.map((entry) => {
         requireObject(entry, 'lifecycle-dispatch-result-entry-invalid')
-        return {
-            dispatchId: requireText(
-                entry.dispatchId,
-                'lifecycle-dispatch-id-invalid'
-            ),
-            ...(entry.exclusionCode !== undefined ? {
-                exclusionCode: (() => {
-                    const code = requireText(
-                        entry.exclusionCode,
-                        'lifecycle-dispatch-exclusion-code-invalid'
-                    )
-                    if (!EXPLICIT_DISPATCH_EXCLUSION_CODES.has(code)) {
-                        fail('lifecycle-dispatch-exclusion-code-invalid')
-                    }
-                    return code
-                })(),
-                resultDigest: entry.resultDigest ?? null
-            } : {
-                result: entry.result
-            })
+        const dispatchId = requireText(
+            entry.dispatchId,
+            'lifecycle-dispatch-id-invalid'
+        )
+        const modes = [
+            entry.exclusionCode !== undefined,
+            entry.stageFailure !== undefined,
+            entry.result !== undefined
+        ].filter(Boolean).length
+        if (modes !== 1) {
+            fail('lifecycle-dispatch-result-entry-mode-invalid')
         }
+        if (entry.exclusionCode !== undefined) {
+            const code = requireText(
+                entry.exclusionCode,
+                'lifecycle-dispatch-exclusion-code-invalid'
+            )
+            if (!EXPLICIT_DISPATCH_EXCLUSION_CODES.has(code)) {
+                fail('lifecycle-dispatch-exclusion-code-invalid')
+            }
+            return {
+                dispatchId,
+                exclusionCode: code,
+                resultDigest: entry.resultDigest ?? null
+            }
+        }
+        if (entry.stageFailure !== undefined) {
+            const dispatch = activeDispatch(authority, dispatchId)
+            if (!dispatch) fail('lifecycle-dispatch-not-active')
+            const admitted = validateLifecycleActorStageFailure(
+                entry.stageFailure,
+                { dispatch }
+            )
+            return {
+                dispatchId,
+                stageFailure: admitted.failure,
+                failureFamily: admitted.family,
+                result: admitted.result
+            }
+        }
+        return { dispatchId, result: entry.result }
     }).sort((left, right) =>
         left.dispatchId.localeCompare(right.dispatchId))
     if (new Set(normalized.map(({ dispatchId }) => dispatchId)).size !==
@@ -2162,6 +2214,7 @@ export function recordLifecycleDispatchedActionResultBatch({
         fail('lifecycle-dispatch-result-batch-duplicate')
     }
     const admitted = []
+    const failed = []
     const excluded = []
     for (const entry of normalized) {
         if (entry.exclusionCode !== undefined) {
@@ -2173,12 +2226,18 @@ export function recordLifecycleDispatchedActionResultBatch({
             continue
         }
         try {
-            admitted.push(recordDispatchedActionResultWithAuthority({
+            const recorded = recordDispatchedActionResultWithAuthority({
                 authority,
                 dispatchId: entry.dispatchId,
                 result: entry.result,
-                createdAt
-            }))
+                createdAt,
+                settlementOutcome: entry.stageFailure
+                    ? 'failed'
+                    : 'completed',
+                failureFamily: entry.failureFamily ?? null
+            })
+            if (entry.stageFailure) failed.push(recorded)
+            else admitted.push(recorded)
         } catch (error) {
             if (!isolatableDispatchResultError(error)) throw error
             if (!activeDispatch(authority, entry.dispatchId)) {
@@ -2201,6 +2260,7 @@ export function recordLifecycleDispatchedActionResultBatch({
     return Object.freeze({
         ledger: makeHandle(authority),
         admitted: Object.freeze(admitted),
+        failed: Object.freeze(failed),
         excluded: Object.freeze(excluded)
     })
 }

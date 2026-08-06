@@ -27,18 +27,28 @@ function contractId(action, mode, facts) {
         case 'request-test-contract-planning':
             return 'test-contract-planning'
         case 'dispatch-test-contract-writer':
-            return 'test-contract-writer'
+            return mode === 'terminal-failure'
+                ? 'test-contract-terminal-failure'
+                : 'test-contract-writer'
         case 'dispatch-implementation-writer':
+            if (mode === 'terminal-failure') {
+                return 'implementation-terminal-failure'
+            }
             return mode === 'recoverable-failure'
                 ? 'implementation-retry'
                 : 'implementation-candidate'
         case 'dispatch-behavior-verifier':
-            return 'behavior-verification'
+            return mode === 'rejected'
+                ? 'behavior-rejection'
+                : 'behavior-verification'
         case 'request-ui-adjudication':
             return 'ui-adjudication'
         case 'dispatch-ux-acceptance-verifier':
             return 'ux-acceptance'
         case 'dispatch-documentation-writer':
+            if (mode === 'terminal-failure') {
+                return 'documentation-terminal-failure'
+            }
             return facts.mode === 'changed'
                 ? 'documentation-change'
                 : 'documentation-no-change'
@@ -375,6 +385,44 @@ function buildArtifacts({ action, node, facts, id, attemptId }) {
                 status: 'authorized'
             })
             mutation()
+            break
+        }
+        case 'test-contract-terminal-failure':
+        case 'implementation-terminal-failure':
+        case 'documentation-terminal-failure': {
+            mutation()
+            if (!facts.executorFailureEvidence) {
+                throw new Error('scripted executor failure evidence required')
+            }
+            put('executorFailure', {
+                ...clone(facts.executorFailureEvidence),
+                cleanMutationPostconditionDigest:
+                    d('mutationPostcondition')
+            })
+            break
+        }
+        case 'behavior-rejection': {
+            runtime()
+            mutation()
+            const candidate = node.receipts.candidate
+            const writerInvocationId =
+                candidate.evidence.writerInvocationId
+            put('verificationRejection', {
+                candidateSha: candidate.evidence.candidateSha,
+                continuationAttemptId: attemptId,
+                firstFailure: facts.firstFailure ?? {
+                    classification: 'behavior-verification-rejected',
+                    evidenceRef: `receipt://${h('behavior-rejection')}`,
+                    signature: h('behavior-rejection-signature')
+                },
+                implementationOwnerActorId: writerInvocationId,
+                reworkCount: (node.reworkCount ??
+                    node.recoveryState?.reworkCount ?? 0) + 1,
+                impactEvidenceDigest: h('behavior-impact'),
+                verifierInvocationId: actorInvocationId,
+                freshContext: true,
+                independent: true
+            })
             break
         }
         case 'behavior-verification': {

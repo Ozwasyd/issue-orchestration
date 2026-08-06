@@ -55,6 +55,10 @@ import {
     compileActorContextBundle,
     createActorContextProgressiveReader
 } from './actor-context-envelope.mjs'
+import {
+    classifyRejectedExecutorFailure,
+    LifecycleExecutorFailureAdmissionError
+} from './lifecycle-executor-failure-admission.mjs'
 
 const ACTOR_ACTION_TYPES = new Set([
     'request-semantic-proposal',
@@ -826,9 +830,39 @@ async function settleReadyBatch({
         exclusionCode: settled.error?.code ??
             'dispatcher-actor-result-malformed'
     }))
+    const typedFailures = []
+    const runFatalRejections = []
+    for (const settled of rejected) {
+        const active = running.get(settled.dispatchId)
+        try {
+            const admitted = classifyRejectedExecutorFailure(
+                settled.error,
+                active.dispatch
+            )
+            if (admitted) {
+                typedFailures.push({
+                    ...settled,
+                    stageFailure: admitted.failure,
+                    result: admitted.result,
+                    failureFamily: admitted.family
+                })
+            } else {
+                runFatalRejections.push(settled)
+            }
+        } catch (error) {
+            runFatalRejections.push({
+                ...settled,
+                error: error instanceof
+                    LifecycleExecutorFailureAdmissionError
+                    ? error
+                    : settled.error
+            })
+        }
+    }
+    const actorOutcomes = [...fulfilled, ...typedFailures]
 
-    if (fulfilled.length > 0) {
-        const dispatches = fulfilled.map(({ dispatchId }) =>
+    if (actorOutcomes.length > 0) {
+        const dispatches = actorOutcomes.map(({ dispatchId }) =>
             running.get(dispatchId).dispatch)
         const baseObservation = await observeBaseEpoch({
             ledger,
@@ -841,7 +875,7 @@ async function settleReadyBatch({
         const driftedRepositories = new Set(
             baseObservation.receipt.driftedRepositories ?? []
         )
-        for (const settled of fulfilled) {
+        for (const settled of actorOutcomes) {
             const active = running.get(settled.dispatchId)
             const repository = active.dispatch.action.bindings.repository
             if (baseObservation.stale &&
@@ -850,6 +884,11 @@ async function settleReadyBatch({
                     dispatchId: settled.dispatchId,
                     exclusionCode: 'dispatcher-active-result-base-stale',
                     resultDigest: settled.result?.resultDigest ?? null
+                })
+            } else if (settled.stageFailure) {
+                entries.push({
+                    dispatchId: settled.dispatchId,
+                    stageFailure: settled.stageFailure
                 })
             } else {
                 entries.push({
@@ -888,6 +927,7 @@ async function settleReadyBatch({
             : recordBatch()
         for (const item of [
             ...recorded.admitted,
+            ...recorded.failed,
             ...recorded.excluded
         ]) {
             running.delete(item.dispatchId)
@@ -895,13 +935,16 @@ async function settleReadyBatch({
         }
     }
 
-    if (rejected.length > 0) {
-        const first = rejected[0]
+    if (runFatalRejections.length > 0) {
+        const first = runFatalRejections[0]
         fail('dispatcher-executor-failed', {
             dispatchId: first.dispatchId,
             cause: first.error?.code ?? first.error?.message ??
                 'unknown-executor-failure',
             admittedDispatchIds: recorded?.admitted.map(
+                ({ dispatchId }) => dispatchId
+            ) ?? [],
+            failedDispatchIds: recorded?.failed.map(
                 ({ dispatchId }) => dispatchId
             ) ?? [],
             excludedDispatchIds: recorded?.excluded.map(

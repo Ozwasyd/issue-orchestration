@@ -15,6 +15,9 @@ import {
     validateTerminalRecoveryDomains,
     validateTerminalRecoveryExhaustion
 } from './terminal-policy.mjs'
+import {
+    evaluateWriterStageObservation
+} from './writer-stage-progress.mjs'
 
 export const LIFECYCLE_STAGE_RESULT_SCHEMA =
     'issue-orchestration.lifecycle-stage-result.v1'
@@ -627,6 +630,139 @@ const IMPLEMENTATION_FAILURE_ARTIFACTS = Object.freeze({
             }
         }
     }),
+    mutationPostcondition: COMMON.mutationPostcondition
+})
+
+
+const WRITER_FAILURE_EVENT_TYPES = new Set([
+    'writer-stage.invocation-failed',
+    'writer-stage.environment-failed',
+    'writer-stage.runtime-capability-missing',
+    'writer-stage.first-action-not-executed',
+    'writer-stage.output-missing',
+    'writer-stage.checkpoint-missing',
+    'writer-stage.receipt-rejected'
+])
+
+function nullableHash(value, code) {
+    if (value === null) return null
+    return hash(value, code)
+}
+
+const WRITER_TERMINAL_FAILURE_ARTIFACTS = Object.freeze({
+    executorFailure: artifact({
+        schema:
+            'issue-orchestration.actor-stage-failure-evidence.v1',
+        producerAuthority: 'executor-failure-admission',
+        validator: 'evaluateWriterStageObservation',
+        evidence: (value) => {
+            exactKeys(value, [
+                'family', 'eventType', 'actorId', 'stageWorkPlan',
+                'currentSlice', 'compiledPrompt', 'currentCheckpoint',
+                'writerStageObservation', 'failureReceipt',
+                'runtimeObservationDigest', 'watchdogReceiptDigest',
+                'cleanMutationPostconditionDigest'
+            ], 'lifecycle-writer-terminal-failure-fields-invalid')
+            if (value.family !== 'writer-stage-failure' ||
+                !WRITER_FAILURE_EVENT_TYPES.has(value.eventType)) {
+                fail('lifecycle-writer-terminal-failure-family-invalid')
+            }
+            text(value.actorId,
+                'lifecycle-writer-terminal-failure-actor-invalid')
+            evidenceObject(value.stageWorkPlan,
+                'lifecycle-writer-terminal-failure-plan-invalid')
+            evidenceObject(value.currentSlice,
+                'lifecycle-writer-terminal-failure-slice-invalid')
+            evidenceObject(value.compiledPrompt,
+                'lifecycle-writer-terminal-failure-prompt-invalid')
+            if (value.currentCheckpoint !== null) {
+                evidenceObject(value.currentCheckpoint,
+                    'lifecycle-writer-terminal-failure-checkpoint-invalid')
+            }
+            const observation = evidenceObject(
+                value.writerStageObservation,
+                'lifecycle-writer-terminal-failure-observation-invalid'
+            )
+            const failureReceipt = evidenceObject(
+                value.failureReceipt,
+                'lifecycle-writer-terminal-failure-receipt-invalid'
+            )
+            let evaluated
+            try {
+                evaluated = evaluateWriterStageObservation(observation)
+            } catch (error) {
+                fail('lifecycle-writer-terminal-failure-observation-invalid', {
+                    cause: error?.message
+                })
+            }
+            if (evaluated.status !== 'failed' ||
+                evaluated.eventType !== value.eventType ||
+                !sameValue(evaluated.failureReceipt, failureReceipt) ||
+                failureReceipt.status !== 'terminal' ||
+                failureReceipt.authorityStatus !== 'active-writer' ||
+                failureReceipt.breakerOpen !== true ||
+                !sameValue(observation.checkpoint ?? null,
+                    value.currentCheckpoint ?? null)) {
+                fail('lifecycle-writer-terminal-failure-receipt-invalid')
+            }
+            hash(value.runtimeObservationDigest,
+                'lifecycle-writer-terminal-failure-runtime-invalid')
+            nullableHash(value.watchdogReceiptDigest,
+                'lifecycle-writer-terminal-failure-watchdog-invalid')
+            hash(value.cleanMutationPostconditionDigest,
+                'lifecycle-writer-terminal-failure-mutation-invalid')
+        }
+    }),
+    mutationPostcondition: COMMON.mutationPostcondition
+})
+
+export function validateIndependentVerificationRejection(value) {
+    exactKeys(value, [
+        'candidateSha', 'continuationAttemptId', 'firstFailure',
+        'implementationOwnerActorId', 'reworkCount',
+        'impactEvidenceDigest', 'verifierInvocationId',
+        'freshContext', 'independent'
+    ], 'lifecycle-behavior-rejection-fields-invalid')
+    sha(value.candidateSha,
+        'lifecycle-behavior-rejection-candidate-invalid')
+    text(value.continuationAttemptId,
+        'lifecycle-behavior-rejection-attempt-invalid')
+    const firstFailure = evidenceObject(
+        value.firstFailure,
+        'lifecycle-behavior-rejection-first-failure-invalid'
+    )
+    exactKeys(firstFailure, [
+        'classification', 'evidenceRef', 'signature'
+    ], 'lifecycle-behavior-rejection-first-failure-fields-invalid')
+    text(firstFailure.classification,
+        'lifecycle-behavior-rejection-classification-invalid')
+    text(firstFailure.evidenceRef,
+        'lifecycle-behavior-rejection-evidence-ref-invalid')
+    text(firstFailure.signature,
+        'lifecycle-behavior-rejection-signature-invalid')
+    text(value.implementationOwnerActorId,
+        'lifecycle-behavior-rejection-owner-invalid')
+    integer(value.reworkCount,
+        'lifecycle-behavior-rejection-rework-invalid', { min: 1 })
+    hash(value.impactEvidenceDigest,
+        'lifecycle-behavior-rejection-impact-invalid')
+    text(value.verifierInvocationId,
+        'lifecycle-behavior-rejection-verifier-invalid')
+    if (value.freshContext !== true || value.independent !== true) {
+        fail('lifecycle-behavior-rejection-independent-invalid')
+    }
+    return value
+}
+
+const BEHAVIOR_REJECTION_ARTIFACTS = Object.freeze({
+    verificationRejection: artifact({
+        schema:
+            'issue-orchestration.independent-verification-rejection.v1',
+        producerAuthority: 'behavior-rejection-validator',
+        validator: 'validateIndependentVerificationRejection',
+        evidence: validateIndependentVerificationRejection
+    }),
+    runtimeBinding: COMMON.runtimeBinding,
     mutationPostcondition: COMMON.mutationPostcondition
 })
 
@@ -1289,6 +1425,43 @@ const CONTRACTS = Object.freeze([
         implementationAttemptDelta: 1
     }),
     contract({
+        id: 'test-contract-terminal-failure',
+        actionType: 'dispatch-test-contract-writer',
+        executorAuthority: 'writer-lifecycle-executor',
+        actorRoles: ['test-owner'],
+        eventType: 'lifecycle.writer-stage-failure-recorded',
+        toState: 'terminal',
+        artifacts: WRITER_TERMINAL_FAILURE_ARTIFACTS
+    }),
+    contract({
+        id: 'implementation-terminal-failure',
+        actionType: 'dispatch-implementation-writer',
+        executorAuthority: 'writer-lifecycle-executor',
+        actorRoles: ['code-implementer', 'ui-ux-implementer'],
+        eventType: 'lifecycle.writer-stage-failure-recorded',
+        toState: 'terminal',
+        artifacts: WRITER_TERMINAL_FAILURE_ARTIFACTS,
+        implementationAttemptDelta: 1
+    }),
+    contract({
+        id: 'documentation-terminal-failure',
+        actionType: 'dispatch-documentation-writer',
+        executorAuthority: 'writer-lifecycle-executor',
+        actorRoles: ['documentation-writer'],
+        eventType: 'lifecycle.writer-stage-failure-recorded',
+        toState: 'terminal',
+        artifacts: WRITER_TERMINAL_FAILURE_ARTIFACTS
+    }),
+    contract({
+        id: 'behavior-rejection',
+        actionType: 'dispatch-behavior-verifier',
+        executorAuthority: 'observe-only-lifecycle-executor',
+        actorRoles: ['test-owner'],
+        eventType: 'lifecycle.behavior-rejection-recorded',
+        toState: 'implementing-self-testing',
+        artifacts: BEHAVIOR_REJECTION_ARTIFACTS
+    }),
+    contract({
         id: 'behavior-verification',
         actionType: 'dispatch-behavior-verifier',
         executorAuthority: 'observe-only-lifecycle-executor',
@@ -1602,6 +1775,66 @@ function validateCrossArtifactBindings(contract_, artifacts, node, action) {
                 fail('lifecycle-retry-artifact-chain-stale')
             }
             break
+        case 'test-contract-terminal-failure':
+        case 'implementation-terminal-failure':
+        case 'documentation-terminal-failure': {
+            const failure = artifacts.executorFailure.evidence
+            const receipt = failure.failureReceipt
+            const observation = failure.writerStageObservation
+            if (failure.cleanMutationPostconditionDigest !==
+                    d('mutationPostcondition') ||
+                receipt.runId !== action.bindings.runId ||
+                receipt.repository !== action.bindings.repository ||
+                receipt.issue !== action.bindings.issueNumber ||
+                receipt.node !== action.nodeId ||
+                receipt.baseSha !== action.bindings.baseSha ||
+                receipt.stageRole !== failure.stageWorkPlan.stageRole ||
+                receipt.stagePhase !== failure.stageWorkPlan.stagePhase ||
+                receipt.planDigest !== failure.stageWorkPlan.planDigest ||
+                receipt.sliceDigest !== failure.currentSlice.sliceDigest ||
+                receipt.compiledPromptDigest !==
+                    failure.compiledPrompt.promptDigest ||
+                observation.agentId !== failure.actorId ||
+                observation.routeDigest !== receipt.routeDigest ||
+                failure.runtimeObservationDigest !== digest({
+                    invocationObservation:
+                        observation.invocationObservation ?? null,
+                    environmentObservation:
+                        observation.environmentObservation ?? null,
+                    runtimeCapabilityObservation:
+                        observation.runtimeCapabilityObservation ?? null
+                }) ||
+                (node?.activeAttemptId &&
+                    node.activeAttemptId !== receipt.attemptId) ||
+                (node?.activePlanDigest &&
+                    node.activePlanDigest !== receipt.planDigest) ||
+                (node?.activeSliceDigest &&
+                    node.activeSliceDigest !== receipt.sliceDigest) ||
+                (node?.activeCompiledPromptDigest &&
+                    node.activeCompiledPromptDigest !==
+                        receipt.compiledPromptDigest)) {
+                fail('lifecycle-writer-terminal-failure-binding-stale')
+            }
+            break
+        }
+        case 'behavior-rejection': {
+            const rejection = artifacts.verificationRejection.evidence
+            const candidate = node?.receipts?.candidate
+            if (!candidate ||
+                rejection.candidateSha !==
+                    candidate.evidence?.candidateSha ||
+                rejection.implementationOwnerActorId !==
+                    candidate.evidence?.writerInvocationId ||
+                rejection.verifierInvocationId ===
+                    candidate.evidence?.writerInvocationId ||
+                rejection.reworkCount !==
+                    (node?.reworkCount ?? 0) + 1 ||
+                artifacts.runtimeBinding.evidence.actorInvocationId !==
+                    rejection.verifierInvocationId) {
+                fail('lifecycle-behavior-rejection-binding-stale')
+            }
+            break
+        }
         case 'behavior-verification': {
             const candidate = node?.receipts?.candidate
             if (!candidate ||
@@ -2117,6 +2350,26 @@ export function validateLifecycleStageResult({
     const contract_ = contractForResult(result, action)
     validateAttempt(result, contract_)
     validateActorRole(result, contract_, node)
+    if ([
+        'test-contract-terminal-failure',
+        'implementation-terminal-failure',
+        'documentation-terminal-failure'
+    ].includes(contract_.id)) {
+        const failure = result.artifacts.executorFailure?.evidence
+        if (failure?.failureReceipt?.attemptId !== result.attemptId ||
+            failure?.failureReceipt?.stageRole !== result.actorRole ||
+            failure?.writerStageObservation?.attemptId !==
+                result.attemptId ||
+            failure?.writerStageObservation?.stageRole !==
+                result.actorRole) {
+            fail('lifecycle-writer-terminal-failure-result-stale')
+        }
+    }
+    if (contract_.id === 'behavior-rejection' &&
+        result.artifacts.verificationRejection?.evidence
+            ?.continuationAttemptId !== result.attemptId) {
+        fail('lifecycle-behavior-rejection-result-stale')
+    }
     exactKeys(
         result.artifacts,
         Object.keys(contract_.artifacts),

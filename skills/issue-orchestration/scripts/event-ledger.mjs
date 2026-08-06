@@ -225,6 +225,16 @@ const rules = {
         ['test-contract-frozen', 'candidate-green'],
         ['implementing-self-testing', 'candidate-green']
     ],
+    'lifecycle.writer-stage-failure-recorded': [
+        ['test-contracting', 'terminal'],
+        ['test-contract-frozen', 'terminal'],
+        ['implementing-self-testing', 'terminal'],
+        ['behavior-green', 'terminal'],
+        ['ux-accepted', 'terminal']
+    ],
+    'lifecycle.behavior-rejection-recorded': [
+        ['candidate-green', 'implementing-self-testing']
+    ],
     'lifecycle.behavior-recorded': [
         ['candidate-green', 'behavior-green']
     ],
@@ -378,6 +388,31 @@ function validateLifecycleIntegrationEvent(event, node) {
         payload.deliveryCommit !== expectedDeliveryCommit ||
         payload.closedAtSequence !== expectedClosedAtSequence) {
         fail('lifecycle-canonical-effect-invalid')
+    }
+    if (event.eventType ===
+        'lifecycle.writer-stage-failure-recorded') {
+        const failure = stageResult.artifacts.executorFailure?.evidence
+        const receipt = failure?.failureReceipt
+        const expectedFirstFailure = receipt ? {
+            classification: receipt.eventType,
+            evidenceRef: receipt.receiptDigest,
+            signature: receipt.semanticFailureDigest
+        } : null
+        if (!failure || !receipt ||
+            !sameValue(payload.firstFailure, expectedFirstFailure)) {
+            fail('lifecycle-writer-failure-effect-invalid')
+        }
+    }
+    if (event.eventType ===
+        'lifecycle.behavior-rejection-recorded') {
+        const rejection = stageResult.artifacts
+            .verificationRejection?.evidence
+        if (!rejection ||
+            !sameValue(payload.firstFailure,
+                rejection.firstFailure) ||
+            payload.reworkCount !== rejection.reworkCount) {
+            fail('lifecycle-behavior-rejection-effect-invalid')
+        }
     }
 }
 
@@ -2143,6 +2178,19 @@ function reduceNode(node, event, context) {
         node.implementationAttempts = payload.implementationAttempts
         node.deliveryCommit = payload.deliveryCommit
         node.closedAtSequence = payload.closedAtSequence
+        if (type === 'lifecycle.writer-stage-failure-recorded') {
+            const failure = payload.stageResult.artifacts
+                .executorFailure.evidence.failureReceipt
+            node.writerStageFailureReceiptDigest =
+                failure.receiptDigest
+            node.writerStageSemanticFailureDigest =
+                failure.semanticFailureDigest ?? null
+            node.activeAttemptId = null
+            node.terminal = null
+        }
+        if (type === 'lifecycle.behavior-rejection-recorded') {
+            node.reworkCount = payload.reworkCount
+        }
     }
     if (type === 'node.discovered') {
         node.issueKind = payload.issueKind
