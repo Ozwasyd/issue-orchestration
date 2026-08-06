@@ -1,0 +1,52 @@
+name: apply issue 70 patch
+
+on:
+  push:
+    branches:
+      - issue-70-ready-result-batch-admission
+    paths:
+      - .github/issue-70-patch/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: issue-70-ready-result-batch-admission
+      - name: Verify and apply patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '59eac48ca69e15c21e12c2966bb26bee26653795aeb7b64678703a3e1bfdb0bc  .github/issue-70-patch/part-00.b64' | sha256sum -c -
+          echo 'f9558c52ba438eaeb1a59a0cff7cfc53a3ad520269e1428cbcabc2d7ba4a3d1b  .github/issue-70-patch/part-01.b64' | sha256sum -c -
+          echo 'f683706c33073c4510e7fcb0467173a0f89cc145c7a133ce5604c67da075f8c4  .github/issue-70-patch/part-02.b64' | sha256sum -c -
+          echo '0a4d2a34420eaf8b41d87a2dcae3c140a87c1bdfbf891ef53ceadf194f91520d  .github/issue-70-patch/part-03.b64' | sha256sum -c -
+          echo '9d8b5b3dd47e3fddacdb7483b84dcdc705140ddb80de548e2751d80499f15b56  .github/issue-70-patch/part-04.b64' | sha256sum -c -
+          echo '8537230ec44df28b62581ba2a9573fa255910b4de5c89105883ffc97ac0dc5a9  .github/issue-70-patch/part-05.b64' | sha256sum -c -
+          echo '4d9c12b6720a83fbd78cfcc2d78f7a62feff95abefa326420726ae02de73b05d  .github/issue-70-patch/part-06.b64' | sha256sum -c -
+          echo '12970b5d5a09265325bd32dbd04acaed7026c6cbf740a3bbcd82032332185628  .github/issue-70-patch/part-07.b64' | sha256sum -c -
+          cat .github/issue-70-patch/part-*.b64 > /tmp/issue70.patch.gz.b64
+          echo 'c353008ff33722fecb51093e73c7f8783bd8d3e6ef2feb75ef2ade0d24260afb  /tmp/issue70.patch.gz.b64' | sha256sum -c -
+          base64 -d /tmp/issue70.patch.gz.b64 > /tmp/issue70.patch.gz
+          echo '2e6b4c34840b7bf5a561e945ffe7b21f3aea59aed23641687a08043c6071f018  /tmp/issue70.patch.gz' | sha256sum -c -
+          gzip -dc /tmp/issue70.patch.gz > /tmp/issue70.patch
+          echo '71a7921d3e612acdaa3e2779199e9d2c6fc685cbcd867dc6da3b2b034f9f2a8b  /tmp/issue70.patch' | sha256sum -c -
+          git apply --check --binary /tmp/issue70.patch
+          git apply --binary /tmp/issue70.patch
+          rm -rf .github/issue-70-patch
+          rm -f .github/workflows/apply-issue-70-patch.yml
+          git add -A
+          git diff --cached --check
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Drain ready actor results through canonical batch admission (#70)'
+          git push origin HEAD:issue-70-ready-result-batch-admission
