@@ -465,28 +465,35 @@ test('P03 removes repo-local authority and exposes exactly seven shared roles', 
     }
     assert.equal(JSON.stringify(permissions).includes('landing-owner'), false,
         'landing-observation-label-became-dispatch-role')
-    for (const agentId of writerAgentIds) {
+    for (const agentId of agentIds) {
         const source = fs.readFileSync(path.join(
             packageRoot,
             'agents',
             `${agentId}.toml`
         ), 'utf8')
         for (const required of [
-            'issue-orchestration.stage-work-plan.v1',
-            'issue-orchestration.executable-slice.v1',
-            'issue-orchestration.compiled-dispatch-prompt.v1',
-            'firstRequiredAction',
-            'firstReadTargets',
-            'firstWritablePath',
-            'explicitReadOnlyOutput',
-            'issue-orchestration.stage-progress-checkpoint.v1',
-            'issue-orchestration.writer-stage-checkpoint-verification-receipt.v1',
-            'issue-orchestration.stage-continuation-receipt.v1',
-            'issue-orchestration.slice-terminal-receipt.v1',
-            'issue-orchestration.writer-stage-failure-receipt.v1'
+            'Responsibility:',
+            'Forbidden ownership:',
+            'Envelope:',
+            'Output:',
+            'Stop:',
+            'issue-orchestration.actor-context-envelope.v1',
+            'outputInterface',
+            'failureVocabulary'
         ]) {
             assert.ok(source.includes(required),
-                `writer-agent-contract-missing:${agentId}:${required}`)
+                `actor-agent-contract-missing:${agentId}:${required}`)
+        }
+        for (const forbidden of [
+            'stage-model-pool.v',
+            'executionClass=',
+            'stage-work-plan',
+            'compiled-dispatch-prompt',
+            'stage-progress-checkpoint',
+            'writer-stage-failure-receipt'
+        ]) {
+            assert.equal(source.includes(forbidden), false,
+                `actor-agent-machine-policy-copy:${agentId}:${forbidden}`)
         }
     }
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))

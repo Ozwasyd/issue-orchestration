@@ -3726,8 +3726,9 @@ function renderPrompt(slice) {
         ...slice.explicitNonGoals.map((item) => `- ${item}`),
         `Completion predicate: ${slice.completionPredicate}`,
         `Continuation predicate: ${slice.continuationPredicate}`,
-        'Stop with a machine-verifiable checkpoint or terminal receipt.',
-        'Before returning, verify filesystem paths, Git diff/tree identity, commands, and evidence.'
+        'Consume the stage-specific actor context envelope as the complete model-visible contract.',
+        'Return only the typed output interface declared by that envelope.',
+        'Stop with actor-input-incomplete or actor-authority-disputed when required input is missing or disputed.'
     ].join('\n')
 }
 

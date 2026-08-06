@@ -2,18 +2,18 @@
     "schema": "issue-orchestration.shared-package-manifest.v1",
     "packageIdentity": "issue-orchestration",
     "packageVersion": "1.0.0",
-    "sourceCommit": "82061ea6c13bbfcdf281293b673a86c81f05e9c1",
-    "sourceTreeDigest": "9d6b22ab2825ed667f1397e7ecf59e74308476901f4b61a4ec7fe76318953b0e",
+    "sourceCommit": "f167eaacdbfbb56d1c9bda66ac7f4f716234ff4f",
+    "sourceTreeDigest": "905ce8fd791bbc9942057e0831608fd45b322bef4eb4974c90327ea5db97e537",
     "skillIdentity": "issue-orchestration",
-    "skillDigest": "84918f816cba97fd330e2c48af05b8f8a2a5e8107b1f8552605a98e5763c0762",
+    "skillDigest": "2e2bc3d984100c8456856b8c234ea45624f90a19810ca7ce78a5016f79d52c81",
     "agentDigests": {
-        "code-implementer": "f3792f0771d3cc84c107a38ffeb9c4c217365c850f5b172bcd4dc96a0e0f3753",
-        "dag-creator-updater": "92939e676b7e55efff670c389fee994f240371304e637187070e2bbebea8af31",
-        "documentation-writer": "21801462699207a7e421d2b2f19cccea141337167d5d4576094b969043fa97b4",
-        "test-owner": "efee7348182214b7f355100ac88ca8ee9d5cc7e59d12e719514b6b4e5bdaabe9",
-        "ui-system-adjudicator": "12656c58bbd1a6ad1c9b6887688d7afcbb8bf284f8d7d0491bd887030b3281c8",
-        "ui-ux-implementer": "f99d94fccd5a028123f9f426e6f577472efe50a6f1ca7f4722025e4f556226ae",
-        "ux-acceptance-verifier": "b3706daaa61a0d5326980c972ef2763c3d8e04997d567f894ec692b9c1e8acb0"
+        "code-implementer": "efa56d267e2008eaca7c848660a58e11739ebc0cfd89ccf4447a9e65d7c9c205",
+        "dag-creator-updater": "8c5f6c029ed60031a374d7260faf73cd9c96425ed610f36bf9536ee1cff1a104",
+        "documentation-writer": "141e60f474789b25f454abc322497da3b45220a04a6dd2d30c9d6f5c1c14a6b7",
+        "test-owner": "e3c08f369b54f2bcc1c40fc25fe9932a7fa0a46ea679c082f9325e3df35ac152",
+        "ui-system-adjudicator": "73fe80b6584b321a33dbf52a7339fbad2365871240bb30f414915ff965eeced1",
+        "ui-ux-implementer": "9ca524304b29bb6b9be8013b1a0577c8518d25a1135e25db55707636e330ab26",
+        "ux-acceptance-verifier": "018723afa89abc8a46494be8662879b9c89d6b347235692694df54ba90d30cc4"
     },
     "modelPoolPolicyVersion": "stage-model-pool.v4",
     "modelPoolDigest": "bbe65167b55dde64e531137ffa543ada5178a530c04e1f5c394d23b9787f1c81",
@@ -44,7 +44,7 @@
         "contracts/writer-stage-retry-authorization.schema.json": "f4232113554db01244edb19bed590a012e7386743b4d52832c4876c7406a9085"
     },
     "writerStageRuntimeDigests": {
-        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "a11c0db33e8cb64eb4ae2394ca6389778ed304ce9829a3864cdf3bde78b466a0",
+        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "0831083840d7de342a36cbaf739be8b0b621f0bc758845a0c4ea61f3f6ea7cc1",
         "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447"
     },
     "repositoryTargetPolicy": "caller-supplied-operator-owned-remote-identity",
@@ -74,7 +74,8 @@
         "wave-scoped-repository-base-observation",
         "verified-replay-projection-cache",
         "verified-lifecycle-action-set-cache",
-        "stage-specific-actor-context-envelope"
+        "stage-specific-actor-context-envelope",
+        "concise-envelope-bound-actor-instructions"
     ],
     "installTargets": [
         {
@@ -133,13 +134,13 @@
         "bootstrap-executor"
     ],
     "artifactDigests": {
-        "agents/code-implementer.toml": "f3792f0771d3cc84c107a38ffeb9c4c217365c850f5b172bcd4dc96a0e0f3753",
-        "agents/dag-creator-updater.toml": "92939e676b7e55efff670c389fee994f240371304e637187070e2bbebea8af31",
-        "agents/documentation-writer.toml": "21801462699207a7e421d2b2f19cccea141337167d5d4576094b969043fa97b4",
-        "agents/test-owner.toml": "efee7348182214b7f355100ac88ca8ee9d5cc7e59d12e719514b6b4e5bdaabe9",
-        "agents/ui-system-adjudicator.toml": "12656c58bbd1a6ad1c9b6887688d7afcbb8bf284f8d7d0491bd887030b3281c8",
-        "agents/ui-ux-implementer.toml": "f99d94fccd5a028123f9f426e6f577472efe50a6f1ca7f4722025e4f556226ae",
-        "agents/ux-acceptance-verifier.toml": "b3706daaa61a0d5326980c972ef2763c3d8e04997d567f894ec692b9c1e8acb0",
+        "agents/code-implementer.toml": "efa56d267e2008eaca7c848660a58e11739ebc0cfd89ccf4447a9e65d7c9c205",
+        "agents/dag-creator-updater.toml": "8c5f6c029ed60031a374d7260faf73cd9c96425ed610f36bf9536ee1cff1a104",
+        "agents/documentation-writer.toml": "141e60f474789b25f454abc322497da3b45220a04a6dd2d30c9d6f5c1c14a6b7",
+        "agents/test-owner.toml": "e3c08f369b54f2bcc1c40fc25fe9932a7fa0a46ea679c082f9325e3df35ac152",
+        "agents/ui-system-adjudicator.toml": "73fe80b6584b321a33dbf52a7339fbad2365871240bb30f414915ff965eeced1",
+        "agents/ui-ux-implementer.toml": "9ca524304b29bb6b9be8013b1a0577c8518d25a1135e25db55707636e330ab26",
+        "agents/ux-acceptance-verifier.toml": "018723afa89abc8a46494be8662879b9c89d6b347235692694df54ba90d30cc4",
         "contracts/acceptance-group-summary.schema.json": "c4a54211b55084de27cf37eca57f2a787cd839b68bcfba186188c08dc2e3a9b4",
         "contracts/actor-context-envelope.schema.json": "1ced2b7d67fb790c04af997313e5806473f414582a51571b8b394d5167b46e42",
         "contracts/aggregate-runtime-projection.schema.json": "485a39f31bfeff459ef0aaf5d0bfa0ccdaca8c9b64de096665ea6e29accbae08",
@@ -274,7 +275,7 @@
         "policy/stage-mutation-guard-policy.json": "4e398c35cbd0bea86d0111e9a5439cc3b989bc54a63c25869278cb024eee9053",
         "policy/stage-permissions.json": "c772f84bf0862d48f45d76cd8c012380de2d628f9486185b6ed36b9d40fc6043",
         "policy/terminal-policy.json": "762b859601e24da86fe936e1fa12b9bac42188876df9998197ac4aee4d11fac1",
-        "scripts/build-manifest.mjs": "1932e2aa4c426ca483cd0c234b50ac86cc8d649111a3740baa36c773ec21f594",
+        "scripts/build-manifest.mjs": "1fb2671b8872de4aabc2c6ead9284f2456a8256e6b093abd516842f3fd08f971",
         "scripts/discover.mjs": "10d68bf4241e7d61fa02670654a1177005e74498c4306a73cb5def7160de8811",
         "scripts/install-workspace.mjs": "a05809343b3c001256768210293e5efa5e353e6db1d081693d6f88b9f0a6d914",
         "scripts/install.mjs": "6304fcdc44360269a04d2596fe57607e95e56bc85e32f706b735fac17d883fc9",
@@ -301,7 +302,7 @@
         "skills/issue-orchestration/scripts/dispatcher-performance-telemetry.mjs": "78c12055492680ab7c8223081408afbbc07b90b674c4b9f29c39ca21d39abc52",
         "skills/issue-orchestration/scripts/evaluate-delivery-closure.mjs": "6d96dd30bd8a34e4212537e95116ee76b5f039c3c037e40e7f4893311d8258cb",
         "skills/issue-orchestration/scripts/event-ledger.mjs": "22d5430e9586eb13446558c17b63b2f811826f74795233c6f6b727fb38813a0c",
-        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "a11c0db33e8cb64eb4ae2394ca6389778ed304ce9829a3864cdf3bde78b466a0",
+        "skills/issue-orchestration/scripts/executable-slice-compiler.mjs": "0831083840d7de342a36cbaf739be8b0b621f0bc758845a0c4ea61f3f6ea7cc1",
         "skills/issue-orchestration/scripts/execution-route-compiler.mjs": "c9e83958528ab71c01e52bc6140c092f5c140bf33a9ec15fd1da87de056ffd2f",
         "skills/issue-orchestration/scripts/frontier-compiler.mjs": "0b52bac6dec4ac3095f33f329b372c1029d057c5165e88bd8e7b81067500c252",
         "skills/issue-orchestration/scripts/git-resource-cleanup.mjs": "0958b311cdb6d5c7a044c3793d89a4c8005339afa153525b0ddb085130719233",
@@ -348,8 +349,8 @@
         "skills/issue-orchestration/scripts/validate-state-root.mjs": "bf138d9705e50b931f2ab3419b87f71305a03401ac06308ac02f8099fdf0a00c",
         "skills/issue-orchestration/scripts/writer-runtime-watchdog.mjs": "ee4ff64bd5df649f48b3b397e89d50fcff3dc7df97250754993a6e608986da7d",
         "skills/issue-orchestration/scripts/writer-stage-progress.mjs": "6a94aac7f8b6521854e2f39029332ea795a684f76a321f471f5514418bad9447",
-        "skills/issue-orchestration/SKILL.md": "84918f816cba97fd330e2c48af05b8f8a2a5e8107b1f8552605a98e5763c0762",
+        "skills/issue-orchestration/SKILL.md": "2e2bc3d984100c8456856b8c234ea45624f90a19810ca7ce78a5016f79d52c81",
         "skills/issue-orchestration/templates/subagent-task.md": "5424fa003d6d831f33d0968078a170e9185389472868f61b93b9111d7ed12bb7"
     },
-    "manifestDigest": "e9aca69c21c739cceabe01c02fb9203b001b06b090605ff7d6f1400073640081"
+    "manifestDigest": "5d0e6ab03e48401f3bb092a9c4353a8a2b1c5c6aa4c0e6db951997d74a072f31"
 }
