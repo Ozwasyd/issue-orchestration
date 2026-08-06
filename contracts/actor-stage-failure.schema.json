@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.issue-orchestration.dev/actor-stage-failure.schema.json",
+  "title": "Actor stage failure",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "authority",
+    "failureFamily",
+    "actionDigest",
+    "actionType",
+    "nodeId",
+    "attemptId",
+    "result",
+    "resultDigest",
+    "failureDigest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "issue-orchestration.actor-stage-failure.v1"
+    },
+    "status": {
+      "const": "validated"
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "grants"],
+      "properties": {
+        "kind": {
+          "const": "node-local-stage-result-only"
+        },
+        "grants": {
+          "type": "array",
+          "maxItems": 0
+        }
+      }
+    },
+    "failureFamily": {
+      "enum": [
+        "writer-retry-authorized",
+        "writer-terminal-failure",
+        "verifier-rejection"
+      ]
+    },
+    "actionDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "actionType": {
+      "enum": [
+        "dispatch-test-contract-writer",
+        "dispatch-implementation-writer",
+        "dispatch-behavior-verifier",
+        "dispatch-documentation-writer"
+      ]
+    },
+    "nodeId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attemptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema",
+        "producerAuthority",
+        "rootAuthored",
+        "callerAuthored",
+        "actionDigest",
+        "actionType",
+        "nodeId",
+        "actorRole",
+        "attemptId",
+        "artifacts",
+        "artifactsDigest",
+        "resultDigest"
+      ],
+      "properties": {
+        "schema": {
+          "const": "issue-orchestration.lifecycle-stage-result.v1"
+        },
+        "producerAuthority": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rootAuthored": {
+          "const": false
+        },
+        "callerAuthored": {
+          "const": false
+        },
+        "actionDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "actionType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "nodeId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorRole": {
+          "type": "string",
+          "minLength": 1
+        },
+        "attemptId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifacts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "artifactsDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "resultDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "resultDigest": {
+      "$ref": "#/$defs/digest"
+    },
+    "failureDigest": {
+      "$ref": "#/$defs/digest"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

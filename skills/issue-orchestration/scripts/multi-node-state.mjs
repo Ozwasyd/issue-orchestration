@@ -1025,7 +1025,7 @@ export function replayControlLedger(ledger) {
                     payload.settlementDigest) {
                     fail('control-dispatch-settlement-invalid')
                 }
-                if (!['completed', 'excluded'].includes(
+                if (!['completed', 'failed', 'excluded'].includes(
                     payload.outcome
                 )) {
                     fail('control-dispatch-outcome-invalid')
@@ -1035,8 +1035,20 @@ export function replayControlLedger(ledger) {
                         payload.exclusionCode,
                         'control-dispatch-exclusion-code-invalid'
                     )
-                } else if (payload.exclusionCode !== undefined) {
-                    fail('control-dispatch-exclusion-code-forbidden')
+                    if (payload.failureFamily !== undefined) {
+                        fail('control-dispatch-failure-family-forbidden')
+                    }
+                } else if (payload.outcome === 'failed') {
+                    requireString(
+                        payload.failureFamily,
+                        'control-dispatch-failure-family-invalid'
+                    )
+                    if (payload.exclusionCode !== undefined) {
+                        fail('control-dispatch-exclusion-code-forbidden')
+                    }
+                } else if (payload.exclusionCode !== undefined ||
+                    payload.failureFamily !== undefined) {
+                    fail('control-dispatch-settlement-detail-forbidden')
                 }
                 const active = projection.activeDispatches[
                     payload.dispatchId

@@ -67,6 +67,10 @@ import {
     compileActorPromptBundle,
     sanitizeProviderPromptCacheMetadata
 } from './actor-prompt-cache-identity.mjs'
+import {
+    ACTOR_STAGE_FAILURE_SCHEMA,
+    LifecycleActorStageFailureError
+} from './lifecycle-executor-failure-admission.mjs'
 
 const SUPPORTED = new Set([
     'dispatch-test-contract-writer',
@@ -941,7 +945,13 @@ async function executeLeasedWriter(context, stage, authority) {
             } : {})
         }), 'writer-actor-output-invalid')
     } catch (error) {
-        if (error instanceof LifecycleWriterExecutorError) throw error
+        if (error instanceof LifecycleWriterExecutorError ||
+            error instanceof LifecycleActorStageFailureError ||
+            error?.stageFailure?.schema ===
+                ACTOR_STAGE_FAILURE_SCHEMA ||
+            error?.schema === ACTOR_STAGE_FAILURE_SCHEMA) {
+            throw error
+        }
         reject('writer-actor-execution-invalid', {
             cause: error?.code ?? error?.message
         })

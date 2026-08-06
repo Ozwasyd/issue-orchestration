@@ -27,6 +27,7 @@ import {
     projectLifecycleRun,
     readLifecycleRunLedger,
     recordLifecycleDispatchBatchStarted,
+    recordLifecycleCurrentActionResult,
     recordLifecycleDispatchedActionResult,
     recordLifecycleDispatchedActionResultBatch
 } from '../../skills/issue-orchestration/scripts/lifecycle-run-loop.mjs'
@@ -51,6 +52,14 @@ import {
 import {
     verifiedRuntimeStartup
 } from './issue-orchestration-runtime-startup-test-helper.mjs'
+import {
+    compileScriptedLifecycleStageResult
+} from './issue-orchestration/scripted-lifecycle-stage-result.mjs'
+import {
+    compileLifecycleActorStageFailure,
+    lifecycleActorStageFailureError,
+    validateLifecycleActorStageFailure
+} from '../../skills/issue-orchestration/scripts/lifecycle-executor-failure-admission.mjs'
 
 const CREATED_AT = '2026-08-05T09:00:00.000Z'
 const actorScript = fileURLToPath(new URL(
@@ -537,6 +546,162 @@ function clearDerivedCaches(value) {
     })
 }
 
+function actorRoleForAction(action, node) {
+    switch (action.type) {
+        case 'request-semantic-proposal':
+            return 'dag-creator-updater'
+        case 'compile-acceptance-contract':
+            return 'acceptance-contract-compiler'
+        case 'request-test-contract-planning':
+        case 'dispatch-test-contract-writer':
+        case 'dispatch-behavior-verifier':
+            return 'test-owner'
+        case 'dispatch-implementation-writer':
+            return node.uiClass === 'ui-ux'
+                ? 'ui-ux-implementer'
+                : 'code-implementer'
+        default:
+            throw new Error(`unsupported scripted progression: ${action.type}`)
+    }
+}
+
+function recordScriptedAction(value, ledger, action, {
+    mode = 'completed',
+    facts = {}
+} = {}) {
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    const actionSet = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    if (action.type === 'compile-acceptance-contract') {
+        const node = projection.state.nodes[action.nodeId]
+        const result = compileScriptedLifecycleStageResult({
+            action,
+            node,
+            actorRole: actorRoleForAction(action, node),
+            mode,
+            facts
+        })
+        return recordLifecycleCurrentActionResult({
+            ledger,
+            actionSet,
+            actionDigest: action.actionDigest,
+            result,
+            createdAt: CREATED_AT,
+            startup: value.startup
+        }).ledger
+    }
+    const actorActions = actionSet.actions.filter((candidate) =>
+        LIFECYCLE_PRODUCTION_DISPATCH_MAP[candidate.type]
+            ?.executionClass === 'actor')
+    const results = actorActions.map((candidate) => {
+        const node = projection.state.nodes[candidate.nodeId]
+        return compileScriptedLifecycleStageResult({
+            action: candidate,
+            node,
+            actorRole: actorRoleForAction(candidate, node),
+            mode: candidate.actionDigest === action.actionDigest
+                ? mode
+                : 'completed',
+            facts: candidate.actionDigest === action.actionDigest
+                ? facts
+                : {}
+        })
+    })
+    const started = recordLifecycleDispatchBatchStarted({
+        ledger,
+        actionSet,
+        dispatches: actorActions.map((candidate, index) => ({
+            actionDigest: candidate.actionDigest,
+            nodeId: candidate.nodeId,
+            owner: LIFECYCLE_PRODUCTION_DISPATCH_MAP[
+                candidate.type
+            ].owner,
+            attemptId: results[index].attemptId,
+            slotId: `slot:${candidate.nodeId}`,
+            runtimeBindingDigest:
+                digest(`runtime:${results[index].attemptId}`),
+            leaseDigest: digest(`lease:${results[index].attemptId}`),
+            resourceDigest:
+                digest(`resource:${results[index].attemptId}`)
+        })),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const dispatchByAction = new Map(started.dispatches.map(
+        (dispatch) => [dispatch.actionDigest, dispatch]
+    ))
+    return recordLifecycleDispatchedActionResultBatch({
+        ledger: started.ledger,
+        entries: results.map((result) => ({
+            dispatchId: dispatchByAction.get(
+                result.actionDigest
+            ).dispatchId,
+            result
+        })),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    }).ledger
+}
+
+function advanceNodeToState(value, initialLedger, nodeId, targetState) {
+    let ledger = initialLedger
+    for (let step = 0; step < 12; step += 1) {
+        const projection = projectLifecycleRun(ledger, {
+            startup: value.startup
+        })
+        if (projection.state.nodes[nodeId].lifecycleState === targetState) {
+            return ledger
+        }
+        const actionSet = compileLifecycleRunActionSet(ledger, {
+            startup: value.startup
+        })
+        const action = actionSet.actions.find((candidate) =>
+            candidate.nodeId === nodeId)
+        if (!action) {
+            throw new Error(`no action for ${nodeId} before ${targetState}`)
+        }
+        ledger = recordScriptedAction(value, ledger, action)
+    }
+    throw new Error(`failed to reach ${targetState} for ${nodeId}`)
+}
+
+function advanceNodesToState(
+    value,
+    initialLedger,
+    nodeIds,
+    targetState
+) {
+    let ledger = initialLedger
+    for (let step = 0; step < 20; step += 1) {
+        const projection = projectLifecycleRun(ledger, {
+            startup: value.startup
+        })
+        if (nodeIds.every((nodeId) =>
+            projection.state.nodes[nodeId].lifecycleState ===
+                targetState)) {
+            return ledger
+        }
+        const actionSet = compileLifecycleRunActionSet(ledger, {
+            startup: value.startup
+        })
+        const machine = actionSet.actions.find((action) =>
+            action.type === 'compile-acceptance-contract' &&
+            nodeIds.includes(action.nodeId))
+        const action = machine ?? actionSet.actions.find((candidate) =>
+            nodeIds.includes(candidate.nodeId))
+        if (!action) {
+            throw new Error(
+                `no synchronized action before ${targetState}`
+            )
+        }
+        ledger = recordScriptedAction(value, ledger, action)
+    }
+    throw new Error(`failed to synchronize ${targetState}`)
+}
+
 function clock() {
     let sequence = 0
     return () => {
@@ -614,6 +779,270 @@ test('ready queue is process-local and production uses canonical batch admission
     assert.match(dispatcher, /waitAndDrain/u)
     assert.match(dispatcher, /recordLifecycleDispatchedActionResultBatch/u)
     assert.doesNotMatch(state, /settlementQueue|readyResultQueue/u)
+})
+
+
+test('typed actor-stage failures require an exact validated stage result', (t) => {
+    const value = fixture([51], { slotCapacity: 1 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const nodeId = `${value.repository.repository}#51`
+    const ledger = advanceNodeToState(
+        value,
+        value.ledger,
+        nodeId,
+        'test-contract-frozen'
+    )
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    const actionSet = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    const action = actionSet.actions.find(({ nodeId: id }) => id === nodeId)
+    const attemptId = `${nodeId}:typed-retry`
+    const result = compileScriptedLifecycleStageResult({
+        action,
+        node: projection.state.nodes[nodeId],
+        actorRole: 'code-implementer',
+        mode: 'recoverable-failure',
+        facts: { attemptId }
+    })
+    const failure = compileLifecycleActorStageFailure({
+        failureFamily: 'writer-retry-authorized',
+        result
+    })
+    const dispatch = {
+        actionDigest: action.actionDigest,
+        action,
+        nodeId,
+        attemptId
+    }
+    const validated = validateLifecycleActorStageFailure(
+        failure,
+        { dispatch }
+    )
+    assert.equal(validated.contractId, 'implementation-retry')
+    assert.equal(validated.family, 'writer-retry-authorized')
+
+    const reSigned = structuredClone(failure)
+    reSigned.message = 'looks recoverable'
+    reSigned.failureDigest = digest(reSigned)
+    assert.throws(
+        () => validateLifecycleActorStageFailure(reSigned, { dispatch }),
+        (error) => error?.code ===
+            'executor-failure-envelope-fields-invalid'
+    )
+    assert.throws(
+        () => compileLifecycleActorStageFailure({
+            failureFamily: 'verifier-rejection',
+            result
+        }),
+        (error) => error?.code ===
+            'executor-failure-stage-contract-forbidden'
+    )
+})
+
+test('typed writer failure frees only its dispatch while an unrelated actor remains active', async (t) => {
+    const value = fixture([61, 62], { slotCapacity: 2 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const nodeIds = [61, 62].map((number) =>
+        `${value.repository.repository}#${number}`)
+    let ledger = advanceNodesToState(
+        value,
+        value.ledger,
+        nodeIds,
+        'test-contract-frozen'
+    )
+    const actionSet = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    const actions = nodeIds.map((nodeId) =>
+        actionSet.actions.find((action) => action.nodeId === nodeId))
+    assert.ok(actions.every(Boolean))
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    const attempts = Object.fromEntries(actions.map((action) => [
+        action.nodeId,
+        `${action.nodeId}:implementation-attempt`
+    ]))
+    const failedResult = compileScriptedLifecycleStageResult({
+        action: actions[0],
+        node: projection.state.nodes[actions[0].nodeId],
+        actorRole: 'code-implementer',
+        mode: 'recoverable-failure',
+        facts: { attemptId: attempts[actions[0].nodeId] }
+    })
+    const stageFailure = compileLifecycleActorStageFailure({
+        failureFamily: 'writer-retry-authorized',
+        result: failedResult
+    })
+    const started = recordLifecycleDispatchBatchStarted({
+        ledger,
+        actionSet,
+        dispatches: actions.map((action, index) => ({
+            actionDigest: action.actionDigest,
+            nodeId: action.nodeId,
+            owner: 'writer',
+            attemptId: attempts[action.nodeId],
+            slotId: `slot:${index + 1}`,
+            runtimeBindingDigest: digest(`runtime:${action.nodeId}`),
+            leaseDigest: digest(`lease:${action.nodeId}`),
+            resourceDigest: digest(`resource:${action.nodeId}`)
+        })),
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const failedDispatchId = started.dispatches.find(
+        ({ nodeId }) => nodeId === actions[0].nodeId
+    ).dispatchId
+    const longDispatchId = started.dispatches.find(
+        ({ nodeId }) => nodeId === actions[1].nodeId
+    ).dispatchId
+    const baseProvider = semanticContextProvider(value)
+    const never = new Promise(() => {})
+    const contextProvider = {
+        ...baseProvider,
+        async recoverActiveDispatch({ dispatch }) {
+            return {
+                completion: dispatch.dispatchId === failedDispatchId
+                    ? Promise.reject(
+                        lifecycleActorStageFailureError(stageFailure)
+                    )
+                    : never
+            }
+        }
+    }
+    await assert.rejects(
+        runLifecycleProductionDispatcher({
+            ledger: started.ledger,
+            startup: value.startup,
+            contextProvider,
+            clock: clock(),
+            maxTransitions: 1
+        }),
+        (error) => error?.code ===
+            'dispatcher-transition-limit-exceeded'
+    )
+    ledger = readLifecycleRunLedger({
+        stateRoot: value.stateRoot,
+        runId: value.runId,
+        startup: value.startup
+    })
+    const after = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    assert.deepEqual(
+        Object.keys(after.aggregateProjection.activeDispatches),
+        [longDispatchId]
+    )
+    const failedHistory = after.aggregateProjection.dispatchHistory.find(
+        ({ dispatchId }) => dispatchId === failedDispatchId
+    )
+    assert.equal(failedHistory.outcome, 'failed')
+    assert.equal(
+        failedHistory.failureFamily,
+        'writer-retry-authorized'
+    )
+    assert.equal(
+        after.state.nodes[actions[0].nodeId].lifecycleState,
+        'implementing-self-testing'
+    )
+    assert.ok(
+        after.state.nodes[actions[0].nodeId]
+            .receipts.retryAuthorization
+    )
+    const next = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    assert.ok(next.actions.some((action) =>
+        action.nodeId === actions[0].nodeId &&
+        action.type === 'dispatch-implementation-writer'))
+    assert.ok(!next.actions.some((action) =>
+        action.nodeId === actions[1].nodeId))
+})
+
+test('typed verifier rejection follows the canonical rework path', (t) => {
+    const value = fixture([71], { slotCapacity: 1 })
+    t.after(() => {
+        fs.rmSync(value.root, { recursive: true, force: true })
+        fs.rmSync(value.stateRoot, { recursive: true, force: true })
+    })
+    const nodeId = `${value.repository.repository}#71`
+    let ledger = advanceNodeToState(
+        value,
+        value.ledger,
+        nodeId,
+        'candidate-green'
+    )
+    const projection = projectLifecycleRun(ledger, {
+        startup: value.startup
+    })
+    const actionSet = compileLifecycleRunActionSet(ledger, {
+        startup: value.startup
+    })
+    const action = actionSet.actions.find(({ nodeId: id }) => id === nodeId)
+    const attemptId = `${nodeId}:behavior-rejection`
+    const result = compileScriptedLifecycleStageResult({
+        action,
+        node: projection.state.nodes[nodeId],
+        actorRole: 'test-owner',
+        mode: 'rejected',
+        facts: { attemptId }
+    })
+    const failure = compileLifecycleActorStageFailure({
+        failureFamily: 'verifier-rejection',
+        result
+    })
+    const started = recordLifecycleDispatchBatchStarted({
+        ledger,
+        actionSet,
+        dispatches: [{
+            actionDigest: action.actionDigest,
+            nodeId: action.nodeId,
+            owner: 'observe-only',
+            attemptId,
+            slotId: 'slot:1',
+            runtimeBindingDigest: digest(`runtime:${nodeId}`),
+            leaseDigest: digest(`lease:${nodeId}`),
+            resourceDigest: digest(`resource:${nodeId}`)
+        }],
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    const recorded = recordLifecycleDispatchedActionResultBatch({
+        ledger: started.ledger,
+        entries: [{
+            dispatchId: started.dispatches[0].dispatchId,
+            stageFailure: failure
+        }],
+        createdAt: CREATED_AT,
+        startup: value.startup
+    })
+    assert.equal(recorded.failed.length, 1)
+    const after = projectLifecycleRun(recorded.ledger, {
+        startup: value.startup
+    })
+    assert.equal(after.state.nodes[nodeId].lifecycleState,
+        'implementing-self-testing')
+    assert.equal(after.state.nodes[nodeId].reworkCount, 1)
+    assert.equal(
+        after.state.nodes[nodeId].firstFailure.classification,
+        'behavior-verification-rejected'
+    )
+    assert.equal(
+        after.aggregateProjection.dispatchHistory.find(
+            ({ dispatchId }) =>
+                dispatchId === started.dispatches[0].dispatchId
+        ).outcome,
+        'failed'
+    )
 })
 
 test('action-set cache key uses only the seven verified compiler digests', () => {

@@ -107,6 +107,7 @@ const manifest = {
         'verified-replay-projection-cache',
         'verified-lifecycle-action-set-cache',
         'canonical-ready-result-batch-admission',
+        'typed-actor-stage-failure-isolation',
         'stage-specific-actor-context-envelope',
         'concise-envelope-bound-actor-instructions',
         'deterministic-repository-evidence-pack',
